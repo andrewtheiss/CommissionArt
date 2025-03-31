@@ -1,0 +1,149 @@
+.abi-config {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.abi-config h2 {
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.contracts-list {
+  margin-bottom: 2rem;
+}
+
+.contracts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.contract-card {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.contract-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.contract-card.selected {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+.contract-card h4 {
+  margin: 0 0 1rem 0;
+  color: #2196f3;
+}
+
+.contract-addresses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.address-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.chain-id {
+  font-weight: 500;
+  color: #666;
+}
+
+.address {
+  font-family: monospace;
+  background: #fff;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+}
+
+.contract-details {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.abi-preview {
+  margin: 1.5rem 0;
+}
+
+.abi-preview pre {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+}
+
+.add-address {
+  margin: 1.5rem 0;
+}
+
+.input-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.input-group button {
+  padding: 0.5rem 1rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.input-group button:hover {
+  background: #1976d2;
+}
+
+.addresses-list {
+  margin-top: 1.5rem;
+}
+
+.addresses-list .address-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.addresses-list button {
+  padding: 0.25rem 0.5rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.addresses-list button:hover {
+  background: #c82333;
+} 
