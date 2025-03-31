@@ -200,3 +200,15 @@ The Token Bound Sub-NFT System provides a comprehensive solution for managing co
 **Value:** Fair compensation and standardized tracking enhance the appeal of commissioned artwork.  
 
 This system is designed to be scalable, compatible with existing NFT standards (e.g., ERC-721, ERC-1155), and adaptable to future enhancements, making it a robust foundation for the evolving NFT space.
+
+
+### Ape developing --
+# ignore all warnings for lib3
+## Ignore pythonwarnings in your profile
+# export PYTHONWARNINGS="ignore::Warning:urllib3"
+
+# https://docs.apeworx.io/ape/stable/userguides/quickstart.html
+# pipx install eth-ape  (pipx installs everything in a venv system wide!)
+# Install plugins
+ape plugins install vyper -y
+
