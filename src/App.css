@@ -73,3 +73,42 @@ h2 {
   line-height: 1.5;
   font-size: 0.9rem;
 }
+
+.blockchain-status {
+  margin-bottom: 20px;
+  padding: 10px 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #4a90e2;
+  transition: all 0.3s ease;
+}
+
+.blockchain-status.loading {
+  background-color: #fff8e1;
+  border-left-color: #ffc107;
+}
+
+.blockchain-status p {
+  margin: 0;
+  font-size: 14px;
+  color: #444;
+  display: flex;
+  align-items: center;
+}
+
+.blockchain-status .network-name {
+  font-weight: 500;
+  margin: 0 4px;
+}
+
+.blockchain-status .environment {
+  background-color: #e6f7ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.blockchain-status .disconnected {
+  color: #e74c3c;
+}

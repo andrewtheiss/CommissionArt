@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import './App.css'
+import NetworkSelector from './components/NetworkSelector'
+import './components/NetworkSelector.css'
+import ContractInteraction from './components/ContractInteraction'
+import { useBlockchain } from './utils/BlockchainContext'
 
 function App() {
   const [imageData, setImageData] = useState<string | null>(null);
   const [rawData, setRawData] = useState<string | null>(null);
+  const { isConnected, networkType, network, isLoading } = useBlockchain();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -38,7 +43,24 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Image to Raw Data Converter</h1>
+      <h1>Commission Art</h1>
+      
+      <NetworkSelector />
+      
+      <div className={`blockchain-status ${isLoading ? 'loading' : ''}`}>
+        {isConnected ? (
+          <p>
+            Connected to 
+            <span className="network-name">{network.name}</span>
+            (Chain ID: {network.chainId})
+            <span className="environment">{networkType.toUpperCase()}</span>
+          </p>
+        ) : (
+          <p className="disconnected">Not connected to blockchain</p>
+        )}
+      </div>
+      
+      <ContractInteraction />
       
       <div className="upload-section">
         <label htmlFor="image-upload" className="upload-button">
