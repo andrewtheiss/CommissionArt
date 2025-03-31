@@ -1,0 +1,12 @@
+name: web3
+
+contracts_folder: contracts
+
+compiler:
+  name: vyper
+  version: 0.3.7
+  settings:
+    evm_version: "paris"
+    optimize: true
+    exclude_paths: []
+    include_paths: []

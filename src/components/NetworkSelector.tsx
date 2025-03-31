@@ -27,7 +27,7 @@ const NetworkSelector = () => {
         >
           <option value="dev">Development (Sepolia)</option>
           <option value="prod">Production (Mainnet)</option>
-          <option value="local">Local Brownie (127.0.0.1:8545)</option>
+          <option value="local">Local Ganache (127.0.0.1:8545)</option>
         </select>
         
         <span className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>

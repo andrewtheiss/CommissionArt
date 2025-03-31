@@ -26,7 +26,7 @@ const config: AppConfig = {
       rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/demo',
     },
     local: {
-      chainId: 1337, // Local Brownie instance
+      chainId: 1337, // Local instance
       name: 'Local',
       rpcUrl: 'http://127.0.0.1:8545',
     },
