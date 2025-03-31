@@ -2,19 +2,27 @@ export interface NetworkConfig {
   chainId: number;
   name: string;
   rpcUrl: string;
+  currency?: string;
 }
 
 export interface AppConfig {
   networks: {
+    animechain: NetworkConfig;
     dev: NetworkConfig;
     prod: NetworkConfig;
     local: NetworkConfig;
   };
-  defaultNetwork: 'dev' | 'prod' | 'local';
+  defaultNetwork: 'animechain' | 'dev' | 'prod' | 'local';
 }
 
 const config: AppConfig = {
   networks: {
+    animechain: {
+      chainId: 69000, // AnimeChain L3
+      name: 'AnimeChain',
+      rpcUrl: 'https://rpc-animechain-39xf6m45e3.t.conduit.xyz',
+      currency: 'anime'
+    },
     dev: {
       chainId: 11155111, // Sepolia testnet
       name: 'Sepolia',
@@ -31,7 +39,7 @@ const config: AppConfig = {
       rpcUrl: 'http://127.0.0.1:8545',
     },
   },
-  defaultNetwork: 'dev',
+  defaultNetwork: 'animechain',
 };
 
 export default config; 

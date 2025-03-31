@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import ethersService from './ethers-service';
 import { NetworkConfig } from './config';
+import config from './config';
+
+type NetworkType = 'animechain' | 'dev' | 'prod' | 'local';
 
 interface BlockchainContextType {
   isConnected: boolean;
   isLoading: boolean;
-  networkType: 'dev' | 'prod' | 'local';
+  networkType: NetworkType;
   network: NetworkConfig;
-  switchNetwork: (network: 'dev' | 'prod' | 'local') => void;
+  switchNetwork: (network: NetworkType) => void;
   connectWallet: () => Promise<void>;
   walletAddress: string | null;
 }
@@ -17,7 +20,7 @@ const BlockchainContext = createContext<BlockchainContextType | undefined>(undef
 export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [networkType, setNetworkType] = useState<'dev' | 'prod' | 'local'>('dev');
+  const [networkType, setNetworkType] = useState<NetworkType>(config.defaultNetwork);
   const [network, setNetwork] = useState<NetworkConfig>(ethersService.getNetwork());
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
@@ -32,7 +35,7 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
     checkConnection();
   }, []);
 
-  const switchNetwork = (newNetworkType: 'dev' | 'prod' | 'local') => {
+  const switchNetwork = (newNetworkType: NetworkType) => {
     const newNetwork = ethersService.switchNetwork(newNetworkType);
     setNetworkType(newNetworkType);
     setNetwork(newNetwork);

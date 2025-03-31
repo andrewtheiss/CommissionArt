@@ -4,13 +4,14 @@ import NetworkSelector from './components/NetworkSelector'
 import './components/NetworkSelector.css'
 import ContractInteraction from './components/ContractInteraction'
 import AbiConfig from './components/AbiConfig'
+import ContractImage from './components/ContractImage'
 import { useBlockchain } from './utils/BlockchainContext'
 
 function App() {
   const [imageData, setImageData] = useState<string | null>(null);
   const [rawData, setRawData] = useState<string | null>(null);
   const [combinedHex, setCombinedHex] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'interaction' | 'config'>('interaction');
+  const [activeTab, setActiveTab] = useState<'interaction' | 'config' | 'view'>('view');
   const { isConnected, networkType, network, isLoading } = useBlockchain();
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,6 +73,12 @@ function App() {
 
       <div className="tab-navigation">
         <button 
+          className={`tab-button ${activeTab === 'view' ? 'active' : ''}`}
+          onClick={() => setActiveTab('view')}
+        >
+          View Contract Image
+        </button>
+        <button 
           className={`tab-button ${activeTab === 'interaction' ? 'active' : ''}`}
           onClick={() => setActiveTab('interaction')}
         >
@@ -85,7 +92,9 @@ function App() {
         </button>
       </div>
       
-      {activeTab === 'interaction' ? (
+      {activeTab === 'view' ? (
+        <ContractImage />
+      ) : activeTab === 'interaction' ? (
         <>
           <ContractInteraction />
           

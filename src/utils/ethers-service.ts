@@ -1,6 +1,8 @@
 import { ethers } from 'ethers';
 import config, { NetworkConfig } from './config';
 
+type NetworkType = 'animechain' | 'dev' | 'prod' | 'local';
+
 /**
  * Service for interacting with Ethereum blockchain via ethers.js
  */
@@ -8,7 +10,7 @@ class EthersService {
   private provider: ethers.JsonRpcProvider | null = null;
   private network: NetworkConfig;
 
-  constructor(networkType: 'dev' | 'prod' | 'local' = config.defaultNetwork) {
+  constructor(networkType: NetworkType = config.defaultNetwork) {
     this.network = config.networks[networkType];
     this.connectProvider();
   }
@@ -28,7 +30,7 @@ class EthersService {
   /**
    * Change the network connection
    */
-  public switchNetwork(networkType: 'dev' | 'prod' | 'local') {
+  public switchNetwork(networkType: NetworkType) {
     this.network = config.networks[networkType];
     this.connectProvider();
     return this.network;
