@@ -38,6 +38,22 @@ def deploy_contracts():
     with networks.parse_network_choice("ethereum:custom:node") as provider:
         print(f"Connected to AnimeChain (Chain ID: {ANIMECHAIN_CONFIG['chain_id']})")
         
+        # Prompt user for existing registry contract address
+        registry_address = input("Enter existing Registry contract address (or press Enter to deploy new): ").strip()
+        
+        if registry_address:
+            # Use existing registry contract
+            try:
+                registry_contract = project.Registry.at(registry_address) # 0x6E28577074170227E7D3C646D840514e9BE0333C
+                print(f"Using existing Registry contract at: {registry_contract.address}")
+            except Exception as e:
+                raise ValueError(f"Invalid registry contract address or unable to connect: {str(e)}")
+        else:
+            # Deploy new registry contract
+            print("Deploying new Registry contract...")
+            registry_contract = deployer.deploy(project.Registry)
+            print(f"Registry deployed at: {registry_contract.address}")
+        
         # Sample image data for 5 contracts
         image_data_samples = [
             b"image_data_1" + b"\x00" * (45000 - len(b"image_data_1")),
@@ -46,11 +62,6 @@ def deploy_contracts():
             b"image_data_4" + b"\x00" * (45000 - len(b"image_data_4")),
             b"image_data_5" + b"\x00" * (45000 - len(b"image_data_5")),
         ]
-
-        # Deploy the registry contract first
-        print("Deploying Registry contract...")
-        registry_contract = deployer.deploy(project.Registry)
-        print(f"Registry deployed at: {registry_contract.address}")
 
         # Deploy 5 image data contracts and register them
         image_contracts = []
@@ -67,7 +78,7 @@ def deploy_contracts():
 
             # Register the contract
             print(f"Registering CommissionedArt contract {i+1} with Azuki ID {i}...")
-            registry_contract.registerCommissionedArt(i, image_contract.address, sender=deployer)
+            registry_contract.registerImageData(i, image_contract.address, sender=deployer)
             print(f"Registered CommissionedArt contract {i+1} with Azuki ID {i}")
 
         # Verify deployments
