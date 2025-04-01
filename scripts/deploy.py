@@ -1,33 +1,44 @@
 from ape import accounts, project, Contract, networks
+from ape_accounts import import_account_from_private_key
+from getpass import getpass
+from dotenv import load_dotenv
+from pathlib import Path
 import os
 
-# Configuration for AnimeChain
 ANIMECHAIN_CONFIG = {
     "name": "animechain",
     "chain_id": 69000,
-    "rpc_url": "https://rpc-animechain-39xf6m45e3.t.conduit.xyz",
-    "private_key": "0xYourPrivateKeyHere1234567890abcdef1234567890abcdef1234567890abcdef"  # Replace with your actual private key
+    "rpc_url": "https://rpc-animechain-39xf6m45e3.t.conduit.xyz"
 }
 
-def setup_animechain_network():
-    # Register the custom network if not already registered
-    if "animechain" not in networks.ecosystems["ethereum"]:
-        networks.parse_network_choice(f"ethereum:{ANIMECHAIN_CONFIG['name']}:{ANIMECHAIN_CONFIG['rpc_url']}:{ANIMECHAIN_CONFIG['chain_id']}")
-    
 def deploy_contracts():
-    # Set up the private key account
+
+    # Load .env file from project root
+    dotenv_path = Path(__file__).parent.parent / '.env'
+    load_dotenv(dotenv_path=dotenv_path)
+
+    # Get private key and passphrase
+    private_key = os.environ.get("PRIVATE_KEY", "").strip()
+    if not private_key:
+        raise ValueError("PRIVATE_KEY not found or empty in .env file")
+    
+    passphrase = os.environ.get("DEPLOYER_PASSPHRASE", "").strip()
+    if not passphrase:
+        raise ValueError("DEPLOYER_PASSPHRASE not found or empty in .env file")
+
+    # Try to load existing account, import if it doesn't exist
     try:
         deployer = accounts.load("animechain_deployer")
+        # If loaded, ensure it matches the private key (optional check)
     except:
-        deployer = accounts.add(ANIMECHAIN_CONFIG["private_key"])
-        deployer.alias = "animechain_deployer"
+        deployer = import_account_from_private_key("animechain_deployer", passphrase, private_key)
 
-    # Switch to AnimeChain network
-    setup_animechain_network()
-    with networks.ethereum["animechain"].use_provider("custom"):
+
+    # Use the network from config
+    with networks.parse_network_choice("ethereum:custom:node") as provider:
         print(f"Connected to AnimeChain (Chain ID: {ANIMECHAIN_CONFIG['chain_id']})")
         
-        # Sample image data for 5 contracts (you can modify these)
+        # Sample image data for 5 contracts
         image_data_samples = [
             b"image_data_1" + b"\x00" * (250000 - len(b"image_data_1")),
             b"image_data_2" + b"\x00" * (250000 - len(b"image_data_2")),
@@ -48,8 +59,8 @@ def deploy_contracts():
             image_contract = deployer.deploy(
                 project.CommissionedArt,
                 image_data_samples[i],
-                deployer.address,  # owner
-                deployer.address   # artist
+                deployer.address,
+                deployer.address
             )
             image_contracts.append(image_contract)
             print(f"CommissionedArt contract {i+1} deployed at: {image_contract.address}")

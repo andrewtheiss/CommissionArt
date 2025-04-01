@@ -15,3 +15,16 @@ ethereum:
   custom:
     host: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
     chain_id: 69000
+    default_provider: web3
+
+networks:
+  custom:
+    - name: custom
+      chain_id: 69000
+      ecosystem: ethereum
+      default_provider: node
+
+node:
+  ethereum:
+    custom:
+      uri: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
