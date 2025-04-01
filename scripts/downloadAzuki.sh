@@ -7,8 +7,8 @@ mkdir -p "$OUTPUT_DIR"
 # Base URL
 BASE_URL="https://ipfs.io/ipfs/QmYDvPAXtiJg7s8JdRBSLWdgSphQdac8j1YuQNNxcGE1hg"
 
-# Loop from 0 to 9999
-for i in {5471..9999}; do
+# Loop from 0 to 4 (for the 5 images we need)
+for i in {0..9999}; do
     # Construct the full URL
     URL="$BASE_URL/$i.png"
     # Output file path
@@ -27,7 +27,7 @@ for i in {5471..9999}; do
     fi
     
     # Optional: Add a small delay to avoid overwhelming the server
-    sleep 0.1
+    sleep 0.5
 done
 
 echo "Download complete!"

@@ -19,23 +19,29 @@ def __init__():
 
 @external
 def registerImageData(azukiId: uint256, imageContract: address):
-    assert msg.sender == self.owner, "Only owner can register"
+    # Check rescinded status first
     assert not self.is_ownership_rescinded, "Ownership has been rescinded"
+    # Then check if sender is owner
+    assert msg.sender == self.owner, "Only owner can register"
     assert self.imageDataContracts[azukiId] == empty(address), "Azuki ID already registered"
     self.imageDataContracts[azukiId] = imageContract
 
 @external
 def setL1Contract(l1_contract_address: address):
-    assert msg.sender == self.owner, "Only owner can set L1 contract"
+    # Check rescinded status first
     assert not self.is_ownership_rescinded, "Ownership has been rescinded"
+    # Then check if sender is owner
+    assert msg.sender == self.owner, "Only owner can set L1 contract"
     assert l1_contract_address != empty(address), "Invalid L1 contract address"
     self.l1_contract = l1_contract_address
     log L1ContractSet(l1_contract_address)
 
 @external
 def rescindOwnership():
-    assert msg.sender == self.owner, "Only owner can rescind ownership"
+    # Check if ownership has already been rescinded first
     assert not self.is_ownership_rescinded, "Ownership already rescinded"
+    # Then check if the sender is the owner
+    assert msg.sender == self.owner, "Only owner can rescind ownership"
     
     # Log the event before changing state
     log OwnershipRescinded(self.owner)
