@@ -1,6 +1,6 @@
 #pragma version 0.4.0
 
-image_data: Bytes[50000]  # Adjusted to handle up to 50 KB
+image_data: Bytes[250000]  # Adjusted to handle up to 50 KB
 owner: address
 artist: address
 
@@ -9,14 +9,14 @@ event OwnershipTransferred:
     to_owner: indexed(address)
 
 @deploy
-def __init__(image_data_input: Bytes[50000], owner_input: address, artist_input: address):
+def __init__(image_data_input: Bytes[250000], owner_input: address, artist_input: address):
     self.image_data = image_data_input
     self.owner = owner_input
     self.artist = artist_input
 
 @external
 @view
-def get_image_data() -> Bytes[50000]:
+def get_image_data() -> Bytes[250000]:
     return self.image_data
 
 @external

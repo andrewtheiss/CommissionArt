@@ -45,3 +45,5 @@ yarn-error.log*
 node_modules/
 
 scripts/azuki_images/
+
+azuki_images/

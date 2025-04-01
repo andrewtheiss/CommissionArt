@@ -10,3 +10,8 @@ compiler:
     optimize: true
     exclude_paths: []
     include_paths: []
+
+ethereum:
+  custom:
+    host: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
+    chain_id: 69000

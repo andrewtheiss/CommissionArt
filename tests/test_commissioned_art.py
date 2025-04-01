@@ -61,7 +61,7 @@ def test_large_image_data_and_multiple_transfers(setup):
         owner.address,
         artist.address,
         sender=owner,
-        gas_limit=5000000  # Adjusted gas limit for 5KB data
+        gas_limit=25000000  # Adjusted gas limit for 5KB data
     )
     
     # Verify large image data was stored correctly
