@@ -40,11 +40,11 @@ def deploy_contracts():
         
         # Sample image data for 5 contracts
         image_data_samples = [
-            b"image_data_1" + b"\x00" * (250000 - len(b"image_data_1")),
-            b"image_data_2" + b"\x00" * (250000 - len(b"image_data_2")),
-            b"image_data_3" + b"\x00" * (250000 - len(b"image_data_3")),
-            b"image_data_4" + b"\x00" * (250000 - len(b"image_data_4")),
-            b"image_data_5" + b"\x00" * (250000 - len(b"image_data_5")),
+            b"image_data_1" + b"\x00" * (45000 - len(b"image_data_1")),
+            b"image_data_2" + b"\x00" * (45000 - len(b"image_data_2")),
+            b"image_data_3" + b"\x00" * (45000 - len(b"image_data_3")),
+            b"image_data_4" + b"\x00" * (45000 - len(b"image_data_4")),
+            b"image_data_5" + b"\x00" * (45000 - len(b"image_data_5")),
         ]
 
         # Deploy the registry contract first
