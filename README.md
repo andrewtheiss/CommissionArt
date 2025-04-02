@@ -99,3 +99,7 @@ Once ownership is rescinded, no more images can be added to the Registry.
 # Install plugins
 ape plugins install vyper -y
 
+
+
+# Plans for ROADMAP
+- Create a way for artists to offer commissions to artists

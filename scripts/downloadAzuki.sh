@@ -7,12 +7,19 @@ mkdir -p "$OUTPUT_DIR"
 # Base URL
 BASE_URL="https://ipfs.io/ipfs/QmYDvPAXtiJg7s8JdRBSLWdgSphQdac8j1YuQNNxcGE1hg"
 
-# Loop from 0 to 4 (for the 5 images we need)
+# Loop from 0 to 9999
 for i in {0..9999}; do
-    # Construct the full URL
-    URL="$BASE_URL/$i.png"
     # Output file path
     FILE="$OUTPUT_DIR/$i.png"
+    
+    # Check if file already exists
+    if [ -f "$FILE" ]; then
+        echo "File $i.png already exists, skipping..."
+        continue
+    fi
+    
+    # Construct the full URL
+    URL="$BASE_URL/$i.png"
     
     echo "Downloading $URL to $FILE..."
     curl -s -o "$FILE" "$URL" --fail
@@ -22,7 +29,7 @@ for i in {0..9999}; do
         echo "Successfully downloaded $i.png"
     else
         echo "Failed to download $i.png"
-        # Optionally remove failed download
+        # Remove failed download
         rm -f "$FILE"
     fi
     
