@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './MainTab.css';
-import { contracts } from '../utils/contracts';
 
 // ABI fragments for Registry contract functions we need
 const REGISTRY_ABI = [
