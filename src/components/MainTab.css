@@ -1,0 +1,120 @@
+.main-tab-container {
+  width: 100%;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.main-tab-container h2 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-weight: 600;
+  border-bottom: 2px solid #e6e6e6;
+  padding-bottom: 10px;
+}
+
+.main-tab-container h3 {
+  color: #444;
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.registry-info {
+  margin-bottom: 30px;
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 10px;
+  font-size: 14px;
+  align-items: flex-start;
+}
+
+.info-label {
+  font-weight: 600;
+  min-width: 100px;
+  color: #555;
+}
+
+.info-value {
+  word-break: break-all;
+  color: #333;
+  font-family: 'Courier New', monospace;
+}
+
+.image-contracts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.image-contract-card {
+  padding: 15px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.image-contract-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.image-display {
+  width: 100%;
+  margin-bottom: 15px;
+  overflow: hidden;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.image-display img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 4px;
+}
+
+.contract-details {
+  background-color: #f8f8f8;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 16px;
+  color: #666;
+  background-color: #f8f8f8;
+}
+
+.error {
+  color: #d32f2f;
+  padding: 20px;
+  background-color: #ffebee;
+  border-radius: 4px;
+  border-left: 4px solid #d32f2f;
+}
+
+.no-contracts {
+  text-align: center;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  color: #666;
+  font-style: italic;
+} 

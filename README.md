@@ -1,202 +1,105 @@
-# CommissionArt
-Creating a community art commission platform 
+# Azuki Image Backup on AnimeChain L3
 
-# Token Bound Sub-NFT System for Commissioned Artwork
+This project stores Azuki NFT images as on-chain data on AnimeChain L3 using Vyper smart contracts, creating an immutable backup that links to the L1 NFT contract.
 
-## Abstract
-This proposal introduces a **Token Bound Sub-NFT System** designed to manage commissioned artwork tied to original NFTs (OG NFTs). The system allows artists to create sub-NFTs—representing commissioned pieces—that are verifiably linked to an OG NFT, ensuring authenticity and ownership alignment. Below are the key features, each with a detailed explanation:
+## Components
 
-- **Verification**: Sub-NFTs are approved by the OG NFT holder via cryptographic signatures. This ensures that only commissions explicitly authorized by the OG NFT owner are recognized as legitimate, fostering trust and preventing unauthorized derivatives.
-- **Ownership Synchronization**: Sub-NFT ownership automatically updates when the OG NFT is transferred. This keeps commissioned artwork bound to the OG NFT, maintaining its value and context even as ownership changes hands.
-- **Minting Copies**: Users can mint copies of verified sub-NFTs, with royalties distributed to the artist and commissioner. This incentivizes creation and sharing of high-quality artwork while rewarding both parties financially.
-- **Scam Mitigation**: A registry ensures only approved contracts mint sub-NFTs, reducing fraud risks. This protects collectors from unwanted or fraudulent NFTs that could clutter or devalue their collections.
+- **Registry.vy**: Main contract that maps Azuki IDs to their respective image contracts
+- **CommissionedArt.vy**: Contract for storing a single image's data on-chain
+- **Deployment scripts**: Scripts for deploying contracts and uploading images
 
-This system addresses the lack of standardization for commissioned NFT artwork by providing a secure, transparent, and user-friendly framework that benefits artists, commissioners, and collectors alike.
+## Setup
 
-## Motivation
-Commissioned artwork in the NFT space faces several challenges that this system aims to resolve. Here’s why this system is needed, with detailed reasoning:
-
-- **Ownership Tracking**: It’s difficult to associate commissioned pieces with the OG NFT and ensure they transfer with it. Without a clear link, commissioned works can become detached, losing their significance and value. This system ensures sub-NFTs stay tied to the OG NFT across transfers.
-- **Verification**: There’s no standard way to confirm that a sub-NFT is an authorized commission. This leads to uncertainty about authenticity, reducing trust. The system introduces a cryptographic verification process to guarantee legitimacy.
-- **Royalties**: Artists and commissioners often struggle to agree on and enforce royalty splits. Disputes or unclear terms can discourage collaboration. This system automates royalty distribution, ensuring fair and transparent compensation.
-- **Scams**: Unwanted or fraudulent NFTs can clutter collections, diminishing their value and user experience. Without controls, malicious actors can exploit the ecosystem. The system mitigates this through a registry and optional reputation mechanisms.
-
-The intention is to create a structured ecosystem where sub-NFTs are verifiably tied to OG NFTs, ownership is seamlessly synchronized, royalties are transparently managed, and scams are minimized—ultimately enhancing trust and usability in the NFT commission space.
-
-## Specification
-The system consists of six main components, each designed with a specific purpose and set of behaviors to form a cohesive framework. Below is an overview of each, with their roles clearly defined:
-
-1. **Sub-NFT Contract**: Manages the creation, metadata, and verification of sub-NFTs. This is the foundation for minting and tracking commissioned artwork.
-2. **Verification Mechanism**: Ensures sub-NFTs are approved by the OG NFT holder. This establishes authenticity and trust in the system.
-3. **Registry Contract**: Tracks approved sub-NFT contracts to prevent unauthorized minting. This acts as a gatekeeper against fraud.
-4. **Ownership Synchronization**: Aligns sub-NFT ownership with the OG NFT’s owner. This keeps commissioned works tied to their origin.
-5. **Minting and Royalties**: Allows minting of sub-NFT copies with royalty distribution. This rewards creators and encourages wider distribution.
-6. **Scam Mitigation**: Implements safeguards like registry approval and reputation systems. This protects the ecosystem’s integrity.
-
-Each component is interconnected, working together to create a secure, efficient, and transparent environment for commissioned artwork in the NFT space.
-
-## Overall Design
-The **Token Bound Sub-NFT System** operates as a holistic solution with the following workflow, detailed for clarity:
-
-- **Sub-NFTs** are minted in dedicated contracts, each linked to a specific OG NFT (identified by its contract address and token ID). This ensures every sub-NFT has a clear origin, making it easy to trace back to the OG NFT.
-- A **Registry Contract** maintains a list of approved sub-NFT contracts for each OG NFT, ensuring only authorized contracts can create sub-NFTs. This prevents rogue contracts from flooding the system with unapproved works.
-- The OG NFT holder verifies sub-NFTs using a cryptographic signature, marking them as legitimate commissions. This step confirms authenticity, giving collectors confidence in their value.
-- When the OG NFT is transferred, sub-NFT ownership is automatically updated to the new holder, keeping the commissioned artwork bound to the OG NFT. This automation simplifies ownership management and preserves the relationship between the assets.
-- Users can mint copies of verified sub-NFTs, with royalties automatically split between the artist and the commissioner (OG NFT holder). This creates a revenue stream while promoting the artwork’s reach.
-- **Scam Mitigation** is enforced through the registry, ensuring only approved contracts mint sub-NFTs, and optional reputation systems to filter low-quality content. This maintains the system’s credibility and user trust.
-
-The purpose of this design is to ensure that commissioned artwork remains valuable, transferable, and secure within the NFT ecosystem, with clear effects: increased trust, streamlined processes, and fair compensation.
-
-## Detailed Breakdown
-
-### 1. Sub-NFT Contract
-The Sub-NFT Contract is the core component for creating and managing sub-NFTs. Each sub-NFT is uniquely tied to an OG NFT and includes metadata about the artist and commissioner.
-
-#### 1.1. Purpose
-- **Intention**: To provide a standardized way to mint and track commissioned artwork as NFTs, ensuring consistency across the ecosystem.
-- **Goal**: To store essential metadata (e.g., artist, commissioner, verification status) in a structured format, making sub-NFTs easily identifiable and verifiable.
-
-#### 1.2. Behaviors
-- **Linking**: Each sub-NFT is associated with a specific OG NFT via its contract address and token ID, creating a permanent connection that’s visible on-chain.
-- **Metadata**: Stores detailed information about the artist (e.g., address) and commissioner (OG NFT holder), alongside a token URI pointing to the artwork.
-- **Verification**: Allows the OG NFT holder to mark sub-NFTs as verified using a signature, signaling to the ecosystem that they are legitimate commissions.
-
-#### 1.3. Key Functions
-| Function                          | Description                                      |
-|-----------------------------------|--------------------------------------------------|
-| `mintSubNFT(address to, string memory tokenURI, address artist)` | Mints a new sub-NFT to a specified address (e.g., the commissioner) with metadata like the token URI (artwork link) and artist address. This initiates the sub-NFT’s lifecycle. |
-| `verifySubNFT(uint256 tokenId, bytes memory signature)`          | Verifies a sub-NFT using a cryptographic signature from the OG NFT holder, updating its `verified` status to true. This confirms its authenticity. |
-| `revokeVerification(uint256 tokenId)`                            | Revokes the verification status of a sub-NFT, restricted to the OG NFT holder. This allows disassociation from unwanted sub-NFTs. |
-
-#### 1.4. Technical Notes
-- Built on ERC-721 or ERC-1155 standards for compatibility with wallets, marketplaces, and other NFT platforms.
-- Uses EIP-712 for structured, secure signature verification, ensuring signatures are tamper-proof and user-friendly.
-- Stores `ogNFTContract` (address) and `ogNFTTokenId` (uint256) as immutable references to the OG NFT, ensuring a reliable link.
-
-#### 1.5. Effects
-- Artists and commissioners benefit from a clear, standardized process for creating sub-NFTs.
-- Collectors trust verified sub-NFTs as authentic, increasing their marketability and value.
-
-### 2. Verification Mechanism
-The Verification Mechanism ensures that sub-NFTs are explicitly approved by the OG NFT holder, establishing trust and authenticity.
-
-#### 2.1. Purpose
-- **Intention**: To confirm that a sub-NFT is a legitimate commission, authorized by the OG NFT holder, preventing unauthorized derivatives.
-- **Goal**: To provide a way for the OG NFT holder to revoke approval if the sub-NFT no longer meets their standards or was minted fraudulently.
-
-#### 2.2. Behaviors
-- Requires a cryptographic signature from the OG NFT holder to verify a sub-NFT, ensuring only the rightful owner can approve it.
-- Allows the OG NFT holder to revoke verification, removing the sub-NFT’s approved status and signaling it’s no longer endorsed.
-
-#### 2.3. Implementation Example
-```solidity
-function verifySubNFT(uint256 tokenId, bytes memory signature) external {
-    address ogOwner = IERC721(ogNFTContract).ownerOf(ogNFTTokenId);
-    bytes32 messageHash = keccak256(abi.encodePacked(tokenId, address(this), nonce));
-    bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-    require(ecrecover(ethSignedMessageHash, v, r, s) == ogOwner, "Invalid signature");
-    verified[tokenId] = true;
-}
+1. Clone this repository
+2. Install dependencies:
 ```
-### Signature Validation and Nonce
+pip install -r requirements.txt
+```
+3. Create a `.env` file based on `.env.example`:
+```
+cp .env.example .env
+```
+4. Edit `.env` and add your private key and configuration
 
-#### Signature Validation
-Uses ecrecover to confirm that the signature matches the OG NFT holder’s address, ensuring the security of the verification process.
-
-#### Nonce
-Incorporates a unique nonce in the signed message to prevent replay attacks, enhancing the reliability of the system.
-
-#### Effects
-Verified sub-NFTs gain credibility, making them more appealing to collectors and increasing their perceived value.  
-Revocation empowers OG NFT holders to maintain control over their collection’s integrity, reducing the impact of scams or poor-quality commissions.
+## Using the Contracts
 
 ### Registry Contract
-The Registry Contract manages which sub-NFT contracts are approved to mint sub-NFTs for a given OG NFT.
 
-#### Purpose
-**Intention:** To prevent unauthorized or scam sub-NFT contracts from minting sub-NFTs linked to an OG NFT, protecting the ecosystem’s integrity.  
-**Goal:** To give the OG NFT holder control over which contracts can create sub-NFTs, ensuring only trusted sources are used.
+The Registry contract maps Azuki IDs to their corresponding image data contracts. It can:
+- Register new image contracts for specific Azuki IDs
+- Link to the L1 NFT contract for verification
+- Rescind ownership once all images are deployed to make the registry immutable
 
-#### Behaviors
-Maintains a mapping of OG NFTs (identified by contract address and token ID) to their approved sub-NFT contracts, functioning as a whitelist.  
-Allows the OG NFT holder to add or remove sub-NFT contracts from the registry, providing flexibility and control.
+### CommissionedArt Contract
 
-#### Key Functions
-**Function** | **Description**  
-registerSubContract(address ogNFTContract, uint256 ogNFTTokenId, address subNFTContract) | Adds a sub-NFT contract to the approved list for a specific OG NFT, enabling it to mint sub-NFTs.  
-unregisterSubContract(address ogNFTContract, uint256 ogNFTTokenId, address subNFTContract) | Removes a sub-NFT contract from the approved list, blocking further minting from that contract.  
-getSubContracts(address ogNFTContract, uint256 ogNFTTokenId) | Returns the list of approved sub-NFT contracts for an OG NFT, aiding transparency and discovery.
+Each CommissionedArt contract stores:
+- The image data for a single Azuki NFT
+- Zero addresses for owner and artist (since this is a backup)
 
-#### Technical Notes
-Utilizes nested mappings (e.g., mapping(address => mapping(uint256 => address[]))) for efficient storage and retrieval of approved contracts.  
-Implements access control to ensure only the OG NFT holder can modify the registry, preventing unauthorized changes.
+## Scripts
 
-#### Effects
-Reduces the risk of fraudulent sub-NFTs by restricting minting to approved contracts, enhancing user trust.  
-Empowers OG NFT holders to curate their ecosystem, ensuring only high-quality or desired commissions are linked.
+### Compile and Extract ABIs
 
-### Ownership Synchronization
-This component ensures that sub-NFTs remain tied to the OG NFT’s owner, even after the OG NFT is transferred.
+Before deployment, compile contracts and extract ABIs:
 
-#### Purpose
-**Intention:** To maintain the binding between the OG NFT and its commissioned sub-NFTs across ownership changes, preserving their relationship.  
-**Goal:** To automate the transfer of sub-NFTs to the new OG NFT owner, reducing manual effort and errors.
+```
+ape compile
+python scripts/compile_and_extract_abis.py
+```
 
-#### Behaviors
-Detects when the OG NFT is transferred (via Transfer events) and updates sub-NFT ownership to match the new owner.  
-Supports batch transfers for efficiency, particularly when an OG NFT has multiple associated sub-NFTs.
+This generates ABI files in `src/assets/abis/` for frontend integration.
 
-#### Technical Notes
-Can use an off-chain listener to monitor Transfer events from the OG NFT contract and trigger sub-NFT transfers automatically.  
-Alternatively, integrates with ERC-6551 Token Bound Accounts (TBAs) to delegate control of sub-NFTs to the OG NFT, streamlining transfers.
+### Deploy Registry and Images
 
-#### Effects
-Ensures commissioned artwork remains with the OG NFT, preserving its value and context for collectors.  
-Simplifies the user experience by automating ownership updates, making the system more accessible and efficient.
+Deploy the contracts with:
 
-### Minting and Royalties
-This component allows users to mint copies of verified sub-NFTs, with royalties distributed to the artist and commissioner.
+```
+python scripts/deploy_registry_and_images.py
+```
 
-#### Purpose
-**Intention:** To enable broader distribution of commissioned artwork while rewarding creators financially.  
-**Goal:** To provide a revenue stream for artists and commissioners through minting fees and secondary sales, encouraging collaboration.
+This script:
+1. Deploys the Registry contract
+2. Sets the L1 contract address (if provided)
+3. Deploys CommissionedArt contracts for each image
+4. Registers each image contract in the Registry
+5. Optionally rescinds ownership after all deployments
 
-#### Behaviors
-Any user can mint a copy of a verified sub-NFT by paying a fee, making the artwork accessible to a wider audience.  
-Royalties from minting and secondary sales are split between the artist and commissioner (e.g., 70% artist, 30% commissioner), with configurable rates.
+### Tests
 
-#### Key Functions
-**Function** | **Description**  
-mintCopy(uint256 tokenId, address recipient) | Mints a copy of a verified sub-NFT to the recipient, distributing royalties to the artist and commissioner.
+Run tests with:
 
-#### Technical Notes
-Employs a royalty splitter contract to automatically divide fees between the artist and commissioner, ensuring transparency.  
-Supports dynamic royalty rates (e.g., based on sales volume or price) for flexibility and fairness.
+```
+ape test
+```
 
-#### Effects
-Artists are incentivized to create high-quality commissions, knowing they’ll earn from copies and secondary sales.  
-Commissioners benefit from a share of royalties, encouraging them to commission more artwork and promote its distribution.
+## Configuration
 
-### Scam Mitigation
-This component reduces the risk of fraudulent or unwanted sub-NFTs, protecting users and the ecosystem.
+The `.env` file controls deployment parameters:
+- `PRIVATE_KEY`: Private key for deployment
+- `L1_CONTRACT_ADDRESS`: Address of the L1 Azuki contract
+- `NETWORK`: Network to deploy to (default: animechain:custom)
+- `RESCIND_OWNERSHIP`: Set to "true" to permanently rescind ownership after deployment
 
-#### Purpose
-**Intention:** To protect users from scam sub-NFTs that could devalue or clutter their collections, maintaining ecosystem quality.  
-**Goal:** To ensure only legitimate, approved sub-NFTs are associated with OG NFTs, fostering trust and reliability.
+## Deployment
 
-#### Features
-**Registry Approval:** Only sub-NFTs from registered contracts can be minted, serving as a primary defense against fraud.  
-**Reputation System:** Optional ratings or reviews for sub-NFTs, helping users identify and filter low-quality or suspicious content.  
-**Whitelists:** Potential for trusted artist lists or DAO governance to approve contracts, adding an extra layer of curation.
+The deployment process creates:
+1. One Registry contract
+2. Multiple CommissionedArt contracts (one per image)
 
-#### Effects
-Increases trust in the system by reducing scam risks, making it safer for collectors and creators.  
-Enhances the overall quality and value of commissioned artwork by filtering out unwanted or fraudulent entries.
+Once ownership is rescinded, no more images can be added to the Registry.
 
-### Conclusion
-The Token Bound Sub-NFT System provides a comprehensive solution for managing commissioned artwork in the NFT ecosystem. By integrating verification, ownership synchronization, royalty distribution, and scam mitigation, it creates a secure, transparent, and rewarding environment for artists, commissioners, and collectors. Key effects include:  
-**Trust:** Verification and scam mitigation ensure authenticity and safety.  
-**Efficiency:** Ownership synchronization and automated royalties streamline processes.  
-**Value:** Fair compensation and standardized tracking enhance the appeal of commissioned artwork.  
 
-This system is designed to be scalable, compatible with existing NFT standards (e.g., ERC-721, ERC-1155), and adaptable to future enhancements, making it a robust foundation for the evolving NFT space.
+### Ape developing --
+# ignore all warnings for lib3
+## Ignore pythonwarnings in your profile
+# export PYTHONWARNINGS="ignore::Warning:urllib3"
+
+# https://docs.apeworx.io/ape/stable/userguides/quickstart.html
+# pipx install eth-ape  (pipx installs everything in a venv system wide!)
+# Install plugins
+ape plugins install vyper -y
+
+
+
+# Plans for ROADMAP
+- Create a way for artists to offer commissions to artists
