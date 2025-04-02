@@ -93,6 +93,12 @@
   align-items: center;
   gap: 20px;
   width: 100%;
+  text-align: center;
+}
+
+.image-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
 .azuki-image {
@@ -101,6 +107,41 @@
   object-fit: contain;
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: filter 0.3s ease;
+  display: block;
+}
+
+.azuki-image.loading {
+  filter: grayscale(30%) brightness(90%);
+}
+
+.image-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  z-index: 10;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(100, 108, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #646cff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Explorer link */

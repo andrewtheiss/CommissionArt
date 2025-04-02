@@ -16,7 +16,7 @@ const COMMISSIONED_ART_ABI = [
 ];
 
 // Global variable for maximum Azuki ID (can be adjusted as needed)
-const MAX_AZUKI_ID = 20; // Adjust this value as needed
+const MAX_AZUKI_ID = 1000; // Adjust this value as needed
 
 interface ImageContract {
   id: number;
@@ -29,12 +29,12 @@ interface ImageContract {
 const MainTab: React.FC = () => {
   // Hardcoded Registry contract address
   const registryAddress = '0x5174f3e6F83CF2283b7677829356C8Bc6fCe578f';
-  const [registryOwner, setRegistryOwner] = useState<string>('');
   const [selectedAzukiId, setSelectedAzukiId] = useState<string>('');
   const [selectedContract, setSelectedContract] = useState<ImageContract | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
 
   // Helper function to detect image type from hex data
   const detectImageType = (hexData: string): string => {
@@ -69,6 +69,15 @@ const MainTab: React.FC = () => {
   const fetchSpecificContract = async (azukiId: number) => {
     try {
       setFetchingSpecific(true);
+      setIsImageLoading(true);
+      
+      // If we have a current image, mark it as loading
+      if (selectedContract) {
+        setSelectedContract({
+          ...selectedContract,
+          imageUrl: selectedContract.imageUrl
+        });
+      }
       
       // Connect to AnimeChain
       const provider = new ethers.JsonRpcProvider('https://rpc-animechain-39xf6m45e3.t.conduit.xyz');
@@ -124,11 +133,14 @@ const MainTab: React.FC = () => {
       }
       
       setFetchingSpecific(false);
+      // We keep isImageLoading true until the image actually loads
+      // The onLoad handler on the image will set this to false
     } catch (err) {
       console.error(`Error fetching contract for Azuki ID ${azukiId}:`, err);
       setError(err instanceof Error ? err.message : "Unknown error occurred");
       setSelectedContract(null);
       setFetchingSpecific(false);
+      setIsImageLoading(false);
     }
   };
 
@@ -155,6 +167,7 @@ const MainTab: React.FC = () => {
   const handleRandomAzuki = () => {
     const randomId = Math.floor(Math.random() * (MAX_AZUKI_ID + 1)); // 0 to MAX_AZUKI_ID
     setSelectedAzukiId(randomId.toString());
+    setIsImageLoading(true);
     fetchSpecificContract(randomId);
   };
 
@@ -213,11 +226,28 @@ const MainTab: React.FC = () => {
       
       {selectedContract && (
         <div className="image-container">
-          <img 
-            src={selectedContract.imageUrl} 
-            alt={`Azuki #${selectedContract.id}`} 
-            className="azuki-image" 
-          />
+          <div className="image-wrapper">
+            <img 
+              src={selectedContract.imageUrl} 
+              alt={`Azuki #${selectedContract.id}`} 
+              className={`azuki-image ${isImageLoading ? 'loading' : ''}`}
+              onLoad={() => setIsImageLoading(false)}
+            />
+            {isImageLoading && (
+              <div 
+                className="image-loading-overlay"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%'
+                }}
+              >
+                <div className="spinner"></div>
+              </div>
+            )}
+          </div>
           <a 
             href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${selectedContract.address}?tab=contract`} 
             target="_blank" 

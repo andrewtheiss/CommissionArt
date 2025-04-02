@@ -4,6 +4,8 @@ from getpass import getpass
 from dotenv import load_dotenv
 from pathlib import Path
 import os
+import time  # Import time module for adding delays
+
 
 ANIMECHAIN_CONFIG = {
     "name": "animechain",
@@ -78,6 +80,7 @@ def deploy_contracts():
 
         # Deploy image data contracts and register them
         image_contracts = []
+        delay_seconds = 2  # Adjust this value based on your rate limit (e.g., 2 seconds)
         for idx, i in enumerate(range(start, end + 1)):
             print(f"Deploying CommissionedArt contract {idx+1}/{end-start+1}...")
 
@@ -90,6 +93,10 @@ def deploy_contracts():
             )
             image_contracts.append(image_contract)
             print(f"CommissionedArt contract {idx+1} deployed at: {image_contract.address}")
+            
+            # Add delay after deployment
+            print(f"Pausing for {delay_seconds} seconds to respect rate limits...")
+            time.sleep(delay_seconds)
 
             # Register the contract with the exact ID i
             registry_contract.registerImageData(
@@ -97,7 +104,12 @@ def deploy_contracts():
                 image_contract.address, 
                 sender=deployer,
                 required_confirmations=0)
-            print(f"Registered CommissionedArt contract {idx+1} with Azuki ID {i}")
+            print(f"Registered CommissionedArt contract {idx+1} with Azuki ID {i}") 
+            
+            # Add delay after deployment
+            print(f"Pausing for {delay_seconds} seconds to respect rate limits...")
+            time.sleep(delay_seconds)
+
 
         # Verify deployments
         print("\nDeployment Summary:")
