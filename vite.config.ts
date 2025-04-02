@@ -23,6 +23,6 @@ export default defineConfig({
   },
   // Exclude web3 folders from the build
   optimizeDeps: {
-    exclude: ['contracts/**', 'scripts/**', 'tests/**']
+    exclude: ['contracts/*', 'scripts/*', 'tests/*']
   }
 })

@@ -58,7 +58,7 @@ def deploy_contracts():
         # Load image data from the azuki_images_avif_1000x1000 folder
         image_folder = Path(__file__).parent / 'azuki_images_avif_1000x1000'
         image_data_samples = []
-        for i in range(5):
+        for i in range(15):
             image_path = image_folder / f'{i}.avif'
             if not image_path.exists():
                 raise FileNotFoundError(f"Image file not found: {image_path}")
@@ -68,7 +68,7 @@ def deploy_contracts():
 
         # Deploy 5 image data contracts and register them
         image_contracts = []
-        for i in range(5):
+        for i in range(15):
             print(f"Deploying CommissionedArt contract {i+1}/5...")
 
             image_contract = deployer.deploy(
