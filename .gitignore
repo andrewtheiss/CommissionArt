@@ -49,3 +49,5 @@ scripts/azuki_images/
 azuki_images/
 
 azuki_images_avif_1000x1000/
+
+.firebase/
