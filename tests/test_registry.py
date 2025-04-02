@@ -29,6 +29,7 @@ def test_register_image_data(setup):
     # Create some test addresses for image contracts
     image_contract_1 = accounts.test_accounts[1].address
     image_contract_2 = accounts.test_accounts[2].address
+    image_contract_3 = accounts.test_accounts[3].address
     
     # Register image contracts
     registry.registerImageData(1, image_contract_1, sender=deployer)
@@ -39,9 +40,11 @@ def test_register_image_data(setup):
     assert registry.imageDataContracts(2) == image_contract_2
     
     # Try to register duplicate - should fail
-    with pytest.raises(Exception) as exc_info:
-        registry.registerImageData(1, accounts.test_accounts[3].address, sender=deployer)
-    assert "Azuki ID already registered" in str(exc_info.value)
+    # with pytest.raises(Exception) as exc_info:
+    #     registry.registerImageData(1, accounts.test_accounts[3].address, sender=deployer)
+    # assert "Azuki ID already registered" in str(exc_info.value)
+    registry.registerImageData(1, accounts.test_accounts[3].address, sender=deployer)
+    assert registry.imageDataContracts(1) == image_contract_3
 
 def test_set_l1_contract(setup):
     """Test setting L1 contract address"""

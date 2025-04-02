@@ -23,7 +23,8 @@ def registerImageData(azukiId: uint256, imageContract: address):
     assert not self.is_ownership_rescinded, "Ownership has been rescinded"
     # Then check if sender is owner
     assert msg.sender == self.owner, "Only owner can register"
-    assert self.imageDataContracts[azukiId] == empty(address), "Azuki ID already registered"
+    # Allow reregistration
+    # assert self.imageDataContracts[azukiId] == empty(address), "Azuki ID already registered"
     self.imageDataContracts[azukiId] = imageContract
 
 @external

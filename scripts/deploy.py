@@ -51,34 +51,51 @@ def deploy_contracts():
         else:
             # Deploy new registry contract
             print("Deploying new Registry contract...")
-            registry_contract = deployer.deploy(project.Registry)
+            registry_contract = deployer.deploy(project.Registry, required_confirmations=0)
             print(f"Registry deployed at: {registry_contract.address}")
         
-        # Sample image data for 5 contracts
-        image_data_samples = [
-            b"image_data_1" + b"\x00" * (45000 - len(b"image_data_1")),
-            b"image_data_2" + b"\x00" * (45000 - len(b"image_data_2")),
-            b"image_data_3" + b"\x00" * (45000 - len(b"image_data_3")),
-            b"image_data_4" + b"\x00" * (45000 - len(b"image_data_4")),
-            b"image_data_5" + b"\x00" * (45000 - len(b"image_data_5")),
-        ]
+        # # Sample image data for 5 contracts
+        # image_data_samples = [
+        #     b"image_data_1" + b"\x00" * (45000 - len(b"image_data_1")),
+        #     b"image_data_2" + b"\x00" * (45000 - len(b"image_data_2")),
+        #     b"image_data_3" + b"\x00" * (45000 - len(b"image_data_3")),
+        #     b"image_data_4" + b"\x00" * (45000 - len(b"image_data_4")),
+        #     b"image_data_5" + b"\x00" * (45000 - len(b"image_data_5")),
+        # ]
+
+        # Load image data from the azuki_images_avif_1000x1000 folder
+        image_folder = Path(__file__).parent / 'azuki_images_avif_1000x1000'
+        image_data_samples = []
+        for i in range(5):
+            image_path = image_folder / f'{i}.avif'
+            if not image_path.exists():
+                raise FileNotFoundError(f"Image file not found: {image_path}")
+            with open(image_path, 'rb') as f:
+                image_data = f.read()
+            image_data_samples.append(image_data)
 
         # Deploy 5 image data contracts and register them
         image_contracts = []
         for i in range(5):
             print(f"Deploying CommissionedArt contract {i+1}/5...")
+
             image_contract = deployer.deploy(
                 project.CommissionedArt,
                 image_data_samples[i],
                 deployer.address,
-                deployer.address
+                deployer.address,
+                required_confirmations=0
             )
             image_contracts.append(image_contract)
             print(f"CommissionedArt contract {i+1} deployed at: {image_contract.address}")
 
             # Register the contract
             print(f"Registering CommissionedArt contract {i+1} with Azuki ID {i}...")
-            registry_contract.registerImageData(i, image_contract.address, sender=deployer)
+            registry_contract.registerImageData(
+                i, 
+                image_contract.address, 
+                sender=deployer,
+                required_confirmations=0)
             print(f"Registered CommissionedArt contract {i+1} with Azuki ID {i}")
 
         # Verify deployments
