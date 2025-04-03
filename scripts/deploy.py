@@ -80,7 +80,7 @@ def deploy_contracts():
 
         # Deploy image data contracts and register them
         image_contracts = []
-        delay_seconds = 2  # Adjust this value based on your rate limit (e.g., 2 seconds)
+        delay_seconds = 0.5  # Adjust this value based on your rate limit (e.g., 2 seconds)
         for idx, i in enumerate(range(start, end + 1)):
             print(f"Deploying CommissionedArt contract {idx+1}/{end-start+1}...")
 
@@ -108,7 +108,7 @@ def deploy_contracts():
             
             # Add delay after deployment
             print(f"Pausing for {delay_seconds} seconds to respect rate limits...")
-            time.sleep(delay_seconds)
+            time.sleep(delay_seconds/2)
 
 
         # Verify deployments
