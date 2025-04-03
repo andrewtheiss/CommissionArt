@@ -16,7 +16,7 @@ const COMMISSIONED_ART_ABI = [
 ];
 
 // Global variable for maximum Azuki ID (can be adjusted as needed)
-const MAX_AZUKI_ID = 1000; // Adjust this value as needed
+const MAX_AZUKI_ID = 9999; // Adjust this value as needed
 
 interface ImageContract {
   id: number;
