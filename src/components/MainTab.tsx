@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './MainTab.css';
+import ImageCompressor from './ImageCompressor';
 
 // ABI fragments for Registry contract functions we need
 const REGISTRY_ABI = [
@@ -35,6 +36,7 @@ const MainTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor'>('viewer');
 
   // Helper function to detect image type from hex data
   const detectImageType = (hexData: string): string => {
@@ -198,65 +200,86 @@ const MainTab: React.FC = () => {
 
   return (
     <div className="main-container">
-      <div className="search-container">
-        <form onSubmit={handleSubmit} className="azuki-form">
-          <input 
-            type="number" 
-            min="0" 
-            max={MAX_AZUKI_ID} 
-            value={selectedAzukiId} 
-            onChange={handleInputChange} 
-            placeholder={`Azuki ID (0-${MAX_AZUKI_ID})`} 
-            className="azuki-input"
-          />
-          <button type="submit" className="view-button" disabled={fetchingSpecific}>
-            {fetchingSpecific ? 'Loading...' : 'View'}
-          </button>
-        </form>
+      <div className="tab-buttons">
         <button 
-          className="random-button" 
-          onClick={handleRandomAzuki}
-          disabled={fetchingSpecific}
+          className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
+          onClick={() => setActiveTab('viewer')}
         >
-          Show Random Azuki
+          Azuki Viewer
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'compressor' ? 'active' : ''}`}
+          onClick={() => setActiveTab('compressor')}
+        >
+          Image Compressor
         </button>
       </div>
-      
-      {error && <div className="error-message">{error}</div>}
-      
-      {selectedContract && (
-        <div className="image-container">
-          <div className="image-wrapper">
-            <img 
-              src={selectedContract.imageUrl} 
-              alt={`Azuki #${selectedContract.id}`} 
-              className={`azuki-image ${isImageLoading ? 'loading' : ''}`}
-              onLoad={() => setIsImageLoading(false)}
-            />
-            {isImageLoading && (
-              <div 
-                className="image-loading-overlay"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%'
-                }}
-              >
-                <div className="spinner"></div>
-              </div>
-            )}
+
+      {activeTab === 'viewer' ? (
+        <>
+          <div className="search-container">
+            <form onSubmit={handleSubmit} className="azuki-form">
+              <input 
+                type="number" 
+                min="0" 
+                max={MAX_AZUKI_ID} 
+                value={selectedAzukiId} 
+                onChange={handleInputChange} 
+                placeholder={`Azuki ID (0-${MAX_AZUKI_ID})`} 
+                className="azuki-input"
+              />
+              <button type="submit" className="view-button" disabled={fetchingSpecific}>
+                {fetchingSpecific ? 'Loading...' : 'View'}
+              </button>
+            </form>
+            <button 
+              className="random-button" 
+              onClick={handleRandomAzuki}
+              disabled={fetchingSpecific}
+            >
+              Show Random Azuki
+            </button>
           </div>
-          <a 
-            href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${selectedContract.address}?tab=contract`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="explorer-link"
-          >
-            View On-Chain Data
-          </a>
-        </div>
+          
+          {error && <div className="error-message">{error}</div>}
+          
+          {selectedContract && (
+            <div className="image-container">
+              <div className="image-wrapper">
+                <img 
+                  src={selectedContract.imageUrl} 
+                  alt={`Azuki #${selectedContract.id}`} 
+                  className={`azuki-image ${isImageLoading ? 'loading' : ''}`}
+                  onLoad={() => setIsImageLoading(false)}
+                />
+                {isImageLoading && (
+                  <div 
+                    className="image-loading-overlay"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%'
+                    }}
+                  >
+                    <div className="spinner"></div>
+                  </div>
+                )}
+              </div>
+              <a 
+                href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${selectedContract.address}?tab=contract`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="explorer-link"
+              >
+                View On-Chain Data
+              </a>
+            </div>
+          )}
+        </>
+      ) : (
+        <ImageCompressor />
       )}
     </div>
   );
