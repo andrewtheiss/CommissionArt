@@ -15,6 +15,9 @@ const COMMISSIONED_ART_ABI = [
   'function get_artist() view returns (address)'
 ];
 
+// Global variable for maximum Azuki ID (can be adjusted as needed)
+const MAX_AZUKI_ID = 9999; // Adjust this value as needed
+
 interface ImageContract {
   id: number;
   address: string;
@@ -26,10 +29,12 @@ interface ImageContract {
 const MainTab: React.FC = () => {
   // Hardcoded Registry contract address
   const registryAddress = '0x5174f3e6F83CF2283b7677829356C8Bc6fCe578f';
-  const [registryOwner, setRegistryOwner] = useState<string>('');
-  const [imageContracts, setImageContracts] = useState<ImageContract[]>([]);
+  const [selectedAzukiId, setSelectedAzukiId] = useState<string>('');
+  const [selectedContract, setSelectedContract] = useState<ImageContract | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fetchingSpecific, setFetchingSpecific] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(false);
 
   // Helper function to detect image type from hex data
   const detectImageType = (hexData: string): string => {
@@ -60,73 +65,115 @@ const MainTab: React.FC = () => {
     return 'image/avif';
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Connect to AnimeChain
-        const provider = new ethers.JsonRpcProvider('https://rpc-animechain-39xf6m45e3.t.conduit.xyz');
-        
-        // Create Registry contract instance
-        const registryContract = new ethers.Contract(
-          registryAddress,
-          REGISTRY_ABI,
+  // Function to fetch a specific contract by Azuki ID
+  const fetchSpecificContract = async (azukiId: number) => {
+    try {
+      setFetchingSpecific(true);
+      setIsImageLoading(true);
+      
+      // If we have a current image, mark it as loading
+      if (selectedContract) {
+        setSelectedContract({
+          ...selectedContract,
+          imageUrl: selectedContract.imageUrl
+        });
+      }
+      
+      // Connect to AnimeChain
+      const provider = new ethers.JsonRpcProvider('https://rpc-animechain-39xf6m45e3.t.conduit.xyz');
+      
+      // Create Registry contract instance
+      const registryContract = new ethers.Contract(
+        registryAddress,
+        REGISTRY_ABI,
+        provider
+      );
+      
+      // Get image contract address from registry
+      const contractAddress = await registryContract.imageDataContracts(azukiId);
+      
+      if (contractAddress && contractAddress !== ethers.ZeroAddress) {
+        // Create contract instance for the image contract
+        const imageContract = new ethers.Contract(
+          contractAddress,
+          COMMISSIONED_ART_ABI,
           provider
         );
         
-        // Get registry owner
-        const owner = await registryContract.owner();
-        setRegistryOwner(owner);
+        // Get image data, owner, and artist
+        const imageData = await imageContract.get_image_data();
+        const imageOwner = await imageContract.get_owner();
+        const imageArtist = await imageContract.get_artist();
         
-        // Fetch the first 5 image contracts
-        const imageContractsData: ImageContract[] = [];
+        // Convert the hex string to binary for image display
+        const hexString = imageData.startsWith('0x') ? imageData.slice(2) : imageData;
+        const byteArray = new Uint8Array(hexString.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
         
-        for (let i = 0; i < 5; i++) {
-          try {
-            // Get image contract address from registry
-            const contractAddress = await registryContract.imageDataContracts(i);
-            
-            if (contractAddress && contractAddress !== ethers.ZeroAddress) {
-              // Create contract instance for the image contract
-              const imageContract = new ethers.Contract(
-                contractAddress,
-                COMMISSIONED_ART_ABI,
-                provider
-              );
-              
-              // Get image data, owner, and artist
-              const imageData = await imageContract.get_image_data();
-              const imageOwner = await imageContract.get_owner();
-              const imageArtist = await imageContract.get_artist();
-              
-              // Convert the hex string to binary for image display
-              const hexString = imageData.startsWith('0x') ? imageData.slice(2) : imageData;
-              const byteArray = new Uint8Array(hexString.match(/.{1,2}/g)!.map((byte: string) => parseInt(byte, 16)));
-              
-              // Detect image type
-              const imageType = detectImageType(hexString);
-              
-              // Create a blob and convert to data URL
-              const blob = new Blob([byteArray], { type: imageType });
-              const imageUrl = URL.createObjectURL(blob);
-              
-              // Add to our list
-              imageContractsData.push({
-                id: i,
-                address: contractAddress,
-                owner: imageOwner,
-                artist: imageArtist,
-                imageUrl: imageUrl
-              });
-            }
-          } catch (err) {
-            console.error(`Error fetching image contract ${i}:`, err);
-            // Continue to the next one if there's an error with this one
-          }
-        }
+        // Detect image type
+        const imageType = detectImageType(hexString);
         
-        setImageContracts(imageContractsData);
+        // Create a blob and convert to data URL
+        const blob = new Blob([byteArray], { type: imageType });
+        const imageUrl = URL.createObjectURL(blob);
+        
+        // Set selected contract
+        const contractData = {
+          id: azukiId,
+          address: contractAddress,
+          owner: imageOwner,
+          artist: imageArtist,
+          imageUrl: imageUrl
+        };
+        
+        setSelectedContract(contractData);
+        setError(null);
+      } else {
+        setSelectedContract(null);
+        setError(`No contract found for Azuki ID ${azukiId}`);
+      }
+      
+      setFetchingSpecific(false);
+      // We keep isImageLoading true until the image actually loads
+      // The onLoad handler on the image will set this to false
+    } catch (err) {
+      console.error(`Error fetching contract for Azuki ID ${azukiId}:`, err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+      setSelectedContract(null);
+      setFetchingSpecific(false);
+      setIsImageLoading(false);
+    }
+  };
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedAzukiId(e.target.value);
+  };
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const id = parseInt(selectedAzukiId, 10);
+    
+    if (isNaN(id) || id < 0 || id > MAX_AZUKI_ID) {
+      setError(`Please enter a valid Azuki ID (0-${MAX_AZUKI_ID})`);
+      return;
+    }
+    
+    fetchSpecificContract(id);
+  };
+
+  // Handle showing a random Azuki
+  const handleRandomAzuki = () => {
+    const randomId = Math.floor(Math.random() * (MAX_AZUKI_ID + 1)); // 0 to MAX_AZUKI_ID
+    setSelectedAzukiId(randomId.toString());
+    setIsImageLoading(true);
+    fetchSpecificContract(randomId);
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
         setLoading(false);
       } catch (err) {
         console.error("Error fetching registry data:", err);
@@ -139,64 +186,77 @@ const MainTab: React.FC = () => {
     
     // Cleanup function to revoke object URLs on unmount
     return () => {
-      imageContracts.forEach(contract => {
-        URL.revokeObjectURL(contract.imageUrl);
-      });
+      if (selectedContract) {
+        URL.revokeObjectURL(selectedContract.imageUrl);
+      }
     };
   }, []);
 
   if (loading) {
-    return <div className="main-tab-container loading">Loading registry and image contracts...</div>;
-  }
-  
-  if (error) {
-    return <div className="main-tab-container error">Error: {error}</div>;
+    return <div className="main-container loading">Loading...</div>;
   }
 
   return (
-    <div className="main-tab-container">
-      <div className="registry-info">
-        <h2>Registry Contract</h2>
-        <div className="info-row">
-          <span className="info-label">Address:</span>
-          <span className="info-value">{registryAddress}</span>
-        </div>
-        {registryOwner && (
-          <div className="info-row">
-            <span className="info-label">Owner:</span>
-            <span className="info-value">{registryOwner}</span>
-          </div>
-        )}
+    <div className="main-container">
+      <div className="search-container">
+        <form onSubmit={handleSubmit} className="azuki-form">
+          <input 
+            type="number" 
+            min="0" 
+            max={MAX_AZUKI_ID} 
+            value={selectedAzukiId} 
+            onChange={handleInputChange} 
+            placeholder={`Azuki ID (0-${MAX_AZUKI_ID})`} 
+            className="azuki-input"
+          />
+          <button type="submit" className="view-button" disabled={fetchingSpecific}>
+            {fetchingSpecific ? 'Loading...' : 'View'}
+          </button>
+        </form>
+        <button 
+          className="random-button" 
+          onClick={handleRandomAzuki}
+          disabled={fetchingSpecific}
+        >
+          Show Random Azuki
+        </button>
       </div>
       
-      <h2>AVIF Image Contracts</h2>
-      {imageContracts.length > 0 ? (
-        <div className="image-contracts-grid">
-          {imageContracts.map(contract => (
-            <div key={contract.id} className="image-contract-card">
-              <h3>Azuki ID: {contract.id}</h3>
-              <div className="image-display">
-                <img src={contract.imageUrl} alt={`Azuki #${contract.id}`} />
+      {error && <div className="error-message">{error}</div>}
+      
+      {selectedContract && (
+        <div className="image-container">
+          <div className="image-wrapper">
+            <img 
+              src={selectedContract.imageUrl} 
+              alt={`Azuki #${selectedContract.id}`} 
+              className={`azuki-image ${isImageLoading ? 'loading' : ''}`}
+              onLoad={() => setIsImageLoading(false)}
+            />
+            {isImageLoading && (
+              <div 
+                className="image-loading-overlay"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%'
+                }}
+              >
+                <div className="spinner"></div>
               </div>
-              <div className="contract-details">
-                <div className="info-row">
-                  <span className="info-label">Contract:</span>
-                  <span className="info-value">{contract.address.substring(0, 10)}...{contract.address.substring(32)}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Owner:</span>
-                  <span className="info-value">{contract.owner.substring(0, 10)}...{contract.owner.substring(32)}</span>
-                </div>
-                <div className="info-row">
-                  <span className="info-label">Artist:</span>
-                  <span className="info-value">{contract.artist.substring(0, 10)}...{contract.artist.substring(32)}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+            )}
+          </div>
+          <a 
+            href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${selectedContract.address}?tab=contract`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="explorer-link"
+          >
+            View On-Chain Data
+          </a>
         </div>
-      ) : (
-        <div className="no-contracts">No image contracts found</div>
       )}
     </div>
   );
