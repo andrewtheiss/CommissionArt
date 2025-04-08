@@ -5,34 +5,39 @@ contracts_folder: contracts
 plugins:
   - name: vyper
   - name: alchemy
+  - name: arbitrum
 
 compiler:
   vyper:
-    version: 0.4.0
+    version: 0.4.1
     settings:
       evm_version: "paris"
       optimize: true
       exclude_paths: []
       include_paths: []
+    output_formats:
+      - abi
+      - bytecode
+      - source_map
+      - source_map_runtime
+      - source_map_sources
+      - source_map_sources_runtime
 
 ethereum:
+  mainnet:
+    default_provider: alchemy
+  sepolia:
+    default_provider: alchemy
   custom:
     host: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
     chain_id: 69000
     default_provider: web3
-
-networks:
-  custom:
-    - name: custom
-      chain_id: 69000
-      ecosystem: ethereum
-      default_provider: node
-  goerli:
-    provider: alchemy
-  mainnet:
-    provider: infura
-    
+  
 node:
   ethereum:
     custom:
       uri: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
+    goerli:
+      uri: https://eth-goerli.g.alchemy.com/
+    sepolia:
+      uri: https://eth-sepolia.g.alchemy.com/
