@@ -90,16 +90,20 @@ Once ownership is rescinded, no more images can be added to the Registry.
 
 
 ### Ape developing --
-# ignore all warnings for lib3
-pip install eth-ape
-
-## Ignore pythonwarnings in your profile
-# export PYTHONWARNINGS="ignore::Warning:urllib3"
-
 # https://docs.apeworx.io/ape/stable/userguides/quickstart.html
 # pipx install eth-ape  (pipx installs everything in a venv system wide!)
 # Install plugins
-ape plugins install vyper -y
+pip install eth-ape
+ape plugins install .
+# (ape plugins install vyper alchemy -y)
+
+# add private key to the ape 'deployer' account
+ape accounts import deployer
+# Enter pkey from .env when prompted
+ape accounts list
+
+## Ignore pythonwarnings in your profile
+# export PYTHONWARNINGS="ignore::Warning:urllib3"
 
 
 

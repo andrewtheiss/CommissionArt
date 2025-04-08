@@ -2,6 +2,10 @@ name: web3
 
 contracts_folder: contracts
 
+plugins:
+  - name: vyper
+  - name: alchemy
+
 compiler:
   vyper:
     version: 0.4.0
@@ -23,12 +27,11 @@ networks:
       chain_id: 69000
       ecosystem: ethereum
       default_provider: node
-    arbitrum-goerli:
-      chain_id: 421613
-      provider: https://arb-goerli.g.alchemy.com/v2/
-    ethereum-sepolia:
-      chain_id: 11155111
-      provider: https://sepolia.infura.io/v3/G/
+  goerli:
+    provider: alchemy
+  mainnet:
+    provider: infura
+    
 node:
   ethereum:
     custom:
