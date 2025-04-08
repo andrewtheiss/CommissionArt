@@ -35,26 +35,40 @@ def deploy_contracts():
         deployer = import_account_from_private_key("deployer", passphrase, private_key)
     deployer.set_autosign(True, passphrase=passphrase)
 
-    # Prompt for L1 contract address
-    # 0x6E28577074170227E7D3C646D840514e9BE0333C
-    l1_contract_address = input("Enter L1 contract address (or press Enter for new deployment): ").strip()
-
-    # Deploy L1 contract on Ethereum
+    # Prompt for using existing L1 contract
+    use_existing = input("Use existing L1 contract? (y/N): ").strip().lower()
+    
+    # Deploy or use existing L1 contract on Ethereum
     with networks.parse_network_choice(l1_network) as provider:
-        print(f"Deploying L1QueryOwner on {l1_network}")
-        l1_contract = deployer.deploy(project.L1QueryOwner, required_confirmations=1)
-        print(f"L1QueryOwner deployed at: {l1_contract.address}")
+        if use_existing == 'y':
+            l1_contract_address = "0x6E28577074170227E7D3C646D840514e9BE0333C"
+            print(f"Using existing L1QueryOwner at: {l1_contract_address}")
+            l1_contract = project.L1QueryOwner.at(l1_contract_address)
+        else:
+            print(f"Deploying L1QueryOwner on {l1_network}")
+            l1_contract = deployer.deploy(project.L1QueryOwner, required_confirmations=1)
+            print(f"L1QueryOwner deployed at: {l1_contract.address}")
 
-    # Prompt for initial_l3_contract for L2
-    initial_l3_contract = input("Enter initial_l3_contract address (or press Enter for zero address): ").strip()
-    if not initial_l3_contract:
-        initial_l3_contract = "0x0000000000000000000000000000000000000000"
+    # Prompt for using existing L2 contract
+    use_existing_l2 = input("Use existing L2 contract? (y/N): ").strip().lower()
 
-    # Deploy L2 contract on Arbitrum, passing L1 contract address
+    # Prompt for initial_l3_contract for L2 (only needed for new L2 deployment)
+    initial_l3_contract = "0x0000000000000000000000000000000000000000"
+    if use_existing_l2 != 'y':
+        initial_l3_contract_input = input("Enter initial_l3_contract address (or press Enter for zero address): ").strip()
+        if initial_l3_contract_input:
+            initial_l3_contract = initial_l3_contract_input
+
+    # Deploy or use existing L2 contract on Arbitrum
     with networks.parse_network_choice(l2_network) as provider:
-        print(f"Deploying L2Relay on {l2_network}")
-        l2_contract = deployer.deploy(project.L2Relay, l1_contract.address, initial_l3_contract, required_confirmations=0)
-        print(f"L2Relay deployed at: {l2_contract.address}")
+        if use_existing_l2 == 'y':
+            l2_contract_address = "0x2097c9cD16fcbBeB112db40D058f013c90C019f8"
+            print(f"Using existing L2Relay at: {l2_contract_address}")
+            l2_contract = project.L2Relay.at(l2_contract_address)
+        else:
+            print(f"Deploying L2Relay on {l2_network}")
+            l2_contract = deployer.deploy(project.L2Relay, l1_contract.address, initial_l3_contract, required_confirmations=0)
+            print(f"L2Relay deployed at: {l2_contract.address}")
 
     return l1_contract, l2_contract
 
