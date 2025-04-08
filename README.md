@@ -105,7 +105,8 @@ ape accounts list
 ## Ignore pythonwarnings in your profile
 # export PYTHONWARNINGS="ignore::Warning:urllib3"
 
-
+## Running tests:
+ape test tests/deploy_L1_L2.py --verbose
 
 # Plans for ROADMAP
 - Create a way for artists to offer commissions to artists
