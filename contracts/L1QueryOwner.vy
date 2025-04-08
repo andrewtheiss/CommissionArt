@@ -1,18 +1,60 @@
-# @version 0.3.7
+# @version 0.4.1
+
 interface IERC721:
     def ownerOf(tokenId: uint256) -> address: view
 
-interface Inbox:
-    def createRetryableTicket(to: address, l2CallValue: uint256, maxGas: uint256, gasPriceBid: uint256, data: bytes) -> uint256: payable
+interface IInbox:
+    def createRetryableTicket(
+        to: address,
+        l2CallValue: uint256,
+        maxSubmissionCost: uint256,
+        excessFeeRefundAddress: address,
+        callValueRefundAddress: address,
+        gasLimit: uint256,
+        maxFeePerGas: uint256,
+        data: Bytes[1024]
+    ) -> uint256: payable
 
-INBOX_ADDRESS: constant(address) = 0x4dbd4fc535ac27206064b68ffcf827b0a60bab3f
+# Inbox address on Ethereum Goerli (for Arbitrum Goerli)
+INBOX: immutable(address)
+
+# For mainnet, uncomment this line in __init__ instead of the Goerli one:
+# INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f
+
+@deploy
+def __init__():
+    INBOX = 0x6bEbC4925716945d46F0ec336d5f620C47804f00
+    # For mainnet use: INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f
 
 @external
-def queryNFTAndSendBack(nftContract: address, tokenId: uint256, l2Receiver: address):
-    nftContract = IERC721(nftContract)
-    owner: address = nftContract.ownerOf(tokenId)
-    data: bytes = abi.encode(owner)
-    maxGas: uint256 = 1000000  # Example value
-    gasPriceBid: uint256 = 0   # Example value
-    value_to_send: uint256 = 1e18  # Example value in wei
-    Inbox(INBOX_ADDRESS).createRetryableTicket(l2Receiver, 0, maxGas, gasPriceBid, data, value=value_to_send)
+@payable
+def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: address):
+    """
+    @notice Queries the NFT owner and sends the result to L2 via Inbox
+    @param nft_contract The ERC721 NFT contract address on L1
+    @param token_id The token ID to query
+    @param l2_receiver The L2 contract address to receive the result
+    """
+    owner: address = staticcall IERC721(nft_contract).ownerOf(token_id)
+    data: Bytes[1024] = concat(
+        method_id("receiveResultFromL1(address)"),
+        convert(owner, bytes32)
+    )
+    ticket_id: uint256 = extcall IInbox(INBOX).createRetryableTicket(
+        l2_receiver,           # to
+        0,                    # l2CallValue (no ETH sent to L2 contract)
+        1000000,              # maxSubmissionCost (adjust based on testnet)
+        l2_receiver,          # excessFeeRefundAddress
+        l2_receiver,          # callValueRefundAddress
+        100000,               # gasLimit (adjust based on L2 execution)
+        1000000000,           # maxFeePerGas (1 gwei, adjust as needed)
+        data,                 # calldata for L2
+        value=msg.value       # ETH to cover L2 gas costs
+    )
+    log OwnerQueried(nft_contract=nft_contract, token_id=token_id, owner=owner, ticket_id=ticket_id)
+
+event OwnerQueried:
+    nft_contract: address
+    token_id: uint256
+    owner: address
+    ticket_id: uint256
