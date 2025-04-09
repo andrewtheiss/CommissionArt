@@ -48,7 +48,7 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
         l2_receiver,          # callValueRefundAddress
         100000,               # gasLimit (adjust based on L2 execution)
         1000000000,           # maxFeePerGas (1 gwei, adjust as needed)
-        data,                 # calldata for L2
+        data,                 # calldata for L2 including the nft owner
         value=msg.value       # ETH to cover L2 gas costs
     )
     log OwnerQueried(nft_contract=nft_contract, token_id=token_id, owner=owner, ticket_id=ticket_id)
