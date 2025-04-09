@@ -107,6 +107,7 @@ ape accounts list
 
 ## Running tests:
 ape test tests/deploy_L1_L2.py --verbose
+ape test tests/test_L1QueryOwner_testnet.py
 
 # Plans for ROADMAP
 - Create a way for artists to offer commissions to artists
@@ -122,3 +123,4 @@ python -m site
  $env:Path += ";C:\Users\andyComp\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p1\LocalCache\local-packages\Python311\Scripts"
 
  # Add C:\Users\andyComp\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p1\LocalCache\local-packages\Python311\Scripts to your path
+ 

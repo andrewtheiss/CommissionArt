@@ -15,16 +15,19 @@ interface IInbox:
         data: Bytes[1024]
     ) -> uint256: payable
 
-# Inbox address on Ethereum Goerli (for Arbitrum Goerli)
+# Inbox address on Ethereum (Arbitrum bridge)
 INBOX: immutable(address)
 
-# For mainnet, uncomment this line in __init__ instead of the Goerli one:
-# INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f
-
 @deploy
-def __init__():
-    INBOX = 0x6bEbC4925716945d46F0ec336d5f620C47804f00
-    # For mainnet use: INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f
+def __init__(inbox_address: address):
+    """
+    @notice Initialize the contract with the Inbox address
+    @param inbox_address The Arbitrum Inbox contract address
+    """
+    INBOX = inbox_address
+    # Example values:
+    # Goerli: 0x6bEbC4925716945d46F0ec336d5f620C47804f00
+    # Mainnet: 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f
 
 @external
 @payable

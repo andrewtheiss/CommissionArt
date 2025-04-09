@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './MainTab.css';
 import ImageCompressor from './ImageCompressor';
+import BridgeTest from './BridgeTest';
 
 // ABI fragments for Registry contract functions we need
 const REGISTRY_ABI = [
@@ -36,7 +37,7 @@ const MainTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor'>('viewer');
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge'>('viewer');
 
   // Helper function to detect image type from hex data
   const detectImageType = (hexData: string): string => {
@@ -213,6 +214,12 @@ const MainTab: React.FC = () => {
         >
           Image Compressor
         </button>
+        <button 
+          className={`tab-button ${activeTab === 'bridge' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bridge')}
+        >
+          Bridge Test
+        </button>
       </div>
 
       {activeTab === 'viewer' ? (
@@ -278,8 +285,10 @@ const MainTab: React.FC = () => {
             </div>
           )}
         </>
-      ) : (
+      ) : activeTab === 'compressor' ? (
         <ImageCompressor />
+      ) : (
+        <BridgeTest />
       )}
     </div>
   );

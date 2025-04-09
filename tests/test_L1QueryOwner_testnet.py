@@ -51,19 +51,20 @@ def deployed_contracts(setup):
         token_id = 1
         erc721.mint(deployer.address, token_id, sender=deployer)
         
-        # Get the existing L1QueryOwner contract on testnet
-        l1_contract_address = "0x6E28577074170227E7D3C646D840514e9BE0333C"
+        # Arbitrum Sepolia Inbox address
+        arbitrum_inbox_address = "0x2389E6E1E0AF0aCD567cc8D0fda530D9c2a8317e"
         
-        try:
-            l1_contract = project.L1QueryOwner.at(l1_contract_address)
-        except Exception as e:
-            print(f"Error connecting to existing contract: {str(e)}")
-            # If we can't connect to existing contract, deploy a new one for testing
-            l1_contract = deployer.deploy(
-                project.L1QueryOwner,
-                required_confirmations=1
-            )
-            print(f"Deployed new L1QueryOwner at: {l1_contract.address}")
+        # Previous hardcoded contract address (keeping as reference)
+        # l1_contract_address = "0x6E28577074170227E7D3C646D840514e9BE0333C"
+        
+        # Deploy a new L1QueryOwner contract for testing
+        print(f"Deploying new L1QueryOwner contract with Inbox address: {arbitrum_inbox_address}")
+        l1_contract = deployer.deploy(
+            project.L1QueryOwner,
+            arbitrum_inbox_address,
+            required_confirmations=1
+        )
+        print(f"Deployed new L1QueryOwner at: {l1_contract.address}")
         
         yield erc721, l1_contract, token_id, deployer
 

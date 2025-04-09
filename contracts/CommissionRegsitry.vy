@@ -40,8 +40,7 @@ def register_commission(
     index: uint256 = len(self.commissions)
     self.commissions.append(new_commission)
     self.art_contract_to_index[art_contract] = index + 1
-    log CommissionRegistered(index, art_contract, nft_contract, nft_token_id, artist, commissioner)
-
+    log CommissionRegistered(index=index, art_contract=art_contract, nft_contract=nft_contract, nft_token_id=nft_token_id, artist=artist, commissioner=commissioner)
 @external
 @view
 def get_commission(index: uint256) -> Commission:
@@ -58,13 +57,12 @@ def get_commission_count() -> uint256:
 @view
 def get_commissions_range(start: uint256, size: uint256) -> DynArray[Commission, 100]:
     assert start < len(self.commissions), "Start index out of bounds"
-    # Calculate how many items to return (up to 'size' or remaining length)
-    end: uint256 = min(start + size, len(self.commissions))
+    assert start < len(self.commissions), "Start index out of bounds"
     result: DynArray[Commission, 100] = empty(DynArray[Commission, 100])
-    for i in range(start, start + 100):  # Bound by max return size
-        if i >= end:
+    for j: uint256 in range(100):
+        if start + j >= len(self.commissions) or j >= size:
             break
-        result.append(self.commissions[i])
+        result.append(self.commissions[start + j])
     return result
 
 @external

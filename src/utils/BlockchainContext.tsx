@@ -3,7 +3,7 @@ import ethersService from './ethers-service';
 import { NetworkConfig } from './config';
 import config from './config';
 
-type NetworkType = 'animechain' | 'dev' | 'prod' | 'local';
+type NetworkType = 'animechain' | 'dev' | 'prod' | 'local' | 'arbitrum_testnet' | 'arbitrum_mainnet';
 
 interface BlockchainContextType {
   isConnected: boolean;
@@ -20,7 +20,7 @@ const BlockchainContext = createContext<BlockchainContextType | undefined>(undef
 export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [networkType, setNetworkType] = useState<NetworkType>(config.defaultNetwork);
+  const [networkType, setNetworkType] = useState<NetworkType>(config.defaultNetwork as NetworkType);
   const [network, setNetwork] = useState<NetworkConfig>(ethersService.getNetwork());
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
 

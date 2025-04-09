@@ -1,0 +1,181 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "index",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "art_contract",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "nft_token_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "artist",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "commissioner",
+        "type": "address"
+      }
+    ],
+    "name": "CommissionRegistered",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "name": "art_contract",
+        "type": "address"
+      },
+      {
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "nft_token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "artist",
+        "type": "address"
+      },
+      {
+        "name": "commissioner",
+        "type": "address"
+      }
+    ],
+    "name": "register_commission",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "get_commission",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "art_contract",
+            "type": "address"
+          },
+          {
+            "name": "nft_contract",
+            "type": "address"
+          },
+          {
+            "name": "nft_token_id",
+            "type": "uint256"
+          },
+          {
+            "name": "artist",
+            "type": "address"
+          },
+          {
+            "name": "commissioner",
+            "type": "address"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          }
+        ],
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_commission_count",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "start",
+        "type": "uint256"
+      },
+      {
+        "name": "size",
+        "type": "uint256"
+      }
+    ],
+    "name": "get_commissions_range",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "art_contract",
+            "type": "address"
+          },
+          {
+            "name": "nft_contract",
+            "type": "address"
+          },
+          {
+            "name": "nft_token_id",
+            "type": "uint256"
+          },
+          {
+            "name": "artist",
+            "type": "address"
+          },
+          {
+            "name": "commissioner",
+            "type": "address"
+          },
+          {
+            "name": "is_active",
+            "type": "bool"
+          }
+        ],
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "art_contract",
+        "type": "address"
+      }
+    ],
+    "name": "deactivate_commission",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
