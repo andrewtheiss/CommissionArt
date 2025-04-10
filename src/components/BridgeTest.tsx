@@ -26,6 +26,15 @@ interface ContractConfig {
   };
 }
 
+// NFT query form state
+interface NFTQuery {
+  contractAddress: string;
+  tokenId: string;
+  isSubmitting: boolean;
+  transactionHash: string;
+  result: string;
+}
+
 // LocalStorage key for saving/loading contract config
 const LOCAL_STORAGE_KEY = 'bridge_test_contract_config';
 
@@ -35,10 +44,22 @@ const BridgeTest: React.FC = () => {
   const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
   
   // Get blockchain context
-  const { networkType, switchNetwork } = useBlockchain();
+  const { networkType, switchNetwork, connectWallet, walletAddress, isConnected } = useBlockchain();
   
   // Get contract configuration
   const { loading: configLoading, config: contractsConfig, getContract, reloadConfig } = useContractConfig();
+  
+  // State for NFT query
+  const [nftQuery, setNftQuery] = useState<NFTQuery>({
+    contractAddress: '',
+    tokenId: '',
+    isSubmitting: false,
+    transactionHash: '',
+    result: ''
+  });
+  
+  // State to track listening for events
+  const [isListening, setIsListening] = useState(false);
   
   // Default config
   const defaultConfig: ContractConfig = {
@@ -345,6 +366,240 @@ const BridgeTest: React.FC = () => {
     }
   };
   
+  // Handle NFT query form change
+  const handleNftQueryChange = (field: keyof NFTQuery, value: string) => {
+    setNftQuery(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Connect wallet and listen for events
+  const setupEventListening = async () => {
+    if (!isConnected) {
+      await connectWallet();
+    }
+    
+    if (isListening) return; // Already listening
+    
+    try {
+      // Get the L2Relay contract address for current environment
+      const l2Address = contractConfig.addresses.l2[environment];
+      if (!l2Address) {
+        setBridgeStatus('Error: L2Relay contract address not set');
+        return;
+      }
+      
+      // Setup event listening only if not already listening
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // Load the L2Relay ABI
+      const l2RelayABI = abiLoader.loadABI('L2Relay');
+      if (!l2RelayABI) {
+        setBridgeStatus('Error: Could not load L2Relay ABI');
+        return;
+      }
+      
+      // Create contract instance
+      const contract = new ethers.Contract(l2Address, l2RelayABI, provider);
+      
+      // Listen for RequestSent events
+      contract.removeAllListeners(); // Clear previous listeners
+      
+      contract.on('RequestSent', (nftContract, tokenId, uniqueId, event) => {
+        setBridgeStatus(prev => 
+          `${prev}\n\nNFT Query Request Sent!\nContract: ${nftContract}\nToken ID: ${tokenId}\nRequest ID: ${uniqueId}`
+        );
+      });
+      
+      // Listen for OwnerReceived events
+      contract.on('OwnerReceived', (owner, event) => {
+        setBridgeStatus(prev => 
+          `${prev}\n\nOwner Received from L1!\nNFT Owner: ${owner}`
+        );
+        
+        // Update the query result
+        setNftQuery(prev => ({
+          ...prev,
+          isSubmitting: false,
+          result: `NFT owner: ${owner}`
+        }));
+      });
+      
+      setIsListening(true);
+      setBridgeStatus(prev => `${prev}\n\nListening for L2Relay events...`);
+    } catch (error) {
+      console.error('Error setting up event listeners:', error);
+      setBridgeStatus(prev => `${prev}\n\nError setting up event listeners: ${error}`);
+    }
+  };
+  
+  // Submit NFT query to the L2Relay contract
+  const submitNftQuery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Ensure we're on L2
+    if (layer !== 'l2') {
+      setBridgeStatus('Please switch to L2 (Arbitrum) to query NFT ownership');
+      setLayer('l2');
+      return;
+    }
+    
+    // Connect wallet if not connected
+    if (!isConnected) {
+      await connectWallet();
+      if (!isConnected) {
+        setBridgeStatus('Please connect your wallet to continue');
+        return;
+      }
+    }
+    
+    // Set up event listening
+    await setupEventListening();
+    
+    try {
+      setNftQuery(prev => ({ ...prev, isSubmitting: true }));
+      
+      // Get the L2Relay contract address for current environment
+      const l2Address = contractConfig.addresses.l2[environment];
+      if (!l2Address) {
+        setBridgeStatus('Error: L2Relay contract address not set');
+        setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+        return;
+      }
+      
+      // Connect to the provider with signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      // Load the L2Relay ABI
+      const l2RelayABI = abiLoader.loadABI('L2Relay');
+      if (!l2RelayABI) {
+        setBridgeStatus('Error: Could not load L2Relay ABI');
+        setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+        return;
+      }
+      
+      // Create contract instance with signer
+      const contract = new ethers.Contract(l2Address, l2RelayABI, signer);
+      
+      // Validate inputs
+      if (!ethers.isAddress(nftQuery.contractAddress)) {
+        setBridgeStatus('Error: Invalid NFT contract address');
+        setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+        return;
+      }
+      
+      const tokenId = parseInt(nftQuery.tokenId);
+      if (isNaN(tokenId) || tokenId < 0) {
+        setBridgeStatus('Error: Invalid token ID');
+        setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+        return;
+      }
+      
+      // Call requestNFTOwner
+      setBridgeStatus(`Submitting query for NFT contract ${nftQuery.contractAddress} with token ID ${tokenId}...`);
+      
+      // Convert token ID to BigInt for safer handling of large numbers
+      const tokenIdBigInt = BigInt(tokenId);
+      
+      const tx = await contract.requestNFTOwner(nftQuery.contractAddress, tokenIdBigInt);
+      
+      // Update state with transaction hash
+      setNftQuery(prev => ({ ...prev, transactionHash: tx.hash }));
+      
+      // Wait for the transaction to be mined
+      setBridgeStatus(prev => `${prev}\n\nTransaction sent. Hash: ${tx.hash}\nWaiting for confirmation...`);
+      
+      const receipt = await tx.wait();
+      
+      setBridgeStatus(prev => `${prev}\n\nTransaction confirmed with ${receipt.gasUsed} gas used.`);
+      setBridgeStatus(prev => `${prev}\n\nWaiting for cross-chain message to be processed...`);
+      
+      // Don't set isSubmitting to false here, only when we receive the OwnerReceived event
+      
+    } catch (error: any) {
+      console.error('Error submitting NFT query:', error);
+      setBridgeStatus(prev => `${prev}\n\nError: ${error.message || 'Unknown error'}`);
+      setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
+  // Render the NFT query form
+  const renderNftQueryForm = () => {
+    return (
+      <div className="nft-query-section">
+        <h3>Query NFT Ownership</h3>
+        <form onSubmit={submitNftQuery} className="nft-query-form">
+          <div className="input-group">
+            <label>NFT Contract Address:</label>
+            <input 
+              type="text" 
+              value={nftQuery.contractAddress} 
+              onChange={(e) => handleNftQueryChange('contractAddress', e.target.value)}
+              placeholder="0x..."
+              disabled={nftQuery.isSubmitting}
+            />
+          </div>
+          
+          <div className="input-group">
+            <label>Token ID:</label>
+            <input 
+              type="text" 
+              value={nftQuery.tokenId} 
+              onChange={(e) => handleNftQueryChange('tokenId', e.target.value)}
+              placeholder="1"
+              disabled={nftQuery.isSubmitting}
+            />
+          </div>
+          
+          <div className="action-buttons">
+            {!isConnected && (
+              <button
+                type="button"
+                className="connect-button"
+                onClick={connectWallet}
+              >
+                Connect Wallet
+              </button>
+            )}
+            
+            <button
+              type="submit"
+              className="submit-button"
+              disabled={!nftQuery.contractAddress || !nftQuery.tokenId || nftQuery.isSubmitting}
+            >
+              {nftQuery.isSubmitting ? 'Submitting...' : 'Query NFT Owner'}
+            </button>
+          </div>
+        </form>
+        
+        {nftQuery.transactionHash && (
+          <div className="transaction-info">
+            <h4>Transaction Details</h4>
+            <p>
+              <strong>Transaction Hash:</strong>{' '}
+              <a 
+                href={`${environment === 'testnet' ? 'https://sepolia.arbiscan.io/tx/' : 'https://arbiscan.io/tx/'}${nftQuery.transactionHash}`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                {nftQuery.transactionHash.substring(0, 10)}...{nftQuery.transactionHash.substring(nftQuery.transactionHash.length - 8)}
+              </a>
+            </p>
+          </div>
+        )}
+        
+        {nftQuery.result && (
+          <div className="query-result">
+            <h4>Query Result</h4>
+            <p>{nftQuery.result}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
   return (
     <div className="bridge-test-container">
       <h2>Bridge Test</h2>
@@ -386,6 +641,9 @@ const BridgeTest: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Display NFT query form */}
+      {renderNftQueryForm()}
       
       <div className="contract-config">
         <h3>Contract Configuration</h3>
