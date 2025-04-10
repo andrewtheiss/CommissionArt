@@ -57,7 +57,11 @@ const NETWORK_CONFIG = {
   sepolia: {
     chainId: "0xaa36a7", // 11155111 in decimal
     chainName: "Sepolia Testnet",
-    rpcUrls: ["https://rpc.sepolia.org", "https://ethereum-sepolia.blockpi.network/v1/rpc/public"],
+    rpcUrls: [
+      "https://eth-sepolia.public.blastapi.io",
+      "https://ethereum-sepolia.blockpi.network/v1/rpc/public",
+      "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161" // Public Infura ID
+    ],
     nativeCurrency: {
       name: "Sepolia ETH",
       symbol: "ETH",
@@ -68,7 +72,12 @@ const NETWORK_CONFIG = {
   arbitrumSepolia: {
     chainId: "0x66eee", // 421614 in decimal
     chainName: "Arbitrum Sepolia Testnet",
-    rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc", "https://arbitrum-sepolia.blockpi.network/v1/rpc/public"],
+    rpcUrls: [
+      "https://sepolia-rollup.arbitrum.io/rpc",
+      "https://arbitrum-sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161", // Public Infura ID
+      "https://arb-sepolia.g.alchemy.com/v2/demo", // Alchemy demo key
+      "https://arbitrum-sepolia.publicnode.com"
+    ],
     nativeCurrency: {
       name: "Arbitrum Sepolia ETH",
       symbol: "ETH",
@@ -435,7 +444,24 @@ const BridgeTest: React.FC = () => {
       }
       
       // Setup event listening only if not already listening
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      // Use own RPC providers to avoid CORS issues with MetaMask's provider
+      let provider;
+      try {
+        // Try to use MetaMask's provider first
+        provider = new ethers.BrowserProvider(window.ethereum);
+        // Test the connection
+        await provider.getBlockNumber();
+        setBridgeStatus(prev => `${prev}\nUsing MetaMask provider for event listening`);
+      } catch (error) {
+        // If MetaMask provider fails, use a public RPC endpoint
+        console.log("MetaMask provider failed, trying public RPC endpoints");
+        const rpcUrl = environment === 'testnet' 
+          ? "https://arb-sepolia.g.alchemy.com/v2/demo" 
+          : "https://arb1.arbitrum.io/rpc";
+        
+        provider = new ethers.JsonRpcProvider(rpcUrl);
+        setBridgeStatus(prev => `${prev}\nFallback: Using public RPC for event listening: ${rpcUrl}`);
+      }
       
       // Load the L2Relay ABI
       const l2RelayABI = abiLoader.loadABI('L2Relay');
@@ -447,17 +473,36 @@ const BridgeTest: React.FC = () => {
       // Create contract instance
       const contract = new ethers.Contract(l2Address, l2RelayABI, provider);
       
-      // Listen for RequestSent events
-      contract.removeAllListeners(); // Clear previous listeners
+      // Clear previous listeners
+      try {
+        contract.removeAllListeners();
+      } catch (error) {
+        console.log("Failed to remove previous listeners, continuing anyway");
+      }
       
-      contract.on('RequestSent', (nftContract, tokenId, uniqueId, event) => {
+      // Function to handle RequestSent events
+      const handleRequestSent = (
+        nftContract: string,
+        tokenId: ethers.BigNumberish,
+        uniqueId: ethers.BigNumberish,
+        event: ethers.EventLog | ethers.Log
+      ) => {
+        console.log("RequestSent event received:", { 
+          nftContract, 
+          tokenId: tokenId.toString(), 
+          uniqueId: uniqueId.toString() 
+        });
         setBridgeStatus(prev => 
           `${prev}\n\nNFT Query Request Sent!\nContract: ${nftContract}\nToken ID: ${tokenId}\nRequest ID: ${uniqueId}`
         );
-      });
+      };
       
-      // Listen for OwnerReceived events
-      contract.on('OwnerReceived', (owner, event) => {
+      // Function to handle OwnerReceived events
+      const handleOwnerReceived = (
+        owner: string,
+        event: ethers.EventLog | ethers.Log
+      ) => {
+        console.log("OwnerReceived event received:", { owner });
         setBridgeStatus(prev => 
           `${prev}\n\nOwner Received from L1!\nNFT Owner: ${owner}`
         );
@@ -468,7 +513,54 @@ const BridgeTest: React.FC = () => {
           isSubmitting: false,
           result: `NFT owner: ${owner}`
         }));
-      });
+      };
+      
+      // Listen for RequestSent events
+      contract.on("RequestSent", handleRequestSent);
+      
+      // Listen for OwnerReceived events
+      contract.on("OwnerReceived", handleOwnerReceived);
+      
+      // Also set up polling for OwnerReceived events as a fallback
+      if (environment === 'testnet') {
+        setBridgeStatus(prev => `${prev}\n\nSetting up fallback polling for events (every 15 seconds)`);
+        
+        // Get current block number
+        const currentBlock = await provider.getBlockNumber();
+        console.log("Current block number:", currentBlock);
+        
+        // Set up polling interval
+        const pollInterval = setInterval(async () => {
+          try {
+            // Query for OwnerReceived events
+            const filter = contract.filters.OwnerReceived();
+            const events = await contract.queryFilter(filter, currentBlock);
+            
+            if (events.length > 0) {
+              console.log("Found OwnerReceived events via polling:", events);
+              // Process the most recent event
+              const latestEvent = events[events.length - 1];
+              if (latestEvent && 'args' in latestEvent && latestEvent.args) {
+                // Type assertion to handle the EventLog interface
+                const eventLog = latestEvent as ethers.EventLog;
+                const owner = eventLog.args[0] as string;
+                handleOwnerReceived(owner, eventLog);
+                
+                // Clear the interval once we've found an event
+                clearInterval(pollInterval);
+              }
+            }
+          } catch (error) {
+            console.error("Error polling for events:", error);
+          }
+        }, 15000); // Poll every 15 seconds
+        
+        // Clean up interval after 10 minutes (max wait time)
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          console.log("Cleared polling interval after timeout");
+        }, 10 * 60 * 1000);
+      }
       
       setIsListening(true);
       setBridgeStatus(prev => `${prev}\n\nListening for L2Relay events...`);
@@ -601,6 +693,13 @@ const BridgeTest: React.FC = () => {
             Using default Sepolia NFT contract: <code>0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06</code>
           </div>
         )}
+        
+        <div className="notice-message">
+          <p><strong>Cross-Chain Process:</strong> Querying NFT ownership requires sending a message from Arbitrum (L2) to Ethereum (L1) and back.</p>
+          <p>This process can take 10-15 minutes to complete. The status will update automatically when the response is received.</p>
+          <p>If you experience connection issues or RPC errors, the app will try alternative endpoints automatically.</p>
+        </div>
+        
         <form onSubmit={submitNftQuery} className="nft-query-form">
           <div className="input-group">
             <label>NFT Contract Address:</label>
@@ -634,7 +733,7 @@ const BridgeTest: React.FC = () => {
               disabled={nftQuery.isSubmitting}
             />
             <div className="field-help">
-              ETH is required to pay for the cross-chain message fees
+              ETH is required to pay for the cross-chain message fees. Recommended minimum: 0.005 ETH
             </div>
           </div>
           
@@ -654,7 +753,7 @@ const BridgeTest: React.FC = () => {
               className="submit-button"
               disabled={!nftQuery.contractAddress || !nftQuery.tokenId || !nftQuery.ethValue || nftQuery.isSubmitting}
             >
-              {nftQuery.isSubmitting ? 'Submitting...' : 'Query NFT Owner'}
+              {nftQuery.isSubmitting ? 'Processing...' : 'Query NFT Owner'}
             </button>
           </div>
         </form>

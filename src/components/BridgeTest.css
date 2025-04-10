@@ -556,4 +556,26 @@
   color: #666;
   margin-top: 3px;
   font-style: italic;
+}
+
+.notice-message {
+  background-color: #f8f0e3;
+  border-left: 4px solid #f5a623;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #5a4a2d;
+}
+
+.notice-message p {
+  margin: 0 0 8px 0;
+}
+
+.notice-message p:last-child {
+  margin-bottom: 0;
+}
+
+.notice-message strong {
+  font-weight: 600;
 } 
