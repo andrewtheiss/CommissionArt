@@ -30,18 +30,61 @@ interface ContractConfig {
 interface NFTQuery {
   contractAddress: string;
   tokenId: string;
+  ethValue: string;
   isSubmitting: boolean;
   transactionHash: string;
   result: string;
 }
 
+// Network configuration for MetaMask
+interface NetworkParams {
+  chainId: string;
+  chainName: string;
+  rpcUrls: string[];
+  nativeCurrency: {
+    name: string;
+    symbol: string;
+    decimals: number;
+  };
+  blockExplorerUrls: string[];
+}
+
 // LocalStorage key for saving/loading contract config
 const LOCAL_STORAGE_KEY = 'bridge_test_contract_config';
+
+// Network configurations for MetaMask
+const NETWORK_CONFIG = {
+  sepolia: {
+    chainId: "0xaa36a7", // 11155111 in decimal
+    chainName: "Sepolia Testnet",
+    rpcUrls: ["https://rpc.sepolia.org", "https://ethereum-sepolia.blockpi.network/v1/rpc/public"],
+    nativeCurrency: {
+      name: "Sepolia ETH",
+      symbol: "ETH",
+      decimals: 18
+    },
+    blockExplorerUrls: ["https://sepolia.etherscan.io"]
+  },
+  arbitrumSepolia: {
+    chainId: "0x66eee", // 421614 in decimal
+    chainName: "Arbitrum Sepolia Testnet",
+    rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc", "https://arbitrum-sepolia.blockpi.network/v1/rpc/public"],
+    nativeCurrency: {
+      name: "Arbitrum Sepolia ETH",
+      symbol: "ETH",
+      decimals: 18
+    },
+    blockExplorerUrls: ["https://sepolia.arbiscan.io"]
+  }
+};
 
 const BridgeTest: React.FC = () => {
   // State for network selection
   const [layer, setLayer] = useState<'l1' | 'l2'>('l1');
   const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
+  
+  // State for showing/hiding MetaMask actions dropdown
+  const [showMetaMaskActions, setShowMetaMaskActions] = useState(false);
   
   // Get blockchain context
   const { networkType, switchNetwork, connectWallet, walletAddress, isConnected } = useBlockchain();
@@ -51,8 +94,9 @@ const BridgeTest: React.FC = () => {
   
   // State for NFT query
   const [nftQuery, setNftQuery] = useState<NFTQuery>({
-    contractAddress: '',
-    tokenId: '',
+    contractAddress: environment === 'testnet' ? '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06' : '',
+    tokenId: environment === 'testnet' ? '1' : '',
+    ethValue: '0.001', // Default ETH value for cross-chain messaging
     isSubmitting: false,
     transactionHash: '',
     result: ''
@@ -497,13 +541,35 @@ const BridgeTest: React.FC = () => {
         return;
       }
       
+      // Validate ETH value
+      let ethValueWei;
+      try {
+        // Convert ETH value to wei
+        ethValueWei = ethers.parseEther(nftQuery.ethValue || '0');
+        if (ethValueWei <= 0n) {
+          setBridgeStatus('Error: ETH value must be greater than 0');
+          setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+          return;
+        }
+      } catch (error) {
+        setBridgeStatus('Error: Invalid ETH value format');
+        setNftQuery(prev => ({ ...prev, isSubmitting: false }));
+        return;
+      }
+      
       // Call requestNFTOwner
       setBridgeStatus(`Submitting query for NFT contract ${nftQuery.contractAddress} with token ID ${tokenId}...`);
+      setBridgeStatus(prev => `${prev}\nSending ${nftQuery.ethValue} ETH to pay for cross-chain message fees`);
       
       // Convert token ID to BigInt for safer handling of large numbers
       const tokenIdBigInt = BigInt(tokenId);
       
-      const tx = await contract.requestNFTOwner(nftQuery.contractAddress, tokenIdBigInt);
+      // Call with value
+      const tx = await contract.requestNFTOwner(
+        nftQuery.contractAddress, 
+        tokenIdBigInt,
+        { value: ethValueWei }
+      );
       
       // Update state with transaction hash
       setNftQuery(prev => ({ ...prev, transactionHash: tx.hash }));
@@ -530,6 +596,11 @@ const BridgeTest: React.FC = () => {
     return (
       <div className="nft-query-section">
         <h3>Query NFT Ownership</h3>
+        {environment === 'testnet' && (
+          <div className="info-message">
+            Using default Sepolia NFT contract: <code>0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06</code>
+          </div>
+        )}
         <form onSubmit={submitNftQuery} className="nft-query-form">
           <div className="input-group">
             <label>NFT Contract Address:</label>
@@ -553,6 +624,20 @@ const BridgeTest: React.FC = () => {
             />
           </div>
           
+          <div className="input-group">
+            <label>ETH Value (for cross-chain fees):</label>
+            <input 
+              type="text" 
+              value={nftQuery.ethValue} 
+              onChange={(e) => handleNftQueryChange('ethValue', e.target.value)}
+              placeholder="0.001"
+              disabled={nftQuery.isSubmitting}
+            />
+            <div className="field-help">
+              ETH is required to pay for the cross-chain message fees
+            </div>
+          </div>
+          
           <div className="action-buttons">
             {!isConnected && (
               <button
@@ -567,7 +652,7 @@ const BridgeTest: React.FC = () => {
             <button
               type="submit"
               className="submit-button"
-              disabled={!nftQuery.contractAddress || !nftQuery.tokenId || nftQuery.isSubmitting}
+              disabled={!nftQuery.contractAddress || !nftQuery.tokenId || !nftQuery.ethValue || nftQuery.isSubmitting}
             >
               {nftQuery.isSubmitting ? 'Submitting...' : 'Query NFT Owner'}
             </button>
@@ -600,6 +685,87 @@ const BridgeTest: React.FC = () => {
     );
   };
   
+  // Update NFT contract address when environment changes
+  useEffect(() => {
+    if (environment === 'testnet') {
+      setNftQuery(prev => ({
+        ...prev,
+        contractAddress: '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06',
+        tokenId: prev.tokenId || '1'
+      }));
+    }
+  }, [environment]);
+  
+  // Functions to add networks to MetaMask
+  const addNetworkToMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
+    if (!window.ethereum) {
+      alert('MetaMask is not installed. Please install it to use this feature.');
+      return;
+    }
+    
+    try {
+      const params = NETWORK_CONFIG[network];
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [params],
+      });
+      
+      setBridgeStatus(prev => 
+        `${prev ? prev + '\n\n' : ''}Successfully added ${params.chainName} to your wallet.`
+      );
+    } catch (error: any) {
+      console.error(`Error adding ${network} to MetaMask:`, error);
+      setBridgeStatus(prev => 
+        `${prev ? prev + '\n\n' : ''}Error adding network to MetaMask: ${error.message || error}`
+      );
+    }
+  };
+  
+  // Function to switch networks in MetaMask
+  const switchNetworkInMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
+    if (!window.ethereum) {
+      alert('MetaMask is not installed. Please install it to use this feature.');
+      return;
+    }
+    
+    try {
+      const chainIdHex = NETWORK_CONFIG[network].chainId;
+      
+      try {
+        // First try to switch to the network
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: chainIdHex }],
+        });
+        
+        setBridgeStatus(prev => 
+          `${prev ? prev + '\n\n' : ''}Successfully switched to ${NETWORK_CONFIG[network].chainName}.`
+        );
+      } catch (switchError: any) {
+        // If the error code is 4902, the network isn't added yet
+        if (switchError.code === 4902) {
+          // Add the network first and then try to switch again
+          await addNetworkToMetaMask(network);
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: chainIdHex }],
+          });
+          
+          setBridgeStatus(prev => 
+            `${prev ? prev + '\n\n' : ''}Successfully added and switched to ${NETWORK_CONFIG[network].chainName}.`
+          );
+        } else {
+          throw switchError;
+        }
+      }
+    } catch (error: any) {
+      console.error(`Error switching to ${network} in MetaMask:`, error);
+      setBridgeStatus(prev => 
+        `${prev ? prev + '\n\n' : ''}Error switching network in MetaMask: ${error.message || error}`
+      );
+    }
+  };
+
   return (
     <div className="bridge-test-container">
       <h2>Bridge Test</h2>
@@ -641,6 +807,63 @@ const BridgeTest: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {environment === 'testnet' && (
+        <div className="metamask-dropdown">
+          <button 
+            className="dropdown-toggle" 
+            onClick={() => setShowMetaMaskActions(!showMetaMaskActions)}
+          >
+            <span className="metamask-icon"></span>
+            MetaMask Network Tools
+            <span className={`dropdown-arrow ${showMetaMaskActions ? 'open' : ''}`}>▼</span>
+          </button>
+          
+          {showMetaMaskActions && (
+            <div className="metamask-actions">
+              <div className="action-group">
+                <h4>Add Network to MetaMask</h4>
+                <div className="button-group">
+                  <button 
+                    className="metamask-button add-network" 
+                    onClick={() => addNetworkToMetaMask('sepolia')}
+                    title="Add Sepolia to MetaMask"
+                  >
+                    Add Sepolia
+                  </button>
+                  <button 
+                    className="metamask-button add-network" 
+                    onClick={() => addNetworkToMetaMask('arbitrumSepolia')}
+                    title="Add Arbitrum Sepolia to MetaMask"
+                  >
+                    Add Arbitrum Sepolia
+                  </button>
+                </div>
+              </div>
+              
+              <div className="action-group">
+                <h4>Switch Network in MetaMask</h4>
+                <div className="button-group">
+                  <button 
+                    className="metamask-button switch-network" 
+                    onClick={() => switchNetworkInMetaMask('sepolia')}
+                    title="Switch to Sepolia in MetaMask"
+                  >
+                    Switch to Sepolia
+                  </button>
+                  <button 
+                    className="metamask-button switch-network" 
+                    onClick={() => switchNetworkInMetaMask('arbitrumSepolia')}
+                    title="Switch to Arbitrum Sepolia in MetaMask"
+                  >
+                    Switch to Arbitrum Sepolia
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Display NFT query form */}
       {renderNftQueryForm()}
@@ -755,12 +978,10 @@ const BridgeTest: React.FC = () => {
         </button>
       </div>
       
-      {bridgeStatus && (
-        <div className="status-box">
-          <h3>Status</h3>
-          <pre>{bridgeStatus}</pre>
-        </div>
-      )}
+      <div className="status-box">
+        <h3>Status</h3>
+        <pre>{bridgeStatus || 'No status updates yet. Actions will be displayed here.'}</pre>
+      </div>
     </div>
   );
 };

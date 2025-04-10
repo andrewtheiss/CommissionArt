@@ -28,6 +28,7 @@ def setL3Contract(new_l3_contract: address):
     self.l3_contract = new_l3_contract
 
 @external
+@payable
 def requestNFTOwner(nft_contract: address, token_id: uint256) -> uint256:
     data: Bytes[1024] = concat(
         method_id("queryNFTAndSendBack(address,uint256,address)"),
@@ -35,9 +36,8 @@ def requestNFTOwner(nft_contract: address, token_id: uint256) -> uint256:
         convert(token_id, bytes32),
         convert(self, bytes32)  # L2 contract as receiver
     )
-    unique_id: uint256 = 0
-    # unique_id: uint256 = extcall ArbSys(ARBSYS).sendTxToL1(self.l1_helper_contract, data, value=msg.value)
-    # log RequestSent(nft_contract=nft_contract, token_id=token_id, unique_id=unique_id)
+    unique_id: uint256 = extcall ArbSys(ARBSYS).sendTxToL1(self.l1_helper_contract, data, value=msg.value)
+    log RequestSent(nft_contract=nft_contract, token_id=token_id, unique_id=unique_id)
     return unique_id
 
 @external

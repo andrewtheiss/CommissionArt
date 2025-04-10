@@ -3,8 +3,10 @@
   flex-direction: column;
   padding: 20px;
   gap: 20px;
-  max-width: 1200px;
+  max-width: 800px;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .bridge-test-container h2 {
@@ -22,6 +24,8 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   margin-bottom: 10px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .selector-group {
@@ -75,6 +79,8 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   gap: 20px;
   position: relative;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .contract-config h3 {
@@ -149,6 +155,8 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input-group label {
@@ -163,6 +171,8 @@
   border-radius: 4px;
   font-family: 'Courier New', monospace;
   font-size: 0.9em;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input-group textarea {
@@ -188,6 +198,8 @@
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .send-button {
@@ -217,6 +229,9 @@
   border-radius: 8px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .status-box h3 {
@@ -235,6 +250,8 @@
   white-space: pre-wrap;
   color: #333;
   line-height: 1.5;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Responsive adjustments */
@@ -260,6 +277,8 @@
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .nft-query-form {
@@ -331,6 +350,8 @@
 
 .bridge-status {
   margin-top: 30px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .bridge-status pre {
@@ -343,4 +364,196 @@
   white-space: pre-wrap;
   word-break: break-word;
   color: #333;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.info-message {
+  background-color: #e8f4fd;
+  border-left: 4px solid #0066cc;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #333;
+}
+
+.info-message code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.95em;
+}
+
+.metamask-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.metamask-actions h4 {
+  font-size: 0.95em;
+  color: #555;
+  margin: 0 0 8px 0;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.metamask-button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.metamask-button::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 404 420" fill="none"><path fill="%23E17726" d="M402.1 18.1 244.2 138.3l29.5-69.3L402.1 18.1z"/><path fill="%23E27625" d="m1.8 18.1 156.6 51.5-28.5 70.4L1.8 18.1zM343.2 299.6l-47.3 72.4 101.2 27.9 29-99-83-1.3h.1zM31.1 300.6l28.9 99 101.2-27.9-47.3-72.4-82.8 1.3z"/><path fill="%23E27625" d="m156.9 204.2-27.3 41.2 97.2 4.5-3.2-104.8-66.7 59.1zM247 204.2l-67.5-60 -2.2 105.8 97.2-4.5-27.5-41.3z"/><path fill="%23E27625" d="m161.2 372-2.8-24.1-24.3-11.6 34-15.9-6.9 51.6zM242.8 372l-6.9-51.6 34 15.9-24.3 11.6-2.8 24.1z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.add-network {
+  background-color: #fff8e6;
+  color: #f5a623;
+  border: 1px solid #f5d09c;
+}
+
+.add-network:hover {
+  background-color: #ffedd3;
+  color: #d48c00;
+}
+
+.switch-network {
+  background-color: #e8f4fd;
+  color: #0066cc;
+  border: 1px solid #b3d7f5;
+}
+
+.switch-network:hover {
+  background-color: #d1e8fc;
+  color: #004f9f;
+}
+
+@media (max-width: 768px) {
+  .button-group {
+    flex-direction: column;
+  }
+  
+  .metamask-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.metamask-dropdown {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px 15px;
+  background-color: #faf6ef;
+  border: 1px solid #e6dfd5;
+  border-radius: 6px;
+  color: #7c6c55;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  font-size: 0.95em;
+}
+
+.dropdown-toggle:hover {
+  background-color: #f5eee1;
+}
+
+.dropdown-toggle:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(226, 118, 37, 0.3);
+}
+
+.metamask-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 404 420" fill="none"><path fill="%23E17726" d="M402.1 18.1 244.2 138.3l29.5-69.3L402.1 18.1z"/><path fill="%23E27625" d="m1.8 18.1 156.6 51.5-28.5 70.4L1.8 18.1zM343.2 299.6l-47.3 72.4 101.2 27.9 29-99-83-1.3h.1zM31.1 300.6l28.9 99 101.2-27.9-47.3-72.4-82.8 1.3z"/><path fill="%23E27625" d="m156.9 204.2-27.3 41.2 97.2 4.5-3.2-104.8-66.7 59.1zM247 204.2l-67.5-60 -2.2 105.8 97.2-4.5-27.5-41.3z"/><path fill="%23E27625" d="m161.2 372-2.8-24.1-24.3-11.6 34-15.9-6.9 51.6zM242.8 372l-6.9-51.6 34 15.9-24.3 11.6-2.8 24.1z"/></svg>');
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.dropdown-arrow {
+  margin-left: auto;
+  transition: transform 0.3s ease;
+  font-size: 0.8em;
+}
+
+.dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.metamask-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  background-color: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+  padding: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eaeaea;
+  border-top: none;
+  width: 100%;
+  box-sizing: border-box;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.field-help {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 3px;
+  font-style: italic;
 } 
