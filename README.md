@@ -55,6 +55,7 @@ Deploy the contracts with:
 
 ```
 python scripts/deploy_registry_and_images.py
+python scripts/
 ```
 
 This script:
@@ -81,7 +82,6 @@ The `.env` file controls deployment parameters:
 - `RESCIND_OWNERSHIP`: Set to "true" to permanently rescind ownership after deployment
 
 ## Deployment
-
 The deployment process creates:
 1. One Registry contract
 2. Multiple CommissionedArt contracts (one per image)

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../utils/BlockchainContext';
 import abiLoader from '../utils/abiLoader';
+import useContractConfig from '../utils/useContractConfig';
 import './BridgeTest.css';
 
 // Interface for contract addresses
@@ -32,6 +33,12 @@ const BridgeTest: React.FC = () => {
   // State for network selection
   const [layer, setLayer] = useState<'l1' | 'l2'>('l1');
   const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
+  
+  // Get blockchain context
+  const { networkType, switchNetwork } = useBlockchain();
+  
+  // Get contract configuration
+  const { loading: configLoading, config: contractsConfig, getContract } = useContractConfig();
   
   // Default config
   const defaultConfig: ContractConfig = {
@@ -74,9 +81,6 @@ const BridgeTest: React.FC = () => {
   // Method names for the selected ABI
   const [methodNames, setMethodNames] = useState<string[]>([]);
   
-  // Get blockchain context
-  const { networkType, switchNetwork } = useBlockchain();
-  
   // Message state
   const [message, setMessage] = useState<string>('');
   const [bridgeStatus, setBridgeStatus] = useState<string>('');
@@ -85,6 +89,48 @@ const BridgeTest: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(contractConfig));
   }, [contractConfig]);
+  
+  // Load contract addresses from configuration when it's available
+  useEffect(() => {
+    if (contractsConfig && !configLoading) {
+      // Load the deployed contract addresses from the configuration
+      const newAddresses = {
+        l1: {
+          testnet: getContract('testnet', 'l1')?.address || '',
+          mainnet: getContract('mainnet', 'l1')?.address || '',
+        },
+        l2: {
+          testnet: getContract('testnet', 'l2')?.address || '',
+          mainnet: getContract('mainnet', 'l2')?.address || '',
+        }
+      };
+      
+      // Update contract ABIs based on configuration
+      const newAbiFiles = {
+        l1: getContract('testnet', 'l1')?.contract || 'L1QueryOwner',
+        l2: getContract('testnet', 'l2')?.contract || 'L2Relay'
+      };
+      
+      // Update the contract configuration if any address has changed
+      if (
+        newAddresses.l1.testnet !== contractConfig.addresses.l1.testnet ||
+        newAddresses.l1.mainnet !== contractConfig.addresses.l1.mainnet ||
+        newAddresses.l2.testnet !== contractConfig.addresses.l2.testnet ||
+        newAddresses.l2.mainnet !== contractConfig.addresses.l2.mainnet ||
+        newAbiFiles.l1 !== contractConfig.abiFiles.l1 ||
+        newAbiFiles.l2 !== contractConfig.abiFiles.l2
+      ) {
+        setContractConfig({
+          addresses: newAddresses,
+          abiFiles: newAbiFiles
+        });
+        
+        setBridgeStatus(prev => {
+          return `${prev ? prev + '\n\n' : ''}Loaded contract addresses from configuration.`;
+        });
+      }
+    }
+  }, [contractsConfig, configLoading, getContract]);
   
   // Update network when layer changes
   useEffect(() => {
@@ -167,6 +213,41 @@ const BridgeTest: React.FC = () => {
     if (window.confirm('Are you sure you want to reset all contract configuration to defaults?')) {
       setContractConfig(defaultConfig);
       setBridgeStatus('Configuration reset to defaults');
+    }
+  };
+  
+  // Load from contract config file
+  const handleLoadFromConfig = () => {
+    if (configLoading || !contractsConfig) {
+      setBridgeStatus('Contract configuration is still loading...');
+      return;
+    }
+    
+    if (window.confirm('Load contract addresses from the application configuration file?')) {
+      // Load the deployed contract addresses from the configuration
+      const newAddresses = {
+        l1: {
+          testnet: getContract('testnet', 'l1')?.address || '',
+          mainnet: getContract('mainnet', 'l1')?.address || '',
+        },
+        l2: {
+          testnet: getContract('testnet', 'l2')?.address || '',
+          mainnet: getContract('mainnet', 'l2')?.address || '',
+        }
+      };
+      
+      // Update contract ABIs based on configuration
+      const newAbiFiles = {
+        l1: getContract('testnet', 'l1')?.contract || 'L1QueryOwner',
+        l2: getContract('testnet', 'l2')?.contract || 'L2Relay'
+      };
+      
+      setContractConfig({
+        addresses: newAddresses,
+        abiFiles: newAbiFiles
+      });
+      
+      setBridgeStatus('Contract addresses loaded from configuration file.');
     }
   };
   
@@ -278,13 +359,23 @@ const BridgeTest: React.FC = () => {
       
       <div className="contract-config">
         <h3>Contract Configuration</h3>
-        <button 
-          className="reset-button"
-          onClick={handleResetConfig}
-          title="Reset to default values"
-        >
-          Reset Configuration
-        </button>
+        <div className="config-buttons">
+          <button 
+            className="config-button reset-button"
+            onClick={handleResetConfig}
+            title="Reset to default values"
+          >
+            Reset
+          </button>
+          <button 
+            className="config-button load-button"
+            onClick={handleLoadFromConfig}
+            disabled={configLoading || !contractsConfig}
+            title="Load addresses from the contract config file"
+          >
+            Load from Config
+          </button>
+        </div>
         
         <div className="config-section">
           <h4>L1 Contracts</h4>
