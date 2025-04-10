@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useBlockchain } from './BlockchainContext';
+// Import the contract config directly
+import contractConfigJson from '../assets/contract_config.json';
 
 // Define the contract config structure
 interface ContractInfo {
@@ -41,30 +43,32 @@ export function useContractConfig() {
     networkType === 'dev' || networkType === 'prod' ? 'l1' :
     networkType === 'arbitrum_testnet' || networkType === 'arbitrum_mainnet' ? 'l2' : 'l1';
 
+  const loadConfig = async () => {
+    try {
+      setLoading(true);
+      
+      // Use the imported JSON directly instead of fetching
+      console.log('Loading contract config from imported file');
+      setConfig(contractConfigJson as ContractConfig);
+      console.log('Loaded contract config:', contractConfigJson);
+      setError(null);
+    } catch (err) {
+      console.error('Error loading contract configuration:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load config on initial mount
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch the contract configuration file
-        const response = await fetch('/assets/contract_config.json');
-        if (!response.ok) {
-          throw new Error(`Failed to load contract configuration: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        setConfig(data);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading contract configuration:', err);
-        setError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     loadConfig();
   }, []);
+  
+  // Reload config when network type changes
+  useEffect(() => {
+    loadConfig();
+  }, [networkType]);
 
   // Get current contract address based on active environment and layer
   const getCurrentContract = (): ContractInfo | undefined => {
@@ -88,6 +92,11 @@ export function useContractConfig() {
     }
   };
   
+  // Method to manually reload config
+  const reloadConfig = () => {
+    loadConfig();
+  };
+  
   return {
     loading,
     error,
@@ -95,7 +104,8 @@ export function useContractConfig() {
     environment,
     layer,
     getCurrentContract,
-    getContract
+    getContract,
+    reloadConfig
   };
 }
 

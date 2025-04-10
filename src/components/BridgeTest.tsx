@@ -38,7 +38,7 @@ const BridgeTest: React.FC = () => {
   const { networkType, switchNetwork } = useBlockchain();
   
   // Get contract configuration
-  const { loading: configLoading, config: contractsConfig, getContract } = useContractConfig();
+  const { loading: configLoading, config: contractsConfig, getContract, reloadConfig } = useContractConfig();
   
   // Default config
   const defaultConfig: ContractConfig = {
@@ -148,6 +148,36 @@ const BridgeTest: React.FC = () => {
         switchNetwork('arbitrum_mainnet'); // Switch to Arbitrum One
         setBridgeStatus('Connected to Arbitrum One mainnet');
       }
+    }
+    
+    // Force reload the contract config when changing networks
+    if (!configLoading && contractsConfig) {
+      // Small delay to ensure network switch completes first
+      setTimeout(() => {
+        // Reload the contract configuration
+        reloadConfig();
+        
+        // Update the UI with new addresses
+        const newAddresses = {
+          l1: {
+            testnet: getContract('testnet', 'l1')?.address || '',
+            mainnet: getContract('mainnet', 'l1')?.address || '',
+          },
+          l2: {
+            testnet: getContract('testnet', 'l2')?.address || '',
+            mainnet: getContract('mainnet', 'l2')?.address || '',
+          }
+        };
+        
+        setContractConfig(prev => ({
+          ...prev,
+          addresses: newAddresses
+        }));
+        
+        setBridgeStatus(prev => {
+          return `${prev ? prev + '\n\n' : ''}Updated contract addresses for ${layer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${environment}.`;
+        });
+      }, 500);
     }
   }, [layer, environment, switchNetwork]);
   
