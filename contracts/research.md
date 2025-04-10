@@ -25,3 +25,4 @@ The L2 contract, also in Vyper, handles messaging to L1 via the ArbSys precompil
 
 
 # https://docs.arbitrum.io/how-arbitrum-works/l1-to-l2-messaging
+# https://docs.arbitrum.io/build-decentralized-apps/reference/contract-addresses 

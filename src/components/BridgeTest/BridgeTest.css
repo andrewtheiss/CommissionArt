@@ -165,7 +165,7 @@
   font-size: 0.9em;
 }
 
-.input-group input, .input-group textarea, .input-group select {
+.input-group input, .input-group select {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
@@ -173,11 +173,6 @@
   font-size: 0.9em;
   width: 100%;
   box-sizing: border-box;
-}
-
-.input-group textarea {
-  resize: vertical;
-  min-height: 60px;
 }
 
 .abi-selector {
@@ -188,40 +183,6 @@
 
 .abi-selector option {
   padding: 8px;
-}
-
-.message-section {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  background-color: #ffffff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.send-button {
-  padding: 12px 20px;
-  background-color: #0066cc;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  align-self: flex-end;
-  margin-top: 10px;
-}
-
-.send-button:hover:not(:disabled) {
-  background-color: #0055aa;
-}
-
-.send-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
 }
 
 .status-box {
@@ -270,133 +231,30 @@
   }
 }
 
-/* Add styles for NFT query form */
-.nft-query-section {
-  margin: 20px 0;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.nft-query-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.connect-button, .submit-button {
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s, opacity 0.2s;
-}
-
-.connect-button {
-  background-color: #4a90e2;
-  color: white;
-}
-
-.connect-button:hover {
-  background-color: #3a80d2;
-}
-
-.submit-button {
-  background-color: #5cb85c;
-  color: white;
-}
-
-.submit-button:hover {
-  background-color: #4cA84c;
-}
-
-.submit-button:disabled {
-  background-color: #aaa;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.transaction-info, .query-result {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.transaction-info h4, .query-result h4 {
-  margin-top: 0;
-  color: #444;
-}
-
-.transaction-info a {
-  color: #4a90e2;
-  text-decoration: none;
-}
-
-.transaction-info a:hover {
-  text-decoration: underline;
-}
-
-.bridge-status {
-  margin-top: 30px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.bridge-status pre {
-  max-height: 300px;
-  overflow-y: auto;
-  background-color: #f5f5f5;
-  padding: 15px;
-  border-radius: 6px;
-  font-family: monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #333;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.info-message {
-  background-color: #e8f4fd;
-  border-left: 4px solid #0066cc;
-  padding: 12px 15px;
-  margin-bottom: 15px;
-  border-radius: 4px;
-  font-size: 0.9em;
-  color: #333;
-}
-
-.info-message code {
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 2px 5px;
-  border-radius: 3px;
-  font-family: monospace;
-  font-size: 0.95em;
-}
-
 .metamask-actions {
   display: flex;
   flex-direction: column;
   gap: 15px;
   background-color: #f8f9fa;
-  border-radius: 8px;
+  border-radius: 0 0 8px 8px;
   padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eaeaea;
+  border-top: none;
   width: 100%;
   box-sizing: border-box;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .metamask-actions h4 {
@@ -525,57 +383,105 @@
   transform: rotate(180deg);
 }
 
-.metamask-actions {
+/* L1 Query Section */
+.l1-query-section {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f5f8ff; /* Slightly different background than the L2 query */
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
+  border-left: 4px solid #4a5bcc; /* Different border color to distinguish */
+}
+
+.l1-query-section h3 {
+  margin-bottom: 10px;
+  color: #4a5bcc; /* Matching the border color */
+  font-size: 1.1em;
+}
+
+.l1-query-form {
   display: flex;
   flex-direction: column;
   gap: 15px;
-  background-color: #f8f9fa;
-  border-radius: 0 0 8px 8px;
-  padding: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #eaeaea;
-  border-top: none;
-  width: 100%;
-  box-sizing: border-box;
-  animation: slideDown 0.3s ease;
+  margin-top: 15px;
 }
 
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.field-help {
-  font-size: 0.8em;
-  color: #666;
-  margin-top: 3px;
-  font-style: italic;
-}
-
-.notice-message {
-  background-color: #f8f0e3;
-  border-left: 4px solid #f5a623;
-  padding: 12px 15px;
-  margin-bottom: 20px;
+.l1-query-button {
+  padding: 10px 15px;
+  background-color: #4a5bcc; /* Different color scheme for L1 */
+  color: white;
+  border: none;
   border-radius: 4px;
-  font-size: 0.9em;
-  color: #5a4a2d;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  width: fit-content;
 }
 
-.notice-message p {
-  margin: 0 0 8px 0;
+.l1-query-button:hover {
+  background-color: #3a4bb9;
 }
 
-.notice-message p:last-child {
+.l1-create-ticket-button {
+  padding: 10px 15px;
+  background-color: #8e44ad; /* Purple for create ticket */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  width: fit-content;
+}
+
+.l1-create-ticket-button:hover {
+  background-color: #7d3c98;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+/* Advanced Options */
+.advanced-options {
+  margin: 15px 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.advanced-options summary {
+  padding: 12px 15px;
+  cursor: pointer;
+  background-color: #f9f9f9;
+  border-bottom: 1px solid #ddd;
+  font-weight: 500;
+  color: #666;
+  user-select: none;
+}
+
+.advanced-options summary:hover {
+  background-color: #f0f0f0;
+}
+
+.advanced-options summary:focus {
+  outline: none;
+}
+
+.advanced-fields {
+  padding: 15px;
+  background-color: #fafafa;
+}
+
+.advanced-fields .input-group {
+  margin-bottom: 12px;
+}
+
+.advanced-fields .input-group:last-child {
   margin-bottom: 0;
-}
-
-.notice-message strong {
-  font-weight: 600;
 } 

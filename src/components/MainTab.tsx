@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './MainTab.css';
 import ImageCompressor from './ImageCompressor';
-import BridgeTest from './BridgeTest';
+import BridgeTest from './BridgeTest/index';
 
 // ABI fragments for Registry contract functions we need
 const REGISTRY_ABI = [

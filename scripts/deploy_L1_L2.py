@@ -65,13 +65,13 @@ def deploy_contracts():
             l1_contract = project.L1QueryOwner.at(l1_existing_address)
         else:
             print(f"Deploying L1QueryOwner on {l1_network}")
-            # Get the inbox address for the L1QueryOwner constructor
+            # Get the Sequencer inbox address for the L1QueryOwner constructor
             if network_choice == "local":
                 inbox_address = "0x0000000000000000000000000000000000000000"  # Default for local
             elif network_choice == "testnet":
-                inbox_address = "0x6bEbC4925716945d46F0ec336d5f620C47804f00"  # Sepolia
+                inbox_address = "0x6c97864CE4bEf387dE0b3310A44230f7E3F1be0D"  # Sepolia
             else:
-                inbox_address = "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f"  # Mainnet
+                inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet
             
             # Allow customizing the inbox address
             inbox_input = input(f"Enter Arbitrum Inbox address (default: {inbox_address}): ").strip()

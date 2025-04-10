@@ -49,6 +49,90 @@
   {
     "inputs": [
       {
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "l2_receiver",
+        "type": "address"
+      },
+      {
+        "name": "max_submission_cost",
+        "type": "uint256"
+      }
+    ],
+    "name": "queryNFTAndSendBack",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "l2_receiver",
+        "type": "address"
+      },
+      {
+        "name": "max_submission_cost",
+        "type": "uint256"
+      },
+      {
+        "name": "gas_limit",
+        "type": "uint256"
+      }
+    ],
+    "name": "queryNFTAndSendBack",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "l2_receiver",
+        "type": "address"
+      },
+      {
+        "name": "max_submission_cost",
+        "type": "uint256"
+      },
+      {
+        "name": "gas_limit",
+        "type": "uint256"
+      },
+      {
+        "name": "max_fee_per_gas",
+        "type": "uint256"
+      }
+    ],
+    "name": "queryNFTAndSendBack",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "inbox_address",
         "type": "address"
       }
