@@ -85,7 +85,7 @@ def depositERC20(amount: uint256) -> uint256:
     ...
 
 @payable
-def createRetryableTicket(to: address, l2CallValue: uint256, maxSubmissionCost: uint256, excessFeeRefundAddress: address, callValueRefundAddress: address, gasLimit: uint256, maxFeePerGas: uint256, tokenTotalFeeAmount: uint256, data: Bytes[1024]) -> uint256:
+def createRetryableTicket(to: address, l2CallValue: uint256, maxSubmissionCost: uint256, excessFeeRefundAddress: address, callValueRefundAddress: address, gasLimit: uint256, maxFeePerGas: uint256, data: Bytes[64]) -> uint256:
     ...
 
 @external
