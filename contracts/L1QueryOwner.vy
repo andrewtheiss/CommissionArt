@@ -61,15 +61,15 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
     
     # Create the retryable ticket with all required parameters
     ticket_id: uint256 = extcall IERC20Inbox(INBOX).createRetryableTicket(
-        to=l2_receiver,
-        l2CallValue=0,
-        maxSubmissionCost=max_submission_cost,
-        excessFeeRefundAddress=self,
-        callValueRefundAddress=self,
-        gasLimit=gas_limit,
-        maxFeePerGas=max_fee_per_gas,
-        tokenTotalFeeAmount=msg.value,
-        data=data,
+        l2_receiver,
+        0,
+        max_submission_cost,
+        self,
+        self,
+        gas_limit,
+        max_fee_per_gas,
+        msg.value,
+        data,
         value=msg.value
     )
     
