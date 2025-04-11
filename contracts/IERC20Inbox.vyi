@@ -1,0 +1,93 @@
+# Events
+
+event InboxMessageDelivered:
+    messageNum: indexed(uint256)
+    data: Bytes[1024]
+
+event InboxMessageDeliveredFromOrigin:
+    messageNum: indexed(uint256)
+
+# Functions
+
+@view
+@external
+def bridge() -> address:
+    ...
+
+@view
+@external
+def sequencerInbox() -> address:
+    ...
+
+@view
+@external
+def maxDataSize() -> uint256:
+    ...
+
+@external
+def sendL2MessageFromOrigin(messageData: Bytes[1024]) -> uint256:
+    ...
+
+@external
+def sendL2Message(messageData: Bytes[1024]) -> uint256:
+    ...
+
+@external
+def sendUnsignedTransaction(gasLimit: uint256, maxFeePerGas: uint256, nonce: uint256, to: address, value: uint256, data: Bytes[1024]) -> uint256:
+    ...
+
+@external
+def sendContractTransaction(gasLimit: uint256, maxFeePerGas: uint256, to: address, value: uint256, data: Bytes[1024]) -> uint256:
+    ...
+
+@view
+@external
+def calculateRetryableSubmissionFee(dataLength: uint256, baseFee: uint256) -> uint256:
+    ...
+
+@external
+def pause():
+    ...
+
+@external
+def unpause():
+    ...
+
+@external
+def setAllowList(user: DynArray[address, 100], val: DynArray[bool, 100]):
+    ...
+
+@external
+def setAllowListEnabled(_allowListEnabled: bool):
+    ...
+
+@view
+@external
+def isAllowed(user: address) -> bool:
+    ...
+
+@view
+@external
+def allowListEnabled() -> bool:
+    ...
+
+@external
+def initialize(_bridge: address, _sequencerInbox: address):
+    ...
+
+@view
+@external
+def getProxyAdmin() -> address:
+    ...
+
+@external
+def depositERC20(amount: uint256) -> uint256:
+    ...
+
+@payable
+def createRetryableTicket(to: address, l2CallValue: uint256, maxSubmissionCost: uint256, excessFeeRefundAddress: address, callValueRefundAddress: address, gasLimit: uint256, maxFeePerGas: uint256, tokenTotalFeeAmount: uint256, data: Bytes[1024]) -> uint256:
+    ...
+
+@external
+def unsafeCreateRetryableTicket(to: address, l2CallValue: uint256, maxSubmissionCost: uint256, excessFeeRefundAddress: address, callValueRefundAddress: address, gasLimit: uint256, maxFeePerGas: uint256, tokenTotalFeeAmount: uint256, data: Bytes[1024]) -> uint256:
+    ...

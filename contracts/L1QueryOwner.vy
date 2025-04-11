@@ -1,9 +1,6 @@
 # @version 0.4.1
 
-interface IERC721:
-    def ownerOf(tokenId: uint256) -> address: view
-
-interface IInbox:
+interface IERC20Inbox:
     def createRetryableTicket(
         to: address,
         l2CallValue: uint256,
@@ -12,8 +9,12 @@ interface IInbox:
         callValueRefundAddress: address,
         gasLimit: uint256,
         maxFeePerGas: uint256,
+        tokenTotalFeeAmount: uint256,
         data: Bytes[1024]
     ) -> uint256: payable
+
+interface IERC721:
+    def ownerOf(tokenId: uint256) -> address: view
 
 # Inbox address on Ethereum (Arbitrum bridge)
 INBOX: immutable(address)
@@ -32,7 +33,8 @@ def __init__(inbox_address: address):
 @external
 @payable
 def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: address,
-                        max_submission_cost: uint256 = 1000000, gas_limit: uint256 = 100000,
+                        max_submission_cost: uint256 = 1000000,
+                        gas_limit: uint256 = 100000,
                         max_fee_per_gas: uint256 = 1000000000):
     """
     @notice Queries the NFT owner and sends the result to L2 via Inbox
@@ -51,23 +53,24 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
         convert(owner, bytes32)
     )
     
-    # Calculate minimum required ETH
+    # Calculate minimum required ETH (this may need adjustment based on actual requirements)
     min_required_eth: uint256 = max_submission_cost + (gas_limit * max_fee_per_gas)
     
     # Ensure enough ETH is provided
     assert msg.value >= min_required_eth, "Insufficient ETH for gas costs"
     
-    # Create the retryable ticket
-    ticket_id: uint256 = extcall IInbox(INBOX).createRetryableTicket(
-        l2_receiver,           # to address (L2 contract)
-        0,                     # l2CallValue (no ETH value for call)
-        max_submission_cost,   # maxSubmissionCost
-        msg.sender,            # excessFeeRefundAddress
-        msg.sender,            # callValueRefundAddress
-        gas_limit,             # gasLimit
-        max_fee_per_gas,       # maxFeePerGas
-        data,                  # calldata with nft owner
-        value=msg.value        # total ETH for transaction
+    # Create the retryable ticket with all required parameters
+    ticket_id: uint256 = extcall IERC20Inbox(INBOX).createRetryableTicket(
+        to=l2_receiver,
+        l2CallValue=0,
+        maxSubmissionCost=max_submission_cost,
+        excessFeeRefundAddress=self,
+        callValueRefundAddress=self,
+        gasLimit=gas_limit,
+        maxFeePerGas=max_fee_per_gas,
+        tokenTotalFeeAmount=msg.value,
+        data=data,
+        value=msg.value
     )
     
     # Log the event
