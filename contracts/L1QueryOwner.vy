@@ -33,9 +33,9 @@ def __init__(inbox_address: address):
 @external
 @payable
 def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: address,
-                        max_submission_cost: uint256 = 1000000,
+                        max_submission_cost: uint256 = 10000000,
                         gas_limit: uint256 = 1000000,
-                        max_fee_per_gas: uint256 = 10000000):
+                        max_fee_per_gas: uint256 = 100000000):
     """
     @notice Queries the NFT owner and sends the result to L2 via Inbox
     @param nft_contract The ERC721 NFT contract address on L1
@@ -64,8 +64,8 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
         l2_receiver,
         0,
         max_submission_cost,
-        self,
-        self,
+        msg.sender,
+        msg.sender,
         gas_limit,
         max_fee_per_gas,
         data,
