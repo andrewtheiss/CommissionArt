@@ -33,7 +33,7 @@ def __init__(inbox_address: address):
 @external
 @payable
 def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: address,
-                        max_submission_cost: uint256 = 10000000,
+                        max_submission_cost: uint256 = 4500000000000,
                         gas_limit: uint256 = 1000000,
                         max_fee_per_gas: uint256 = 100000000):
     """
@@ -48,6 +48,7 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
     owner: address = staticcall IERC721(nft_contract).ownerOf(token_id)
     
     # Create calldata with method selector and parameter
+    # Or this can be the literally bytes b"\x54\xd2\x72\x47"  # This is 0x54d27247 as a bytes literal
     func_selector: Bytes[4] = slice(keccak256("receiveResultFromL1(address)"), 0, 4)  # 0x7b8a9b7a
 
     # Construct data with l2_receiver as the parameter

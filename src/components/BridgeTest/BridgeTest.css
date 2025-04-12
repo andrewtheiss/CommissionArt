@@ -940,4 +940,136 @@
   font-family: 'Courier New', monospace;
   color: #333;
   font-weight: 500;
+}
+
+.default-gas-info {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f8f8f8;
+  border-left: 3px solid #e74c3c;
+  border-radius: 3px;
+}
+
+.default-gas-info p {
+  margin: 0 0 5px 0;
+  font-weight: 600;
+  color: #e74c3c;
+}
+
+.default-gas-info ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #555;
+  font-size: 0.9em;
+}
+
+.default-gas-info li {
+  margin-bottom: 3px;
+}
+
+/* Gas estimation section */
+.gas-estimate-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.estimate-gas-button {
+  padding: 10px 15px;
+  background-color: #34495e;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  width: fit-content;
+}
+
+.estimate-gas-button:hover:not(:disabled) {
+  background-color: #2c3e50;
+}
+
+.estimate-gas-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.gas-estimation-results {
+  padding: 15px;
+  background-color: #f7f9fa;
+  border-radius: 6px;
+  border: 1px solid #e3e9eb;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.estimation-result-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9em;
+  padding: 5px 0;
+  border-bottom: 1px dashed #e3e9eb;
+}
+
+.estimation-result-item:last-child {
+  border-bottom: none;
+}
+
+.estimation-result-item span:first-child {
+  color: #607d8b;
+  font-weight: 500;
+}
+
+.estimation-result-item span:last-child {
+  font-family: 'Courier New', monospace;
+  color: #2c3e50;
+}
+
+.estimation-result-item.total {
+  margin-top: 5px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e9eb;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.button-group {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.query-button {
+  padding: 12px 20px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  flex: 1;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.query-button:hover:not(:disabled) {
+  background-color: #2980b9;
+}
+
+.query-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.query-button.optimized {
+  background-color: #27ae60;
+}
+
+.query-button.optimized:hover:not(:disabled) {
+  background-color: #219955;
 } 
