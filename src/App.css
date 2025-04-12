@@ -184,22 +184,6 @@ h2 {
   color: #333;
 }
 
-/* RetryableTicket Component Styles */
-.retryable-ticket-container {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 20px;
-  margin: 20px auto;
-  max-width: 800px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.retryable-ticket-container h2 {
-  color: #333;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
 /* Add wallet status styles */
 .wallet-status {
   background-color: #e3f2fd;

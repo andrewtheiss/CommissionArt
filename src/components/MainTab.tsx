@@ -3,7 +3,6 @@ import { ethers } from 'ethers';
 import './MainTab.css';
 import ImageCompressor from './ImageCompressor';
 import BridgeTest from './BridgeTest/index';
-import RetryableTicket from './RetryableTicket';
 
 // ABI fragments for Registry contract functions we need
 const REGISTRY_ABI = [
@@ -38,7 +37,7 @@ const MainTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'retryable'>('viewer');
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge'>('viewer');
 
   // Helper function to detect image type from hex data
   const detectImageType = (hexData: string): string => {
@@ -221,12 +220,6 @@ const MainTab: React.FC = () => {
         >
           Bridge Test
         </button>
-        <button 
-          className={`tab-button ${activeTab === 'retryable' ? 'active' : ''}`}
-          onClick={() => setActiveTab('retryable')}
-        >
-          Retryable Ticket
-        </button>
       </div>
 
       {activeTab === 'viewer' ? (
@@ -294,10 +287,8 @@ const MainTab: React.FC = () => {
         </>
       ) : activeTab === 'compressor' ? (
         <ImageCompressor />
-      ) : activeTab === 'bridge' ? (
-        <BridgeTest />
       ) : (
-        <RetryableTicket />
+        <BridgeTest />
       )}
     </div>
   );
