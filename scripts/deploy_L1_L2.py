@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 import time
 from datetime import datetime
-from contract_config_writer import update_contract_address, get_contract_address
+from .contract_config_writer import update_contract_address, get_contract_address
 import sys
 
 # Maximum number of retries for L2 transactions
