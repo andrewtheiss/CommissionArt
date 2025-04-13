@@ -5,6 +5,10 @@
 
 
 owner: public(address)
+nft_contract: public(address)
+token_id: public(uint256)
+registry: public(address)
+is_initialized: public(bool)
 imageDataContracts: public(HashMap[uint256, address])
 l1_contract: public(address)  # Address of the NFT contract on L1
 is_ownership_rescinded: public(bool)  # Flag to track if ownership has been rescinded
@@ -15,13 +19,40 @@ event OwnershipRescinded:
 event L1ContractSet:
     l1_contract: indexed(address)
 
+event Initialized:
+    nft_contract: indexed(address)
+    token_id: indexed(uint256)
+    registry: indexed(address)
+
+event OwnershipUpdated:
+    nft_contract: indexed(address)
+    token_id: indexed(uint256)
+    owner: address
+
 @deploy
 def __init__():
     self.owner = msg.sender
     self.is_ownership_rescinded = False
     self.l1_contract = empty(address)
+    self.is_initialized = False
 
+@external
+def initialize(nft_contract: address, token_id: uint256, registry: address):
+    assert not self.is_initialized, "Already initialized"
+    self.is_initialized = True
+    self.nft_contract = nft_contract
+    self.token_id = token_id
+    self.registry = registry
+    log Initialized(nft_contract=nft_contract, token_id=token_id, registry=registry)
 
+@external
+def updateRegistration(nft_contract: address, token_id: uint256, owner: address):
+    assert self.is_initialized, "Not initialized"
+    assert msg.sender == self.registry, "Only registry can update owner"
+    assert self.nft_contract == nft_contract, "NFT contract mismatch"
+    assert self.token_id == token_id, "Token ID mismatch"
+    self.owner = owner
+    log OwnershipUpdated(nft_contract=nft_contract, token_id=token_id, owner=owner)
 
 @external
 def registerImageData(azukiId: uint256, imageContract: address):

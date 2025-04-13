@@ -33,7 +33,7 @@ owner: public(address)
 @deploy
 def __init__(initial_l1_helper: address, initial_l3_contract: address):
     self.l1_helper_contract = initial_l1_helper
-    self.l3_contract = initial_l3_contract
+    self.l3_contract = initial_l3_contract # Owner Registry contract
     self.owner = msg.sender
 
 @external
