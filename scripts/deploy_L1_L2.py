@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 import time
 from datetime import datetime
-from contract_config_writer import update_contract_address, get_contract_address
+from .contract_config_writer import update_contract_address, get_contract_address
 import sys
 
 # Maximum number of retries for L2 transactions
@@ -69,7 +69,7 @@ def deploy_contracts():
             if network_choice == "local":
                 inbox_address = "0x0000000000000000000000000000000000000000"  # Default for local
             elif network_choice == "testnet":
-                inbox_address = "0x6c97864CE4bEf387dE0b3310A44230f7E3F1be0D"  # Sepolia
+                inbox_address = "0xaAe29B0366299461418F5324a79Afc425BE5ae21"  # Sepolia for retryable tickets
             else:
                 inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet
             

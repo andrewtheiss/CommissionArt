@@ -91,6 +91,7 @@ Once ownership is rescinded, no more images can be added to the Registry.
 
 ### Ape developing --
 # https://docs.apeworx.io/ape/stable/userguides/quickstart.html
+# pip install pipx
 # pipx install eth-ape  (pipx installs everything in a venv system wide!)
 # Install plugins
 pip install eth-ape

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import ethersService from './ethers-service';
 import { NetworkConfig } from './config';
 import config from './config';
+import { ethers } from 'ethers';
 
 type NetworkType = 'animechain' | 'dev' | 'prod' | 'local' | 'arbitrum_testnet' | 'arbitrum_mainnet';
 
@@ -23,6 +24,7 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   const [networkType, setNetworkType] = useState<NetworkType>(config.defaultNetwork as NetworkType);
   const [network, setNetwork] = useState<NetworkConfig>(ethersService.getNetwork());
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
 
   useEffect(() => {
     // Check connection status on mount
@@ -62,6 +64,7 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const value = {
+    provider,
     isConnected,
     isLoading,
     networkType,

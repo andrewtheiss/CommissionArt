@@ -183,3 +183,131 @@ h2 {
   line-height: 1.5;
   color: #333;
 }
+
+/* Add wallet status styles */
+.wallet-status {
+  background-color: #e3f2fd;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #bbdefb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.wallet-status h3 {
+  margin-top: 0;
+  color: #1976d2;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.wallet-status p {
+  margin-bottom: 15px;
+}
+
+.connect-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.connect-button:hover {
+  background-color: #388e3c;
+}
+
+.connect-button:disabled {
+  background-color: #a5d6a7;
+  cursor: not-allowed;
+}
+
+.parameters-display {
+  background-color: white;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.parameters-display h3 {
+  margin-top: 0;
+  color: #555;
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+.parameters-display table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.parameters-display td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.parameters-display tr:last-child td {
+  border-bottom: none;
+}
+
+.parameters-display td:first-child {
+  font-weight: bold;
+  width: 40%;
+}
+
+.action-container {
+  display: flex;
+  justify-content: center;
+  margin: 25px 0;
+}
+
+.create-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.create-button:hover {
+  background-color: #2980b9;
+}
+
+.create-button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+.status-container {
+  background-color: #f1f9ff;
+  border-radius: 6px;
+  padding: 15px;
+  border: 1px solid #d6eaf8;
+}
+
+.status-container h3 {
+  margin-top: 0;
+  color: #555;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.status-container a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.status-container a:hover {
+  text-decoration: underline;
+}

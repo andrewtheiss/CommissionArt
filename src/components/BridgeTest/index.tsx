@@ -140,6 +140,26 @@ const BridgeTest: React.FC = () => {
   // Bridge status
   const [bridgeStatus, setBridgeStatus] = useState<string>('');
   
+  // State for showing/hiding contract configuration
+  const [showContractConfig, setShowContractConfig] = useState(false);
+  
+  // State for gas estimation
+  const [gasEstimation, setGasEstimation] = useState<{
+    estimating: boolean;
+    estimationComplete: boolean;
+    maxSubmissionCost: string;
+    gasLimit: string;
+    maxFeePerGas: string;
+    totalEstimatedCost: string;
+  }>({
+    estimating: false,
+    estimationComplete: false,
+    maxSubmissionCost: "4491126164080", // Higher default value
+    gasLimit: "1000000",
+    maxFeePerGas: "100000000",
+    totalEstimatedCost: "0",
+  });
+  
   // Save config to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(contractConfig));
@@ -406,212 +426,355 @@ const BridgeTest: React.FC = () => {
     }
   };
 
-  // Direct L1 query of NFT ownership
-  const queryNFTOnL1 = async () => {
-    // Ensure we're on L1
-    if (layer !== 'l1') {
-      setLayer('l1');
-      setBridgeStatus('Switching to L1 (Ethereum) for direct NFT query...');
-      setTimeout(queryNFTOnL1, 1000); // Try again after network change
-      return;
-    }
-
-    try {
-      // Connect wallet if not connected
-      if (!isConnected) {
-        await connectWallet();
-        if (!isConnected) {
-          setBridgeStatus('Please connect your wallet to continue');
-          return;
-        }
-      }
-
-      // Get the contract address and validate
-      const contractAddress = document.getElementById('l1NftContract') as HTMLInputElement;
-      const tokenId = document.getElementById('l1TokenId') as HTMLInputElement;
-
-      if (!contractAddress || !tokenId || !ethers.isAddress(contractAddress.value)) {
-        setBridgeStatus('Please enter a valid NFT contract address and token ID');
-        return;
-      }
-
-      const networkName = environment === 'testnet' ? 'Sepolia' : 'Ethereum Mainnet';
-      setBridgeStatus(`Querying NFT ownership directly on L1 (${networkName}) for contract ${contractAddress.value} and token ID ${tokenId.value}...`);
-
-      // Connect to provider
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      
-      // Confirm we're on the right network
-      const network = await provider.getNetwork();
-      const isSepoliaChainId = network.chainId === 11155111n; // Sepolia
-      const isMainnetChainId = network.chainId === 1n; // Ethereum mainnet
-      
-      if ((environment === 'testnet' && !isSepoliaChainId) || 
-          (environment === 'mainnet' && !isMainnetChainId)) {
-        setBridgeStatus(prev => `${prev}\n\nError: Please make sure your wallet is connected to ${networkName}`);
-        return;
-      }
-
-      // Standard ERC721 interface for ownerOf
-      const erc721ABI = ['function ownerOf(uint256 tokenId) view returns (address)'];
-      
-      // Create contract instance
-      const nftContract = new ethers.Contract(contractAddress.value, erc721ABI, provider);
-      
-      // Query owner
-      const owner = await nftContract.ownerOf(tokenId.value);
-      
-      setBridgeStatus(prev => `${prev}\n\nNFT Owner (from L1 ${networkName} direct query): ${owner}`);
-    } catch (error: any) {
-      console.error('Error querying NFT on L1:', error);
-      setBridgeStatus(prev => `${prev}\n\nError querying NFT on L1: ${error.message || 'Unknown error'}`);
-    }
-  };
-
-  // Create a retryable ticket via L1 contract
-  const createRetryableTicket = async () => {
+  // Function to estimate gas for the retryable ticket
+  const estimateRetryableTicketGas = async () => {
     if (!isConnected) {
       setBridgeStatus('Please connect your wallet to continue');
       return;
     }
 
     try {
-      setBridgeStatus('Creating retryable ticket...');
+      setGasEstimation(prev => ({ ...prev, estimating: true, estimationComplete: false }));
+      setBridgeStatus('Estimating gas for retryable ticket...');
 
-      // Get the contract address and validate
-      const contractAddress = document.getElementById('l1NftContract') as HTMLInputElement;
-      const tokenId = document.getElementById('l1TokenId') as HTMLInputElement;
-      const ethValueInput = document.getElementById('l1EthValue') as HTMLInputElement;
+      // Get form values or use defaults
+      const nftContractElement = document.getElementById('nftContract') as HTMLInputElement;
+      const tokenIdElement = document.getElementById('tokenId') as HTMLInputElement;
+      const l2ReceiverElement = document.getElementById('l2Receiver') as HTMLInputElement;
+
+      // Use the form values or fallback to defaults
+      const nftContract = nftContractElement?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const tokenId = tokenIdElement?.value || '0';
+      const l2Receiver = l2ReceiverElement?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
       
-      // Get the advanced options
-      const maxSubmissionCostInput = document.getElementById('maxSubmissionCost') as HTMLInputElement;
-      const l2GasLimitInput = document.getElementById('l2GasLimit') as HTMLInputElement;
-      const maxFeePerGasInput = document.getElementById('maxFeePerGas') as HTMLInputElement;
+      // The deployed contract address on Sepolia
+      const contractAddress = '0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2';
 
-      if (!contractAddress || !tokenId || !ethers.isAddress(contractAddress.value)) {
-        setBridgeStatus('Please enter a valid NFT contract address and token ID');
-        return;
+      // Get L1 provider
+      const l1Provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // Create a mock L2 provider for Arbitrum Sepolia
+      const l2Provider = new ethers.JsonRpcProvider("https://sepolia-rollup.arbitrum.io/rpc");
+
+      // Get the current L1 gas price
+      const l1FeeData = await l1Provider.getFeeData();
+      const l1GasPrice = l1FeeData.gasPrice || ethers.parseUnits("20", "gwei"); // Fallback
+
+      // Get the current L2 gas price (typically much lower than L1)
+      const l2FeeData = await l2Provider.getFeeData();
+      const l2GasPrice = l2FeeData.gasPrice || ethers.parseUnits("0.1", "gwei"); // Fallback
+      
+      setBridgeStatus(prev => `${prev}\n\nCurrent Gas Prices:
+- L1 (Sepolia): ${ethers.formatUnits(l1GasPrice, "gwei")} gwei
+- L2 (Arbitrum Sepolia): ${ethers.formatUnits(l2GasPrice, "gwei")} gwei`);
+
+      // Estimate L2 gas for the operation (calling receiveResultFromL1)
+      // We'll create a rough calldata simulation to estimate
+      const functionSig = "0x7b8a9b7a"; // receiveResultFromL1(address)
+      const mockOwner = "0x" + "0".repeat(64); // Mock owner parameter (will be replaced)
+      const l2Calldata = functionSig + mockOwner;
+      
+      // L2 gas estimation
+      let l2GasEstimate;
+      try {
+        l2GasEstimate = await l2Provider.estimateGas({
+          to: l2Receiver,
+          data: l2Calldata,
+        });
+        // Add a safety buffer (30%)
+        l2GasEstimate = l2GasEstimate * BigInt(11130) / BigInt(100);
+      } catch (error) {
+        console.warn("L2 gas estimation failed, using default:", error);
+        l2GasEstimate = BigInt(500000); // Use a conservative default
       }
+      
+      // Estimate the L1 calldata cost:
+      // This is a simplified estimation - in a production app, you would use 
+      // the Arbitrum SDK's L1ToL2MessageGasEstimator
+      
+      // Calculate a reasonable maxSubmissionCost based on L1 gas price
+      // Higher L1 gas price means higher submission cost
+      const callDataSizeEstimate = BigInt(300); // bytes
+      const callDataGasCostPerByte = BigInt(16); // Approximation
+      // maxSubmissionCost should scale with L1 gas price
+      const estimatedMaxSubmissionCost = (callDataSizeEstimate * callDataGasCostPerByte * l1GasPrice) / BigInt(1e9);
+      // Add a 50% buffer to be safe
+      const maxSubmissionCost = estimatedMaxSubmissionCost * BigInt(150) / BigInt(100);
+      
+      // L2 gas price is typically much lower than L1, we'll use the current L2 gas price with a buffer
+      const maxFeePerGas = l2GasPrice * BigInt(120) / BigInt(100); // 20% buffer
+      
+      // Calculate a reasonable total cost:
+      // L1 cost (submission) + L2 cost (execution)
+      const l2ExecutionCost = l2GasEstimate * maxFeePerGas;
+      // Include some ETH for the auto-redeem attempt (l2CallValue is 0 in this case)
+      const totalEstimatedCost = maxSubmissionCost + l2ExecutionCost;
+      
+      // Format values for display
+      const maxSubmissionCostFormatted = ethers.formatEther(maxSubmissionCost);
+      const gasLimitFormatted = l2GasEstimate.toString();
+      const maxFeePerGasFormatted = maxFeePerGas.toString();
+      const totalEstimatedCostFormatted = ethers.formatEther(totalEstimatedCost);
+      
+      // Add a buffer to the total recommended ETH value (25%)
+      const recommendedEthValue = ethers.formatEther(totalEstimatedCost * BigInt(125) / BigInt(100));
+      
+      setBridgeStatus(prev => `${prev}\n\nGas Estimation Results:
+- Max Submission Cost: ${maxSubmissionCostFormatted} ETH
+- Gas Limit: ${gasLimitFormatted}
+- Max Fee Per Gas: ${ethers.formatUnits(maxFeePerGas, "gwei")} gwei
+- Total Estimated Cost: ${totalEstimatedCostFormatted} ETH
+- Recommended ETH Value: ${recommendedEthValue} ETH (includes 25% buffer)`);
 
-      if (!ethValueInput || !ethValueInput.value) {
-        setBridgeStatus('Please enter a valid ETH value to cover cross-chain fees');
-        return;
+      // Update state with estimates
+      setGasEstimation({
+        estimating: false,
+        estimationComplete: true,
+        maxSubmissionCost: maxSubmissionCost.toString(),
+        gasLimit: gasLimitFormatted,
+        maxFeePerGas: maxFeePerGasFormatted,
+        totalEstimatedCost: totalEstimatedCostFormatted,
+      });
+      
+      // Update the ETH input field with the recommended value
+      const ethValueElement = document.getElementById('ethValue') as HTMLInputElement;
+      if (ethValueElement) {
+        ethValueElement.value = recommendedEthValue;
       }
+      
+    } catch (error: any) {
+      console.error('Error estimating gas:', error);
+      setBridgeStatus(prev => `${prev}\n\nError estimating gas: ${error.message || String(error)}`);
+      setGasEstimation(prev => ({ 
+        ...prev, 
+        estimating: false, 
+        estimationComplete: false 
+      }));
+    }
+  };
 
-      const networkName = environment === 'testnet' ? 'Sepolia' : 'Ethereum Mainnet';
-      setBridgeStatus(`Creating retryable ticket on L1 (${networkName}) for contract ${contractAddress.value} and token ID ${tokenId.value}...`);
+  // Function to call queryNFTAndSendBack with default parameters
+  const callQueryNFTAndSendBack = async () => {
+    if (!isConnected) {
+      setBridgeStatus('Please connect your wallet to continue');
+      return;
+    }
 
-      // Get the L1QueryOwner contract address
-      const l1ContractAddress = contractConfig.addresses.l1[environment];
-      if (!l1ContractAddress || !ethers.isAddress(l1ContractAddress)) {
-        setBridgeStatus(prev => `${prev}\n\nError: Invalid L1QueryOwner contract address. Please check contract configuration.`);
-        return;
-      }
+    // Ensure we're on L1 testnet
+    if (layer !== 'l1' || environment !== 'testnet') {
+      setLayer('l1');
+      setEnvironment('testnet');
+      setBridgeStatus('Switching to L1 (Sepolia) network...');
+      setTimeout(callQueryNFTAndSendBack, 1000); // Try again after network change
+      return;
+    }
 
-      // Get the L2Relay contract address
-      const l2ContractAddress = contractConfig.addresses.l2[environment];
-      if (!l2ContractAddress || !ethers.isAddress(l2ContractAddress)) {
-        setBridgeStatus(prev => `${prev}\n\nError: Invalid L2Relay contract address. Please check contract configuration.`);
-        return;
-      }
+    try {
+      setBridgeStatus('Preparing to query NFT ownership and send result to L2...');
 
-      // Get advanced options from state or use defaults
-      const maxSubmissionCost = BigInt(maxSubmissionCostInput?.value || '1000000'); // Default 0.001 ETH in wei
-      const l2GasLimit = BigInt(l2GasLimitInput?.value || '100000'); // Default 100k gas
-      const maxFeePerGas = BigInt(maxFeePerGasInput?.value || '1000000000'); // Default 1 gwei
+      // Get form values or use defaults
+      const nftContractElement = document.getElementById('nftContract') as HTMLInputElement;
+      const tokenIdElement = document.getElementById('tokenId') as HTMLInputElement;
+      const l2ReceiverElement = document.getElementById('l2Receiver') as HTMLInputElement;
+      const ethValueElement = document.getElementById('ethValue') as HTMLInputElement;
 
-      // Display parameters for user confirmation
-      console.log("Creating retryable ticket with parameters:");
-      console.log("- NFT Contract:", contractAddress.value);
-      console.log("- Token ID:", tokenId.value);
-      console.log("- L2 Receiver:", l2ContractAddress);
-      console.log("- Max Submission Cost:", maxSubmissionCost, "wei");
-      console.log("- Gas Limit:", l2GasLimit);
-      console.log("- Max Fee Per Gas:", maxFeePerGas, "wei");
+      // Use the form values or fallback to defaults
+      const nftContract = nftContractElement?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const tokenId = tokenIdElement?.value || '0';
+      const l2Receiver = l2ReceiverElement?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
+      const ethValue = ethValueElement?.value || '0.001';
 
-      // Convert from ETH to wei for transaction value
-      const ethValue = parseEther(ethValueInput.value);
-      const ethValueWei = parseEther(ethValueInput.value);
+      // The deployed contract address on Sepolia
+      const contractAddress = '0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2';
+      
+      // Default high values to ensure transaction success
+      const maxSubmissionCost = "4500000000000";  // Very high value due to fluctuations
+      const gasLimit = "1000000";                 // Keep at 1M gas
+      const maxFeePerGas = "100000000";           // Keep at 0.1 gwei
+      
+      setBridgeStatus(`Calling queryNFTAndSendBack on contract ${contractAddress} with parameters:
+- NFT Contract: ${nftContract}
+- Token ID: ${tokenId}
+- L2 Receiver: ${l2Receiver}
+- ETH Value: ${ethValue} ETH
+- Max Submission Cost: ${ethers.formatEther(maxSubmissionCost)} ETH
+- Gas Limit: ${gasLimit}
+- Max Fee Per Gas: ${ethers.formatUnits(maxFeePerGas, "gwei")} gwei`);
 
       // Create contract instance
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const l1QueryContract = new ethers.Contract(
-        l1ContractAddress,
-        [
-          "function queryNFTAndSendBack(address nftContract, uint256 tokenId, address l2Receiver, uint256 maxSubmissionCost, uint256 gasLimit, uint256 maxFeePerGas) external payable",
-          "event OwnerQueried(address indexed nftContract, uint256 indexed tokenId, address owner, uint256 ticketId)"
-        ],
-        signer
-      );
-
-      // Format parameters for Vyper contract
-      const tokenIdBN = toBigInt(tokenId.value);
-      const maxSubmissionCostBN = toBigInt(maxSubmissionCost);
-      const gasLimitBN = toBigInt(l2GasLimit);
-      const maxFeePerGasBN = toBigInt(maxFeePerGas);
-
-      // Send transaction
-      try {
-        console.log('Sending transaction with params:', {
-          nftContract: contractAddress.value,
-          tokenId: tokenIdBN,
-          l2Receiver: l2ContractAddress,
-          maxSubmissionCost: maxSubmissionCostBN,
-          gasLimit: gasLimitBN,
-          maxFeePerGas: maxFeePerGasBN,
-          ethValue: ethValueWei
-        });
-
-        // Prepare transaction options
-        const txOptions = {
-          value: ethValueWei
-        };
-
-        // Call the contract function
-        const tx = await l1QueryContract.queryNFTAndSendBack(
-          contractAddress.value,
-          tokenIdBN,
-          l2ContractAddress,
-          maxSubmissionCostBN,
-          gasLimitBN,
-          maxFeePerGasBN,
-          txOptions
-        );
-
-        console.log('Transaction submitted:', tx.hash);
-        setBridgeStatus(`Transaction submitted: ${tx.hash}`);
-        
-        // Wait for transaction confirmation
-        const receipt = await tx.wait();
-        console.log('Transaction confirmed:', receipt);
-        
-        // Find the OwnerQueried event from the receipt
-        const ownerQueriedEvent = receipt.logs.find(
-          (log: any) => log.fragment?.name === 'OwnerQueried'
-        );
-        
-        if (ownerQueriedEvent) {
-          const args = ownerQueriedEvent.args;
-          const owner = args[0];
-          const ticketId = args[1];
-          
-          console.log('OwnerQueried event found:', { owner, ticketId });
-          setBridgeStatus(`NFT owner query submitted. Awaiting L2 response for ticket: ${ticketId}`);
-          
-          // Start listening for result on L2
-          setIsListening(true);
-        } else {
-          console.log('No OwnerQueried event found in the receipt');
-          setBridgeStatus('Transaction confirmed, but no OwnerQueried event found');
-        }
-      } catch (error: any) {
-        console.error("Error creating retryable ticket:", error);
-        setBridgeStatus(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      
+      // Confirm we're on the right network
+      const network = await provider.getNetwork();
+      const isSepoliaChainId = network.chainId === 11155111n; // Sepolia
+      
+      if (!isSepoliaChainId) {
+        setBridgeStatus(prev => `${prev}\n\nError: Please make sure your wallet is connected to Sepolia`);
+        return;
       }
-    } catch (error) {
-      console.error("Error creating retryable ticket:", error);
-      setBridgeStatus(`Error: ${error instanceof Error ? error.message : String(error)}`);
+
+      // L1QueryOwner contract ABI with all parameters 
+      const l1QueryOwnerABI = [
+        "function queryNFTAndSendBack(address nftContract, uint256 tokenId, address l2Receiver, uint256 maxSubmissionCost, uint256 gasLimit, uint256 maxFeePerGas) external payable",
+        "event OwnerQueried(address indexed nftContract, uint256 indexed tokenId, address owner, uint256 ticketId)"
+      ];
+      
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, l1QueryOwnerABI, signer);
+      
+      // Convert ETH value to wei
+      const ethValueWei = parseEther(ethValue);
+      
+      // Call the contract function with all 6 parameters
+      const tx = await contract.queryNFTAndSendBack(
+        nftContract,
+        tokenId,
+        l2Receiver,
+        maxSubmissionCost,
+        gasLimit,
+        maxFeePerGas,
+        { value: ethValueWei }
+      );
+      
+      setBridgeStatus(prev => `${prev}\n\nTransaction submitted: ${tx.hash}`);
+      
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+      
+      setBridgeStatus(prev => `${prev}\n\nTransaction confirmed! Transaction hash: ${tx.hash}`);
+      
+      // Find the OwnerQueried event
+      const ownerQueriedEvents = receipt.logs
+        .filter((log: any) => log.fragment?.name === 'OwnerQueried');
+      
+      if (ownerQueriedEvents.length > 0) {
+        const event = ownerQueriedEvents[0];
+        const ticketId = event.args[3]; // Get the ticket ID from the event
+        
+        setBridgeStatus(prev => `${prev}\n\nSuccess! NFT ownership query sent to Arbitrum.
+Ticket ID: ${ticketId}
+You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.io/tx/${tx.hash}`);
+      } else {
+        setBridgeStatus(prev => `${prev}\n\nTransaction succeeded but no OwnerQueried event was found.`);
+      }
+      
+    } catch (error: any) {
+      console.error('Error calling queryNFTAndSendBack:', error);
+      setBridgeStatus(prev => `${prev}\n\nError: ${error.message || String(error)}`);
+    }
+  };
+
+  // Call queryNFTAndSendBack with optimized gas parameters
+  const callQueryNFTAndSendBackOptimized = async () => {
+    if (!isConnected) {
+      setBridgeStatus('Please connect your wallet to continue');
+      return;
+    }
+
+    // If we haven't estimated gas yet, run the estimation first
+    if (!gasEstimation.estimationComplete) {
+      setBridgeStatus('Please estimate gas first by clicking the "Estimate Gas" button');
+      return;
+    }
+
+    // Ensure we're on L1 testnet
+    if (layer !== 'l1' || environment !== 'testnet') {
+      setLayer('l1');
+      setEnvironment('testnet');
+      setBridgeStatus('Switching to L1 (Sepolia) network...');
+      setTimeout(() => callQueryNFTAndSendBackOptimized(), 1000); // Try again after network change
+      return;
+    }
+
+    try {
+      setBridgeStatus('Preparing to query NFT ownership with optimized gas parameters...');
+
+      // Get form values or use defaults
+      const nftContractElement = document.getElementById('nftContract') as HTMLInputElement;
+      const tokenIdElement = document.getElementById('tokenId') as HTMLInputElement;
+      const l2ReceiverElement = document.getElementById('l2Receiver') as HTMLInputElement;
+      const ethValueElement = document.getElementById('ethValue') as HTMLInputElement;
+
+      // Use the form values or fallback to defaults
+      const nftContract = nftContractElement?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const tokenId = tokenIdElement?.value || '0';
+      const l2Receiver = l2ReceiverElement?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
+      const ethValue = ethValueElement?.value || '0.001';
+
+      // The deployed contract address on Sepolia
+      const contractAddress = '0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2';
+      
+      setBridgeStatus(`Calling queryNFTAndSendBack with optimized gas parameters:
+- NFT Contract: ${nftContract}
+- Token ID: ${tokenId}
+- L2 Receiver: ${l2Receiver}
+- ETH Value: ${ethValue} ETH
+- Max Submission Cost: ${ethers.formatEther(gasEstimation.maxSubmissionCost)} ETH
+- Gas Limit: ${gasEstimation.gasLimit}
+- Max Fee Per Gas: ${ethers.formatUnits(gasEstimation.maxFeePerGas, "gwei")} gwei`);
+
+      // Create contract instance
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      // Confirm we're on the right network
+      const network = await provider.getNetwork();
+      const isSepoliaChainId = network.chainId === 11155111n; // Sepolia
+      
+      if (!isSepoliaChainId) {
+        setBridgeStatus(prev => `${prev}\n\nError: Please make sure your wallet is connected to Sepolia`);
+        return;
+      }
+
+      // L1QueryOwner contract ABI with the full function signature including all parameters
+      const l1QueryOwnerABI = [
+        "function queryNFTAndSendBack(address nftContract, uint256 tokenId, address l2Receiver, uint256 maxSubmissionCost, uint256 gasLimit, uint256 maxFeePerGas) external payable",
+        "event OwnerQueried(address indexed nftContract, uint256 indexed tokenId, address owner, uint256 ticketId)"
+      ];
+      
+      // Create contract instance
+      const contract = new ethers.Contract(contractAddress, l1QueryOwnerABI, signer);
+      
+      // Convert ETH value to wei
+      const ethValueWei = parseEther(ethValue);
+      
+      // Call the contract function with all parameters
+      const tx = await contract.queryNFTAndSendBack(
+        nftContract,
+        tokenId,
+        l2Receiver,
+        gasEstimation.maxSubmissionCost,
+        gasEstimation.gasLimit,
+        gasEstimation.maxFeePerGas,
+        { value: ethValueWei }
+      );
+      
+      setBridgeStatus(prev => `${prev}\n\nTransaction submitted: ${tx.hash}`);
+      
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+      
+      setBridgeStatus(prev => `${prev}\n\nTransaction confirmed! Transaction hash: ${tx.hash}`);
+      
+      // Find the OwnerQueried event
+      const ownerQueriedEvents = receipt.logs
+        .filter((log: any) => log.fragment?.name === 'OwnerQueried');
+      
+      if (ownerQueriedEvents.length > 0) {
+        const event = ownerQueriedEvents[0];
+        const ticketId = event.args[3]; // Get the ticket ID from the event
+        
+        setBridgeStatus(prev => `${prev}\n\nSuccess! NFT ownership query sent to Arbitrum with optimized gas parameters.
+Ticket ID: ${ticketId}
+You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.io/tx/${tx.hash}`);
+      } else {
+        setBridgeStatus(prev => `${prev}\n\nTransaction succeeded but no OwnerQueried event was found.`);
+      }
+      
+    } catch (error: any) {
+      console.error('Error calling queryNFTAndSendBack with optimized parameters:', error);
+      setBridgeStatus(prev => `${prev}\n\nError: ${error.message || String(error)}`);
     }
   };
 
@@ -714,6 +877,126 @@ const BridgeTest: React.FC = () => {
         </div>
       )}
       
+      {/* Query NFT Ownership Form */}
+      <div className="nft-query-form-section">
+        <h3>Call queryNFTAndSendBack on Sepolia</h3>
+        <div className="info-message">
+          This will query the NFT ownership on L1 and send the result to L2 via a retryable ticket.
+        </div>
+        
+        <div className="form-container">
+          <div className="input-group">
+            <label>NFT Contract Address:</label>
+            <input 
+              type="text" 
+              id="nftContract"
+              defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+              placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+            />
+          </div>
+          
+          <div className="input-group">
+            <label>Token ID:</label>
+            <input 
+              type="text" 
+              id="tokenId"
+              defaultValue="0"
+              placeholder="0"
+            />
+          </div>
+          
+          <div className="input-group">
+            <label>L2 Receiver Address:</label>
+            <input 
+              type="text" 
+              id="l2Receiver"
+              defaultValue="0xef02F150156e45806aaF17A60B5541D079FE13e6"
+              placeholder="0xef02F150156e45806aaF17A60B5541D079FE13e6"
+            />
+          </div>
+          
+          <div className="input-group">
+            <label>ETH Value (for cross-chain fees):</label>
+            <input 
+              type="text" 
+              id="ethValue"
+              defaultValue="0.001"
+              placeholder="0.001"
+            />
+            <div className="field-help">
+              Amount of ETH to send with the transaction. This covers cross-chain fees, gas costs, and L2 execution.
+            </div>
+          </div>
+          
+          <div className="gas-estimate-section">
+            <button
+              className="estimate-gas-button"
+              onClick={estimateRetryableTicketGas}
+              disabled={gasEstimation.estimating}
+            >
+              {gasEstimation.estimating ? 'Estimating...' : 'Estimate Gas'}
+            </button>
+            
+            {gasEstimation.estimationComplete && (
+              <div className="gas-estimation-results">
+                <div className="estimation-result-item">
+                  <span>Max Submission Cost:</span>
+                  <span>{ethers.formatEther(gasEstimation.maxSubmissionCost)} ETH</span>
+                </div>
+                <div className="estimation-result-item">
+                  <span>Gas Limit:</span>
+                  <span>{gasEstimation.gasLimit}</span>
+                </div>
+                <div className="estimation-result-item">
+                  <span>Max Fee Per Gas:</span>
+                  <span>{ethers.formatUnits(gasEstimation.maxFeePerGas, "gwei")} gwei</span>
+                </div>
+                <div className="estimation-result-item total">
+                  <span>Total Est. Cost:</span>
+                  <span>{gasEstimation.totalEstimatedCost} ETH</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="contract-info">
+            <p>Contract: <span>0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2</span> (Sepolia)</p>
+            <div className="default-gas-info">
+              <p>Default parameters:</p>
+              <ul>
+                <li>Max Submission Cost: 0.0045 ETH (high safety value)</li>
+                <li>Gas Limit: 1,000,000</li>
+                <li>Max Fee Per Gas: 0.1 gwei</li>
+              </ul>
+            </div>
+            <a 
+              href="https://sepolia-retryable-tx-dashboard.arbitrum.io/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="arb-link"
+            >
+              View on Arbitrum Retryable Dashboard
+            </a>
+          </div>
+          
+          <div className="button-group">
+            <button 
+              className="query-button"
+              onClick={callQueryNFTAndSendBack}
+            >
+              Submit with Safe Parameters
+            </button>
+            <button 
+              className="query-button optimized"
+              onClick={callQueryNFTAndSendBackOptimized}
+              disabled={!gasEstimation.estimationComplete}
+            >
+              Submit with Optimized Gas
+            </button>
+          </div>
+        </div>
+      </div>
+      
       {/* NFT Ownership Query Component */}
       <NFTOwnershipQuery 
         layer={layer}
@@ -725,195 +1008,105 @@ const BridgeTest: React.FC = () => {
         setLayer={setLayer}
       />
       
-      {/* Direct L1 NFT Query Section */}
-      <div className="l1-query-section">
-        <h3>Direct L1 Query ({environment === 'testnet' ? 'Sepolia' : 'Ethereum Mainnet'})</h3>
-        <div className="info-message">
-          This queries the NFT ownership directly on L1 without going through the cross-chain bridge process.
-        </div>
+      {/* Contract Configuration Dropdown */}
+      <div className="contract-config-dropdown">
+        <button 
+          className="dropdown-toggle" 
+          onClick={() => setShowContractConfig(!showContractConfig)}
+        >
+          Contract Configuration
+          <span className={`dropdown-arrow ${showContractConfig ? 'open' : ''}`}>▼</span>
+        </button>
         
-        <div className="l1-query-form">
-          <div className="input-group">
-            <label>NFT Contract Address:</label>
-            <input 
-              type="text" 
-              id="l1NftContract"
-              defaultValue={environment === 'testnet' ? '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06' : ''}
-              placeholder="0x..."
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>Token ID:</label>
-            <input 
-              type="text" 
-              id="l1TokenId"
-              defaultValue={environment === 'testnet' ? '1' : ''}
-              placeholder="1"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>ETH Value (for cross-chain fees):</label>
-            <input 
-              type="text" 
-              id="l1EthValue"
-              defaultValue="0.01"
-              placeholder="0.01"
-            />
-            <div className="field-help">
-              Required for creating a retryable ticket. Recommended: 0.01 ETH or more to cover cross-chain fees, gas costs, and L2 execution fees. Insufficient value is the most common cause of failures.
+        {showContractConfig && (
+          <div className="contract-config">
+            <div className="config-buttons">
+              <button 
+                className="config-button reset-button"
+                onClick={handleResetConfig}
+                title="Reset to default values"
+              >
+                Reset
+              </button>
+              <button 
+                className="config-button load-button"
+                onClick={handleLoadFromConfig}
+                disabled={configLoading || !contractsConfig}
+                title="Load addresses from the contract config file"
+              >
+                Load from Config
+              </button>
             </div>
-          </div>
-          
-          <details className="advanced-options">
-            <summary>Advanced Retryable Ticket Options</summary>
-            <div className="advanced-fields">
+            
+            <div className="config-section">
+              <h4>L1 Contracts</h4>
               <div className="input-group">
-                <label>Max Submission Cost (wei):</label>
+                <label>Testnet Address:</label>
                 <input 
                   type="text" 
-                  id="maxSubmissionCost"
-                  defaultValue="1000000"
-                  placeholder="1000000"
+                  value={contractConfig.addresses.l1.testnet} 
+                  onChange={(e) => handleAddressChange('l1', 'testnet', e.target.value)}
+                  placeholder="0x..."
                 />
-                <div className="field-help">
-                  Cost of storing the retryable ticket on L2 (in wei). Default: 1000000 (0.001 ETH)
-                </div>
               </div>
-              
               <div className="input-group">
-                <label>Gas Limit for L2 Execution:</label>
+                <label>Mainnet Address:</label>
                 <input 
                   type="text" 
-                  id="l2GasLimit"
-                  defaultValue="100000"
-                  placeholder="100000"
+                  value={contractConfig.addresses.l1.mainnet} 
+                  onChange={(e) => handleAddressChange('l1', 'mainnet', e.target.value)}
+                  placeholder="0x..."
                 />
-                <div className="field-help">
-                  Gas limit for executing the callback on L2 (in wei). Default: 100000 (0.0001 ETH)
-                </div>
               </div>
-              
               <div className="input-group">
-                <label>Max Fee Per Gas (wei):</label>
-                <input 
-                  type="text" 
-                  id="maxFeePerGas"
-                  defaultValue="1000000000"
-                  placeholder="1000000000"
-                />
-                <div className="field-help">
-                  Maximum gas price for L2 execution (in wei). Default: 1 gwei (0.000001 ETH)
-                </div>
+                <label>ABI File:</label>
+                <select 
+                  value={contractConfig.abiFiles.l1}
+                  onChange={(e) => handleABIChange('l1', e.target.value)}
+                  className="abi-selector"
+                >
+                  {availableAbis.map(abi => (
+                    <option key={abi} value={abi}>{abi}</option>
+                  ))}
+                </select>
               </div>
             </div>
-          </details>
-          
-          <div className="action-buttons">
-            <button 
-              className="l1-query-button"
-              onClick={queryNFTOnL1}
-            >
-              Query Directly on L1
-            </button>
-            <button 
-              className="l1-create-ticket-button"
-              onClick={createRetryableTicket}
-            >
-              Create Retryable Ticket to L2
-            </button>
+            
+            <div className="config-section">
+              <h4>L2 Contracts</h4>
+              <div className="input-group">
+                <label>Testnet Address:</label>
+                <input 
+                  type="text" 
+                  value={contractConfig.addresses.l2.testnet} 
+                  onChange={(e) => handleAddressChange('l2', 'testnet', e.target.value)}
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="input-group">
+                <label>Mainnet Address:</label>
+                <input 
+                  type="text" 
+                  value={contractConfig.addresses.l2.mainnet} 
+                  onChange={(e) => handleAddressChange('l2', 'mainnet', e.target.value)}
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="input-group">
+                <label>ABI File:</label>
+                <select 
+                  value={contractConfig.abiFiles.l2}
+                  onChange={(e) => handleABIChange('l2', e.target.value)}
+                  className="abi-selector"
+                >
+                  {availableAbis.map(abi => (
+                    <option key={abi} value={abi}>{abi}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      <div className="contract-config">
-        <h3>Contract Configuration</h3>
-        <div className="config-buttons">
-          <button 
-            className="config-button reset-button"
-            onClick={handleResetConfig}
-            title="Reset to default values"
-          >
-            Reset
-          </button>
-          <button 
-            className="config-button load-button"
-            onClick={handleLoadFromConfig}
-            disabled={configLoading || !contractsConfig}
-            title="Load addresses from the contract config file"
-          >
-            Load from Config
-          </button>
-        </div>
-        
-        <div className="config-section">
-          <h4>L1 Contracts</h4>
-          <div className="input-group">
-            <label>Testnet Address:</label>
-            <input 
-              type="text" 
-              value={contractConfig.addresses.l1.testnet} 
-              onChange={(e) => handleAddressChange('l1', 'testnet', e.target.value)}
-              placeholder="0x..."
-            />
-          </div>
-          <div className="input-group">
-            <label>Mainnet Address:</label>
-            <input 
-              type="text" 
-              value={contractConfig.addresses.l1.mainnet} 
-              onChange={(e) => handleAddressChange('l1', 'mainnet', e.target.value)}
-              placeholder="0x..."
-            />
-          </div>
-          <div className="input-group">
-            <label>ABI File:</label>
-            <select 
-              value={contractConfig.abiFiles.l1}
-              onChange={(e) => handleABIChange('l1', e.target.value)}
-              className="abi-selector"
-            >
-              {availableAbis.map(abi => (
-                <option key={abi} value={abi}>{abi}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        
-        <div className="config-section">
-          <h4>L2 Contracts</h4>
-          <div className="input-group">
-            <label>Testnet Address:</label>
-            <input 
-              type="text" 
-              value={contractConfig.addresses.l2.testnet} 
-              onChange={(e) => handleAddressChange('l2', 'testnet', e.target.value)}
-              placeholder="0x..."
-            />
-          </div>
-          <div className="input-group">
-            <label>Mainnet Address:</label>
-            <input 
-              type="text" 
-              value={contractConfig.addresses.l2.mainnet} 
-              onChange={(e) => handleAddressChange('l2', 'mainnet', e.target.value)}
-              placeholder="0x..."
-            />
-          </div>
-          <div className="input-group">
-            <label>ABI File:</label>
-            <select 
-              value={contractConfig.abiFiles.l2}
-              onChange={(e) => handleABIChange('l2', e.target.value)}
-              className="abi-selector"
-            >
-              {availableAbis.map(abi => (
-                <option key={abi} value={abi}>{abi}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        )}
       </div>
       
       <div className="status-box">
