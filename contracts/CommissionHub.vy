@@ -1,4 +1,8 @@
-#pragma version 0.4.0
+# @version 0.4.1
+# Contains a list of NFTs that the owner has registered
+# Allows for verification of the commissions
+# Allows for creation of a new commission
+
 
 owner: public(address)
 imageDataContracts: public(HashMap[uint256, address])
@@ -16,6 +20,8 @@ def __init__():
     self.owner = msg.sender
     self.is_ownership_rescinded = False
     self.l1_contract = empty(address)
+
+
 
 @external
 def registerImageData(azukiId: uint256, imageContract: address):

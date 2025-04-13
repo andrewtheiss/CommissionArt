@@ -9,7 +9,7 @@ interface IERC20Inbox:
         callValueRefundAddress: address,
         gasLimit: uint256,
         maxFeePerGas: uint256,
-        data: Bytes[36]
+        data: Bytes[100]
     ) -> uint256: payable
 
 interface IERC721:
@@ -28,7 +28,7 @@ def __init__(inbox_address: address):
     # Example values:
     # Sepolia Delayed Inbox: 0xaAe29B0366299461418F5324a79Afc425BE5ae21 
     # Mainnet: 0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6
-    # L2 Relay Sepolia: 0x904c4c52dC030D362eBC29ea0aB77c7F2BC1a39c
+    # L2 Relay Sepolia: 
 
 @external
 @payable
@@ -48,11 +48,10 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
     owner: address = staticcall IERC721(nft_contract).ownerOf(token_id)
     
     # Create calldata with method selector and parameter
-    # Or this can be the literally bytes b"\x54\xd2\x72\x47"  # This is 0x54d27247 as a bytes literal
-    func_selector: Bytes[4] = slice(keccak256("receiveResultFromL1(address)"), 0, 4)  # 0x7b8a9b7a
+    func_selector: Bytes[4] = slice(keccak256("receiveNFTOwnerFromL1(address,uint256,address)"), 0, 4)  # 0x7b8a9b7a
 
     # Construct data with l2_receiver as the parameter
-    data: Bytes[36] = concat(func_selector, convert(l2_receiver, bytes32))
+    data: Bytes[100] = concat(func_selector, convert(nft_contract, bytes32), convert(token_id, bytes32), convert(owner, bytes32))
 
     # Calculate minimum required ETH (this may need adjustment based on actual requirements)
     min_required_eth: uint256 = max_submission_cost + (gas_limit * max_fee_per_gas)

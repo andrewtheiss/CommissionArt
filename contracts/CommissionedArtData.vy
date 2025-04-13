@@ -1,4 +1,7 @@
-#pragma version 0.4.0
+# @version 0.4.1
+# Contains the image data for a commissioned piece
+# Has a list of owners that have commissioned the piece
+# Has a list of artists that have commissioned the piece
 
 image_data: Bytes[45000]  # Adjusted to handle up to 250 KB
 owner: address
@@ -33,5 +36,5 @@ def get_artist() -> address:
 def transferOwnership(new_owner: address):
     assert msg.sender == self.owner, "Only the owner can transfer ownership"
     assert new_owner != empty(address), "Invalid new owner address"
-    log OwnershipTransferred(self.owner, new_owner)
+    log OwnershipTransferred(from_owner=self.owner, to_owner=new_owner)
     self.owner = new_owner
