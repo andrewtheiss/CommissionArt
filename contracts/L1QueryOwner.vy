@@ -28,7 +28,7 @@ def __init__(inbox_address: address):
     # Example values:
     # Sepolia Delayed Inbox: 0xaAe29B0366299461418F5324a79Afc425BE5ae21 
     # Mainnet: 0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6
-    # L2 Relay Sepolia: 0xef02F150156e45806aaF17A60B5541D079FE13e6
+    # L2 Relay Sepolia: 0x904c4c52dC030D362eBC29ea0aB77c7F2BC1a39c
 
 @external
 @payable
