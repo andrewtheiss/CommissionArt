@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
-import ethersService from '../../utils/ethers-service';
 import './BridgeTest.css';
 
 // ABI for the L1 Query contract
@@ -13,9 +12,16 @@ const l1QueryOwnerABI = [
 // Using the ethers LogDescription type
 type ParsedLog = ethers.LogDescription;
 
+// Extend Window interface
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 const BridgeTest: React.FC = () => {
   const [bridgeStatus, setBridgeStatus] = useState<string>('Ready');
-  const { isConnected, networkType, switchNetwork } = useBlockchain();
+  const { isConnected, networkType, switchNetwork, connectWallet, walletAddress } = useBlockchain();
 
   // Refs for input elements
   const nftContractRef = useRef<HTMLInputElement>(null);
@@ -37,7 +43,15 @@ const BridgeTest: React.FC = () => {
     }
 
     try {
-      const signer = await ethersService.getSigner();
+      // Use the window.ethereum directly to get a signer
+      if (!window.ethereum) {
+        setBridgeStatus('MetaMask or another web3 wallet is required');
+        return null;
+      }
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
       if (!signer) {
         setBridgeStatus('No signer available');
         return null;
@@ -179,69 +193,113 @@ const BridgeTest: React.FC = () => {
     }
   };
 
+  // Handle wallet connection
+  const handleConnectWallet = async () => {
+    try {
+      setBridgeStatus('Connecting wallet...');
+      await connectWallet();
+      setBridgeStatus('Wallet connected');
+    } catch (error: any) {
+      setBridgeStatus(`Wallet connection error: ${error.message}`);
+    }
+  };
+
   return (
     <div className="bridge-test-container">
       <h2>Bridge Test</h2>
-      <div className="input-group">
-        <label>Contract Address:</label>
-        <input
-          type="text"
-          ref={contractAddressRef}
-          placeholder="Enter L1 Query contract address"
-        />
-      </div>
-      <div className="input-group">
-        <label>NFT Contract Address:</label>
-        <input
-          type="text"
-          ref={nftContractRef}
-          defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-          placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-        />
-      </div>
-      <div className="input-group">
-        <label>Token ID:</label>
-        <input
-          type="text"
-          ref={tokenIdRef}
-          defaultValue="0"
-          placeholder="0"
-        />
-      </div>
-      <div className="input-group">
-        <label>L2 Receiver Address:</label>
-        <input
-          type="text"
-          ref={l2ReceiverRef}
-          defaultValue="0xef02F150156e45806aaF17A60B5541D079FE13e6"
-          placeholder="0xef02F150156e45806aaF17A60B5541D079FE13e6"
-        />
-      </div>
-      <div className="input-group">
-        <label>ETH Value (in ETH):</label>
-        <input
-          type="text"
-          ref={ethValueRef}
-          defaultValue="0.001"
-          placeholder="0.001"
-        />
-      </div>
-      <div className="button-group">
-        <button 
-          onClick={callQueryNFTAndSendBack}
-          className="primary-button"
-          disabled={!isConnected}
-        >
-          Send Transaction
-        </button>
-        <button 
-          onClick={callQueryNFTAndSendBackOptimized}
-          className="secondary-button"
-          disabled={!isConnected}
-        >
-          Send Optimized Transaction
-        </button>
-      </div>
+      
+      {!isConnected ? (
+        <div className="connect-wallet-container">
+          <p>Please connect your wallet to use this feature</p>
+          <button 
+            onClick={handleConnectWallet}
+            className="primary-button"
+          >
+            Connect Wallet
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="wallet-info">
+            <p className="wallet-address">
+              Connected: {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+            </p>
+            <p className="network-info">
+              Network: {networkType === 'dev' ? 'Sepolia' : networkType}
+              {networkType !== 'dev' && (
+                <button 
+                  onClick={() => switchNetwork('dev')}
+                  className="network-switch-button"
+                >
+                  Switch to Sepolia
+                </button>
+              )}
+            </p>
+          </div>
+          
+          <div className="input-group">
+            <label>Contract Address:</label>
+            <input
+              type="text"
+              ref={contractAddressRef}
+              placeholder="Enter L1 Query contract address"
+            />
+          </div>
+          <div className="input-group">
+            <label>NFT Contract Address:</label>
+            <input
+              type="text"
+              ref={nftContractRef}
+              defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+              placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+            />
+          </div>
+          <div className="input-group">
+            <label>Token ID:</label>
+            <input
+              type="text"
+              ref={tokenIdRef}
+              defaultValue="0"
+              placeholder="0"
+            />
+          </div>
+          <div className="input-group">
+            <label>L2 Receiver Address:</label>
+            <input
+              type="text"
+              ref={l2ReceiverRef}
+              defaultValue="0xef02F150156e45806aaF17A60B5541D079FE13e6"
+              placeholder="0xef02F150156e45806aaF17A60B5541D079FE13e6"
+            />
+          </div>
+          <div className="input-group">
+            <label>ETH Value (in ETH):</label>
+            <input
+              type="text"
+              ref={ethValueRef}
+              defaultValue="0.001"
+              placeholder="0.001"
+            />
+          </div>
+          <div className="button-group">
+            <button 
+              onClick={callQueryNFTAndSendBack}
+              className="primary-button"
+              disabled={!isConnected || networkType !== 'dev'}
+            >
+              Send Transaction
+            </button>
+            <button 
+              onClick={callQueryNFTAndSendBackOptimized}
+              className="secondary-button"
+              disabled={!isConnected || networkType !== 'dev'}
+            >
+              Send Optimized Transaction
+            </button>
+          </div>
+        </>
+      )}
+      
       <div className="status-container">
         <p className="status-label">Status:</p>
         <p className={`status-value ${bridgeStatus !== 'Ready' ? 'status-active' : ''}`}>
