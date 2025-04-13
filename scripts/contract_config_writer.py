@@ -40,7 +40,7 @@ def load_config():
                 },
                 "l3": {
                     "address": "",
-                    "contract": ""
+                    "contract": "OwnerRegistry"
                 }
             },
             "mainnet": {
@@ -54,7 +54,7 @@ def load_config():
                 },
                 "l3": {
                     "address": "",
-                    "contract": ""
+                    "contract": "OwnerRegistry"
                 }
             }
         },

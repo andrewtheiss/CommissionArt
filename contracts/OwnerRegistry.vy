@@ -65,3 +65,17 @@ def getCommissionHubByOwner(nft_contract: address, token_id: uint256) -> address
     return self.commission_hubs[nft_contract][token_id]
 
     
+# Set commission hub template
+@external
+def setCommissionHubTemplate(new_template: address):
+    assert msg.sender == self.owner, "Only owner can set commission hub template"
+    self.commission_hub_template = new_template
+
+# Set L2 relay
+@external
+def setL2Relay(new_l2relay: address):
+    assert msg.sender == self.owner, "Only owner can set L2 relay"
+    self.l2relay = new_l2relay
+    
+
+
