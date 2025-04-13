@@ -17,6 +17,10 @@ interface ContractAddresses {
     testnet: string;
     mainnet: string;
   };
+  l3: {
+    testnet: string;
+    mainnet: string;
+  };
 }
 
 // Interface for contract ABIs with ABI files
@@ -25,6 +29,7 @@ interface ContractConfig {
   abiFiles: {
     l1: string;
     l2: string;
+    l3: string;
   };
 }
 
@@ -100,17 +105,22 @@ const BridgeTest: React.FC = () => {
   const defaultConfig: ContractConfig = {
     addresses: {
       l1: {
-        testnet: '', // Sepolia
-        mainnet: '', // Ethereum
+        testnet: contractsConfig?.networks?.testnet?.l1?.address || '0xBbFA650E59be970E63b443B7B2D3E152D1A1b9B0', // Sepolia
+        mainnet: contractsConfig?.networks?.mainnet?.l1?.address || '', // Ethereum
       },
       l2: {
-        testnet: '', // Arbitrum Sepolia
-        mainnet: '', // Arbitrum One
+        testnet: contractsConfig?.networks?.testnet?.l2?.address || '0x35177b4cd425AD4B495c1CF50Ea8755C72972375', // Arbitrum Sepolia
+        mainnet: contractsConfig?.networks?.mainnet?.l2?.address || '', // Arbitrum One
+      },
+      l3: {
+        testnet: contractsConfig?.networks?.testnet?.l3?.address || '',
+        mainnet: contractsConfig?.networks?.mainnet?.l3?.address || '',
       }
     },
     abiFiles: {
-      l1: 'L1QueryOwner',
-      l2: 'L2Relay'
+      l1: contractsConfig?.networks?.testnet?.l1?.contract || 'L1QueryOwner',
+      l2: contractsConfig?.networks?.testnet?.l2?.contract || 'L2Relay',
+      l3: contractsConfig?.networks?.testnet?.l3?.contract || 'L3QueryOwner'
     }
   };
   
@@ -177,13 +187,18 @@ const BridgeTest: React.FC = () => {
         l2: {
           testnet: getContract('testnet', 'l2')?.address || '',
           mainnet: getContract('mainnet', 'l2')?.address || '',
+        },
+        l3: {
+          testnet: getContract('testnet', 'l3')?.address || '',
+          mainnet: getContract('mainnet', 'l3')?.address || '',
         }
       };
       
       // Update contract ABIs based on configuration
       const newAbiFiles = {
         l1: getContract('testnet', 'l1')?.contract || 'L1QueryOwner',
-        l2: getContract('testnet', 'l2')?.contract || 'L2Relay'
+        l2: getContract('testnet', 'l2')?.contract || 'L2Relay',
+        l3: getContract('testnet', 'l3')?.contract || 'L3QueryOwner'
       };
       
       // Update the contract configuration if any address has changed
@@ -192,8 +207,11 @@ const BridgeTest: React.FC = () => {
         newAddresses.l1.mainnet !== contractConfig.addresses.l1.mainnet ||
         newAddresses.l2.testnet !== contractConfig.addresses.l2.testnet ||
         newAddresses.l2.mainnet !== contractConfig.addresses.l2.mainnet ||
+        newAddresses.l3.testnet !== contractConfig.addresses.l3.testnet ||
+        newAddresses.l3.mainnet !== contractConfig.addresses.l3.mainnet ||
         newAbiFiles.l1 !== contractConfig.abiFiles.l1 ||
-        newAbiFiles.l2 !== contractConfig.abiFiles.l2
+        newAbiFiles.l2 !== contractConfig.abiFiles.l2 ||
+        newAbiFiles.l3 !== contractConfig.abiFiles.l3
       ) {
         setContractConfig({
           addresses: newAddresses,
@@ -241,6 +259,10 @@ const BridgeTest: React.FC = () => {
           l2: {
             testnet: getContract('testnet', 'l2')?.address || '',
             mainnet: getContract('mainnet', 'l2')?.address || '',
+          },
+          l3: {
+            testnet: getContract('testnet', 'l3')?.address || '',
+            mainnet: getContract('mainnet', 'l3')?.address || '',
           }
         };
         
@@ -289,7 +311,7 @@ const BridgeTest: React.FC = () => {
   }, [layer, contractConfig.abiFiles]);
   
   // Handle contract address changes
-  const handleAddressChange = (layer: 'l1' | 'l2', env: 'testnet' | 'mainnet', value: string) => {
+  const handleAddressChange = (layer: 'l1' | 'l2' | 'l3', env: 'testnet' | 'mainnet', value: string) => {
     setContractConfig(prev => ({
       ...prev,
       addresses: {
@@ -303,7 +325,7 @@ const BridgeTest: React.FC = () => {
   };
   
   // Handle ABI selection changes
-  const handleABIChange = (layer: 'l1' | 'l2', value: string) => {
+  const handleABIChange = (layer: 'l1' | 'l2' | 'l3', value: string) => {
     setContractConfig(prev => ({
       ...prev,
       abiFiles: {
@@ -338,13 +360,18 @@ const BridgeTest: React.FC = () => {
         l2: {
           testnet: getContract('testnet', 'l2')?.address || '',
           mainnet: getContract('mainnet', 'l2')?.address || '',
+        },
+        l3: {
+          testnet: getContract('testnet', 'l3')?.address || '',
+          mainnet: getContract('mainnet', 'l3')?.address || '',
         }
       };
       
       // Update contract ABIs based on configuration
       const newAbiFiles = {
         l1: getContract('testnet', 'l1')?.contract || 'L1QueryOwner',
-        l2: getContract('testnet', 'l2')?.contract || 'L2Relay'
+        l2: getContract('testnet', 'l2')?.contract || 'L2Relay',
+        l3: getContract('testnet', 'l3')?.contract || 'L3QueryOwner'
       };
       
       setContractConfig({
@@ -891,7 +918,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
               type="text" 
               id="nftContract"
               defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-              placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+              placeholder="Enter NFT contract address"
             />
           </div>
           
@@ -910,8 +937,8 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
             <input 
               type="text" 
               id="l2Receiver"
-              defaultValue="0xef02F150156e45806aaF17A60B5541D079FE13e6"
-              placeholder="0xef02F150156e45806aaF17A60B5541D079FE13e6"
+              defaultValue={contractConfig.addresses.l2.testnet}
+              placeholder="Enter L2 receiver address"
             />
           </div>
           
@@ -960,7 +987,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
           </div>
           
           <div className="contract-info">
-            <p>Contract: <span>0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2</span> (Sepolia)</p>
+            <p>Contract: <span>{contractConfig.addresses.l1.testnet}</span> (Sepolia)</p>
             <div className="default-gas-info">
               <p>Default parameters:</p>
               <ul>
@@ -1097,6 +1124,40 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
                 <select 
                   value={contractConfig.abiFiles.l2}
                   onChange={(e) => handleABIChange('l2', e.target.value)}
+                  className="abi-selector"
+                >
+                  {availableAbis.map(abi => (
+                    <option key={abi} value={abi}>{abi}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="config-section">
+              <h4>L3 Contracts</h4>
+              <div className="input-group">
+                <label>Testnet Address:</label>
+                <input 
+                  type="text" 
+                  value={contractConfig.addresses.l3.testnet} 
+                  onChange={(e) => handleAddressChange('l3', 'testnet', e.target.value)}
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="input-group">
+                <label>Mainnet Address:</label>
+                <input 
+                  type="text" 
+                  value={contractConfig.addresses.l3.mainnet} 
+                  onChange={(e) => handleAddressChange('l3', 'mainnet', e.target.value)}
+                  placeholder="0x..."
+                />
+              </div>
+              <div className="input-group">
+                <label>ABI File:</label>
+                <select 
+                  value={contractConfig.abiFiles.l3}
+                  onChange={(e) => handleABIChange('l3', e.target.value)}
                   className="abi-selector"
                 >
                   {availableAbis.map(abi => (

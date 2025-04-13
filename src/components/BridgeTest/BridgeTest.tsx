@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import './BridgeTest.css';
+import contractConfigJson from '../../assets/contract_config.json';
 
 // ABI for the L1 Query contract
 const l1QueryOwnerABI = [
@@ -22,6 +23,11 @@ declare global {
 const BridgeTest: React.FC = () => {
   const [bridgeStatus, setBridgeStatus] = useState<string>('Ready');
   const { isConnected, networkType, switchNetwork, connectWallet, walletAddress } = useBlockchain();
+
+  // Get contract addresses from configuration
+  const l1ContractAddress = contractConfigJson.networks.testnet.l1.address;
+  const l2ContractAddress = contractConfigJson.networks.testnet.l2.address;
+  const l3ContractAddress = contractConfigJson.networks.testnet.l3.address;
 
   // Refs for input elements
   const nftContractRef = useRef<HTMLInputElement>(null);
@@ -57,7 +63,7 @@ const BridgeTest: React.FC = () => {
         return null;
       }
 
-      const contractAddress = contractAddressRef.current?.value || '';
+      const contractAddress = contractAddressRef.current?.value || l1ContractAddress;
       if (!contractAddress || !ethers.isAddress(contractAddress)) {
         setBridgeStatus('Please enter a valid contract address');
         return null;
@@ -90,7 +96,7 @@ const BridgeTest: React.FC = () => {
       // Get input values from refs
       const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
       const tokenId = tokenIdRef.current?.value || '0';
-      const l2Receiver = l2ReceiverRef.current?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
+      const l2Receiver = l2ReceiverRef.current?.value || l2ContractAddress;
       const ethValue = ethValueRef.current?.value || '0.001';
 
       // Input validation
@@ -169,7 +175,7 @@ const BridgeTest: React.FC = () => {
 
       const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
       const tokenId = tokenIdRef.current?.value || '0';
-      const l2Receiver = l2ReceiverRef.current?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
+      const l2Receiver = l2ReceiverRef.current?.value || l2ContractAddress;
       const ethValue = ethValueRef.current?.value || '0.001';
       const ethValueWei = ethers.parseEther(ethValue);
 
@@ -237,12 +243,22 @@ const BridgeTest: React.FC = () => {
             </p>
           </div>
           
+          <div className="info-panel">
+            <p>Contract Addresses from Configuration:</p>
+            <ul>
+              <li>L1 (Sepolia): {l1ContractAddress}</li>
+              <li>L2 (Arbitrum): {l2ContractAddress}</li>
+              <li>L3 (OwnerRegistry): {l3ContractAddress}</li>
+            </ul>
+          </div>
+          
           <div className="input-group">
             <label>Contract Address:</label>
             <input
               type="text"
               ref={contractAddressRef}
               placeholder="Enter L1 Query contract address"
+              defaultValue={l1ContractAddress}
             />
           </div>
           <div className="input-group">
@@ -250,8 +266,8 @@ const BridgeTest: React.FC = () => {
             <input
               type="text"
               ref={nftContractRef}
+              placeholder="Enter NFT contract address"
               defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-              placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
             />
           </div>
           <div className="input-group">
@@ -260,7 +276,6 @@ const BridgeTest: React.FC = () => {
               type="text"
               ref={tokenIdRef}
               defaultValue="0"
-              placeholder="0"
             />
           </div>
           <div className="input-group">
@@ -268,44 +283,40 @@ const BridgeTest: React.FC = () => {
             <input
               type="text"
               ref={l2ReceiverRef}
-              defaultValue="0xef02F150156e45806aaF17A60B5541D079FE13e6"
-              placeholder="0xef02F150156e45806aaF17A60B5541D079FE13e6"
+              placeholder="Enter L2 receiver address"
+              defaultValue={l2ContractAddress}
             />
           </div>
           <div className="input-group">
-            <label>ETH Value (in ETH):</label>
+            <label>ETH Value:</label>
             <input
               type="text"
               ref={ethValueRef}
               defaultValue="0.001"
-              placeholder="0.001"
             />
           </div>
-          <div className="button-group">
+
+          <div className="action-buttons">
             <button 
               onClick={callQueryNFTAndSendBack}
               className="primary-button"
-              disabled={!isConnected || networkType !== 'dev'}
             >
-              Send Transaction
+              Query NFT Owner
             </button>
             <button 
               onClick={callQueryNFTAndSendBackOptimized}
               className="secondary-button"
-              disabled={!isConnected || networkType !== 'dev'}
             >
-              Send Optimized Transaction
+              Query with Optimized Gas
             </button>
+          </div>
+
+          <div className="status-container">
+            <h3>Status:</h3>
+            <pre className="status-message">{bridgeStatus}</pre>
           </div>
         </>
       )}
-      
-      <div className="status-container">
-        <p className="status-label">Status:</p>
-        <p className={`status-value ${bridgeStatus !== 'Ready' ? 'status-active' : ''}`}>
-          {bridgeStatus}
-        </p>
-      </div>
     </div>
   );
 };
