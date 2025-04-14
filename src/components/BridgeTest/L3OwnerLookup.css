@@ -279,4 +279,121 @@
   .info-label {
     margin-bottom: 4px;
   }
+}
+
+/* Admin panel styles */
+.admin-panel {
+  background-color: rgba(66, 35, 95, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(145, 85, 253, 0.3);
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.admin-toggle-container {
+  margin-bottom: 15px;
+  text-align: right;
+}
+
+.admin-toggle-button {
+  background-color: #3a3f55;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+}
+
+.admin-toggle-button:hover {
+  background-color: #5a6384;
+}
+
+.admin-toggle-button[aria-expanded="true"] {
+  background-color: #484f6e;
+}
+
+.owner-required-badge {
+  background-color: #f85149;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.owner-note {
+  color: #f85149;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+.admin-panel h4 {
+  color: var(--primary-color);
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid rgba(145, 85, 253, 0.3);
+  padding-bottom: 8px;
+}
+
+.l2-relay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.owner-badge {
+  position: absolute;
+  right: -75px;
+  background-color: var(--success-color);
+  color: black;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: inline-block;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.admin-button {
+  padding: 8px 16px;
+  background-color: #a455f7;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  align-self: flex-end;
+}
+
+.admin-button:hover {
+  background-color: #8f3ae3;
+}
+
+.admin-button:disabled {
+  background-color: var(--disabled-color);
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .info-item {
+    flex-direction: column;
+  }
+  
+  .info-value {
+    max-width: 100%;
+    text-align: left;
+    margin-top: 4px;
+  }
+  
+  .owner-badge {
+    position: static;
+    margin-top: 6px;
+    display: inline-block;
+  }
 } 

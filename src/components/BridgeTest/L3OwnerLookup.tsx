@@ -51,7 +51,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   setBridgeStatus
 }) => {
   // Get blockchain context
-  const { connectWallet, isConnected, networkType, switchNetwork, switchToLayer } = useBlockchain();
+  const { connectWallet, isConnected, networkType, switchNetwork, switchToLayer, walletAddress } = useBlockchain();
   
   // State for L3 lookup query
   const [l3LookupQuery, setL3LookupQuery] = useState<L3LookupQuery>({
@@ -74,6 +74,12 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       : contractConfig.addresses.l3?.mainnet || ''
   });
 
+  // State for admin functions
+  const [isOwner, setIsOwner] = useState(false);
+  const [newL2RelayAddress, setNewL2RelayAddress] = useState('');
+  const [isSettingL2Relay, setIsSettingL2Relay] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+
   // Update NFT contract address when environment changes
   useEffect(() => {
     if (environment === 'testnet') {
@@ -87,14 +93,29 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         ...prev,
         contractAddress: contractConfig.addresses.l3?.testnet || ''
       }));
+      
+      // Autopopulate the L2Relay address from config
+      setNewL2RelayAddress(contractConfig.addresses.l2?.testnet || '');
     } else {
       setRegistryInfo(prev => ({
         ...prev,
         contractAddress: contractConfig.addresses.l3?.mainnet || ''
       }));
+      
+      // Autopopulate the L2Relay address from config
+      setNewL2RelayAddress(contractConfig.addresses.l2?.mainnet || '');
     }
-  }, [environment, contractConfig.addresses.l3]);
+  }, [environment, contractConfig.addresses.l3, contractConfig.addresses.l2]);
   
+  // Check if the connected account is the contract owner
+  useEffect(() => {
+    if (isConnected && walletAddress && registryInfo.contractOwner) {
+      setIsOwner(walletAddress.toLowerCase() === registryInfo.contractOwner.toLowerCase());
+    } else {
+      setIsOwner(false);
+    }
+  }, [isConnected, walletAddress, registryInfo.contractOwner]);
+
   // Handle L3 lookup form change
   const handleL3LookupChange = (field: keyof L3LookupQuery, value: string) => {
     setL3LookupQuery(prev => ({
@@ -163,7 +184,8 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           "function owner() view returns (address)",
           "function lookupRegisteredOwner(address nft_contract, uint256 token_id) view returns (address)",
           "function getLastUpdated(address nft_contract, uint256 token_id) view returns (uint256)",
-          "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)"
+          "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)",
+          "function setL2Relay(address new_l2relay) external"
         ];
       }
       
@@ -182,6 +204,9 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         contractOwner,
         contractAddress: l3Address
       });
+      
+      // Autopopulate the L2Relay form with current value
+      setNewL2RelayAddress(l2relay);
       
       setBridgeStatus(`OwnerRegistry Info:\nAddress: ${l3Address}\nL2 Relay: ${l2relay}\nCommission Hub Template: ${commissionHubTemplate}\nOwner: ${contractOwner}`);
       
@@ -379,6 +404,101 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     }
   };
 
+  // Set L2 Relay address in the OwnerRegistry contract
+  const setL2RelayAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate the L2 relay address
+    if (!ethers.isAddress(newL2RelayAddress)) {
+      setBridgeStatus(prev => `${prev}\n\nError: Invalid L2 relay address format`);
+      return;
+    }
+    
+    // Ensure we're on Arbitrum
+    if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia to set L2 relay...');
+      switchToLayer('l2', 'testnet');
+      return;
+    } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
+      setBridgeStatus('Automatically switching to Arbitrum One to set L2 relay...');
+      switchToLayer('l2', 'mainnet');
+      return;
+    }
+    
+    // Connect wallet if not connected
+    if (!isConnected) {
+      await connectWallet();
+      if (!isConnected) {
+        setBridgeStatus('Please connect your wallet to continue');
+        return;
+      }
+    }
+    
+    try {
+      setIsSettingL2Relay(true);
+      
+      // Get the OwnerRegistry contract address
+      const l3Address = contractConfig.addresses.l3[environment];
+      if (!l3Address) {
+        throw new Error('L3 OwnerRegistry contract address not set');
+      }
+      
+      // Create a provider and signer
+      const ethereum = window.ethereum as any;
+      const provider = new ethers.BrowserProvider(ethereum);
+      const signer = await provider.getSigner();
+      
+      // Load ABI for OwnerRegistry
+      let ownerRegistryABI;
+      try {
+        ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
+      } catch (error) {
+        console.log('Could not load OwnerRegistry ABI, using minimal ABI with setL2Relay');
+        ownerRegistryABI = [
+          "function l2relay() view returns (address)",
+          "function owner() view returns (address)",
+          "function setL2Relay(address new_l2relay) external"
+        ];
+      }
+      
+      // Create contract instance with signer
+      const contract = new ethers.Contract(l3Address, ownerRegistryABI, signer);
+      
+      // We'll attempt to set the L2 relay address regardless of ownership
+      // Note: The contract will reject this call if the sender is not the owner
+      
+      // Set the L2 relay address
+      setBridgeStatus(prev => `${prev}\n\nSetting L2 relay address to ${newL2RelayAddress}...`);
+      const tx = await contract.setL2Relay(newL2RelayAddress);
+      
+      // Wait for transaction to be mined
+      setBridgeStatus(prev => `${prev}\nTransaction submitted. Waiting for confirmation...`);
+      const receipt = await tx.wait();
+      
+      // Update status and reload contract info
+      setBridgeStatus(prev => `${prev}\nTransaction confirmed! L2 relay address updated successfully.`);
+      await loadContractInfo();
+      
+    } catch (error) {
+      console.error('Error setting L2 relay address:', error);
+      
+      // Provide a more user-friendly error message for the ownership check failure
+      if (error instanceof Error && 
+          (error.message.includes("Only owner can set L2 relay") || 
+           error.message.includes("execution reverted"))) {
+        setBridgeStatus(prev => 
+          `${prev}\n\nTransaction failed: Only the contract owner can set the L2 relay address. This is enforced by the contract's code.`
+        );
+      } else {
+        setBridgeStatus(prev => 
+          `${prev}\n\nError setting L2 relay address: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+    } finally {
+      setIsSettingL2Relay(false);
+    }
+  };
+
   return (
     <div className="l3-lookup-section">
       <h3>L3 Owner Registry Explorer</h3>
@@ -386,15 +506,16 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       <div className="network-action-bar">
         <button 
           className="network-switch-button" 
-          onClick={() => switchToLayer('l2', 'testnet')}
-          title="Switch to Arbitrum Sepolia to connect to L3"
+          onClick={() => switchToLayer('l2', environment === 'testnet' ? 'testnet' : 'mainnet')}
+          title={`Switch to Arbitrum ${environment === 'testnet' ? 'Sepolia' : 'One'} to connect to L3`}
         >
-          Switch to Arbitrum Testnet
+          Switch to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}
         </button>
         <div className="network-status">
-          {networkType === 'arbitrum_testnet' ? 
-            <span className="connected-status">✓ Connected to Arbitrum Testnet</span> : 
-            <span className="disconnected-status">Not connected to Arbitrum Testnet</span>
+          {(networkType === 'arbitrum_testnet' && environment === 'testnet') || 
+           (networkType === 'arbitrum_mainnet' && environment === 'mainnet') ? 
+            <span className="connected-status">✓ Connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span> : 
+            <span className="disconnected-status">Not connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span>
           }
         </div>
       </div>
@@ -416,6 +537,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         <div className="info-item">
           <span className="info-label">Contract Owner:</span>
           <span className="info-value">{registryInfo.contractOwner || 'Not loaded'}</span>
+          {isOwner && <span className="owner-badge">You are the owner</span>}
         </div>
         <button 
           className="load-info-button" 
@@ -424,6 +546,54 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           Load Contract Info
         </button>
       </div>
+      
+      <div className="admin-toggle-container">
+        <button 
+          className="admin-toggle-button" 
+          onClick={() => setShowAdminPanel(!showAdminPanel)}
+          aria-expanded={showAdminPanel}
+        >
+          {showAdminPanel ? 'Hide Admin Panel' : 'Show Admin Panel'}
+        </button>
+      </div>
+      
+      {showAdminPanel && (
+        <div className="admin-panel">
+          <h4>L2 Relay Admin Panel</h4>
+          
+          <form onSubmit={setL2RelayAddress} className="l2-relay-form">
+            <div className="input-group">
+              <label htmlFor="l2-relay-address">
+                L2 Relay Address 
+                {!isOwner && <span className="owner-required-badge">Owner Required</span>}
+              </label>
+              <input
+                type="text"
+                id="l2-relay-address"
+                value={newL2RelayAddress}
+                onChange={(e) => setNewL2RelayAddress(e.target.value)}
+                placeholder={contractConfig.addresses.l2?.[environment] || "Enter L2 relay address"}
+                disabled={isSettingL2Relay}
+              />
+            </div>
+
+            <div className="button-group">
+              <button 
+                type="submit" 
+                className="admin-button"
+                disabled={isSettingL2Relay}
+                title={!isOwner ? "Note: Transaction will fail due to contract-side owner check" : ""}
+              >
+                {isSettingL2Relay ? 'Setting L2 Relay...' : 'Set L2 Relay Address'}
+              </button>
+            </div>
+
+            {!isOwner && (
+              <p className="owner-note">Note: Only the contract owner can set the L2 relay address. The transaction will be rejected by the contract if you are not the owner.</p>
+            )}
+          </form>
+        </div>
+      )}
       
       <hr className="registry-divider" />
       
