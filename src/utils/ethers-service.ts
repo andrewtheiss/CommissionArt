@@ -13,7 +13,9 @@ class EthersService {
     dev: [
       'https://rpc.sepolia.org',
       'https://eth-sepolia.public.blastapi.io',
-      'https://ethereum-sepolia.blockpi.network/v1/rpc/public'
+      'https://rpc.sepolia.dev',
+      'https://ethereum-sepolia-rpc.publicnode.com',
+      'https://endpoints.omniatech.io/v1/eth/sepolia/public'
     ],
     prod: [
       'https://ethereum.publicnode.com',

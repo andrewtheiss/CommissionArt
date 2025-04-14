@@ -1,138 +1,190 @@
 .l3-lookup-section {
-  margin: 2rem 0;
-  padding: 1.5rem;
-  background-color: #1e2130;
+  margin-bottom: 30px;
+  padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  border: 1px solid #2a2f45;
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .l3-lookup-section h3 {
   margin-top: 0;
-  color: #e0e0e0;
-  font-size: 1.4rem;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.registry-info {
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.registry-info h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #444;
+}
+
+.info-item {
+  display: flex;
+  margin-bottom: 8px;
+  word-break: break-all;
+}
+
+.info-label {
   font-weight: 600;
-  border-bottom: 1px solid #2a2f45;
-  padding-bottom: 0.75rem;
-  margin-bottom: 1.25rem;
+  min-width: 170px;
+  color: #555;
+}
+
+.info-value {
+  font-family: monospace;
+  color: #0066cc;
+}
+
+.load-info-button {
+  margin-top: 15px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.load-info-button:hover {
+  background-color: #5a6268;
+}
+
+.registry-divider {
+  margin: 20px 0;
+  border: 0;
+  height: 1px;
+  background-color: #ddd;
 }
 
 .l3-lookup-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.query-type-selector {
+  margin-bottom: 15px;
+}
+
+.query-type-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #444;
+}
+
+.query-type-selector select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: #f8f9fa;
+}
+
+.input-group {
+  margin-bottom: 15px;
 }
 
 .input-group label {
-  color: #b8b9bf;
-  margin-bottom: 0.5rem;
   display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #444;
 }
 
 .input-group input {
-  background-color: #262b3d;
-  border: 1px solid #434968;
-  color: #e0e0e0;
-  padding: 0.75rem 1rem;
-  border-radius: 4px;
   width: 100%;
-  transition: border-color 0.2s;
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: monospace;
 }
 
-.input-group input:focus {
-  outline: none;
-  border-color: #5e72e4;
-  box-shadow: 0 0 0 2px rgba(94, 114, 228, 0.2);
-}
-
-.input-group input::placeholder {
-  color: #6c7293;
+.button-group {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .l3-lookup-button {
-  align-self: flex-start;
-  background-color: #5e72e4;
-  color: #ffffff;
-  padding: 0.75rem 1.5rem;
-  margin-top: 0.5rem;
+  background-color: #007bff;
+  color: white;
   border: none;
+  padding: 10px 20px;
   border-radius: 4px;
-  font-weight: 500;
   cursor: pointer;
+  font-size: 1rem;
   transition: background-color 0.2s;
 }
 
 .l3-lookup-button:hover:not(:disabled) {
-  background-color: #4e61c9;
+  background-color: #0069d9;
 }
 
 .l3-lookup-button:disabled {
-  background-color: #434968;
+  background-color: #74a7df;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
 .l3-lookup-result {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background-color: #262b3d;
+  background-color: #fff;
   border-radius: 6px;
-  border-left: 4px solid #5e72e4;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .l3-lookup-result h4 {
   margin-top: 0;
-  margin-bottom: 1rem;
-  color: #e0e0e0;
-  font-size: 1.1rem;
-}
-
-.result-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  margin-bottom: 15px;
+  color: #444;
 }
 
 .result-info p {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  font-size: 0.95rem;
-  color: #b8b9bf;
+  margin-bottom: 10px;
+  word-break: break-all;
 }
 
-.result-info p strong {
-  margin-bottom: 0.25rem;
-  color: #c8cadb;
+.result-info strong {
+  display: inline-block;
+  min-width: 140px;
+  color: #555;
 }
 
 .result-address {
   font-family: monospace;
-  background-color: #1e2130;
-  color: #5e72e4;
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #434968;
-  word-break: break-all;
-  overflow-wrap: break-word;
+  color: #0066cc;
+}
+
+.result-value {
+  font-family: monospace;
+  color: #28a745;
 }
 
 .result-timestamp {
-  color: #e0e0e0;
   font-family: monospace;
-  background-color: rgba(58, 132, 240, 0.1);
-  padding: 2px 4px;
-  border-radius: 2px;
+  color: #6610f2;
 }
 
 @media (max-width: 768px) {
-  .l3-lookup-section {
-    padding: 1rem;
+  .info-item {
+    flex-direction: column;
   }
   
-  .l3-lookup-button {
-    width: 100%;
+  .info-label {
+    margin-bottom: 4px;
   }
 } 

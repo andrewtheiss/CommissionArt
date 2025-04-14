@@ -3,12 +3,7 @@ import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import './BridgeTest.css';
 import contractConfigJson from '../../assets/contract_config.json';
-
-// ABI for the L1 Query contract
-const l1QueryOwnerABI = [
-  "function queryNFTAndSendBack(address nftContract, uint256 tokenId, address l2Receiver, uint256 maxSubmissionCost, uint256 gasLimit, uint256 maxFeePerGas) external payable returns (uint256)",
-  "event OwnerQueried(uint256 indexed ticketId, address indexed nftContract, uint256 indexed tokenId, address querier)"
-];
+import l1QueryOwnerABI from '../../assets/abis/L1QueryOwner.json';
 
 // Using the ethers LogDescription type
 type ParsedLog = ethers.LogDescription;

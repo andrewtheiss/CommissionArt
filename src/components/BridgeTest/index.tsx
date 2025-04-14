@@ -58,7 +58,7 @@ const NETWORK_CONFIG = {
     chainName: "Sepolia Testnet",
     rpcUrls: [
       "https://eth-sepolia.public.blastapi.io",
-      "https://ethereum-sepolia.blockpi.network/v1/rpc/public",
+      "https://rpc.sepolia.dev",
       "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161" // Public Infura ID
     ],
     nativeCurrency: {
