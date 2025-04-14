@@ -340,6 +340,48 @@
   padding-bottom: 8px;
 }
 
+.admin-panel h5 {
+  color: #a455f7;
+  margin-top: 5px;
+  margin-bottom: 10px;
+  font-size: 1rem;
+}
+
+.admin-divider {
+  margin: 20px 0;
+  border: 0;
+  height: 1px;
+  background-color: rgba(145, 85, 253, 0.2);
+}
+
+.direct-registration-info {
+  margin-bottom: 15px;
+  background-color: rgba(248, 81, 73, 0.1);
+  border-radius: 4px;
+  padding: 10px;
+  border-left: 3px solid #f85149;
+}
+
+.warning-note {
+  color: #f9a8a5;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.warning-note code {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  color: #ffbcba;
+}
+
+.direct-register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
 .l2-relay-form {
   display: flex;
   flex-direction: column;

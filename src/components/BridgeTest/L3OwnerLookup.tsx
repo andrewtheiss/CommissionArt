@@ -80,6 +80,15 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   const [isSettingL2Relay, setIsSettingL2Relay] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
+  // Add state for direct registration form
+  const [directRegisterParams, setDirectRegisterParams] = useState({
+    chainId: '1',
+    nftContract: environment === 'testnet' ? '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06' : '',
+    tokenId: '0',
+    ownerAddress: '0x3afb0b4ca9ab60165e207cb14067b07a04114413',
+    isSubmitting: false
+  });
+
   // Update NFT contract address when environment changes
   useEffect(() => {
     if (environment === 'testnet') {
@@ -116,9 +125,27 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     }
   }, [isConnected, walletAddress, registryInfo.contractOwner]);
 
+  // Update NFT contract address in direct registration form when environment changes
+  useEffect(() => {
+    if (environment === 'testnet') {
+      setDirectRegisterParams(prev => ({
+        ...prev,
+        nftContract: '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06'
+      }));
+    }
+  }, [environment]);
+
   // Handle L3 lookup form change
   const handleL3LookupChange = (field: keyof L3LookupQuery, value: string) => {
     setL3LookupQuery(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  // Handle change in direct registration form
+  const handleDirectRegisterChange = (field: string, value: string) => {
+    setDirectRegisterParams(prev => ({
       ...prev,
       [field]: value
     }));
@@ -499,6 +526,172 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     }
   };
 
+  // Direct call to registerNFTOwnerFromParentChain (bypassing L2 relay for testing)
+  const callRegisterNFTOwnerFromParentChain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate input parameters
+    if (!ethers.isAddress(directRegisterParams.nftContract)) {
+      setBridgeStatus(prev => `${prev}\n\nError: Invalid NFT contract address format`);
+      return;
+    }
+    
+    if (!ethers.isAddress(directRegisterParams.ownerAddress)) {
+      setBridgeStatus(prev => `${prev}\n\nError: Invalid owner address format`);
+      return;
+    }
+    
+    // Validate chain ID and token ID as numbers
+    let chainId: number;
+    let tokenId: number;
+    
+    try {
+      chainId = parseInt(directRegisterParams.chainId);
+      if (isNaN(chainId) || chainId <= 0) {
+        throw new Error("Invalid chain ID");
+      }
+      
+      tokenId = parseInt(directRegisterParams.tokenId);
+      if (isNaN(tokenId) || tokenId < 0) {
+        throw new Error("Invalid token ID");
+      }
+    } catch (error) {
+      setBridgeStatus(prev => `${prev}\n\nError: ${error instanceof Error ? error.message : 'Invalid numeric input'}`);
+      return;
+    }
+    
+    // Ensure we're on Arbitrum
+    if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia for direct registration...');
+      switchToLayer('l2', 'testnet');
+      return;
+    } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
+      setBridgeStatus('Automatically switching to Arbitrum One for direct registration...');
+      switchToLayer('l2', 'mainnet');
+      return;
+    }
+    
+    // Connect wallet if not connected
+    if (!isConnected) {
+      await connectWallet();
+      if (!isConnected) {
+        setBridgeStatus('Please connect your wallet to continue');
+        return;
+      }
+    }
+    
+    try {
+      setDirectRegisterParams(prev => ({ ...prev, isSubmitting: true }));
+      
+      // Get the OwnerRegistry contract address
+      const l3Address = contractConfig.addresses.l3[environment];
+      if (!l3Address) {
+        throw new Error('L3 OwnerRegistry contract address not set');
+      }
+      
+      // Create a provider and signer
+      const ethereum = window.ethereum as any;
+      const provider = new ethers.BrowserProvider(ethereum);
+      const signer = await provider.getSigner();
+      
+      // Simplified ABI with no parameter names to avoid ethers.js parsing issues
+      const ownerRegistryABI = [
+        "function registerNFTOwnerFromParentChain(uint256, address, uint256, address) external",
+        "function l2relay() view returns (address)",
+        "function owner() view returns (address)",
+        "function lookupRegisteredOwner(uint256, address, uint256) view returns (address)"
+      ];
+      
+      // Create contract instance with signer
+      const contract = new ethers.Contract(l3Address, ownerRegistryABI, signer);
+      
+      // Convert parameters to appropriate types
+      const chainIdBN = ethers.toBigInt(chainId);
+      const tokenIdBN = ethers.toBigInt(tokenId);
+      
+      // Get the L2 relay address for the warning message
+      let l2RelayAddress;
+      try {
+        l2RelayAddress = await contract.l2relay();
+      } catch (error) {
+        console.error("Error getting L2 relay address:", error);
+        l2RelayAddress = "unknown";
+      }
+      
+      setBridgeStatus(prev => 
+        `${prev}\n\nAttempting direct call to registerNFTOwnerFromParentChain:
+        Chain ID: ${chainIdBN}
+        NFT Contract: ${directRegisterParams.nftContract}
+        Token ID: ${tokenIdBN}
+        Owner: ${directRegisterParams.ownerAddress}
+        
+        NOTE: This call will likely fail unless your wallet is the L2 Relay address (${l2RelayAddress})`
+      );
+      
+      // Log the exact parameters for debugging
+      console.log("Calling registerNFTOwnerFromParentChain with params:", {
+        chainId: chainIdBN.toString(),
+        nftContract: directRegisterParams.nftContract,
+        tokenId: tokenIdBN.toString(),
+        owner: directRegisterParams.ownerAddress
+      });
+      
+      // Attempt the transaction
+      const tx = await contract.registerNFTOwnerFromParentChain(
+        chainIdBN,
+        directRegisterParams.nftContract,
+        tokenIdBN,
+        directRegisterParams.ownerAddress
+      );
+      
+      // Wait for transaction to be mined
+      setBridgeStatus(prev => `${prev}\nTransaction submitted. Waiting for confirmation...`);
+      const receipt = await tx.wait();
+      
+      // Update status and reload contract info
+      setBridgeStatus(prev => `${prev}\nTransaction confirmed! Owner registered successfully.`);
+      
+      // Query the registered owner to confirm - use same parameter order as in the ABI
+      try {
+        const registeredOwner = await contract.lookupRegisteredOwner(
+          chainIdBN,                              // Chain ID
+          directRegisterParams.nftContract,       // NFT Contract
+          tokenIdBN                               // Token ID
+        );
+        
+        setBridgeStatus(prev => `${prev}\nVerification: Registered owner is now ${registeredOwner}`);
+      } catch (lookupError) {
+        console.error("Error verifying registration:", lookupError);
+        setBridgeStatus(prev => `${prev}\nCould not verify registration: ${lookupError instanceof Error ? lookupError.message : 'Unknown error'}`);
+      }
+      
+    } catch (error) {
+      console.error('Error with direct registration:', error);
+      
+      // Provide a more user-friendly error message
+      if (error instanceof Error) {
+        if (error.message.includes("Only L2Relay can register NFT owners") || 
+            error.message.includes("execution reverted")) {
+          setBridgeStatus(prev => 
+            `${prev}\n\nTransaction failed: Only the L2Relay contract can call this function directly. ` +
+            `This is enforced by the contract's code (assert msg.sender == self.l2relay).`
+          );
+        } else if (error.message.includes("no matching fragment")) {
+          setBridgeStatus(prev => 
+            `${prev}\n\nTransaction failed: ABI mismatch error. ` +
+            `Please check developer console for more details and report this issue.`
+          );
+        } else {
+          setBridgeStatus(prev => `${prev}\n\nError with direct registration: ${error.message}`);
+        }
+      } else {
+        setBridgeStatus(prev => `${prev}\n\nUnknown error with direct registration`);
+      }
+    } finally {
+      setDirectRegisterParams(prev => ({ ...prev, isSubmitting: false }));
+    }
+  };
+
   return (
     <div className="l3-lookup-section">
       <h3>L3 Owner Registry Explorer</h3>
@@ -559,8 +752,9 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       
       {showAdminPanel && (
         <div className="admin-panel">
-          <h4>L2 Relay Admin Panel</h4>
+          <h4>Admin Controls</h4>
           
+          <h5>L2 Relay Configuration</h5>
           <form onSubmit={setL2RelayAddress} className="l2-relay-form">
             <div className="input-group">
               <label htmlFor="l2-relay-address">
@@ -591,6 +785,72 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
             {!isOwner && (
               <p className="owner-note">Note: Only the contract owner can set the L2 relay address. The transaction will be rejected by the contract if you are not the owner.</p>
             )}
+          </form>
+          
+          <hr className="admin-divider" />
+          
+          <h5>Direct NFT Registration (Bypass L2 Relay)</h5>
+          <div className="direct-registration-info">
+            <p className="warning-note">
+              This bypasses the normal flow and attempts to call <code>registerNFTOwnerFromParentChain</code> directly.
+              The call will likely fail unless your wallet is the L2 Relay address set in the contract.
+            </p>
+          </div>
+          
+          <form onSubmit={callRegisterNFTOwnerFromParentChain} className="direct-register-form">
+            <div className="input-group">
+              <label htmlFor="chain-id">Chain ID</label>
+              <input
+                type="text"
+                id="chain-id"
+                value={directRegisterParams.chainId}
+                onChange={(e) => handleDirectRegisterChange('chainId', e.target.value)}
+                placeholder="1"
+              />
+            </div>
+            
+            <div className="input-group">
+              <label htmlFor="nft-contract-direct">NFT Contract Address</label>
+              <input
+                type="text"
+                id="nft-contract-direct"
+                value={directRegisterParams.nftContract}
+                onChange={(e) => handleDirectRegisterChange('nftContract', e.target.value)}
+                placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+              />
+            </div>
+            
+            <div className="input-group">
+              <label htmlFor="token-id-direct">Token ID</label>
+              <input
+                type="text"
+                id="token-id-direct"
+                value={directRegisterParams.tokenId}
+                onChange={(e) => handleDirectRegisterChange('tokenId', e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            
+            <div className="input-group">
+              <label htmlFor="owner-address">Owner Address</label>
+              <input
+                type="text"
+                id="owner-address"
+                value={directRegisterParams.ownerAddress}
+                onChange={(e) => handleDirectRegisterChange('ownerAddress', e.target.value)}
+                placeholder="0x3afb0b4ca9ab60165e207cb14067b07a04114413"
+              />
+            </div>
+            
+            <div className="button-group">
+              <button
+                type="submit"
+                className="admin-button"
+                disabled={directRegisterParams.isSubmitting}
+              >
+                {directRegisterParams.isSubmitting ? 'Registering...' : 'Register Directly'}
+              </button>
+            </div>
           </form>
         </div>
       )}
