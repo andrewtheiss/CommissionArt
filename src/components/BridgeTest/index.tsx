@@ -3,6 +3,7 @@ import { useBlockchain } from '../../utils/BlockchainContext';
 import useContractConfig from '../../utils/useContractConfig';
 import abiLoader from '../../utils/abiLoader';
 import NFTOwnershipQuery from './NFTOwnershipQuery';
+import L3OwnerLookup from './L3OwnerLookup';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
 import { parseEther, toBigInt } from "ethers";
@@ -385,14 +386,14 @@ const BridgeTest: React.FC = () => {
   
   // Functions to add networks to MetaMask
   const addNetworkToMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
-    if (!window.ethereum) {
+    if (!(window as any).ethereum) {
       alert('MetaMask is not installed. Please install it to use this feature.');
       return;
     }
     
     try {
       const params = NETWORK_CONFIG[network];
-      await window.ethereum.request({
+      await (window as any).ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [params],
       });
@@ -410,7 +411,7 @@ const BridgeTest: React.FC = () => {
   
   // Function to switch networks in MetaMask
   const switchNetworkInMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
-    if (!window.ethereum) {
+    if (!(window as any).ethereum) {
       alert('MetaMask is not installed. Please install it to use this feature.');
       return;
     }
@@ -420,7 +421,7 @@ const BridgeTest: React.FC = () => {
       
       try {
         // First try to switch to the network
-        await window.ethereum.request({
+        await (window as any).ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: chainIdHex }],
         });
@@ -433,7 +434,7 @@ const BridgeTest: React.FC = () => {
         if (switchError.code === 4902) {
           // Add the network first and then try to switch again
           await addNetworkToMetaMask(network);
-          await window.ethereum.request({
+          await (window as any).ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: chainIdHex }],
           });
@@ -478,7 +479,7 @@ const BridgeTest: React.FC = () => {
       const contractAddress = '0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2';
 
       // Get L1 provider
-      const l1Provider = new ethers.BrowserProvider(window.ethereum);
+      const l1Provider = new ethers.BrowserProvider((window as any).ethereum);
       
       // Create a mock L2 provider for Arbitrum Sepolia
       const l2Provider = new ethers.JsonRpcProvider("https://sepolia-rollup.arbitrum.io/rpc");
@@ -629,7 +630,7 @@ const BridgeTest: React.FC = () => {
 - Max Fee Per Gas: ${ethers.formatUnits(maxFeePerGas, "gwei")} gwei`);
 
       // Create contract instance
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       
       // Confirm we're on the right network
@@ -742,7 +743,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
 - Max Fee Per Gas: ${ethers.formatUnits(gasEstimation.maxFeePerGas, "gwei")} gwei`);
 
       // Create contract instance
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       
       // Confirm we're on the right network
@@ -807,7 +808,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
 
   return (
     <div className="bridge-test-container">
-      <h2>Bridge Test</h2>
+      <h2>Bridge Test & NFT Ownership Query</h2>
       
       <div className="network-selector-container">
         <div className="selector-group">
@@ -1035,6 +1036,13 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
         setLayer={setLayer}
       />
       
+      {/* L3 Owner Registry Lookup */}
+      <L3OwnerLookup
+        environment={environment}
+        contractConfig={contractConfig}
+        setBridgeStatus={setBridgeStatus}
+      />
+      
       {/* Contract Configuration Dropdown */}
       <div className="contract-config-dropdown">
         <button 
@@ -1171,7 +1179,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
       </div>
       
       <div className="status-box">
-        <h3>Status</h3>
+        <h3>Status:</h3>
         <pre>{bridgeStatus || 'No status updates yet. Actions will be displayed here.'}</pre>
       </div>
     </div>
