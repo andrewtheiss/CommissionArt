@@ -6,12 +6,25 @@ import { ethers } from 'ethers';
 
 type NetworkType = 'animechain' | 'dev' | 'prod' | 'local' | 'arbitrum_testnet' | 'arbitrum_mainnet';
 
+// Map layer and environment to network type
+export const mapLayerToNetwork = (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet'): NetworkType => {
+  if (layer === 'l1') {
+    return environment === 'testnet' ? 'dev' : 'prod';
+  } else if (layer === 'l2') {
+    return environment === 'testnet' ? 'arbitrum_testnet' : 'arbitrum_mainnet';
+  } else {
+    // L3 is animechain
+    return 'animechain';
+  }
+};
+
 interface BlockchainContextType {
   isConnected: boolean;
   isLoading: boolean;
   networkType: NetworkType;
   network: NetworkConfig;
   switchNetwork: (network: NetworkType) => void;
+  switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => void;
   connectWallet: () => Promise<void>;
   walletAddress: string | null;
 }
@@ -37,7 +50,7 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
     checkConnection();
   }, []);
 
-  const switchNetwork = (newNetworkType: NetworkType) => {
+  const switchNetwork = async (newNetworkType: NetworkType) => {
     const newNetwork = ethersService.switchNetwork(newNetworkType);
     setNetworkType(newNetworkType);
     setNetwork(newNetwork);
@@ -48,12 +61,19 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
+  const switchToLayer = (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => {
+    const targetNetwork = mapLayerToNetwork(layer, environment);
+    console.log(`Switching to layer ${layer} (${environment}) => network ${targetNetwork}`);
+    switchNetwork(targetNetwork);
+  };
+
   const connectWallet = async () => {
     try {
       const signer = await ethersService.getSigner();
       if (signer) {
         const address = await signer.getAddress();
         setWalletAddress(address);
+        setIsConnected(true);
         return;
       }
       throw new Error('No wallet connected');
@@ -70,6 +90,7 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
     networkType,
     network,
     switchNetwork,
+    switchToLayer,
     connectWallet,
     walletAddress
   };

@@ -51,7 +51,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   setBridgeStatus
 }) => {
   // Get blockchain context
-  const { connectWallet, isConnected, networkType, switchNetwork } = useBlockchain();
+  const { connectWallet, isConnected, networkType, switchNetwork, switchToLayer } = useBlockchain();
   
   // State for L3 lookup query
   const [l3LookupQuery, setL3LookupQuery] = useState<L3LookupQuery>({
@@ -116,11 +116,11 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     // Ensure we're on the right network
     if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
       setBridgeStatus('Automatically switching to Arbitrum Sepolia to query L3 OwnerRegistry...');
-      switchNetwork('arbitrum_testnet');
+      switchToLayer('l2', 'testnet');
       return;
     } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
       setBridgeStatus('Automatically switching to Arbitrum One to query L3 OwnerRegistry...');
-      switchNetwork('arbitrum_mainnet');
+      switchToLayer('l2', 'mainnet');
       return;
     }
     
@@ -200,11 +200,11 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     // Ensure we're on Arbitrum - auto switch if needed
     if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
       setBridgeStatus('Automatically switching to Arbitrum Sepolia to query L3 OwnerRegistry...');
-      switchNetwork('arbitrum_testnet');
+      switchToLayer('l2', 'testnet');
       return;
     } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
       setBridgeStatus('Automatically switching to Arbitrum One to query L3 OwnerRegistry...');
-      switchNetwork('arbitrum_mainnet');
+      switchToLayer('l2', 'mainnet');
       return;
     }
     
@@ -376,6 +376,22 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   return (
     <div className="l3-lookup-section">
       <h3>L3 Owner Registry Explorer</h3>
+      
+      <div className="network-action-bar">
+        <button 
+          className="network-switch-button" 
+          onClick={() => switchToLayer('l2', 'testnet')}
+          title="Switch to Arbitrum Sepolia to connect to L3"
+        >
+          Switch to Arbitrum Testnet
+        </button>
+        <div className="network-status">
+          {networkType === 'arbitrum_testnet' ? 
+            <span className="connected-status">✓ Connected to Arbitrum Testnet</span> : 
+            <span className="disconnected-status">Not connected to Arbitrum Testnet</span>
+          }
+        </div>
+      </div>
       
       <div className="registry-info">
         <h4>Registry Contract Details</h4>

@@ -13,6 +13,45 @@
   font-size: 1.5rem;
 }
 
+.network-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  background-color: #e9ecef;
+  border-radius: 6px;
+}
+
+.network-switch-button {
+  background-color: #6f42c1;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-weight: 500;
+}
+
+.network-switch-button:hover {
+  background-color: #5a32a3;
+}
+
+.network-status {
+  font-size: 0.9rem;
+}
+
+.connected-status {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.disconnected-status {
+  color: #dc3545;
+  font-weight: 600;
+}
+
 .registry-info {
   background-color: #fff;
   border-radius: 6px;

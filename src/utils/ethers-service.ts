@@ -117,7 +117,71 @@ class EthersService {
     this.currentProviderIndex = 0;
     this.network = config.networks[networkType];
     this.connectProvider();
+    
+    // Request wallet to switch networks
+    this.requestWalletNetworkSwitch(networkType);
+    
     return this.network;
+  }
+
+  /**
+   * Request the wallet to switch to the specified network
+   */
+  public async requestWalletNetworkSwitch(networkType: NetworkType) {
+    if (!window.ethereum) {
+      console.warn('No wallet detected for network switching');
+      return false;
+    }
+    
+    const targetNetwork = config.networks[networkType];
+    
+    try {
+      // Format chain ID as hexadecimal string required by MetaMask
+      const chainIdHex = `0x${targetNetwork.chainId.toString(16)}`;
+      
+      // Request network switch
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: chainIdHex }],
+        });
+        
+        console.log(`Successfully switched to network: ${targetNetwork.name}`);
+        return true;
+      } catch (switchError: any) {
+        // This error code indicates the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: chainIdHex,
+                  chainName: targetNetwork.name,
+                  rpcUrls: [targetNetwork.rpcUrl],
+                  nativeCurrency: {
+                    name: targetNetwork.currency || 'ETH',
+                    symbol: targetNetwork.currency || 'ETH',
+                    decimals: 18,
+                  },
+                },
+              ],
+            });
+            console.log(`Successfully added and switched to network: ${targetNetwork.name}`);
+            return true;
+          } catch (addError) {
+            console.error('Error adding network to wallet:', addError);
+            return false;
+          }
+        } else {
+          console.error('Error switching network in wallet:', switchError);
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error('Error requesting network switch:', error);
+      return false;
+    }
   }
 
   /**
@@ -168,6 +232,11 @@ class EthersService {
     if (window.ethereum) {
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
+        await this.requestWalletNetworkSwitch(
+          Object.keys(config.networks).find(
+            key => config.networks[key as NetworkType].chainId === this.network.chainId
+          ) as NetworkType
+        );
         return await provider.getSigner();
       } catch (error) {
         console.error('Error getting signer:', error);

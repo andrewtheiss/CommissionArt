@@ -95,7 +95,7 @@ const BridgeTestContainer: React.FC = () => {
   const [showMetaMaskActions, setShowMetaMaskActions] = useState(false);
   
   // Get blockchain context
-  const { networkType, switchNetwork, connectWallet, walletAddress, isConnected } = useBlockchain();
+  const { networkType, switchNetwork, switchToLayer, connectWallet, walletAddress, isConnected } = useBlockchain();
   
   // Get contract configuration
   const { loading: configLoading, config: contractsConfig, getContract, reloadConfig } = useContractConfig();
@@ -227,58 +227,25 @@ const BridgeTestContainer: React.FC = () => {
     }
   }, [contractsConfig, configLoading, getContract]);
   
-  // Update network when layer changes
-  useEffect(() => {
-    if (layer === 'l1') {
-      if (environment === 'testnet') {
-        switchNetwork('dev'); // Switch to Sepolia
-      } else {
-        switchNetwork('prod'); // Switch to Ethereum Mainnet
-      }
-    } else { // L2 
-      if (environment === 'testnet') {
-        switchNetwork('arbitrum_testnet'); // Switch to Arbitrum Sepolia
-        setBridgeStatus('Connected to Arbitrum Sepolia testnet');
-      } else {
-        switchNetwork('arbitrum_mainnet'); // Switch to Arbitrum One
-        setBridgeStatus('Connected to Arbitrum One mainnet');
-      }
-    }
+  // Handle layer selection change
+  const handleLayerChange = (newLayer: 'l1' | 'l2') => {
+    setLayer(newLayer);
     
-    // Force reload the contract config when changing networks
-    if (!configLoading && contractsConfig) {
-      // Small delay to ensure network switch completes first
-      setTimeout(() => {
-        // Reload the contract configuration
-        reloadConfig();
-        
-        // Update the UI with new addresses
-        const newAddresses = {
-          l1: {
-            testnet: getContract('testnet', 'l1')?.address || '',
-            mainnet: getContract('mainnet', 'l1')?.address || '',
-          },
-          l2: {
-            testnet: getContract('testnet', 'l2')?.address || '',
-            mainnet: getContract('mainnet', 'l2')?.address || '',
-          },
-          l3: {
-            testnet: getContract('testnet', 'l3')?.address || '',
-            mainnet: getContract('mainnet', 'l3')?.address || '',
-          }
-        };
-        
-        setContractConfig(prev => ({
-          ...prev,
-          addresses: newAddresses
-        }));
-        
-        setBridgeStatus(prev => {
-          return `${prev ? prev + '\n\n' : ''}Updated contract addresses for ${layer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${environment}.`;
-        });
-      }, 500);
-    }
-  }, [layer, environment, switchNetwork]);
+    // Automatically switch to the appropriate network when layer is changed
+    switchToLayer(newLayer, environment);
+    
+    setBridgeStatus(`Switched to ${newLayer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${environment === 'testnet' ? 'testnet' : 'mainnet'}`);
+  };
+  
+  // Handle environment selection change
+  const handleEnvironmentChange = (newEnvironment: 'testnet' | 'mainnet') => {
+    setEnvironment(newEnvironment);
+    
+    // Automatically switch to the appropriate network when environment is changed
+    switchToLayer(layer, newEnvironment);
+    
+    setBridgeStatus(`Switched to ${layer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${newEnvironment === 'testnet' ? 'testnet' : 'mainnet'}`);
+  };
   
   // Update selected ABI when layer or ABI file changes
   useEffect(() => {
@@ -410,48 +377,20 @@ const BridgeTestContainer: React.FC = () => {
     }
   };
   
-  // Function to switch networks in MetaMask
+  // Function to switch networks in MetaMask - updated to use switchToLayer
   const switchNetworkInMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
     if (!(window as any).ethereum) {
       alert('MetaMask is not installed. Please install it to use this feature.');
       return;
     }
     
-    try {
-      const chainIdHex = NETWORK_CONFIG[network].chainId;
-      
-      try {
-        // First try to switch to the network
-        await (window as any).ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: chainIdHex }],
-        });
-        
-        setBridgeStatus(prev => 
-          `${prev ? prev + '\n\n' : ''}Successfully switched to ${NETWORK_CONFIG[network].chainName}.`
-        );
-      } catch (switchError: any) {
-        // If the error code is 4902, the network isn't added yet
-        if (switchError.code === 4902) {
-          // Add the network first and then try to switch again
-          await addNetworkToMetaMask(network);
-          await (window as any).ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: chainIdHex }],
-          });
-          
-          setBridgeStatus(prev => 
-            `${prev ? prev + '\n\n' : ''}Successfully added and switched to ${NETWORK_CONFIG[network].chainName}.`
-          );
-        } else {
-          throw switchError;
-        }
-      }
-    } catch (error: any) {
-      console.error(`Error switching to ${network} in MetaMask:`, error);
-      setBridgeStatus(prev => 
-        `${prev ? prev + '\n\n' : ''}Error switching network in MetaMask: ${error.message || error}`
-      );
+    // Use our switchToLayer functionality for network switching
+    if (network === 'sepolia') {
+      switchToLayer('l1', 'testnet');
+      setBridgeStatus(prev => `${prev ? prev + '\n\n' : ''}Requested switch to Sepolia testnet.`);
+    } else if (network === 'arbitrumSepolia') {
+      switchToLayer('l2', 'testnet');
+      setBridgeStatus(prev => `${prev ? prev + '\n\n' : ''}Requested switch to Arbitrum Sepolia testnet.`);
     }
   };
 
@@ -809,43 +748,37 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
 
   return (
     <div className="bridge-test-container">
-      <h2>Bridge Test & NFT Ownership Query</h2>
+      <h2>CommissionArt NFT Bridge Testing</h2>
       
-      <div className="network-selector-container">
-        <div className="selector-group">
-          <label>Layer:</label>
-          <div className="toggle-buttons">
-            <button 
-              className={`toggle-button ${layer === 'l1' ? 'active' : ''}`}
-              onClick={() => setLayer('l1')}
-            >
-              L1 (Ethereum)
-            </button>
-            <button 
-              className={`toggle-button ${layer === 'l2' ? 'active' : ''}`}
-              onClick={() => setLayer('l2')}
-            >
-              L2 (Arbitrum)
-            </button>
-          </div>
+      <div className="network-selection">
+        <div className="network-buttons">
+          <button
+            className={`network-button ${layer === 'l1' ? 'active' : ''}`}
+            onClick={() => handleLayerChange('l1')}
+          >
+            L1 (Ethereum)
+          </button>
+          <button
+            className={`network-button ${layer === 'l2' ? 'active' : ''}`}
+            onClick={() => handleLayerChange('l2')}
+          >
+            L2 (Arbitrum)
+          </button>
         </div>
         
-        <div className="selector-group">
-          <label>Environment:</label>
-          <div className="toggle-buttons">
-            <button 
-              className={`toggle-button ${environment === 'testnet' ? 'active' : ''}`}
-              onClick={() => setEnvironment('testnet')}
-            >
-              Testnet
-            </button>
-            <button 
-              className={`toggle-button ${environment === 'mainnet' ? 'active' : ''}`}
-              onClick={() => setEnvironment('mainnet')}
-            >
-              Mainnet
-            </button>
-          </div>
+        <div className="environment-buttons">
+          <button
+            className={`environment-button ${environment === 'testnet' ? 'active' : ''}`}
+            onClick={() => handleEnvironmentChange('testnet')}
+          >
+            Testnet
+          </button>
+          <button
+            className={`environment-button ${environment === 'mainnet' ? 'active' : ''}`}
+            onClick={() => handleEnvironmentChange('mainnet')}
+          >
+            Mainnet
+          </button>
         </div>
       </div>
       
