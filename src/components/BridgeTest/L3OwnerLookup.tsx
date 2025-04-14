@@ -11,6 +11,7 @@ interface L3LookupQuery {
   isSubmitting: boolean;
   result: string;
   commissionHub: string;
+  lastUpdated: string;
 }
 
 // Interface for contract configuration
@@ -57,7 +58,8 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     tokenId: environment === 'testnet' ? '1' : '',
     isSubmitting: false,
     result: '',
-    commissionHub: ''
+    commissionHub: '',
+    lastUpdated: ''
   });
 
   // Update NFT contract address when environment changes
@@ -77,6 +79,14 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       ...prev,
       [field]: value
     }));
+  };
+
+  // Helper function to format a timestamp as a human-readable date
+  const formatTimestamp = (timestamp: number): string => {
+    if (!timestamp) return 'Never';
+    
+    const date = new Date(timestamp * 1000); // Convert seconds to milliseconds
+    return date.toLocaleString();
   };
 
   // Submit L3 lookup query to the OwnerRegistry contract
@@ -109,7 +119,8 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         ...prev,
         isSubmitting: true,
         result: '',
-        commissionHub: ''
+        commissionHub: '',
+        lastUpdated: ''
       }));
       
       // Get the OwnerRegistry contract address
@@ -184,6 +195,27 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
             ],
             "stateMutability": "view",
             "type": "function"
+          },
+          {
+            "inputs": [
+              {
+                "name": "nft_contract",
+                "type": "address"
+              },
+              {
+                "name": "token_id",
+                "type": "uint256"
+              }
+            ],
+            "name": "getLastUpdated",
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256"
+              }
+            ],
+            "stateMutability": "view",
+            "type": "function"
           }
         ];
       }
@@ -209,27 +241,34 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       // Call the lookupRegsiteredOwner function
       const owner = await contract.lookupRegsiteredOwner(contractAddress, tokenId);
       
-      // If we get an owner, also try to query the commission hub
+      // If we get an owner, also try to query the commission hub and last updated timestamp
       let commissionHub = ethers.ZeroAddress;
+      let lastUpdated = 0;
+      
       if (owner && owner !== ethers.ZeroAddress) {
         try {
           commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenId);
+          lastUpdated = await contract.getLastUpdated(contractAddress, tokenId);
         } catch (error) {
-          console.error('Failed to query commission hub:', error);
+          console.error('Failed to query commission hub or last updated:', error);
         }
       }
+      
+      // Format the timestamp
+      const formattedTimestamp = formatTimestamp(Number(lastUpdated));
       
       // Update state with result
       setL3LookupQuery(prev => ({
         ...prev,
         isSubmitting: false,
         result: owner === ethers.ZeroAddress ? 'No registered owner found' : owner,
-        commissionHub: commissionHub === ethers.ZeroAddress ? '' : commissionHub
+        commissionHub: commissionHub === ethers.ZeroAddress ? '' : commissionHub,
+        lastUpdated: owner !== ethers.ZeroAddress ? formattedTimestamp : ''
       }));
       
       // Update bridge status
       setBridgeStatus(prev => 
-        `${prev}\n\nRegistered Owner Lookup Result:\nNFT Contract: ${contractAddress}\nToken ID: ${tokenId}\nOwner: ${owner === ethers.ZeroAddress ? 'Not registered' : owner}\nCommission Hub: ${commissionHub === ethers.ZeroAddress ? 'Not created' : commissionHub}`
+        `${prev}\n\nRegistered Owner Lookup Result:\nNFT Contract: ${contractAddress}\nToken ID: ${tokenId}\nOwner: ${owner === ethers.ZeroAddress ? 'Not registered' : owner}\nCommission Hub: ${commissionHub === ethers.ZeroAddress ? 'Not created' : commissionHub}\nLast Updated: ${formattedTimestamp}`
       );
       
     } catch (error) {
@@ -281,7 +320,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         <div className="button-group">
           <button
             type="submit"
-            className="primary-button l3-lookup-button"
+            className="l3-lookup-button"
             disabled={l3LookupQuery.isSubmitting}
           >
             {l3LookupQuery.isSubmitting ? 'Looking Up...' : 'Lookup Registered Owner'}
@@ -301,6 +340,12 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
               <p>
                 <strong>Commission Hub:</strong> 
                 <span className="result-address">{l3LookupQuery.commissionHub}</span>
+              </p>
+            )}
+            {l3LookupQuery.lastUpdated && (
+              <p>
+                <strong>Last Updated:</strong> 
+                <span className="result-timestamp">{l3LookupQuery.lastUpdated}</span>
               </p>
             )}
           </div>

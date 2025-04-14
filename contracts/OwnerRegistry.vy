@@ -9,6 +9,8 @@ commission_hub_template: public(address)
 owner: public(address)
 commission_hubs: public(HashMap[address, HashMap[uint256, address]])
 owners: public(HashMap[address, HashMap[uint256, address]])
+# Add last update timestamps for each NFT/token ID pair
+last_updated: public(HashMap[address, HashMap[uint256, uint256]])
 
 interface CommissionHub:
     def initialize(nft_contract: address, token_id: uint256, registry: address): nonpayable
@@ -19,6 +21,7 @@ event Registered:
     token_id: indexed(uint256)
     owner: address
     commission_hub: address
+    timestamp: uint256
 
 event CommissionHubCreated:
     nft_contract: indexed(address)
@@ -37,6 +40,9 @@ def registerNFTOwnerFromParentChain(nft_contract: address, token_id: uint256, ow
     # Only allow registration from L2Relay
     assert msg.sender == self.l2relay, "Only L2Relay can register NFT owners"
 
+    # Record the current timestamp
+    current_time: uint256 = block.timestamp
+    
     # If the commission hub doesn't exist, create it
     if self.owners[nft_contract][token_id] == empty(address):
         commission_hub: address = create_minimal_proxy_to(self.commission_hub_template)
@@ -50,14 +56,29 @@ def registerNFTOwnerFromParentChain(nft_contract: address, token_id: uint256, ow
         commission_hub_instance: CommissionHub = CommissionHub(commission_hub)
         extcall commission_hub_instance.updateRegistration(nft_contract, token_id, owner)
 
+    # Update the owner and the last update timestamp
     self.owners[nft_contract][token_id] = owner
-    log Registered(nft_contract=nft_contract, token_id=token_id, owner=owner, commission_hub=self.commission_hubs[nft_contract][token_id])
+    self.last_updated[nft_contract][token_id] = current_time
+    
+    log Registered(
+        nft_contract=nft_contract, 
+        token_id=token_id, 
+        owner=owner, 
+        commission_hub=self.commission_hubs[nft_contract][token_id],
+        timestamp=current_time
+    )
 
 #Called by other contracts on L3 to query the owner of an NFT
 @view
 @external
 def lookupRegsiteredOwner(nft_contract: address, token_id: uint256) -> address:
     return self.owners[nft_contract][token_id]
+
+#Get the timestamp when an owner was last updated
+@view
+@external
+def getLastUpdated(nft_contract: address, token_id: uint256) -> uint256:
+    return self.last_updated[nft_contract][token_id]
 
 @view
 @external

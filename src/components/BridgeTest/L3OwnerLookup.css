@@ -119,6 +119,14 @@
   overflow-wrap: break-word;
 }
 
+.result-timestamp {
+  color: #e0e0e0;
+  font-family: monospace;
+  background-color: rgba(58, 132, 240, 0.1);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
 @media (max-width: 768px) {
   .l3-lookup-section {
     padding: 1rem;

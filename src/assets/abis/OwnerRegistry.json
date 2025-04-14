@@ -21,6 +21,11 @@
         "name": "commission_hub",
         "type": "address",
         "indexed": false
+      },
+      {
+        "name": "timestamp",
+        "type": "uint256",
+        "indexed": false
       }
     ],
     "anonymous": false,
@@ -85,6 +90,27 @@
     ]
   },
   {
+    "stateMutability": "view",
+    "type": "function",
+    "name": "last_updated",
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      },
+      {
+        "name": "arg1",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
     "stateMutability": "nonpayable",
     "type": "function",
     "name": "registerNFTOwnerFromParentChain",
@@ -122,6 +148,27 @@
       {
         "name": "",
         "type": "address"
+      }
+    ]
+  },
+  {
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getLastUpdated",
+    "inputs": [
+      {
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "token_id",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ]
   },

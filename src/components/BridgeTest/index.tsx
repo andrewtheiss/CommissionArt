@@ -4,6 +4,7 @@ import useContractConfig from '../../utils/useContractConfig';
 import abiLoader from '../../utils/abiLoader';
 import NFTOwnershipQuery from './NFTOwnershipQuery';
 import L3OwnerLookup from './L3OwnerLookup';
+import L1OwnerUpdateRequest from './L1OwnerUpdateRequest';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
 import { parseEther, toBigInt } from "ethers";
@@ -85,7 +86,7 @@ const NETWORK_CONFIG = {
   }
 };
 
-const BridgeTest: React.FC = () => {
+const BridgeTestContainer: React.FC = () => {
   // State for network selection
   const [layer, setLayer] = useState<'l1' | 'l2'>('l1');
   const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
@@ -907,122 +908,8 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
       
       {/* Query NFT Ownership Form */}
       <div className="nft-query-form-section">
-        <h3>Call queryNFTAndSendBack on Sepolia</h3>
-        <div className="info-message">
-          This will query the NFT ownership on L1 and send the result to L2 via a retryable ticket.
-        </div>
-        
-        <div className="form-container">
-          <div className="input-group">
-            <label>NFT Contract Address:</label>
-            <input 
-              type="text" 
-              id="nftContract"
-              defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-              placeholder="Enter NFT contract address"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>Token ID:</label>
-            <input 
-              type="text" 
-              id="tokenId"
-              defaultValue="0"
-              placeholder="0"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>L2 Receiver Address:</label>
-            <input 
-              type="text" 
-              id="l2Receiver"
-              defaultValue={contractConfig.addresses.l2.testnet}
-              placeholder="Enter L2 receiver address"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>ETH Value (for cross-chain fees):</label>
-            <input 
-              type="text" 
-              id="ethValue"
-              defaultValue="0.001"
-              placeholder="0.001"
-            />
-            <div className="field-help">
-              Amount of ETH to send with the transaction. This covers cross-chain fees, gas costs, and L2 execution.
-            </div>
-          </div>
-          
-          <div className="gas-estimate-section">
-            <button
-              className="estimate-gas-button"
-              onClick={estimateRetryableTicketGas}
-              disabled={gasEstimation.estimating}
-            >
-              {gasEstimation.estimating ? 'Estimating...' : 'Estimate Gas'}
-            </button>
-            
-            {gasEstimation.estimationComplete && (
-              <div className="gas-estimation-results">
-                <div className="estimation-result-item">
-                  <span>Max Submission Cost:</span>
-                  <span>{ethers.formatEther(gasEstimation.maxSubmissionCost)} ETH</span>
-                </div>
-                <div className="estimation-result-item">
-                  <span>Gas Limit:</span>
-                  <span>{gasEstimation.gasLimit}</span>
-                </div>
-                <div className="estimation-result-item">
-                  <span>Max Fee Per Gas:</span>
-                  <span>{ethers.formatUnits(gasEstimation.maxFeePerGas, "gwei")} gwei</span>
-                </div>
-                <div className="estimation-result-item total">
-                  <span>Total Est. Cost:</span>
-                  <span>{gasEstimation.totalEstimatedCost} ETH</span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="contract-info">
-            <p>Contract: <span>{contractConfig.addresses.l1.testnet}</span> (Sepolia)</p>
-            <div className="default-gas-info">
-              <p>Default parameters:</p>
-              <ul>
-                <li>Max Submission Cost: 0.0045 ETH (high safety value)</li>
-                <li>Gas Limit: 1,000,000</li>
-                <li>Max Fee Per Gas: 0.1 gwei</li>
-              </ul>
-            </div>
-            <a 
-              href="https://sepolia-retryable-tx-dashboard.arbitrum.io/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="arb-link"
-            >
-              View on Arbitrum Retryable Dashboard
-            </a>
-          </div>
-          
-          <div className="button-group">
-            <button 
-              className="query-button"
-              onClick={callQueryNFTAndSendBack}
-            >
-              Submit with Safe Parameters
-            </button>
-            <button 
-              className="query-button optimized"
-              onClick={callQueryNFTAndSendBackOptimized}
-              disabled={!gasEstimation.estimationComplete}
-            >
-              Submit with Optimized Gas
-            </button>
-          </div>
-        </div>
+        <h3>L1 Owner Update Request</h3>
+        <L1OwnerUpdateRequest />
       </div>
       
       {/* NFT Ownership Query Component */}
@@ -1186,4 +1073,4 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
   );
 };
 
-export default BridgeTest; 
+export default BridgeTestContainer; 

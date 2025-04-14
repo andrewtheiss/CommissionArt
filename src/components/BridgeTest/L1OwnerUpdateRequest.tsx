@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-const BridgeTest: React.FC = () => {
+const L1OwnerUpdateRequest: React.FC = () => {
   const [bridgeStatus, setBridgeStatus] = useState<string>('Ready');
   const { isConnected, networkType, switchNetwork, connectWallet, walletAddress } = useBlockchain();
 
@@ -212,7 +212,7 @@ const BridgeTest: React.FC = () => {
 
   return (
     <div className="bridge-test-container">
-      <h2>Bridge Test</h2>
+      <h2>L1 Owner Update Request</h2>
       
       {!isConnected ? (
         <div className="connect-wallet-container">
@@ -248,72 +248,86 @@ const BridgeTest: React.FC = () => {
             <ul>
               <li>L1 (Sepolia): {l1ContractAddress}</li>
               <li>L2 (Arbitrum): {l2ContractAddress}</li>
-              <li>L3 (OwnerRegistry): {l3ContractAddress}</li>
+              <li>L3 (Orbit): {l3ContractAddress}</li>
             </ul>
           </div>
           
-          <div className="input-group">
-            <label>Contract Address:</label>
-            <input
-              type="text"
-              ref={contractAddressRef}
-              placeholder="Enter L1 Query contract address"
-              defaultValue={l1ContractAddress}
-            />
+          <div className="form-container">
+            <div className="form-group">
+              <label htmlFor="contractAddress">L1 Contract Address:</label>
+              <input
+                type="text"
+                id="contractAddress"
+                ref={contractAddressRef}
+                defaultValue={l1ContractAddress}
+                placeholder="Contract address"
+              />
+              <small>The contract that will send the query to L2</small>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="nftContract">NFT Contract:</label>
+              <input
+                type="text"
+                id="nftContract"
+                ref={nftContractRef}
+                defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+                placeholder="NFT contract address"
+              />
+              <small>The NFT contract to query</small>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="tokenId">Token ID:</label>
+              <input
+                type="text"
+                id="tokenId"
+                ref={tokenIdRef}
+                defaultValue="0"
+                placeholder="Token ID"
+              />
+              <small>The token ID to check ownership</small>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="l2Receiver">L2 Receiver:</label>
+              <input
+                type="text"
+                id="l2Receiver"
+                ref={l2ReceiverRef}
+                defaultValue={l2ContractAddress}
+                placeholder="L2 receiver address"
+              />
+              <small>The contract that will receive the result on L2</small>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="ethValue">ETH Value:</label>
+              <input
+                type="text"
+                id="ethValue"
+                ref={ethValueRef}
+                defaultValue="0.001"
+                placeholder="ETH amount"
+              />
+              <small>ETH to send for cross-chain fees (min. 0.001 recommended)</small>
+            </div>
+            
+            <div className="button-group">
+              <button onClick={callQueryNFTAndSendBack} className="primary-button">
+                Send Request (Safe Parameters)
+              </button>
+              <button onClick={callQueryNFTAndSendBackOptimized} className="secondary-button">
+                Send Request (Optimized Gas)
+              </button>
+            </div>
           </div>
-          <div className="input-group">
-            <label>NFT Contract Address:</label>
-            <input
-              type="text"
-              ref={nftContractRef}
-              placeholder="Enter NFT contract address"
-              defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-            />
-          </div>
-          <div className="input-group">
-            <label>Token ID:</label>
-            <input
-              type="text"
-              ref={tokenIdRef}
-              defaultValue="0"
-            />
-          </div>
-          <div className="input-group">
-            <label>L2 Receiver Address:</label>
-            <input
-              type="text"
-              ref={l2ReceiverRef}
-              placeholder="Enter L2 receiver address"
-              defaultValue={l2ContractAddress}
-            />
-          </div>
-          <div className="input-group">
-            <label>ETH Value:</label>
-            <input
-              type="text"
-              ref={ethValueRef}
-              defaultValue="0.001"
-            />
-          </div>
-
-          <div className="action-buttons">
-            <button 
-              onClick={callQueryNFTAndSendBack}
-              className="primary-button"
-            >
-              Query NFT Owner
-            </button>
-            <button 
-              onClick={callQueryNFTAndSendBackOptimized}
-              className="secondary-button"
-            >
-              Query with Optimized Gas
-            </button>
-          </div>
-
-          <div className="status-container">
+          
+          <div className="status-panel">
             <h3>Status:</h3>
-            <pre className="status-message">{bridgeStatus}</pre>
+            <div className="status-box">
+              <pre>{bridgeStatus}</pre>
+            </div>
           </div>
         </>
       )}
@@ -321,4 +335,4 @@ const BridgeTest: React.FC = () => {
   );
 };
 
-export default BridgeTest; 
+export default L1OwnerUpdateRequest; 
