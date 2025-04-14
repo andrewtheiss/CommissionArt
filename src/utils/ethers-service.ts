@@ -24,7 +24,7 @@ class EthersService {
     ],
     arbitrum_testnet: [
       'https://sepolia-rollup.arbitrum.io/rpc',
-      'https://arbitrum-sepolia.blockpi.network/v1/rpc/public'
+      'https://arbitrum-sepolia-rpc.publicnode.com'
     ],
     arbitrum_mainnet: [
       'https://arb1.arbitrum.io/rpc',
