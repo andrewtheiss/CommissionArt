@@ -2,14 +2,16 @@
   margin-bottom: 30px;
   padding: 20px;
   border-radius: 8px;
-  background-color: #f8f9fa;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #1e2130;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 1px solid #2a2f45;
+  color: #e0e0e0;
 }
 
 .l3-lookup-section h3 {
   margin-top: 0;
   margin-bottom: 20px;
-  color: #333;
+  color: #e0e0e0;
   font-size: 1.5rem;
 }
 
@@ -19,8 +21,9 @@
   align-items: center;
   margin-bottom: 15px;
   padding: 10px 15px;
-  background-color: #e9ecef;
+  background-color: #262b3d;
   border-radius: 6px;
+  border: 1px solid #3a3f55;
 }
 
 .network-switch-button {
@@ -35,7 +38,7 @@
 }
 
 .network-switch-button:hover {
-  background-color: #5a32a3;
+  background-color: #8250df;
 }
 
 .network-status {
@@ -43,27 +46,30 @@
 }
 
 .connected-status {
-  color: #28a745;
+  color: #3dd68c;
   font-weight: 600;
 }
 
 .disconnected-status {
-  color: #dc3545;
+  color: #f85149;
   font-weight: 600;
 }
 
 .registry-info {
-  background-color: #fff;
+  background-color: #262b3d;
   border-radius: 6px;
   padding: 15px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid #3a3f55;
 }
 
 .registry-info h4 {
   margin-top: 0;
   margin-bottom: 15px;
-  color: #444;
+  color: #e0e0e0;
+  border-bottom: 1px solid #3a3f55;
+  padding-bottom: 8px;
 }
 
 .info-item {
@@ -75,17 +81,17 @@
 .info-label {
   font-weight: 600;
   min-width: 170px;
-  color: #555;
+  color: #b8b9bf;
 }
 
 .info-value {
   font-family: monospace;
-  color: #0066cc;
+  color: #58a6ff;
 }
 
 .load-info-button {
   margin-top: 15px;
-  background-color: #6c757d;
+  background-color: #484f6e;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -96,22 +102,23 @@
 }
 
 .load-info-button:hover {
-  background-color: #5a6268;
+  background-color: #5a6384;
 }
 
 .registry-divider {
   margin: 20px 0;
   border: 0;
   height: 1px;
-  background-color: #ddd;
+  background-color: #3a3f55;
 }
 
 .l3-lookup-form {
-  background-color: #fff;
+  background-color: #262b3d;
   border-radius: 6px;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid #3a3f55;
 }
 
 .query-type-selector {
@@ -122,16 +129,33 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #444;
+  color: #b8b9bf;
 }
 
 .query-type-selector select {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ced4da;
+  border: 1px solid #3a3f55;
   border-radius: 4px;
   font-size: 1rem;
-  background-color: #f8f9fa;
+  background-color: #1e2130;
+  color: #e0e0e0;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8b9bf' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 16px;
+}
+
+.query-type-selector select:focus {
+  outline: none;
+  border-color: #6f42c1;
+  box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.25);
+}
+
+.query-type-selector select option {
+  background-color: #1e2130;
+  color: #e0e0e0;
 }
 
 .input-group {
@@ -142,16 +166,28 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #444;
+  color: #b8b9bf;
 }
 
 .input-group input {
   width: 100%;
   padding: 10px;
-  border: 1px solid #ced4da;
+  border: 1px solid #3a3f55;
   border-radius: 4px;
   font-size: 1rem;
   font-family: monospace;
+  background-color: #1e2130;
+  color: #e0e0e0;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #6f42c1;
+  box-shadow: 0 0 0 2px rgba(111, 66, 193, 0.25);
+}
+
+.input-group input::placeholder {
+  color: #6c7293;
 }
 
 .button-group {
@@ -160,7 +196,7 @@
 }
 
 .l3-lookup-button {
-  background-color: #007bff;
+  background-color: #5e72e4;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -171,25 +207,30 @@
 }
 
 .l3-lookup-button:hover:not(:disabled) {
-  background-color: #0069d9;
+  background-color: #4c61da;
 }
 
 .l3-lookup-button:disabled {
-  background-color: #74a7df;
+  background-color: #3a3f55;
   cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .l3-lookup-result {
-  background-color: #fff;
+  background-color: #262b3d;
   border-radius: 6px;
   padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid #3a3f55;
+  border-left: 4px solid #5e72e4;
 }
 
 .l3-lookup-result h4 {
   margin-top: 0;
   margin-bottom: 15px;
-  color: #444;
+  color: #e0e0e0;
+  border-bottom: 1px solid #3a3f55;
+  padding-bottom: 8px;
 }
 
 .result-info p {
@@ -200,22 +241,34 @@
 .result-info strong {
   display: inline-block;
   min-width: 140px;
-  color: #555;
+  color: #b8b9bf;
 }
 
 .result-address {
   font-family: monospace;
-  color: #0066cc;
+  color: #58a6ff;
+  background-color: #1e2130;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #3a3f55;
 }
 
 .result-value {
   font-family: monospace;
-  color: #28a745;
+  color: #3dd68c;
+  background-color: #1e2130;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #3a3f55;
 }
 
 .result-timestamp {
   font-family: monospace;
-  color: #6610f2;
+  color: #a371f7;
+  background-color: #1e2130;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #3a3f55;
 }
 
 @media (max-width: 768px) {
