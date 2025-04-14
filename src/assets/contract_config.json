@@ -6,11 +6,11 @@
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "0x914f530EFE0B68e7ccdDe6b624a1e2Ff024D06F8",
+        "address": "0x35066530D38b3EabF1B0Aee2922DF56a607652Bd",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0xe8644cC7B78513f5D1dd9bD68e3bd9ab08c84f56",
+        "address": "0x37f0F6C64268a8b5798b8C767668b75a11f7c0fc",
         "contract": "OwnerRegistry"
       }
     },
@@ -29,5 +29,5 @@
       }
     }
   },
-  "lastUpdated": "2025-04-13T02:13:52.167603"
+  "lastUpdated": "2025-04-14T14:14:06.586459"
 }

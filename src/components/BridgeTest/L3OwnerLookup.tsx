@@ -161,7 +161,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           "function l2relay() view returns (address)",
           "function commission_hub_template() view returns (address)",
           "function owner() view returns (address)",
-          "function lookupRegsiteredOwner(address nft_contract, uint256 token_id) view returns (address)",
+          "function lookupRegisteredOwner(address nft_contract, uint256 token_id) view returns (address)",
           "function getLastUpdated(address nft_contract, uint256 token_id) view returns (uint256)",
           "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)"
         ];
@@ -258,7 +258,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           "function l2relay() view returns (address)",
           "function commission_hub_template() view returns (address)",
           "function owner() view returns (address)",
-          "function lookupRegsiteredOwner(address nft_contract, uint256 token_id) view returns (address)",
+          "function lookupRegisteredOwner(address nft_contract, uint256 token_id) view returns (address)",
           "function getLastUpdated(address nft_contract, uint256 token_id) view returns (uint256)",
           "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)"
         ];
@@ -288,33 +288,39 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         // Call the appropriate function based on queryType
         if (queryType === 'owner') {
           setBridgeStatus(prev => `${prev}\nQuerying registered owner for NFT contract ${contractAddress} and token ID ${tokenId}...`);
-          result = await contract.lookupRegsiteredOwner(contractAddress, tokenId);
+          // Convert tokenId to BigNumber
+          const tokenIdBN = ethers.toBigInt(tokenId);
+          result = await contract.lookupRegisteredOwner(contractAddress, tokenIdBN);
           
           // If we get an owner, query other info too
           if (result && result !== ethers.ZeroAddress) {
-            commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenId);
-            const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenId);
+            commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenIdBN);
+            const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenIdBN);
             lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           }
         } else if (queryType === 'commissionHub') {
           setBridgeStatus(prev => `${prev}\nQuerying commission hub for NFT contract ${contractAddress} and token ID ${tokenId}...`);
-          commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenId);
+          // Convert tokenId to BigNumber
+          const tokenIdBN = ethers.toBigInt(tokenId);
+          commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenIdBN);
           
           // If we get a commission hub, query other info too
           if (commissionHub && commissionHub !== ethers.ZeroAddress) {
-            result = await contract.lookupRegsiteredOwner(contractAddress, tokenId);
-            const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenId);
+            result = await contract.lookupRegisteredOwner(contractAddress, tokenIdBN);
+            const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenIdBN);
             lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           }
         } else if (queryType === 'lastUpdated') {
           setBridgeStatus(prev => `${prev}\nQuerying last updated timestamp for NFT contract ${contractAddress} and token ID ${tokenId}...`);
-          const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenId);
+          // Convert tokenId to BigNumber
+          const tokenIdBN = ethers.toBigInt(tokenId);
+          const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenIdBN);
           lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           
           // Also get the owner and commission hub
-          result = await contract.lookupRegsiteredOwner(contractAddress, tokenId);
+          result = await contract.lookupRegisteredOwner(contractAddress, tokenIdBN);
           if (result && result !== ethers.ZeroAddress) {
-            commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenId);
+            commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenIdBN);
           }
         }
       }

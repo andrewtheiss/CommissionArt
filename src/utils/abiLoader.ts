@@ -2,7 +2,7 @@
 import L1QueryOwnerABI from '../assets/abis/L1QueryOwner.json';
 import L2RelayABI from '../assets/abis/L2Relay.json';
 import L2RelayContractABI from '../assets/abis/L2RelayContract.json';
-import CommissionRegsitryABI from '../assets/abis/CommissionRegsitry.json';
+import CommissionRegistryABI from '../assets/abis/CommissionRegistry.json';
 import CommissionedArtABI from '../assets/abis/CommissionedArt.json';
 import RegistryABI from '../assets/abis/Registry.json';
 import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
@@ -13,7 +13,7 @@ const abiMap: { [key: string]: any } = {
   'L1QueryOwner': L1QueryOwnerABI,
   'L2Relay': L2RelayABI,
   'L2RelayContract': L2RelayContractABI,
-  'CommissionRegsitry': CommissionRegsitryABI,
+  'CommissionRegistry': CommissionRegistryABI,
   'CommissionedArt': CommissionedArtABI,
   'Registry': RegistryABI,
   'SimpleERC721': SimpleERC721ABI,

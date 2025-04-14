@@ -7,26 +7,30 @@
 l2relay: public(address)
 commission_hub_template: public(address)
 owner: public(address)
-commission_hubs: public(HashMap[address, HashMap[uint256, address]])
-owners: public(HashMap[address, HashMap[uint256, address]])
+# Updated data structures to include chain ID
+commission_hubs: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> token_id -> commission_hub
+owners: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> token_id -> owner
 # Add last update timestamps for each NFT/token ID pair
-last_updated: public(HashMap[address, HashMap[uint256, uint256]])
+last_updated: public(HashMap[uint256, HashMap[address, HashMap[uint256, uint256]]])  # chain_id -> nft_contract -> token_id -> timestamp
 
 interface CommissionHub:
-    def initialize(nft_contract: address, token_id: uint256, registry: address): nonpayable
-    def updateRegistration(nft_contract: address, token_id: uint256, owner: address): nonpayable
+    def initialize(chain_id: uint256, nft_contract: address, token_id: uint256, registry: address): nonpayable
+    def updateRegistration(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address): nonpayable
 
 event Registered:
+    chain_id: uint256
     nft_contract: indexed(address)
     token_id: indexed(uint256)
     owner: address
-    commission_hub: address
+    commission_hub: indexed(address)
     timestamp: uint256
+    source: address
 
 event CommissionHubCreated:
+    chain_id: uint256
     nft_contract: indexed(address)
     token_id: indexed(uint256)
-    commission_hub: address
+    commission_hub: indexed(address)
 
 @deploy
 def __init__(initial_l2relay: address, initial_commission_hub_template: address):
@@ -34,57 +38,77 @@ def __init__(initial_l2relay: address, initial_commission_hub_template: address)
     self.commission_hub_template = initial_commission_hub_template
     self.owner = msg.sender
 
-#Called by L2Relay when ownership is verified, taking nft_contract, token_id, and owner as parameters.
-@external
-def registerNFTOwnerFromParentChain(nft_contract: address, token_id: uint256, owner: address):
-    # Only allow registration from L2Relay
-    assert msg.sender == self.l2relay, "Only L2Relay can register NFT owners"
-
+# Internal function to register NFT ownership
+@internal
+def _registerNFTOwner(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address, source: address):
     # Record the current timestamp
     current_time: uint256 = block.timestamp
     
     # If the commission hub doesn't exist, create it
-    if self.owners[nft_contract][token_id] == empty(address):
+    if self.owners[chain_id][nft_contract][token_id] == empty(address):
         commission_hub: address = create_minimal_proxy_to(self.commission_hub_template)
         commission_hub_instance: CommissionHub = CommissionHub(commission_hub)
-        extcall commission_hub_instance.initialize(nft_contract, token_id, self)
-        self.commission_hubs[nft_contract][token_id] = commission_hub
-        log CommissionHubCreated(nft_contract=nft_contract, token_id=token_id, commission_hub=commission_hub)
-    elif self.owners[nft_contract][token_id] != owner:
+        extcall commission_hub_instance.initialize(chain_id, nft_contract, token_id, self)
+        self.commission_hubs[chain_id][nft_contract][token_id] = commission_hub
+        log CommissionHubCreated(chain_id=chain_id, nft_contract=nft_contract, token_id=token_id, commission_hub=commission_hub)
+    elif self.owners[chain_id][nft_contract][token_id] != owner:
         # If the owner is changing, we need to update the commission hub
-        commission_hub: address = self.commission_hubs[nft_contract][token_id]
+        commission_hub: address = self.commission_hubs[chain_id][nft_contract][token_id]
         commission_hub_instance: CommissionHub = CommissionHub(commission_hub)
-        extcall commission_hub_instance.updateRegistration(nft_contract, token_id, owner)
+        extcall commission_hub_instance.updateRegistration(chain_id, nft_contract, token_id, owner)
 
     # Update the owner and the last update timestamp
-    self.owners[nft_contract][token_id] = owner
-    self.last_updated[nft_contract][token_id] = current_time
+    self.owners[chain_id][nft_contract][token_id] = owner
+    self.last_updated[chain_id][nft_contract][token_id] = current_time
     
     log Registered(
+        chain_id=chain_id,
         nft_contract=nft_contract, 
         token_id=token_id, 
         owner=owner, 
-        commission_hub=self.commission_hubs[nft_contract][token_id],
-        timestamp=current_time
+        commission_hub=self.commission_hubs[chain_id][nft_contract][token_id],
+        timestamp=current_time,
+        source=source
     )
+
+#Called by L2Relay when ownership is verified, including chain_id, nft_contract, token_id, and owner as parameters.
+@external
+def registerNFTOwnerFromParentChain(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address):
+    # Only allow registration from L2Relay
+    assert msg.sender == self.l2relay, "Only L2Relay can register NFT owners"
+    self._registerNFTOwner(chain_id, nft_contract, token_id, owner, msg.sender)
 
 #Called by other contracts on L3 to query the owner of an NFT
 @view
 @external
-def lookupRegsiteredOwner(nft_contract: address, token_id: uint256) -> address:
-    return self.owners[nft_contract][token_id]
+def lookupRegisteredOwner(chain_id: uint256, nft_contract: address, token_id: uint256) -> address:
+    return self.owners[chain_id][nft_contract][token_id]
 
 #Get the timestamp when an owner was last updated
 @view
 @external
-def getLastUpdated(nft_contract: address, token_id: uint256) -> uint256:
-    return self.last_updated[nft_contract][token_id]
+def getLastUpdated(chain_id: uint256, nft_contract: address, token_id: uint256) -> uint256:
+    return self.last_updated[chain_id][nft_contract][token_id]
 
 @view
 @external
-def getCommissionHubByOwner(nft_contract: address, token_id: uint256) -> address:
-    return self.commission_hubs[nft_contract][token_id]
+def getCommissionHubByOwner(chain_id: uint256, nft_contract: address, token_id: uint256) -> address:
+    return self.commission_hubs[chain_id][nft_contract][token_id]
 
+@view
+@external
+def lookupEthereumRegisteredOwner(nft_contract: address, token_id: uint256) -> address:
+    return self.owners[1][nft_contract][token_id]
+
+@view
+@external
+def getEthereumLastUpdated(nft_contract: address, token_id: uint256) -> uint256:
+    return self.last_updated[1][nft_contract][token_id]
+
+@view
+@external
+def getEthereumCommissionHubByOwner(nft_contract: address, token_id: uint256) -> address:
+    return self.commission_hubs[1][nft_contract][token_id]
     
 # Set commission hub template
 @external

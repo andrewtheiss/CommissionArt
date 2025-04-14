@@ -133,7 +133,7 @@
   {
     "stateMutability": "view",
     "type": "function",
-    "name": "lookupRegsiteredOwner",
+    "name": "lookupRegisteredOwner",
     "inputs": [
       {
         "name": "nft_contract",

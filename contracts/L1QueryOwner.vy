@@ -9,7 +9,7 @@ interface IERC20Inbox:
         callValueRefundAddress: address,
         gasLimit: uint256,
         maxFeePerGas: uint256,
-        data: Bytes[100]
+        data: Bytes[140]
     ) -> uint256: payable
 
 interface IERC721:
@@ -47,19 +47,24 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
     """
     owner: address = staticcall IERC721(nft_contract).ownerOf(token_id)
     
-    # Create calldata with method selector and parameter
-    func_selector: Bytes[4] = slice(keccak256("receiveNFTOwnerFromL1(address,uint256,address)"), 0, 4)  # 0x7b8a9b7a
+    func_selector: Bytes[4] = slice(keccak256("receiveNFTOwnerFromL1(uint256,address,uint256,address)"), 0, 4)
+    
+    # Construct data with chain_id=1 (Ethereum), nft_contract, token_id, and owner as parameters
+    data: Bytes[140] = concat(
+        func_selector,
+        convert(1, bytes32),  # Default to Ethereum mainnet (chain ID 1)
+        convert(nft_contract, bytes32),
+        convert(token_id, bytes32),
+        convert(owner, bytes32)
+    )
 
-    # Construct data with l2_receiver as the parameter
-    data: Bytes[100] = concat(func_selector, convert(nft_contract, bytes32), convert(token_id, bytes32), convert(owner, bytes32))
-
-    # Calculate minimum required ETH (this may need adjustment based on actual requirements)
+    # Calculate minimum required ETH
     min_required_eth: uint256 = max_submission_cost + (gas_limit * max_fee_per_gas)
     
     # Ensure enough ETH is provided
     assert msg.value >= min_required_eth, "Insufficient ETH for gas costs"
     
-    # Create the retryable ticket with all required parameters
+    # Create the retryable ticket
     ticket_id: uint256 = extcall IERC20Inbox(INBOX).createRetryableTicket(
         l2_receiver,
         0,
@@ -73,10 +78,11 @@ def queryNFTAndSendBack(nft_contract: address, token_id: uint256, l2_receiver: a
     )
     
     # Log the event
-    log OwnerQueried(nft_contract=nft_contract, token_id=token_id, owner=owner, ticket_id=ticket_id)
+    log OwnerQueried(chain_id=1, nft_contract=nft_contract, token_id=token_id, owner=owner, ticket_id=ticket_id)
 
 event OwnerQueried:
-    nft_contract: address
-    token_id: uint256
+    chain_id: uint256
+    nft_contract: indexed(address)
+    token_id: indexed(uint256)
     owner: address
     ticket_id: uint256

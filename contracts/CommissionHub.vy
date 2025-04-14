@@ -5,6 +5,7 @@
 
 
 owner: public(address)
+chain_id: public(uint256)  # Added chain ID to identify which blockchain the NFT is on
 nft_contract: public(address)
 token_id: public(uint256)
 registry: public(address)
@@ -20,11 +21,13 @@ event L1ContractSet:
     l1_contract: indexed(address)
 
 event Initialized:
+    chain_id: indexed(uint256)
     nft_contract: indexed(address)
     token_id: indexed(uint256)
-    registry: indexed(address)
+    registry: address
 
 event OwnershipUpdated:
+    chain_id: indexed(uint256)
     nft_contract: indexed(address)
     token_id: indexed(uint256)
     owner: address
@@ -35,24 +38,27 @@ def __init__():
     self.is_ownership_rescinded = False
     self.l1_contract = empty(address)
     self.is_initialized = False
+    self.chain_id = 0  # Initialize with 0 to indicate not set
 
 @external
-def initialize(nft_contract: address, token_id: uint256, registry: address):
+def initialize(chain_id: uint256, nft_contract: address, token_id: uint256, registry: address):
     assert not self.is_initialized, "Already initialized"
     self.is_initialized = True
+    self.chain_id = chain_id
     self.nft_contract = nft_contract
     self.token_id = token_id
     self.registry = registry
-    log Initialized(nft_contract=nft_contract, token_id=token_id, registry=registry)
+    log Initialized(chain_id=chain_id, nft_contract=nft_contract, token_id=token_id, registry=registry)
 
 @external
-def updateRegistration(nft_contract: address, token_id: uint256, owner: address):
+def updateRegistration(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address):
     assert self.is_initialized, "Not initialized"
     assert msg.sender == self.registry, "Only registry can update owner"
+    assert self.chain_id == chain_id, "Chain ID mismatch"
     assert self.nft_contract == nft_contract, "NFT contract mismatch"
     assert self.token_id == token_id, "Token ID mismatch"
     self.owner = owner
-    log OwnershipUpdated(nft_contract=nft_contract, token_id=token_id, owner=owner)
+    log OwnershipUpdated(chain_id=chain_id, nft_contract=nft_contract, token_id=token_id, owner=owner)
 
 @external
 def registerImageData(azukiId: uint256, imageContract: address):
