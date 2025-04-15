@@ -35,46 +35,46 @@ event OwnerRevoked:
     previous_owner: indexed(address)
 
 # Whitelist of cross-chain message senders and the chain_id they are allowed to send from
-cross_chain_registry_address_by_chain_id: public(HashMap[uint256, address])
-l1_helper_contract: public(address)
-l3_contract: public(address)
+crossChainRegistryAddressByChainId: public(HashMap[uint256, address])
+l1HelperContract: public(address)
+l3Contract: public(address)
 owner: public(address)
-is_owner_revoked: public(bool)
+isOwnerRevoked: public(bool)
 
 @deploy
-def __init__(initial_l1_helper: address, initial_l3_contract: address):
-    self.l1_helper_contract = initial_l1_helper
-    self.l3_contract = initial_l3_contract # Owner Registry contract
+def __init__(_initial_l1_helper: address, _initial_l3_contract: address):
+    self.l1HelperContract = _initial_l1_helper
+    self.l3Contract = _initial_l3_contract # Owner Registry contract
     self.owner = msg.sender
-    self.is_owner_revoked = False
+    self.isOwnerRevoked = False
 
 @external
-def setL1Helper(new_l1_helper: address):
-    assert msg.sender == self.owner and not self.is_owner_revoked, "Only active owner can update"
-    self.l1_helper_contract = new_l1_helper
+def setL1Helper(_new_l1_helper: address):
+    assert msg.sender == self.owner and not self.isOwnerRevoked, "Only active owner can update"
+    self.l1HelperContract = _new_l1_helper
 
 @external
-def setL3Contract(new_l3_contract: address):
-    assert msg.sender == self.owner and not self.is_owner_revoked, "Only active owner can update"
-    self.l3_contract = new_l3_contract
+def setL3Contract(_new_l3_contract: address):
+    assert msg.sender == self.owner and not self.isOwnerRevoked, "Only active owner can update"
+    self.l3Contract = _new_l3_contract
 
 @external
-def receiveNFTOwnerFromCrossChainMessage(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address):
-    assert self.cross_chain_registry_address_by_chain_id[chain_id] == msg.sender, "Sender not whitelisted for this chain"
-    registrar: L3Registrar = L3Registrar(self.l3_contract)
-    extcall registrar.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, owner)
-    log NFTRegistered(chain_id=chain_id, nft_contract=nft_contract, token_id=token_id, owner=owner)
+def receiveNFTOwnerFromCrossChainMessage(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
+    assert self.crossChainRegistryAddressByChainId[_chain_id] == msg.sender, "Sender not whitelisted for this chain"
+    registrar: L3Registrar = L3Registrar(self.l3Contract)
+    extcall registrar.registerNFTOwnerFromParentChain(_chain_id, _nft_contract, _token_id, _owner)
+    log NFTRegistered(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
 
 @external
-def updateCrossChainQueryOwnerContract(sender: address, chain_id: uint256):
-    assert msg.sender == self.owner and not self.is_owner_revoked, "Only active owner can add whitelisted senders"
-    self.cross_chain_registry_address_by_chain_id[chain_id] = sender
-    log CrossChainSenderAdded(sender=sender, chain_id=chain_id)
+def updateCrossChainQueryOwnerContract(_sender: address, _chain_id: uint256):
+    assert msg.sender == self.owner and not self.isOwnerRevoked, "Only active owner can add whitelisted senders"
+    self.crossChainRegistryAddressByChainId[_chain_id] = _sender
+    log CrossChainSenderAdded(sender=_sender, chain_id=_chain_id)
 
 # Make this truly decentralized by removing the owner
 @external
 def revokeOwner():
-    assert msg.sender == self.owner and not self.is_owner_revoked, "Only active owner can revoke ownership"
-    self.is_owner_revoked = True
+    assert msg.sender == self.owner and not self.isOwnerRevoked, "Only active owner can revoke ownership"
+    self.isOwnerRevoked = True
     log OwnerRevoked(previous_owner=self.owner)
 

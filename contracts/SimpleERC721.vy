@@ -55,132 +55,132 @@ def __init__(_name: String[32], _symbol: String[8]):
     self.owner = msg.sender
 
 @external
-def supportsInterface(interfaceId: bytes4) -> bool:
-    return interfaceId == INTERFACE_ID_ERC721 or interfaceId == INTERFACE_ID_ERC165
+def supportsInterface(_interface_id: bytes4) -> bool:
+    return _interface_id == INTERFACE_ID_ERC721 or _interface_id == INTERFACE_ID_ERC165
 
 @external
-def mint(to: address, tokenId: uint256):
+def mint(_to: address, _token_id: uint256):
     """
     @notice Mint a new token
-    @param to The receiver of the token
-    @param tokenId The token ID to mint
+    @param _to The receiver of the token
+    @param _token_id The token ID to mint
     """
     assert msg.sender == self.owner, "Only owner can mint"
-    assert to != empty(address), "Invalid receiver"
-    assert self.ownerOf[tokenId] == empty(address), "Token already exists"
+    assert _to != empty(address), "Invalid receiver"
+    assert self.ownerOf[_token_id] == empty(address), "Token already exists"
 
-    self.balanceOf[to] += 1
-    self.ownerOf[tokenId] = to
+    self.balanceOf[_to] += 1
+    self.ownerOf[_token_id] = _to
 
-    log Transfer(sender=empty(address), receiver=to, tokenId=tokenId)
+    log Transfer(sender=empty(address), receiver=_to, tokenId=_token_id)
 
 @external
-def transferFrom(from_address: address, to: address, tokenId: uint256):
+def transferFrom(_from_address: address, _to: address, _token_id: uint256):
     """
     @notice Transfer a token
-    @param from_address The current owner
-    @param to The new owner
-    @param tokenId The token ID
+    @param _from_address The current owner
+    @param _to The new owner
+    @param _token_id The token ID
     """
-    assert self._isApprovedOrOwner(msg.sender, tokenId), "Not approved or owner"
-    assert from_address == self.ownerOf[tokenId], "Not the owner"
-    assert to != empty(address), "Invalid receiver"
+    assert self._isApprovedOrOwner(msg.sender, _token_id), "Not approved or owner"
+    assert _from_address == self.ownerOf[_token_id], "Not the owner"
+    assert _to != empty(address), "Invalid receiver"
 
     # Clear approvals
-    self.getApproved[tokenId] = empty(address)
+    self.getApproved[_token_id] = empty(address)
 
     # Update balances
-    self.balanceOf[from_address] -= 1
-    self.balanceOf[to] += 1
+    self.balanceOf[_from_address] -= 1
+    self.balanceOf[_to] += 1
     
     # Update ownership
-    self.ownerOf[tokenId] = to
+    self.ownerOf[_token_id] = _to
 
-    log Transfer(sender=from_address, receiver=to, tokenId=tokenId)
+    log Transfer(sender=_from_address, receiver=_to, tokenId=_token_id)
 
 @external
-def safeTransferFrom(from_address: address, to: address, tokenId: uint256, data: Bytes[1024] = b""):
+def safeTransferFrom(_from_address: address, _to: address, _token_id: uint256, _data: Bytes[1024] = b""):
     """
     @notice Safely transfer a token
-    @param from_address The current owner
-    @param to The new owner
-    @param tokenId The token ID
-    @param data Additional data with no specified format
+    @param _from_address The current owner
+    @param _to The new owner
+    @param _token_id The token ID
+    @param _data Additional data with no specified format
     """
     # Instead of calling self.transferFrom, implement the logic directly
-    assert self._isApprovedOrOwner(msg.sender, tokenId), "Not approved or owner"
-    assert from_address == self.ownerOf[tokenId], "Not the owner"
-    assert to != empty(address), "Invalid receiver"
+    assert self._isApprovedOrOwner(msg.sender, _token_id), "Not approved or owner"
+    assert _from_address == self.ownerOf[_token_id], "Not the owner"
+    assert _to != empty(address), "Invalid receiver"
 
     # Clear approvals
-    self.getApproved[tokenId] = empty(address)
+    self.getApproved[_token_id] = empty(address)
 
     # Update balances
-    self.balanceOf[from_address] -= 1
-    self.balanceOf[to] += 1
+    self.balanceOf[_from_address] -= 1
+    self.balanceOf[_to] += 1
     
     # Update ownership
-    self.ownerOf[tokenId] = to
+    self.ownerOf[_token_id] = _to
 
-    log Transfer(sender=from_address, receiver=to, tokenId=tokenId)
+    log Transfer(sender=_from_address, receiver=_to, tokenId=_token_id)
     
-    if self._isContract(to):
-        returnValue: bytes4 = staticcall ERC721Receiver(to).onERC721Received(msg.sender, from_address, tokenId, data)
+    if self._isContract(_to):
+        returnValue: bytes4 = staticcall ERC721Receiver(_to).onERC721Received(msg.sender, _from_address, _token_id, _data)
         assert returnValue == 0x150b7a02, "ERC721: transfer to non ERC721Receiver implementer"
 
 @external
-def approve(approved: address, tokenId: uint256):
+def approve(_approved: address, _token_id: uint256):
     """
     @notice Approve an address to transfer a token
-    @param approved The address to approve
-    @param tokenId The token ID
+    @param _approved The address to approve
+    @param _token_id The token ID
     """
-    owner: address = self.ownerOf[tokenId]
+    owner: address = self.ownerOf[_token_id]
     assert owner != empty(address), "Token does not exist"
     assert msg.sender == owner or self.isApprovedForAll[owner][msg.sender], "Not owner or approved operator"
-    assert approved != owner, "Approval to current owner"
+    assert _approved != owner, "Approval to current owner"
     
-    self.getApproved[tokenId] = approved
-    log Approval(owner=owner, approved=approved, tokenId=tokenId)
+    self.getApproved[_token_id] = _approved
+    log Approval(owner=owner, approved=_approved, tokenId=_token_id)
 
 @external
-def setApprovalForAll(operator: address, approved: bool):
+def setApprovalForAll(_operator: address, _approved: bool):
     """
     @notice Set approval for an operator to manage all of sender's tokens
-    @param operator The operator address
-    @param approved Whether the operator is approved
+    @param _operator The operator address
+    @param _approved Whether the operator is approved
     """
-    assert operator != msg.sender, "Approve to caller"
-    self.isApprovedForAll[msg.sender][operator] = approved
-    log ApprovalForAll(owner=msg.sender, operator=operator, approved=approved)
+    assert _operator != msg.sender, "Approve to caller"
+    self.isApprovedForAll[msg.sender][_operator] = _approved
+    log ApprovalForAll(owner=msg.sender, operator=_operator, approved=_approved)
 
 @internal
 @view
-def _isApprovedOrOwner(spender: address, tokenId: uint256) -> bool:
+def _isApprovedOrOwner(_spender: address, _tokenId: uint256) -> bool:
     """
     @notice Check if spender is approved or owner of token
-    @param spender The address to check
-    @param tokenId The token ID
+    @param _spender The address to check
+    @param _tokenId The token ID
     @return Whether spender is approved or owner
     """
-    owner: address = self.ownerOf[tokenId]
+    owner: address = self.ownerOf[_tokenId]
     return (
-        spender == owner or 
-        self.getApproved[tokenId] == spender or 
-        self.isApprovedForAll[owner][spender]
+        _spender == owner or 
+        self.getApproved[_tokenId] == _spender or 
+        self.isApprovedForAll[owner][_spender]
     )
 
 @internal
 @view
-def _isContract(addr: address) -> bool:
+def _isContract(_addr: address) -> bool:
     """
     @notice Check if address is a contract
-    @param addr The address to check
+    @param _addr The address to check
     @return Whether the address is a contract
     """
     size: uint256 = 0
     # Check code size at address
-    if addr != empty(address):
-        if len(slice(addr.code, 0, 1)) > 0:
+    if _addr != empty(address):
+        if len(slice(_addr.code, 0, 1)) > 0:
             size = 1
     return size > 0 
