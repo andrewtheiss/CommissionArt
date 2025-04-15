@@ -212,7 +212,8 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           "function lookupRegisteredOwner(address nft_contract, uint256 token_id) view returns (address)",
           "function getLastUpdated(address nft_contract, uint256 token_id) view returns (uint256)",
           "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)",
-          "function setL2Relay(address new_l2relay) external"
+          "function setL2Relay(address new_l2relay) external",
+          "function updateCrossChainQueryOwnerContract(address sender, uint256 chain_id) external"
         ];
       }
       

@@ -5,6 +5,7 @@ import abiLoader from '../../utils/abiLoader';
 import NFTOwnershipQuery from './NFTOwnershipQuery';
 import L3OwnerLookup from './L3OwnerLookup';
 import L1OwnerUpdateRequest from './L1OwnerUpdateRequest';
+import L2RelayManager from './L2RelayManager';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
 import { parseEther, toBigInt } from "ethers";
@@ -96,6 +97,9 @@ const BridgeTestContainer: React.FC = () => {
   
   // State for showing/hiding NFT Query
   const [showNFTQuery, setShowNFTQuery] = useState(false);
+  
+  // State for showing/hiding L2 Relay Manager
+  const [showL2RelayManager, setShowL2RelayManager] = useState(false);
   
   // Get blockchain context
   const { networkType, switchNetwork, switchToLayer, connectWallet, walletAddress, isConnected } = useBlockchain();
@@ -990,6 +994,25 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
               </div>
             </div>
           </div>
+        )}
+      </div>
+      
+      {/* L2 Relay Manager Toggle */}
+      <div className="nft-query-dropdown">
+        <button 
+          className="dropdown-toggle"
+          onClick={() => setShowL2RelayManager(!showL2RelayManager)}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
+            <path fill="none" d="M0 0h24v24H0z"/>
+            <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5 3c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 8h-8v-1c0-1.33 2.67-2 4-2s4 .67 4 2v1z" fill="currentColor"/>
+          </svg>
+          L2 Relay Manager (Cross-Chain Settings)
+          <span className="dropdown-arrow">{showL2RelayManager ? '▲' : '▼'}</span>
+        </button>
+        
+        {showL2RelayManager && (
+          <L2RelayManager />
         )}
       </div>
       

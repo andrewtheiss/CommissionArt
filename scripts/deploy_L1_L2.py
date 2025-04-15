@@ -19,7 +19,7 @@ def deploy_contracts():
     load_dotenv(dotenv_path=dotenv_path)
 
     # Choose network
-    network_choice = input("Enter network (local, testnet, production): ").strip().lower()
+    network_choice = input("Enter network (local, testnet, prodtest, production): ").strip().lower()
     if network_choice == "local":
         l1_network = "ethereum:local"
         l2_network = "arbitrum:local"
@@ -32,6 +32,18 @@ def deploy_contracts():
         # Use Arbitrum Sepolia as L3 for testnet (temporarily)
         l3_network = "arbitrum:sepolia:alchemy"
         config_network = "testnet"
+    elif network_choice == "prodtest":
+        l1_network = "ethereum:mainnet:alchemy"
+        l2_network = "arbitrum:mainnet:alchemy"
+        # Use real Animechain L3 for prodtest
+        l3_network = "ethereum:custom"  # Animechain should be configured as a custom network
+        config_network = "prodtest"  # New config category
+        print("WARNING: Using PRODUCTION networks with test deployment!")
+        print("This will deploy to real Ethereum, Arbitrum, and Animechain networks.")
+        confirm = input("Are you sure you want to continue? (yes/no): ").strip().lower()
+        if confirm != "yes":
+            print("Deployment canceled.")
+            sys.exit(0)
     elif network_choice == "production":
         l1_network = "ethereum:mainnet:alchemy"
         l2_network = "arbitrum:mainnet:alchemy"
@@ -41,9 +53,13 @@ def deploy_contracts():
     else:
         raise ValueError("Invalid network choice")
 
-    # For production, use Animechain L3 by default
-    if network_choice == "production":
-        print("Using Animechain L3 for production deployment")
+    # For production or prodtest, use Animechain L3
+    if network_choice in ["production", "prodtest"]:
+        print("Using Animechain L3 for deployment")
+        # If this is prodtest, check if we have Animechain configured
+        if network_choice == "prodtest":
+            print("IMPORTANT: Make sure you have configured Animechain as a custom network in your ape-config.yaml")
+            print("Configuration should include RPC URL, chain ID, and account settings")
     else:
         print(f"Using {l3_network} as L3 (temporary for testnet/local)")
         
@@ -60,12 +76,26 @@ def deploy_contracts():
     deployer.set_autosign(True, passphrase=passphrase)
 
     # Check if the user wants to do a full redeployment
-    full_redeploy = input("Do a full redeployment? (y/N): ").strip().lower() == 'y'
+    # For prodtest, we default to reusing L1 but redeploying L2/L3
+    if network_choice == "prodtest":
+        full_redeploy = False
+        redeploy_l2_l3 = input("Redeploy L2 and L3 contracts? (Y/n): ").strip().lower() != 'n'
+    else:
+        full_redeploy = input("Do a full redeployment? (y/N): ").strip().lower() == 'y'
+        redeploy_l2_l3 = full_redeploy  # For other modes, this follows the full_redeploy choice
     
     # Get existing addresses from config
     l1_existing_address = get_contract_address(config_network, "l1")
     l2_existing_address = get_contract_address(config_network, "l2")
     l3_existing_address = get_contract_address(config_network, "l3")
+    
+    # For prodtest mode, if we don't have an L1 address, prompt for one
+    if network_choice == "prodtest" and not l1_existing_address:
+        l1_manual_address = input("Enter existing L1QueryOwner address (leave empty to deploy new): ").strip()
+        if l1_manual_address:
+            l1_existing_address = l1_manual_address
+            # Save this to config for future use
+            update_contract_address(config_network, "l1", l1_existing_address, "L1QueryOwner")
     
     # Define separate variable for commission hub template since it doesn't have its own layer in the config
     commission_hub_template_existing_address = None
@@ -103,7 +133,7 @@ def deploy_contracts():
 
     # Now deploy or use existing L2 contract (placeholder)
     with networks.parse_network_choice(l2_network) as provider:
-        if not full_redeploy and l2_existing_address and input(f"Use existing L2 contract at {l2_existing_address}? (Y/n): ").strip().lower() != 'n':
+        if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l2_existing_address and input(f"Use existing L2 contract at {l2_existing_address}? (Y/n): ").strip().lower() != 'n':
             print(f"Using existing L2Relay at: {l2_existing_address}")
             l2_contract = project.L2Relay.at(l2_existing_address)
         else:
@@ -113,7 +143,7 @@ def deploy_contracts():
             
     # Deploy or use existing OwnerRegistry on L3
     with networks.parse_network_choice(l3_network) as provider:
-        if not full_redeploy and l3_existing_address and input(f"Use existing OwnerRegistry at {l3_existing_address}? (Y/n): ").strip().lower() != 'n':
+        if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l3_existing_address and input(f"Use existing OwnerRegistry at {l3_existing_address}? (Y/n): ").strip().lower() != 'n':
             print(f"Using existing OwnerRegistry at: {l3_existing_address}")
             l3_owner_registry = project.OwnerRegistry.at(l3_existing_address)
         else:
@@ -274,33 +304,54 @@ def deploy_contracts():
 
     # Deploy or use existing L1 contract on Ethereum
     with networks.parse_network_choice(l1_network) as provider:
-        if not full_redeploy and l1_existing_address and input(f"Use existing L1 contract at {l1_existing_address}? (Y/n): ").strip().lower() != 'n':
+        skip_l1_deployment = False
+        if (not full_redeploy and l1_existing_address and 
+            (input(f"Use existing L1 contract at {l1_existing_address}? (Y/n): ").strip().lower() != 'n' or 
+             network_choice == "prodtest")):  # Always prefer existing L1 for prodtest
             print(f"Using existing L1QueryOwner at: {l1_existing_address}")
             l1_contract = project.L1QueryOwner.at(l1_existing_address)
         else:
-            print(f"Deploying L1QueryOwner on {l1_network}")
-            # Get the Sequencer inbox address for the L1QueryOwner constructor
-            if network_choice == "local":
-                inbox_address = "0x0000000000000000000000000000000000000000"  # Default for local
-            elif network_choice == "testnet":
-                inbox_address = "0xaAe29B0366299461418F5324a79Afc425BE5ae21"  # Sepolia for retryable tickets
-            else:
-                inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet
+            # For prodtest, double-check before deploying to mainnet
+            if network_choice == "prodtest":
+                print("WARNING: You're about to deploy a new L1QueryOwner contract to Ethereum Mainnet")
+                confirm = input("This will cost significant gas. Are you sure? (yes/no): ").strip().lower()
+                if confirm != "yes":
+                    print("Please provide an existing L1QueryOwner address instead.")
+                    l1_address = input("Enter existing L1QueryOwner address: ").strip()
+                    if l1_address:
+                        l1_contract = project.L1QueryOwner.at(l1_address)
+                        update_contract_address(config_network, "l1", l1_address, "L1QueryOwner")
+                        print(f"Using provided L1QueryOwner at: {l1_address}")
+                        skip_l1_deployment = True
+                    else:
+                        print("No address provided. Deployment canceled.")
+                        sys.exit(1)
             
-            # Allow customizing the inbox address
-            inbox_input = input(f"Enter Arbitrum Inbox address (default: {inbox_address}): ").strip()
-            if inbox_input:
-                inbox_address = inbox_input
-            
-            try:    
-                l1_contract = deployer.deploy(project.L1QueryOwner, inbox_address, required_confirmations=1)
-                print(f"L1QueryOwner deployed at: {l1_contract.address}")
+            # Only deploy if we haven't decided to skip
+            if not skip_l1_deployment:
+                print(f"Deploying L1QueryOwner on {l1_network}")
+                # Get the Sequencer inbox address for the L1QueryOwner constructor
+                if network_choice == "local":
+                    inbox_address = "0x0000000000000000000000000000000000000000"  # Default for local
+                elif network_choice == "testnet":
+                    inbox_address = "0xaAe29B0366299461418F5324a79Afc425BE5ae21"  # Sepolia for retryable tickets
+                else:
+                    inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet
                 
-                # Update the frontend config
-                update_contract_address(config_network, "l1", l1_contract.address, "L1QueryOwner")
-            except Exception as e:
-                print(f"Error deploying L1QueryOwner: {e}")
-                sys.exit(1)
+                # Allow customizing the inbox address
+                inbox_input = input(f"Enter Arbitrum Inbox address (default: {inbox_address}): ").strip()
+                if inbox_input:
+                    inbox_address = inbox_input
+                
+                try:    
+                    l1_contract = deployer.deploy(project.L1QueryOwner, inbox_address, required_confirmations=1)
+                    print(f"L1QueryOwner deployed at: {l1_contract.address}")
+                    
+                    # Update the frontend config
+                    update_contract_address(config_network, "l1", l1_contract.address, "L1QueryOwner")
+                except Exception as e:
+                    print(f"Error deploying L1QueryOwner: {e}")
+                    sys.exit(1)
 
     # Now update L2Relay with the L1QueryOwner address
     with networks.parse_network_choice(l2_network) as provider:
@@ -364,6 +415,13 @@ def deploy_contracts():
         print(f"L3 Contracts (Animechain L3) - PENDING DEPLOYMENT:")
         print(f"  Note: Contracts will need to be deployed to Animechain L3 later")
         print(f"  Save these addresses for reference when deploying to production")
+    elif network_choice == "prodtest":
+        print(f"L3 Contracts (Animechain L3):")
+        print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
+        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+        print("\nNOTE: These are TEST contracts deployed to PRODUCTION networks.")
+        print("They can be used for testing with real chain interactions, but should not be")
+        print("considered the final production deployment.")
     else:
         print(f"L3 Contracts (Arbitrum Sepolia - temporary for testnet):")
     

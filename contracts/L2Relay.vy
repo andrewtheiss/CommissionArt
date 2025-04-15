@@ -66,7 +66,7 @@ def receiveNFTOwnerFromCrossChainMessage(chain_id: uint256, nft_contract: addres
     log NFTRegistered(chain_id=chain_id, nft_contract=nft_contract, token_id=token_id, owner=owner)
 
 @external
-def updateCrossChainSender(sender: address, chain_id: uint256):
+def updateCrossChainQueryOwnerContract(sender: address, chain_id: uint256):
     assert msg.sender == self.owner and not self.is_owner_revoked, "Only active owner can add whitelisted senders"
     self.cross_chain_registry_address_by_chain_id[chain_id] = sender
     log CrossChainSenderAdded(sender=sender, chain_id=chain_id)

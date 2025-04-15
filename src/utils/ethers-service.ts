@@ -125,10 +125,17 @@ class EthersService {
   }
 
   /**
+   * Check if a browser wallet is available
+   */
+  public hasBrowserWallet(): boolean {
+    return typeof window !== 'undefined' && !!window.ethereum;
+  }
+
+  /**
    * Request the wallet to switch to the specified network
    */
   public async requestWalletNetworkSwitch(networkType: NetworkType) {
-    if (!window.ethereum) {
+    if (!this.hasBrowserWallet()) {
       console.warn('No wallet detected for network switching');
       return false;
     }
@@ -226,18 +233,33 @@ class EthersService {
   }
 
   /**
+   * Get browser wallet provider if available
+   */
+  public getBrowserProvider(): ethers.BrowserProvider | null {
+    if (this.hasBrowserWallet()) {
+      try {
+        return new ethers.BrowserProvider(window.ethereum);
+      } catch (error) {
+        console.error('Error creating browser provider:', error);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Get signer if connected via browser wallet
    */
   public async getSigner() {
-    if (window.ethereum) {
+    const browserProvider = this.getBrowserProvider();
+    if (browserProvider) {
       try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
         await this.requestWalletNetworkSwitch(
           Object.keys(config.networks).find(
             key => config.networks[key as NetworkType].chainId === this.network.chainId
           ) as NetworkType
         );
-        return await provider.getSigner();
+        return await browserProvider.getSigner();
       } catch (error) {
         console.error('Error getting signer:', error);
         return null;
