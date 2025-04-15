@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 import time
 from datetime import datetime
-from .contract_config_writer import update_contract_address, get_contract_address
+from .contract_config_writer import update_contract_address, get_contract_address, get_all_contracts, save_config
 import sys
 
 # Maximum number of retries for L2 transactions
@@ -38,6 +38,21 @@ def deploy_contracts():
         # Use real Animechain L3 for prodtest
         l3_network = "ethereum:custom"  # Animechain should be configured as a custom network
         config_network = "prodtest"  # New config category
+        
+        # Ensure the prodtest configuration exists by loading all contracts
+        # and checking if we need to add the prodtest network
+        config = get_all_contracts()
+        if "prodtest" not in config["networks"]:
+            # Copy the structure from testnet as a starting point
+            config["networks"]["prodtest"] = {
+                "l1": {"address": "", "contract": "L1QueryOwner"},
+                "l2": {"address": "", "contract": "L2Relay"},
+                "l3": {"address": "", "contract": "OwnerRegistry"}
+            }
+            # Save the updated config
+            save_config(config)
+            print("Added 'prodtest' network configuration")
+            
         print("WARNING: Using PRODUCTION networks with test deployment!")
         print("This will deploy to real Ethereum, Arbitrum, and Animechain networks.")
         confirm = input("Are you sure you want to continue? (yes/no): ").strip().lower()

@@ -72,14 +72,26 @@ const L2RelayManager: React.FC = () => {
       try {
         setIsLoading(true);
         
-        // Get L2 Relay address from contract config
-        const l2Contract = getContract('testnet', 'l2');
-        const relayAddress = l2Contract?.address || '';
+        // Get L2 Relay address from contract config with safe fallbacks
+        let l2Contract;
+        try {
+          l2Contract = getContract('testnet', 'l2');
+        } catch (error) {
+          console.warn("Error getting L2 contract from config:", error);
+          l2Contract = { address: '0x35177b4cd425AD4B495c1CF50Ea8755C72972375', contract: 'L2Relay' };
+        }
+        const relayAddress = l2Contract?.address || '0x35177b4cd425AD4B495c1CF50Ea8755C72972375';
         setL2RelayAddress(relayAddress);
         
-        // Get L1 contract address
-        const l1Contract = getContract('testnet', 'l1');
-        const l1Address = l1Contract?.address || '';
+        // Get L1 contract address with safe fallbacks
+        let l1Contract;
+        try {
+          l1Contract = getContract('testnet', 'l1');
+        } catch (error) {
+          console.warn("Error getting L1 contract from config:", error);
+          l1Contract = { address: '0xBbFA650E59be970E63b443B7B2D3E152D1A1b9B0', contract: 'L1QueryOwner' };
+        }
+        const l1Address = l1Contract?.address || '0xBbFA650E59be970E63b443B7B2D3E152D1A1b9B0';
         setL1ContractAddress(l1Address);
         
         // Calculate the aliased address

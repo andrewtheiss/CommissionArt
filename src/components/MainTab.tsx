@@ -3,6 +3,8 @@ import { ethers } from 'ethers';
 import './MainTab.css';
 import ImageCompressor from './ImageCompressor';
 import BridgeTestContainer from './BridgeTest';
+import ErrorBoundary from './ErrorBoundary';
+import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
 const REGISTRY_ABI = [
@@ -27,6 +29,46 @@ interface ImageContract {
   artist: string;
   imageUrl: string;
 }
+
+// SafeBlockchainProvider to handle case when MetaMask is not available
+const SafeBlockchainProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    // Check if window.ethereum exists
+    if (typeof window === 'undefined' || !window.ethereum) {
+      console.warn("MetaMask is not installed or not accessible");
+      setHasError(true);
+    } else {
+      setHasError(false);
+    }
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="blockchain-error-container">
+        <div className="error-message">
+          <h3>Wallet Connection Error</h3>
+          <p>MetaMask or a compatible wallet is required to use all features.</p>
+          <p>Please ensure you have MetaMask installed and accessible.</p>
+          <a 
+            href="https://metamask.io/download/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="install-metamask-btn"
+          >
+            Install MetaMask
+          </a>
+          <p>If MetaMask is already installed, please unlock your wallet and reload the page.</p>
+          <button onClick={() => window.location.reload()}>Reload Page</button>
+        </div>
+        {children}
+      </div>
+    );
+  }
+
+  return <BlockchainProvider>{children}</BlockchainProvider>;
+};
 
 const MainTab: React.FC = () => {
   // Hardcoded Registry contract address
@@ -200,97 +242,112 @@ const MainTab: React.FC = () => {
   }
 
   return (
-    <div className="main-container">
-      <div className="tab-buttons">
-        <button 
-          className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
-          onClick={() => setActiveTab('viewer')}
-        >
-          Azuki Viewer
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'compressor' ? 'active' : ''}`}
-          onClick={() => setActiveTab('compressor')}
-        >
-          Image Compressor
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'bridge' ? 'active' : ''}`}
-          onClick={() => setActiveTab('bridge')}
-        >
-          Bridge Test
-        </button>
-      </div>
+    <SafeBlockchainProvider>
+      <div className="main-container">
+        <div className="tab-buttons">
+          <button 
+            className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
+            onClick={() => setActiveTab('viewer')}
+          >
+            Azuki Viewer
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'compressor' ? 'active' : ''}`}
+            onClick={() => setActiveTab('compressor')}
+          >
+            Image Compressor
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'bridge' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bridge')}
+          >
+            Bridge Test
+          </button>
+        </div>
 
-      {activeTab === 'viewer' ? (
-        <>
-          <div className="search-container">
-            <form onSubmit={handleSubmit} className="azuki-form">
-              <input 
-                type="number" 
-                min="0" 
-                max={MAX_AZUKI_ID} 
-                value={selectedAzukiId} 
-                onChange={handleInputChange} 
-                placeholder={`Azuki ID (0-${MAX_AZUKI_ID})`} 
-                className="azuki-input"
-              />
-              <button type="submit" className="view-button" disabled={fetchingSpecific}>
-                {fetchingSpecific ? 'Loading...' : 'View'}
-              </button>
-            </form>
-            <button 
-              className="random-button" 
-              onClick={handleRandomAzuki}
-              disabled={fetchingSpecific}
-            >
-              Show Random Azuki
-            </button>
-          </div>
-          
-          {error && <div className="error-message">{error}</div>}
-          
-          {selectedContract && (
-            <div className="image-container">
-              <div className="image-wrapper">
-                <img 
-                  src={selectedContract.imageUrl} 
-                  alt={`Azuki #${selectedContract.id}`} 
-                  className={`azuki-image ${isImageLoading ? 'loading' : ''}`}
-                  onLoad={() => setIsImageLoading(false)}
+        {activeTab === 'viewer' ? (
+          <>
+            <div className="search-container">
+              <form onSubmit={handleSubmit} className="azuki-form">
+                <input 
+                  type="number" 
+                  min="0" 
+                  max={MAX_AZUKI_ID} 
+                  value={selectedAzukiId} 
+                  onChange={handleInputChange} 
+                  placeholder={`Azuki ID (0-${MAX_AZUKI_ID})`} 
+                  className="azuki-input"
                 />
-                {isImageLoading && (
-                  <div 
-                    className="image-loading-overlay"
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%'
-                    }}
-                  >
-                    <div className="spinner"></div>
-                  </div>
-                )}
-              </div>
-              <a 
-                href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${selectedContract.address}?tab=contract`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="explorer-link"
+                <button type="submit" className="view-button" disabled={fetchingSpecific}>
+                  {fetchingSpecific ? 'Loading...' : 'View'}
+                </button>
+              </form>
+              <button 
+                className="random-button" 
+                onClick={handleRandomAzuki}
+                disabled={fetchingSpecific}
               >
-                View On-Chain Data
-              </a>
+                Show Random Azuki
+              </button>
             </div>
-          )}
-        </>
-      ) : activeTab === 'compressor' ? (
-        <ImageCompressor />
-      ) : (
-        <BridgeTestContainer />
-      )}
-    </div>
+            
+            {error && <div className="error-message">{error}</div>}
+            
+            {selectedContract && (
+              <div className="image-container">
+                <div className="image-wrapper">
+                  <img 
+                    src={selectedContract.imageUrl} 
+                    alt={`Azuki #${selectedContract.id}`} 
+                    className={`azuki-image ${isImageLoading ? 'loading' : ''}`}
+                    onLoad={() => setIsImageLoading(false)}
+                  />
+                  {isImageLoading && (
+                    <div 
+                      className="image-loading-overlay"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%'
+                      }}
+                    >
+                      <div className="spinner"></div>
+                    </div>
+                  )}
+                </div>
+                <a 
+                  href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${selectedContract.address}?tab=contract`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="explorer-link"
+                >
+                  View On-Chain Data
+                </a>
+              </div>
+            )}
+          </>
+        ) : activeTab === 'compressor' ? (
+          <ImageCompressor />
+        ) : (
+          <ErrorBoundary fallback={
+            <div className="error-message-container">
+              <h3>Error in Bridge Test Component</h3>
+              <p>There was an error loading the Bridge Test component. This might be due to:</p>
+              <ul>
+                <li>Missing or incorrect contract configuration</li>
+                <li>Network connectivity issues</li>
+                <li>MetaMask connection problems</li>
+              </ul>
+              <p>Please check the console for more details.</p>
+            </div>
+          }>
+            <BridgeTestContainer />
+          </ErrorBoundary>
+        )}
+      </div>
+    </SafeBlockchainProvider>
   );
 };
 
