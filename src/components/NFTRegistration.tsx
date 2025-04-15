@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useBlockchain } from '../utils/BlockchainContext';
 import { compressImage, getImageOrientation, revokePreviewUrl, CompressionResult, FormatType } from '../utils/ImageCompressorUtil';
 import './NFTRegistration.css';
@@ -6,6 +6,11 @@ import './NFTRegistration.css';
 const NFTRegistration: React.FC = () => {
   const [userType, setUserType] = useState<'none' | 'artist' | 'commissioner'>('none');
   const { isConnected, connectWallet, walletAddress, networkType } = useBlockchain();
+  
+  // Form state
+  const [artworkTitle, setArtworkTitle] = useState<string>('');
+  const [artworkDescription, setArtworkDescription] = useState<string>('');
+  const [descriptionBytes, setDescriptionBytes] = useState<number>(0);
   
   // Image states for artist registration
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -19,6 +24,12 @@ const NFTRegistration: React.FC = () => {
   
   // Consider a wallet truly connected only when we have both isConnected flag AND a wallet address
   const isTrulyConnected = isConnected && !!walletAddress;
+
+  // Calculate description byte length when it changes
+  useEffect(() => {
+    const bytes = new TextEncoder().encode(artworkDescription).length;
+    setDescriptionBytes(bytes);
+  }, [artworkDescription]);
 
   // Reset form when component unmounts
   useEffect(() => {
@@ -162,6 +173,54 @@ const NFTRegistration: React.FC = () => {
     }
   };
 
+  // Memoized input change handlers to preserve focus
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setArtworkTitle(e.target.value);
+  }, []);
+
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    const bytes = new TextEncoder().encode(text).length;
+    if (bytes <= 200) {
+      setArtworkDescription(text);
+    }
+  }, []);
+
+  // Handle artwork registration
+  const handleRegisterArtwork = async () => {
+    // If not connected, prompt to connect wallet first
+    if (!isTrulyConnected) {
+      alert("Please connect your wallet to register your artwork");
+      connectWallet();
+      return;
+    }
+    
+    // Validate form
+    if (!selectedImage || !compressedResult || isCompressing) {
+      alert("Please upload an image for your artwork");
+      return;
+    }
+    
+    if (!artworkTitle.trim()) {
+      alert("Please enter a title for your artwork");
+      return;
+    }
+    
+    // Here we would implement the actual contract creation
+    // For now, just log the information
+    console.log("Registering artwork:", {
+      artist: walletAddress, // Use wallet address as the artist
+      artworkTitle,
+      artworkDescription,
+      descriptionBytes,
+      imageSize: compressedResult.compressedSize,
+      imageFormat: compressedResult.format,
+      dimensions: compressedResult.dimensions
+    });
+    
+    alert("Artwork registration initiated! This would create an ArtPiece in a real implementation.");
+  };
+
   // Connection Bar Component
   const ConnectionBar = () => (
     <div className="connection-bar">
@@ -206,7 +265,7 @@ const NFTRegistration: React.FC = () => {
     </div>
   );
 
-  // Artist form that adapts based on connection status
+  // Artist form that's always fully functional
   const ArtistForm = () => {
     return (
       <div className="registration-form">
@@ -217,7 +276,7 @@ const NFTRegistration: React.FC = () => {
           </p>
           {!isTrulyConnected && (
             <p className="connect-reminder">
-              <span className="highlight">Please connect your wallet</span> to access the full artist registration features.
+              <span className="highlight">You can fill out the form now</span>, and connect your wallet when you're ready to register.
             </p>
           )}
         </div>
@@ -251,14 +310,16 @@ const NFTRegistration: React.FC = () => {
             </div>
           ) : null}
           
-          {/* Image Upload Section - Only show for non-landscape or when no image is selected */}
+          {/* Side image upload section for portrait/square or no image yet */}
           {(imageOrientation !== 'landscape' || !compressedResult || !compressedResult.preview) && (
             <div className="artwork-upload-section">
-              <input
-                type="file"
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                id="artwork-image"
                 accept="image/*"
                 onChange={handleImageSelect}
-                ref={fileInputRef}
+                className="file-input"
                 style={{ display: 'none' }}
               />
               
@@ -267,15 +328,16 @@ const NFTRegistration: React.FC = () => {
                   className="upload-placeholder"
                   onClick={handleUploadClick}
                 >
-                  <div className="upload-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                      <polyline points="21 15 16 10 5 21"></polyline>
-                    </svg>
+                  <div className="placeholder-content">
+                    <div className="upload-icon">+</div>
+                    <div className="upload-text">Upload Image</div>
+                    <div className="upload-subtext">Max size: 45KB (will be automatically compressed)</div>
                   </div>
-                  <span>Upload Artwork</span>
-                  {isCompressing && <div className="compressing-indicator">Compressing...</div>}
+                </div>
+              ) : isCompressing ? (
+                <div className="compressing-indicator">
+                  <div className="spinner"></div>
+                  <div>Compressing image...</div>
                 </div>
               ) : (
                 <div className={`artwork-preview ${imageOrientation || ''}`}>
@@ -305,65 +367,65 @@ const NFTRegistration: React.FC = () => {
           )}
           
           {/* Registration Form Details */}
-          <div className="registration-details">
-            <form>
-              {isTrulyConnected ? (
-                // Connected artist form
-                <div className="form-content">
-                  <div className="form-group">
-                    <label htmlFor="artist-name">Artist Name</label>
-                    <input 
-                      type="text" 
-                      id="artist-name" 
-                      className="form-input"
-                      placeholder="Enter your artist name"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="artwork-title">Artwork Title</label>
-                    <input 
-                      type="text" 
-                      id="artwork-title" 
-                      className="form-input"
-                      placeholder="Enter the title of your artwork"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label htmlFor="artwork-description">Description</label>
-                    <textarea 
-                      id="artwork-description" 
-                      className="form-textarea"
-                      placeholder="Describe your artwork..."
-                      rows={4}
-                    ></textarea>
-                  </div>
-                  
-                  <div className="form-actions">
-                    <button 
-                      type="button" 
-                      className="submit-button"
-                      disabled={!compressedResult || isCompressing}
-                    >
-                      Register Artwork
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // Not connected artist form
-                <div className="form-content disabled">
-                  <div className="form-group">
-                    <label>Artist features will be available once connected</label>
-                    <div className="placeholder-content"></div>
-                  </div>
-                </div>
-              )}
+          <form>
+            <div className="form-content">
+              <div className="form-group">
+                <label htmlFor="artwork-title">Artwork Title <span className="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="artwork-title" 
+                  className="form-input"
+                  placeholder="Enter the title of your artwork"
+                  value={artworkTitle}
+                  onChange={handleTitleChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="artwork-description">
+                  Description <span className="byte-counter">{descriptionBytes}/200 bytes</span>
+                </label>
+                <textarea 
+                  id="artwork-description" 
+                  className="form-textarea"
+                  placeholder="Describe your artwork..."
+                  rows={4}
+                  value={artworkDescription}
+                  onChange={handleDescriptionChange}
+                  maxLength={200}
+                ></textarea>
+              </div>
+              
+              <div className="form-actions">
+                {/* First "Register Artwork" button */}
+                <button 
+                  type="button" 
+                  className="submit-button"
+                  disabled={!compressedResult || isCompressing}
+                  onClick={handleRegisterArtwork}
+                >
+                  Register Artwork
+                </button>
+              </div>
+            </div>
+            
+            <div className="form-footer">
               <button type="button" className="form-back-button" onClick={() => setUserType('none')}>
                 Back
               </button>
-            </form>
-          </div>
+              
+              {/* Second identical "Register Artwork" button */}
+              <button 
+                type="button" 
+                className="submit-button"
+                disabled={!compressedResult || isCompressing}
+                onClick={handleRegisterArtwork}
+              >
+                Register Artwork
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     );
@@ -380,31 +442,39 @@ const NFTRegistration: React.FC = () => {
           </p>
           {!isTrulyConnected && (
             <p className="connect-reminder">
-              <span className="highlight">Please connect your wallet</span> to access the full commissioner registration features.
+              <span className="highlight">You can fill out the form now</span>, and connect your wallet when you're ready to register.
             </p>
           )}
         </div>
+        
         <form>
-          {isTrulyConnected ? (
-            // Connected commissioner form
-            <div className="form-content">
-              <div className="form-group">
-                <label>Commissioner form coming soon...</label>
-                <p>Your wallet is connected and you can register as a commissioner.</p>
-              </div>
+          <div className="form-content">
+            <div className="form-group">
+              <label>Commissioner form coming soon...</label>
+              <p>Fill out your details and register when you're ready.</p>
             </div>
-          ) : (
-            // Not connected commissioner form
-            <div className="form-content disabled">
-              <div className="form-group">
-                <label>Commissioner features will be available once connected</label>
-                <div className="placeholder-content"></div>
-              </div>
-            </div>
-          )}
-          <button type="button" className="form-back-button" onClick={() => setUserType('none')}>
-            Back
-          </button>
+          </div>
+          
+          <div className="form-footer">
+            <button type="button" className="form-back-button" onClick={() => setUserType('none')}>
+              Back
+            </button>
+            
+            <button 
+              type="button" 
+              className="submit-button"
+              onClick={() => {
+                if (!isTrulyConnected) {
+                  alert("Please connect your wallet to register as a commissioner");
+                  connectWallet();
+                } else {
+                  alert("Commissioner registration would be processed here");
+                }
+              }}
+            >
+              Register as Commissioner
+            </button>
+          </div>
         </form>
       </div>
     );
