@@ -1,10 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useBlockchain } from '../utils/BlockchainContext';
+import { compressImage, getImageOrientation, revokePreviewUrl, CompressionResult, FormatType } from '../utils/ImageCompressorUtil';
 import './NFTRegistration.css';
 
 const NFTRegistration: React.FC = () => {
   const [userType, setUserType] = useState<'none' | 'artist' | 'commissioner'>('none');
   const { isConnected, connectWallet, walletAddress, networkType } = useBlockchain();
+  
+  // Image states for artist registration
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [originalPreviewUrl, setOriginalPreviewUrl] = useState<string | null>(null);
+  const [compressedResult, setCompressedResult] = useState<CompressionResult | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [imageOrientation, setImageOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
+  
+  // Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Consider a wallet truly connected only when we have both isConnected flag AND a wallet address
   const isTrulyConnected = isConnected && !!walletAddress;
@@ -13,6 +24,14 @@ const NFTRegistration: React.FC = () => {
   useEffect(() => {
     return () => {
       setUserType('none');
+      
+      // Clean up image preview URLs
+      if (originalPreviewUrl) {
+        revokePreviewUrl(originalPreviewUrl);
+      }
+      if (compressedResult?.preview) {
+        revokePreviewUrl(compressedResult.preview);
+      }
     };
   }, []);
 
@@ -90,6 +109,59 @@ const NFTRegistration: React.FC = () => {
     }
   }, []);
 
+  // Handle file selection for artist image upload
+  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Clean up previous URLs
+    if (originalPreviewUrl) {
+      revokePreviewUrl(originalPreviewUrl);
+    }
+    if (compressedResult?.preview) {
+      revokePreviewUrl(compressedResult.preview);
+    }
+
+    // Set the selected file
+    setSelectedImage(file);
+    
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setOriginalPreviewUrl(previewUrl);
+    
+    // Determine orientation
+    const img = new Image();
+    img.onload = () => {
+      const orientation = getImageOrientation(img.width, img.height);
+      setImageOrientation(orientation);
+      
+      // Auto-compress the image
+      compressImageFile(file);
+    };
+    img.src = previewUrl;
+  };
+
+  // Auto-compress the image when uploaded
+  const compressImageFile = async (file: File) => {
+    setIsCompressing(true);
+    try {
+      // Use AVIF as the preferred format
+      const result = await compressImage(file, 'image/avif');
+      setCompressedResult(result);
+    } catch (error) {
+      console.error('Error compressing image:', error);
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  // Trigger the file input click
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   // Connection Bar Component
   const ConnectionBar = () => (
     <div className="connection-bar">
@@ -149,28 +221,150 @@ const NFTRegistration: React.FC = () => {
             </p>
           )}
         </div>
-        <form>
-          {isTrulyConnected ? (
-            // Connected artist form
-            <div className="form-content">
-              <div className="form-group">
-                <label>Artist form coming soon...</label>
-                <p>Your wallet is connected and you can register as an artist.</p>
+        
+        <div className={`artist-form-container ${imageOrientation || ''}`}>
+          {/* For landscape images, show preview across the top */}
+          {imageOrientation === 'landscape' && compressedResult && compressedResult.preview ? (
+            <div className="artwork-banner">
+              <div className="artwork-preview landscape">
+                <img 
+                  src={compressedResult.preview} 
+                  alt="Artwork Preview" 
+                  className="preview-image"
+                />
+                <div className="preview-overlay">
+                  <div className="preview-actions">
+                    <button 
+                      onClick={handleUploadClick}
+                      className="change-image-btn"
+                    >
+                      Change Image
+                    </button>
+                  </div>
+                  <div className="image-info">
+                    <span>Size: {compressedResult.compressedSize.toFixed(2)} KB</span>
+                    <span>Format: {compressedResult.format}</span>
+                    <span>Dimensions: {compressedResult.dimensions.width}x{compressedResult.dimensions.height}</span>
+                  </div>
+                </div>
               </div>
             </div>
-          ) : (
-            // Not connected artist form
-            <div className="form-content disabled">
-              <div className="form-group">
-                <label>Artist features will be available once connected</label>
-                <div className="placeholder-content"></div>
-              </div>
+          ) : null}
+          
+          {/* Image Upload Section - Only show for non-landscape or when no image is selected */}
+          {(imageOrientation !== 'landscape' || !compressedResult || !compressedResult.preview) && (
+            <div className="artwork-upload-section">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+              />
+              
+              {!compressedResult || !compressedResult.preview ? (
+                <div 
+                  className="upload-placeholder"
+                  onClick={handleUploadClick}
+                >
+                  <div className="upload-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                  </div>
+                  <span>Upload Artwork</span>
+                  {isCompressing && <div className="compressing-indicator">Compressing...</div>}
+                </div>
+              ) : (
+                <div className={`artwork-preview ${imageOrientation || ''}`}>
+                  <img 
+                    src={compressedResult.preview} 
+                    alt="Artwork Preview" 
+                    className="preview-image"
+                  />
+                  <div className="preview-overlay">
+                    <div className="preview-actions">
+                      <button 
+                        onClick={handleUploadClick}
+                        className="change-image-btn"
+                      >
+                        Change Image
+                      </button>
+                    </div>
+                    <div className="image-info">
+                      <span>Size: {compressedResult.compressedSize.toFixed(2)} KB</span>
+                      <span>Format: {compressedResult.format}</span>
+                      <span>Dimensions: {compressedResult.dimensions.width}x{compressedResult.dimensions.height}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          <button type="button" className="form-back-button" onClick={() => setUserType('none')}>
-            Back
-          </button>
-        </form>
+          
+          {/* Registration Form Details */}
+          <div className="registration-details">
+            <form>
+              {isTrulyConnected ? (
+                // Connected artist form
+                <div className="form-content">
+                  <div className="form-group">
+                    <label htmlFor="artist-name">Artist Name</label>
+                    <input 
+                      type="text" 
+                      id="artist-name" 
+                      className="form-input"
+                      placeholder="Enter your artist name"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="artwork-title">Artwork Title</label>
+                    <input 
+                      type="text" 
+                      id="artwork-title" 
+                      className="form-input"
+                      placeholder="Enter the title of your artwork"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="artwork-description">Description</label>
+                    <textarea 
+                      id="artwork-description" 
+                      className="form-textarea"
+                      placeholder="Describe your artwork..."
+                      rows={4}
+                    ></textarea>
+                  </div>
+                  
+                  <div className="form-actions">
+                    <button 
+                      type="button" 
+                      className="submit-button"
+                      disabled={!compressedResult || isCompressing}
+                    >
+                      Register Artwork
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Not connected artist form
+                <div className="form-content disabled">
+                  <div className="form-group">
+                    <label>Artist features will be available once connected</label>
+                    <div className="placeholder-content"></div>
+                  </div>
+                </div>
+              )}
+              <button type="button" className="form-back-button" onClick={() => setUserType('none')}>
+                Back
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     );
   };
