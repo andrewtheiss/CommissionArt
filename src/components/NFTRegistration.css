@@ -1,0 +1,291 @@
+.nft-registration-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: var(--bg-secondary, #1e2130);
+  border-radius: 8px;
+  border: 1px solid var(--border-primary, #2a2f45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.nft-registration-container h2 {
+  margin-top: 0;
+  margin-bottom: 24px;
+  color: var(--text-primary, #e0e0e0);
+  text-align: center;
+}
+
+/* Connection Bar */
+.connection-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--bg-tertiary, #262b3d);
+  border-radius: 6px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-primary, #2a2f45);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.connection-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-icon {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #e74c3c;
+}
+
+.connection-status.connected .status-icon {
+  background-color: #2ecc71;
+}
+
+.status-text {
+  color: var(--text-secondary, #b8b9bf);
+  font-size: 14px;
+}
+
+.wallet-address {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.network-name {
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+  background-color: rgba(94, 114, 228, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+/* Connection error message */
+.connection-error-message {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-left: 4px solid #e74c3c;
+  border-radius: 4px;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 13px;
+  flex-basis: 100%;
+}
+
+.connection-error-message p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+/* Connect reminder in forms */
+.connect-reminder {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-secondary, #434968);
+  color: var(--text-secondary, #b8b9bf);
+  font-size: 14px;
+}
+
+.highlight {
+  color: var(--accent-primary, #5e72e4);
+  font-weight: 500;
+}
+
+/* Connect wallet prompt */
+.connect-wallet-button {
+  background-color: var(--accent-primary, #5e72e4);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.connect-wallet-button:hover {
+  background-color: var(--accent-secondary, #4e61c9);
+}
+
+/* Disconnect button */
+.disconnect-wallet-button {
+  background-color: transparent;
+  color: #e74c3c;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.disconnect-wallet-button:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+  transform: translateY(-1px);
+}
+
+/* User type selection */
+.user-type-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 32px 0;
+}
+
+.selection-prompt {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--text-primary, #e0e0e0);
+  font-weight: 500;
+}
+
+.selection-buttons {
+  display: flex;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.selection-button {
+  padding: 16px 32px;
+  min-width: 180px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.artist-button {
+  background-color: #4a6bdf;
+}
+
+.artist-button:hover {
+  background-color: #3b5bd0;
+  transform: translateY(-2px);
+}
+
+.commissioner-button {
+  background-color: #6c5ce7;
+}
+
+.commissioner-button:hover {
+  background-color: #5d4ed6;
+  transform: translateY(-2px);
+}
+
+/* Forms */
+.registration-form {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: var(--bg-tertiary, #262b3d);
+  border-radius: 8px;
+  border: 1px solid var(--border-secondary, #434968);
+}
+
+.registration-form h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 18px;
+}
+
+.form-instructions {
+  margin-bottom: 24px;
+  color: var(--text-secondary, #b8b9bf);
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: rgba(94, 114, 228, 0.1);
+  padding: 12px 16px;
+  border-radius: 6px;
+  border-left: 4px solid var(--accent-primary, #5e72e4);
+}
+
+.form-content {
+  margin-bottom: 20px;
+}
+
+.form-content.disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.placeholder-content {
+  height: 80px;
+  background-color: var(--bg-secondary, #1e2130);
+  border-radius: 4px;
+  border: 1px dashed var(--border-secondary, #434968);
+  margin-top: 8px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary, #b8b9bf);
+  font-size: 14px;
+}
+
+.form-back-button {
+  background-color: var(--bg-tertiary, #262b3d);
+  color: var(--text-secondary, #b8b9bf);
+  border: 1px solid var(--border-secondary, #434968);
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.form-back-button:hover {
+  background-color: var(--border-primary, #2a2f45);
+  color: var(--text-primary, #e0e0e0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .connection-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .disconnect-wallet-button,
+  .connect-wallet-button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .selection-buttons {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .selection-button {
+    width: 100%;
+  }
+} 

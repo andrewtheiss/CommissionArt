@@ -4,6 +4,7 @@ import './MainTab.css';
 import ImageCompressor from './ImageCompressor';
 import BridgeTestContainer from './BridgeTest';
 import ErrorBoundary from './ErrorBoundary';
+import NFTRegistration from './NFTRegistration';
 import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
@@ -79,7 +80,20 @@ const MainTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge'>('viewer');
+  
+  // Initialize activeTab from localStorage or default to 'viewer'
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'registration'>(() => {
+    const savedTab = localStorage.getItem('active_tab');
+    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || savedTab === 'registration') {
+      return savedTab;
+    }
+    return 'viewer';
+  });
+  
+  // Save activeTab to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('active_tab', activeTab);
+  }, [activeTab]);
 
   // Helper function to detect image type from hex data
   const detectImageType = (hexData: string): string => {
@@ -263,6 +277,12 @@ const MainTab: React.FC = () => {
           >
             Bridge Test
           </button>
+          <button 
+            className={`tab-button ${activeTab === 'registration' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registration')}
+          >
+            NFT Registration
+          </button>
         </div>
 
         {activeTab === 'viewer' ? (
@@ -330,7 +350,7 @@ const MainTab: React.FC = () => {
           </>
         ) : activeTab === 'compressor' ? (
           <ImageCompressor />
-        ) : (
+        ) : activeTab === 'bridge' ? (
           <ErrorBoundary fallback={
             <div className="error-message-container">
               <h3>Error in Bridge Test Component</h3>
@@ -345,6 +365,8 @@ const MainTab: React.FC = () => {
           }>
             <BridgeTestContainer />
           </ErrorBoundary>
+        ) : (
+          <NFTRegistration />
         )}
       </div>
     </SafeBlockchainProvider>
