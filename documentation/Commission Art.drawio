@@ -1,291 +1,361 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" version="26.2.9">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36" version="26.2.12">
   <diagram name="Page-1" id="D316teSRzgvkLdEPIgTq">
-    <mxGraphModel dx="2828" dy="1630" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2422" dy="1736" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-4" value="Lookup Commissions by NFT" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=40;" parent="1" vertex="1">
-          <mxGeometry x="-110" y="145" width="440" height="210" as="geometry" />
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-4" value="Lookup Contracts to&amp;nbsp;&lt;div&gt;Find Commissions&lt;/div&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=40;" parent="1" vertex="1">
+          <mxGeometry x="-40" y="160" width="440" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-4" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
-          <mxGeometry y="40" width="440" height="170" as="geometry" />
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="zNKIx-jCp4wKxv3tCVcD-4" source="zNKIx-jCp4wKxv3tCVcD-6" target="yjCV8AOf38oD1pHLDkWU-14" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-4" source="LfCPNkx6tan6_PUrV9Pu-3" target="yjCV8AOf38oD1pHLDkWU-14" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="150" y="100" as="sourcePoint" />
-          </mxGeometry>
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-4" source="zNKIx-jCp4wKxv3tCVcD-6" target="yjCV8AOf38oD1pHLDkWU-13" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-4" source="LfCPNkx6tan6_PUrV9Pu-3" target="yjCV8AOf38oD1pHLDkWU-13" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="150" y="100" as="sourcePoint" />
-          </mxGeometry>
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-4" source="zNKIx-jCp4wKxv3tCVcD-6" target="yjCV8AOf38oD1pHLDkWU-12" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-4" source="LfCPNkx6tan6_PUrV9Pu-3" target="yjCV8AOf38oD1pHLDkWU-12" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="150" y="100" as="sourcePoint" />
-          </mxGeometry>
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-6" value="&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important; background-color: rgb(236, 236, 236);&quot;&gt;Commissioned&lt;/span&gt;&lt;/span&gt;&lt;div style=&quot;forced-color-adjust: none; color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(236, 236, 236);&quot;&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;Art&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;forced-color-adjust: none; color: rgb(0, 0, 0); font-family: Helvetica; font-size: 12px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(236, 236, 236);&quot;&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;Hub&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br/&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
+          <mxGeometry x="30" y="70" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-12" value="CommissionHub" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-12" value="Single NFT Registry" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
           <mxGeometry x="200" y="70" width="210" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-13" value="CommissionHub" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-13" value="Single NFT Registry" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
           <mxGeometry x="200" y="100" width="210" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-14" value="CommissionHub" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-14" value="Single NFT Registry" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
           <mxGeometry x="200" y="130" width="210" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-3" value="OnwerRegistry" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-4" vertex="1">
-          <mxGeometry x="30" y="85" width="120" height="60" as="geometry" />
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-8" value="Commission Art Contracts" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="-40" y="530" width="750" height="430" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-8" value="Commission Art Contracts" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;glass=0;shadow=0;startSize=30;" parent="1" vertex="1">
-          <mxGeometry x="-260" y="400" width="970" height="1060" as="geometry" />
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-8" source="zNKIx-jCp4wKxv3tCVcD-9" target="yjCV8AOf38oD1pHLDkWU-10" edge="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-1" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
-          <mxGeometry y="30" width="970" height="1030" as="geometry" />
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-9" value="&lt;b&gt;Single NFT Registry&lt;/b&gt;&lt;div&gt;address - L1 NFT Contract&lt;/div&gt;&lt;div&gt;uint256 - L1 NFT ID&lt;/div&gt;&lt;div&gt;&lt;div&gt;DynArray[address(commissionArt, 100000] - verifiedCommission&lt;/div&gt;&lt;div&gt;&lt;div&gt;DynArray[address(commissionArt, 100000] - unconfirmedCommission&lt;/div&gt;&lt;div&gt;countVerifiedCommissions&lt;/div&gt;&lt;div&gt;hashMap[&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;] -&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;-add / remove from allowedCommssioners&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
+          <mxGeometry x="30" y="70" width="340" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-9" value="ArtPiece" style="swimlane;whiteSpace=wrap;html=1;startSize=23;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
-          <mxGeometry x="720" y="50" width="220" height="430" as="geometry" />
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-9" value="Commission" style="swimlane;whiteSpace=wrap;html=1;startSize=23;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
+          <mxGeometry x="480" y="50" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-10" value="&lt;table&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;artData&lt;br&gt;ERC1155 remintAddress&lt;br&gt;artist&lt;br&gt;commissioner&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;td&gt;&lt;span style=&quot;background-color: light-dark(#ffffff, var(--ge-dark-color, #121212));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="yjCV8AOf38oD1pHLDkWU-9" vertex="1">
+          <mxGeometry y="20" width="200" height="180" as="geometry" />
         </mxCell>
         <mxCell id="yjCV8AOf38oD1pHLDkWU-20" value="Verified ERC1155 Mint Additional" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
-          <mxGeometry x="755" y="540" width="170" height="40" as="geometry" />
+          <mxGeometry x="490" y="290" width="170" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-2" value="&lt;div&gt;commissionHub&lt;/div&gt;&lt;div&gt;address&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ERC1155 remintAdditional&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;DynArray[address]&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
-          <mxGeometry x="720" y="70" width="220" height="410" as="geometry" />
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-10" value="Key" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="560" y="160" width="200" height="180" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-20" value="&lt;div&gt;verifyArt&lt;/div&gt;&lt;div&gt;unverifyArt&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;updateOwner&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;div&gt;&lt;div&gt;address - UpdateOnwerContract&lt;div&gt;(L3UpdateNftOwner)&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-11" value="L3 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+          <mxGeometry x="10" y="30" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-12" value="L2 Contract" style="rounded=0;whiteSpace=wrap;html=1;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+          <mxGeometry x="10" y="80" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="zNKIx-jCp4wKxv3tCVcD-13" value="L1 Contract" style="rounded=0;whiteSpace=wrap;html=1;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+          <mxGeometry x="10" y="130" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="yjCV8AOf38oD1pHLDkWU-11" value="Think about abuse?&amp;nbsp; Users need to be able to unverify all commissions apart from a few" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
+          <mxGeometry x="-10" y="1050" width="490" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-1" value="Commission Art Contracts" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;rounded=0;glass=0;shadow=0;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="-260" y="400" width="970" height="1120" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-2" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
+          <mxGeometry y="30" width="970" height="1030" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-3" value="ArtPiece" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
+          <mxGeometry x="540" y="80" width="220" height="440" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-4" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;Verified ERC1155 Mint Additional&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
+          <mxGeometry x="780" y="180" width="170" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-5" value="&lt;div&gt;commissionHub&lt;/div&gt;&lt;div&gt;address&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ERC1155 remintAdditional&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;DynArray[address]&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;taggedAddresses&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;isTagged&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
+          <mxGeometry x="540" y="110" width="220" height="410" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-6" value="&lt;div&gt;verifyArt&lt;/div&gt;&lt;div&gt;unverifyArt&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;updateOwner&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;div&gt;&lt;div&gt;address - UpdateOnwerContract&lt;div&gt;(L3UpdateNftOwner)&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
           <mxGeometry x="20" y="90" width="470" height="500" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-6" value="Verification of NFT Owner" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
-          <mxGeometry y="620" width="950" height="420" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-7" value="Verification of NFT Owner" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
+          <mxGeometry y="640" width="970" height="480" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-18" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="LfCPNkx6tan6_PUrV9Pu-6" vertex="1">
-          <mxGeometry y="30" width="950" height="390" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-8" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-7">
+          <mxGeometry x="5" y="30" width="965" height="450" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-12" value="L2Relay" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;startSize=30;" parent="LfCPNkx6tan6_PUrV9Pu-6" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-9" value="L2Relay" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;startSize=30;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-7">
           <mxGeometry x="380" y="50" width="200" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-14" value="Passes request to L1 for NFT Owner&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;*verify L1 address before response&lt;/div&gt;&lt;div&gt;*verify L3 address before request&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;" parent="LfCPNkx6tan6_PUrV9Pu-12" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-10" value="Passes request to L1 for NFT Owner&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;*verify L1 address before response&lt;/div&gt;&lt;div&gt;*verify L3 address before request&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-9">
           <mxGeometry y="30" width="200" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-15" value="OwnerRegistry" style="swimlane;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;startSize=30;" parent="LfCPNkx6tan6_PUrV9Pu-6" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-11" value="OwnerRegistry" style="swimlane;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;startSize=30;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-7">
           <mxGeometry x="60" y="50" width="260" height="360" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-17" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Call&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;color: rgb(239, 176, 128); background-color: rgb(26, 26, 26); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; white-space: pre;&quot;&gt;updateRegistration&lt;/span&gt;&lt;/div&gt;&lt;div&gt;on &#39;&lt;b&gt;CommissionHub&lt;/b&gt;&#39;&lt;br&gt;&lt;/div&gt;&lt;div&gt;(chain id, nft contract, nft id, owner)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(239, 176, 128); background-color: rgb(26, 26, 26); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; white-space: pre;&quot;&gt;registerNFTOwnerFromParentChain &lt;/span&gt;&lt;/div&gt;&lt;div&gt;(creates &lt;b&gt;ComissionHub &lt;/b&gt;or updates owner of &lt;b&gt;ComissionHub &lt;/b&gt;for an NFT)&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;(chain id, nft contract, nft id, owner)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;TODO: Create profile for any new user who is about to be a registered owner&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" parent="LfCPNkx6tan6_PUrV9Pu-15" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-12" value="&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Call&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;color: rgb(239, 176, 128); background-color: rgb(26, 26, 26); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; white-space: pre;&quot;&gt;updateRegistration&lt;/span&gt;&lt;/div&gt;&lt;div&gt;on &#39;&lt;b&gt;CommissionHub&lt;/b&gt;&#39;&lt;br&gt;&lt;/div&gt;&lt;div&gt;(chain id, nft contract, nft id, owner)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;color: rgb(239, 176, 128); background-color: rgb(26, 26, 26); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; white-space: pre;&quot;&gt;registerNFTOwnerFromParentChain &lt;/span&gt;&lt;/div&gt;&lt;div&gt;(creates &lt;b&gt;ComissionHub &lt;/b&gt;or updates owner of &lt;b&gt;ComissionHub &lt;/b&gt;for an NFT)&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;(chain id, nft contract, nft id, owner)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;TODO: Create profile for any new user who is about to be a registered owner&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-11">
           <mxGeometry y="30" width="260" height="330" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-1" value="commission_hubs&lt;div&gt;(chain id, nft contract, nft id)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;owners&lt;/div&gt;&lt;div&gt;(chain id, nft contract, nft id)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;last_updated&lt;/div&gt;&lt;div&gt;&lt;div&gt;(chain id, nft contract, nft id)&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="LfCPNkx6tan6_PUrV9Pu-15">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-13" value="commission_hubs&lt;div&gt;(chain id, nft contract, nft id)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;owners&lt;/div&gt;&lt;div&gt;(chain id, nft contract, nft id)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;last_updated&lt;/div&gt;&lt;div&gt;&lt;div&gt;(chain id, nft contract, nft id)&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-11">
           <mxGeometry y="230" width="260" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-19" value="L1QueryOwner" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cdeb8b;strokeColor=#36393d;" parent="LfCPNkx6tan6_PUrV9Pu-6" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-14" value="L1QueryOwner" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cdeb8b;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-7">
           <mxGeometry x="700" y="50" width="200" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-8" value="Queries owner of L1 NFT contract token id&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Writes a response to L2 Inbox&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cdeb8b;strokeColor=#36393d;" parent="LfCPNkx6tan6_PUrV9Pu-6" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-15" value="Queries owner of L1 NFT contract token id&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Writes a response to L2 Inbox&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cdeb8b;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-7">
           <mxGeometry x="700" y="80" width="200" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-11" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" parent="LfCPNkx6tan6_PUrV9Pu-6" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-16" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-7">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="700" y="150" as="sourcePoint" />
             <mxPoint x="580" y="150" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-24" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="LfCPNkx6tan6_PUrV9Pu-6" edge="1" target="LfCPNkx6tan6_PUrV9Pu-17">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-17" value="" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-7" target="vnEpB06ODQy9IHwp2LaG-12">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="380" y="150" as="sourcePoint" />
             <mxPoint x="260" y="150" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-28" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.315;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryPerimeter=0;" parent="zNKIx-jCp4wKxv3tCVcD-8" source="LfCPNkx6tan6_PUrV9Pu-15" target="stdGpsYAcDlQIrva8YyP-14" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-18" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.315;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryPerimeter=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-1" source="vnEpB06ODQy9IHwp2LaG-11" target="vnEpB06ODQy9IHwp2LaG-23">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="940" y="370" as="sourcePoint" />
             <mxPoint x="1020" y="330" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-30" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="zNKIx-jCp4wKxv3tCVcD-8" source="LfCPNkx6tan6_PUrV9Pu-2" target="yjCV8AOf38oD1pHLDkWU-20" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-19" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.024;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitPerimeter=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-1" source="vnEpB06ODQy9IHwp2LaG-5" target="vnEpB06ODQy9IHwp2LaG-4">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="940" y="370" as="sourcePoint" />
             <mxPoint x="990" y="320" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-12" value="&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;mediaDataExpansion&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;address&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;b style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168)); background-color: transparent;&quot;&gt;(used for large media)&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;br&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;br&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;b&gt;Immutable&lt;/b&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;imageData&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Bytes[45000]&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;title&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;description&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;commissioner&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;artist&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;commissionHub&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;(address)&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="zNKIx-jCp4wKxv3tCVcD-8">
-          <mxGeometry x="720" y="180" width="220" height="300" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-20" value="&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;mediaDataExpansion&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;address&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;b style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168)); background-color: transparent;&quot;&gt;(used for large media)&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;br&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;br&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;b&gt;Immutable&lt;/b&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;u&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/u&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;imageData&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Bytes[45000]&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;title&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;description&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;commissioner&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;artist&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;commissionHub&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;(address)&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ai usage&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
+          <mxGeometry x="540" y="240" width="220" height="340" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-13" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="zNKIx-jCp4wKxv3tCVcD-8" source="LfCPNkx6tan6_PUrV9Pu-20" target="stdGpsYAcDlQIrva8YyP-12">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-21" value="" style="endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-1" source="vnEpB06ODQy9IHwp2LaG-6" target="vnEpB06ODQy9IHwp2LaG-20">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="810" y="440" as="sourcePoint" />
             <mxPoint x="860" y="390" as="targetPoint" />
-            <Array as="points">
-              <mxPoint x="600" y="280" />
-            </Array>
+            <Array as="points" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-21" value="CommissionHub" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" parent="zNKIx-jCp4wKxv3tCVcD-8" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-22" value="CommissionHub" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-1">
           <mxGeometry x="20" y="60" width="470" height="540" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-14" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;owner&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;immutable&lt;/div&gt;&lt;div&gt;chain id&lt;/div&gt;&lt;div&gt;nft id&lt;/div&gt;&lt;div&gt;nft contract&lt;/div&gt;&lt;div&gt;token id&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;verifiedArt (address of ArtPiece)&lt;/div&gt;&lt;div&gt;&lt;div&gt;DynArray[address, 100000]&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;unverifiedArt (address of ArtPiece)&lt;/div&gt;&lt;div&gt;DynArray[address, 100000]&amp;nbsp;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;countVerifiedCommissions&lt;/div&gt;&lt;div&gt;countUnverifiedCommissions&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="LfCPNkx6tan6_PUrV9Pu-21">
-          <mxGeometry y="280" width="470" height="260" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-23" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;owner&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;immutable&lt;/div&gt;&lt;div&gt;chain id&lt;/div&gt;&lt;div&gt;nft id&lt;/div&gt;&lt;div&gt;nft contract&lt;/div&gt;&lt;div&gt;token id&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;latestVerifiedArt[300]&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;verifiedArt (address of ArtPiece)&lt;/div&gt;&lt;div&gt;&lt;div&gt;DynArray[address, 100000]&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;unverifiedArt (address of ArtPiece)&lt;/div&gt;&lt;div&gt;DynArray[address, 100000]&amp;nbsp;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;countVerifiedCommissions&lt;/div&gt;&lt;div&gt;countUnverifiedCommissions&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-22">
+          <mxGeometry y="200" width="470" height="340" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-10" value="Key" style="swimlane;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-          <mxGeometry x="460" y="110" width="200" height="230" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-24" value="Key" style="swimlane;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="40" width="200" height="230" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-40" value="&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;Post launch feature expansion&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-25" value="&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;b&gt;Post launch feature expansion&lt;/b&gt;&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-24">
           <mxGeometry y="20" width="200" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-11" value="L3 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-26" value="L3 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-24">
           <mxGeometry x="10" y="30" width="180" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-12" value="L2 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-27" value="L2 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-24">
           <mxGeometry x="10" y="80" width="180" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-13" value="L1 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cdeb8b;strokeColor=#36393d;" parent="zNKIx-jCp4wKxv3tCVcD-10" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-28" value="L1 Contract" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cdeb8b;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-24">
           <mxGeometry x="10" y="130" width="180" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-22" value="" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" target="zNKIx-jCp4wKxv3tCVcD-21" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-29" value="" style="endArrow=none;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" target="vnEpB06ODQy9IHwp2LaG-42">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="940" y="650" as="sourcePoint" />
             <mxPoint x="660" y="620" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-24" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="yjCV8AOf38oD1pHLDkWU-1" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-30" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" target="vnEpB06ODQy9IHwp2LaG-44">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="940" y="650" as="sourcePoint" />
             <mxPoint x="870" y="560" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-24" value="New Commission Flow" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;shadow=1;startSize=30;" parent="1" vertex="1">
-          <mxGeometry x="815" y="170" width="460" height="660" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-31" value="New Commission Flow" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;shadow=1;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="750" y="40" width="460" height="610" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-37" value="" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
-          <mxGeometry y="30" width="460" height="630" as="geometry" />
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-32" value="" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
+          <mxGeometry y="40" width="460" height="570" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="yjCV8AOf38oD1pHLDkWU-24" source="yjCV8AOf38oD1pHLDkWU-25" target="zNKIx-jCp4wKxv3tCVcD-17" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-33" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-34" target="vnEpB06ODQy9IHwp2LaG-37">
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="130" y="150" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-25" value="Artist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-34" value="Artist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="320" y="40" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="yjCV8AOf38oD1pHLDkWU-24" source="zNKIx-jCp4wKxv3tCVcD-15" target="zNKIx-jCp4wKxv3tCVcD-17" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-36" target="vnEpB06ODQy9IHwp2LaG-37">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-15" value="Commissioner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-36" value="Commissioner" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="10" y="40" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-17" value="&lt;b&gt;Commission &lt;/b&gt;Contract&amp;nbsp;&lt;div&gt;New Art Piece&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-37" value="&lt;b&gt;Commission &lt;/b&gt;Contract&amp;nbsp;&lt;div&gt;New Art Piece&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="170" y="160" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-26" value="No" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-38" value="No" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="205" y="480" width="40" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-3" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="yjCV8AOf38oD1pHLDkWU-24" source="yjCV8AOf38oD1pHLDkWU-1" target="zNKIx-jCp4wKxv3tCVcD-21" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-39" value="" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-44" target="vnEpB06ODQy9IHwp2LaG-42">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="-160" y="650" as="sourcePoint" />
             <mxPoint x="-110" y="600" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-28" value="Verified Commission Registered" style="rounded=0;whiteSpace=wrap;html=1;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-40" value="Verified Commission Registered" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="305" y="380" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" parent="yjCV8AOf38oD1pHLDkWU-24" source="zNKIx-jCp4wKxv3tCVcD-21" target="zNKIx-jCp4wKxv3tCVcD-28" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-42" target="vnEpB06ODQy9IHwp2LaG-40">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-21" value="Does OG NFT Owner Validate?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-42" value="Does OG NFT Owner Validate?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="310" y="480" width="110" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="zNKIx-jCp4wKxv3tCVcD-27" value="Yes" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-43" value="Yes" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="320" y="450" width="40" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-1" value="Unverified Commission Registered" style="rounded=0;whiteSpace=wrap;html=1;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-44" value="Unverified Commission Registered" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="45" y="530" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-31" value="Who added the commissioned piece?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-45" value="Who added the commissioned piece?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="170" y="250" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-32" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="yjCV8AOf38oD1pHLDkWU-24" source="zNKIx-jCp4wKxv3tCVcD-17" target="yjCV8AOf38oD1pHLDkWU-31" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-46" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-37" target="vnEpB06ODQy9IHwp2LaG-45">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="-205" y="400" as="sourcePoint" />
             <mxPoint x="-155" y="350" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-33" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=-0.033;entryDx=0;entryDy=0;entryPerimeter=0;" parent="yjCV8AOf38oD1pHLDkWU-24" source="yjCV8AOf38oD1pHLDkWU-31" target="yjCV8AOf38oD1pHLDkWU-1" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-47" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=-0.033;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-45" target="vnEpB06ODQy9IHwp2LaG-44">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="-205" y="400" as="sourcePoint" />
             <mxPoint x="-155" y="350" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-34" value="Artist" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-48" value="Artist" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="65" y="400" width="50" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-35" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="yjCV8AOf38oD1pHLDkWU-24" target="zNKIx-jCp4wKxv3tCVcD-28" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-49" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" target="vnEpB06ODQy9IHwp2LaG-40">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
             <mxPoint x="230" y="310" as="sourcePoint" />
             <mxPoint x="-155" y="350" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="yjCV8AOf38oD1pHLDkWU-36" value="NFT Owner" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" parent="yjCV8AOf38oD1pHLDkWU-24" vertex="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-50" value="NFT Owner" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-31">
           <mxGeometry x="295" y="315" width="90" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-36" value="Reasonable Additions for social" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=30;" parent="1" vertex="1">
-          <mxGeometry x="760" y="880" width="710" height="660" as="geometry" />
-        </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-3" value="" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" vertex="1" parent="LfCPNkx6tan6_PUrV9Pu-36">
-          <mxGeometry y="30" width="710" height="630" as="geometry" />
-        </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-38" value="hashmap[address, address]&lt;div&gt;artist, ArtistContract&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" parent="LfCPNkx6tan6_PUrV9Pu-36" vertex="1">
-          <mxGeometry x="470" y="450" width="200" height="120" as="geometry" />
-        </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-4" value="Profile" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="LfCPNkx6tan6_PUrV9Pu-36">
-          <mxGeometry x="40" y="50" width="340" height="560" as="geometry" />
-        </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-8" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="stdGpsYAcDlQIrva8YyP-4">
-          <mxGeometry y="30" width="340" height="530" as="geometry" />
-        </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-5" value="&lt;div&gt;address (user)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;DynArray [address]&lt;div&gt;commissions&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font&gt;DynArray[address]&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font&gt;unverifiedCommissions&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;profileExpansion&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;address&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;(used for unknown feature addition)&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;boolean isArtist&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="stdGpsYAcDlQIrva8YyP-4">
-          <mxGeometry y="30" width="340" height="250" as="geometry" />
-        </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-35" value="Artist" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" parent="stdGpsYAcDlQIrva8YyP-4" vertex="1">
-          <mxGeometry x="10" y="340" width="320" height="210" as="geometry" />
-        </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-37" value="DynArray [address]&lt;div&gt;commission&lt;/div&gt;&lt;div&gt;DynArray [address]&lt;/div&gt;&lt;div&gt;additionalMintERC1155s&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" parent="LfCPNkx6tan6_PUrV9Pu-35" vertex="1">
-          <mxGeometry y="30" width="320" height="180" as="geometry" />
-        </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="LfCPNkx6tan6_PUrV9Pu-35" source="LfCPNkx6tan6_PUrV9Pu-37" target="LfCPNkx6tan6_PUrV9Pu-37">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="LfCPNkx6tan6_PUrV9Pu-42" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="zNKIx-jCp4wKxv3tCVcD-21" edge="1">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-51" value="" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-31" source="vnEpB06ODQy9IHwp2LaG-42" target="vnEpB06ODQy9IHwp2LaG-44">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
-            <mxPoint x="530" y="680" as="sourcePoint" />
-            <mxPoint x="980" y="730" as="targetPoint" />
+            <mxPoint x="-220" y="640" as="sourcePoint" />
+            <mxPoint x="230" y="690" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-15" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.524;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="stdGpsYAcDlQIrva8YyP-8">
-          <mxGeometry width="50" height="50" relative="1" as="geometry">
-            <mxPoint x="980" y="1590" as="sourcePoint" />
-            <mxPoint x="600" y="1190" as="targetPoint" />
-          </mxGeometry>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-52" value="Reasonable Additions for social" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="750" y="890" width="710" height="630" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-16" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1">
-          <mxGeometry width="50" height="50" relative="1" as="geometry">
-            <mxPoint x="-70" y="1590" as="sourcePoint" />
-            <mxPoint x="980" y="1590" as="targetPoint" />
-          </mxGeometry>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-53" value="" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-52">
+          <mxGeometry y="30" width="710" height="600" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-17" value="" style="endArrow=none;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" target="stdGpsYAcDlQIrva8YyP-1">
-          <mxGeometry width="50" height="50" relative="1" as="geometry">
-            <mxPoint x="-70" y="1590" as="sourcePoint" />
-            <mxPoint x="-80" y="1440" as="targetPoint" />
-          </mxGeometry>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-60" value="ProfileHub" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-52">
+          <mxGeometry x="40" y="220" width="200" height="220" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-18" value="ProfileHub" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" vertex="1" parent="1">
-          <mxGeometry x="810" y="1670" width="200" height="200" as="geometry" />
-        </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-19" value="accountToProfile&lt;div&gt;hashmap[address,address]&lt;/div&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="stdGpsYAcDlQIrva8YyP-18">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-61" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-60">
           <mxGeometry y="40" width="200" height="160" as="geometry" />
         </mxCell>
-        <mxCell id="stdGpsYAcDlQIrva8YyP-20" value="" style="endArrow=classic;html=1;rounded=0;entryX=0.835;entryY=-0.015;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" target="stdGpsYAcDlQIrva8YyP-18">
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-62" value="accountToProfile&lt;div&gt;hashmap[address,address]&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;userCount&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;latestUsers&lt;/div&gt;&lt;div&gt;&amp;nbsp;DynArray[address]&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-60">
+          <mxGeometry y="40" width="200" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-54" value="Profile" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-52">
+          <mxGeometry x="280" y="50" width="340" height="560" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-55" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-54">
+          <mxGeometry y="30" width="340" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-56" value="&lt;div&gt;address (user)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;DynArray [address]&lt;div&gt;commissions&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font&gt;DynArray[address]&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font&gt;unverifiedCommissions&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;profileExpansion&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;address&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;(used for unknown feature addition)&lt;/font&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;boolean isArtist&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;address likedProfiles&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;whitelist address hashmap&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;DynArray erc1155 address&amp;nbsp;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;supportArt / forSale&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-54">
+          <mxGeometry y="30" width="340" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-57" value="Artist" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-54">
+          <mxGeometry x="10" y="340" width="320" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-58" value="DynArray [address]&lt;div&gt;commission&lt;/div&gt;&lt;div&gt;DynArray [address]&lt;/div&gt;&lt;div&gt;additionalMintERC1155s&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-57">
+          <mxGeometry y="30" width="320" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-59" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-57" source="vnEpB06ODQy9IHwp2LaG-58" target="vnEpB06ODQy9IHwp2LaG-58">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-66" value="" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" edge="1" parent="1" target="vnEpB06ODQy9IHwp2LaG-62" source="vnEpB06ODQy9IHwp2LaG-13">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
-            <mxPoint x="980" y="1590" as="sourcePoint" />
+            <mxPoint x="800" y="1360" as="sourcePoint" />
             <mxPoint x="600" y="1190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-67" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;Marketplace&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#d0cee2;strokeColor=#56517e;" vertex="1" parent="1">
+          <mxGeometry x="-260" y="40" width="990" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-68" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-67">
+          <mxGeometry y="30" width="990" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-69" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;Open Bids for Commissions&lt;/font&gt;" style="swimlane;whiteSpace=wrap;html=1;startSize=40;fillColor=#bac8d3;strokeColor=#23445d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-67">
+          <mxGeometry x="50" y="70" width="200" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-70" value="" style="whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-69">
+          <mxGeometry y="40" width="200" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-71" value="&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;allow collectors to place bids on&amp;nbsp;&lt;/font&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;accounts for a commissioned piece&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;&lt;br&gt;&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;commissioners can accept / prioitize&lt;/font&gt;&lt;/div&gt;&lt;div&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(184, 25, 168));&quot;&gt;art pieces&lt;/font&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#cce5ff;strokeColor=#36393d;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-69">
+          <mxGeometry y="40" width="200" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-72" value="Lookup Commissions by NFT" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=40;" vertex="1" parent="1">
+          <mxGeometry x="750" y="660" width="460" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-73" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-72">
+          <mxGeometry y="40" width="460" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-74" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-72" source="vnEpB06ODQy9IHwp2LaG-80" target="vnEpB06ODQy9IHwp2LaG-79">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="100" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-75" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-72" source="vnEpB06ODQy9IHwp2LaG-80" target="vnEpB06ODQy9IHwp2LaG-78">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="100" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-76" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="vnEpB06ODQy9IHwp2LaG-72" source="vnEpB06ODQy9IHwp2LaG-80" target="vnEpB06ODQy9IHwp2LaG-77">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="150" y="100" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-77" value="CommissionHub" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-72">
+          <mxGeometry x="200" y="70" width="210" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-78" value="CommissionHub" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-72">
+          <mxGeometry x="200" y="100" width="210" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-79" value="CommissionHub" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-72">
+          <mxGeometry x="200" y="130" width="210" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-80" value="OnwerRegistry" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="vnEpB06ODQy9IHwp2LaG-72">
+          <mxGeometry x="30" y="85" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-63" value="" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" edge="1" parent="1" target="vnEpB06ODQy9IHwp2LaG-55" source="vnEpB06ODQy9IHwp2LaG-13">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1170" y="1670" as="sourcePoint" />
+            <mxPoint x="840" y="1190" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-82" value="" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="vnEpB06ODQy9IHwp2LaG-4" target="vnEpB06ODQy9IHwp2LaG-56">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="620" y="1060" as="sourcePoint" />
+            <mxPoint x="670" y="1010" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vnEpB06ODQy9IHwp2LaG-83" value="" style="endArrow=classic;html=1;rounded=0;exitX=1.008;exitY=0.877;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;" edge="1" parent="1" source="vnEpB06ODQy9IHwp2LaG-20" target="vnEpB06ODQy9IHwp2LaG-56">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="620" y="1060" as="sourcePoint" />
+            <mxPoint x="670" y="1010" as="targetPoint" />
           </mxGeometry>
         </mxCell>
       </root>

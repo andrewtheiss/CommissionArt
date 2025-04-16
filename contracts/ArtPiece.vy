@@ -8,6 +8,7 @@ title: String[100]  # Title of the artwork
 description: Bytes[200]  # Description with 200 byte limit
 owner: address
 artist: address
+aiGenerated: public(bool)
 
 # Mapping to store tags/associations with validation status
 # address => bool (validated status)
@@ -16,7 +17,10 @@ taggedAddresses: public(HashMap[address, bool])
 # Mapping to track which addresses have been tagged
 # Used to enumerate all tagged addresses
 isTagged: public(HashMap[address, bool])
-taggedList: public(DynArray[address, 100])  # List of all tagged addresses, max 100
+taggedList: public(DynArray[address, 1000])  # List of all tagged addresses, max 1000
+
+# Add commissionWhitelist mapping to track whitelisted commissioners
+commissionWhitelist: public(HashMap[address, bool])
 
 event OwnershipTransferred:
     from_owner: indexed(address)
@@ -32,13 +36,13 @@ event TagValidated:
     status: bool
 
 @deploy
-def __init__(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address):
+def __init__(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool):
     self.imageData = _image_data_input
     self.title = _title_input
     self.description = _description_input
     self.owner = _owner_input
     self.artist = _artist_input
-
+    self.aiGenerated = _ai_generated
 @external
 @view
 def getImageData() -> Bytes[45000]:
@@ -84,7 +88,7 @@ def isTaggedValidated(_person: address) -> bool:
 
 @external
 @view
-def getAllTaggedAddresses() -> DynArray[address, 100]:
+def getAllTaggedAddresses() -> DynArray[address, 1000]:
     """
     Returns all tagged addresses
     """
@@ -114,7 +118,7 @@ def tagPerson(_person: address):
     
     # Emit event based on who is doing the tagging
     is_artist_tag: bool = msg.sender == self.artist
-    log PersonTagged(msg.sender, _person, is_artist_tag)
+    log PersonTagged(tagger=msg.sender, tagged_person=_person, is_artist=is_artist_tag)
 
 @external
 def validateTag():
@@ -124,7 +128,7 @@ def validateTag():
     """
     assert self.isTagged[msg.sender], "You are not tagged in this artwork"
     self.taggedAddresses[msg.sender] = True
-    log TagValidated(msg.sender, True)
+    log TagValidated(person=msg.sender, status=True)
 
 @external
 def invalidateTag():
@@ -134,7 +138,7 @@ def invalidateTag():
     """
     assert self.isTagged[msg.sender], "You are not tagged in this artwork"
     self.taggedAddresses[msg.sender] = False
-    log TagValidated(msg.sender, False)
+    log TagValidated(person=msg.sender, status=False)
 
 @external
 @view
@@ -143,4 +147,20 @@ def isPersonTagged(_person: address) -> bool:
     Check if a person is tagged in this artwork
     """
     return self.isTagged[_person]
+
+@external
+def setCommissionWhitelist(_commissioner: address, _status: bool):
+    """
+    Allow the owner to set a commissioner's whitelist status
+    """
+    assert msg.sender == self.owner or msg.sender == self.artist, "Only owner or artist can set commission whitelist"
+    self.commissionWhitelist[_commissioner] = _status
+    
+@view
+@external
+def isOnCommissionWhitelist(_commissioner: address) -> bool:
+    """
+    Check if an address is whitelisted for commissioning
+    """
+    return self.commissionWhitelist[_commissioner]
 
