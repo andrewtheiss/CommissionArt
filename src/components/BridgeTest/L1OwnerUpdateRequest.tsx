@@ -8,6 +8,9 @@ import l1QueryOwnerABI from '../../assets/abis/L1QueryOwner.json';
 // Using the ethers LogDescription type
 type ParsedLog = ethers.LogDescription;
 
+// Alias addition constant
+const ALIAS_ADDITION = "0x1111000000000000000000000000000000001111";
+
 // Extend Window interface
 declare global {
   interface Window {
@@ -18,6 +21,7 @@ declare global {
 const L1OwnerUpdateRequest: React.FC = () => {
   const [bridgeStatus, setBridgeStatus] = useState<string>('Ready');
   const { isConnected, networkType, switchNetwork, connectWallet, walletAddress } = useBlockchain();
+  const [aliasedAddress, setAliasedAddress] = useState<string>("");
 
   // Get contract addresses from configuration
   const l1ContractAddress = contractConfigJson.networks.testnet.l1.address;
@@ -30,6 +34,47 @@ const L1OwnerUpdateRequest: React.FC = () => {
   const l2ReceiverRef = useRef<HTMLInputElement>(null);
   const ethValueRef = useRef<HTMLInputElement>(null);
   const contractAddressRef = useRef<HTMLInputElement>(null);
+
+  // Compute aliased address from L1 address
+  const computeAliasedAddress = (l1Address: string): string => {
+    try {
+      if (!ethers.isAddress(l1Address)) return "";
+      
+      // The formula is: L2 alias = L1 address + 0x1111000000000000000000000000000000001111
+      const l1BigInt = ethers.toBigInt(l1Address);
+      const aliasBigInt = ethers.toBigInt(ALIAS_ADDITION);
+      const result = l1BigInt + aliasBigInt;
+      // Convert BigInt to hex string with 0x prefix
+      const aliased = "0x" + result.toString(16);
+      
+      return aliased;
+    } catch (error) {
+      console.error("Error computing aliased address:", error);
+      return "";
+    }
+  };
+
+  // Update aliased address when the contract address changes
+  useEffect(() => {
+    const updateAliasedAddress = () => {
+      const currentAddress = contractAddressRef.current?.value || l1ContractAddress;
+      if (currentAddress && ethers.isAddress(currentAddress)) {
+        const aliased = computeAliasedAddress(currentAddress);
+        setAliasedAddress(aliased);
+      }
+    };
+
+    updateAliasedAddress();
+    
+    // Set up event listener for input changes
+    const contractAddressInput = contractAddressRef.current;
+    if (contractAddressInput) {
+      contractAddressInput.addEventListener('input', updateAliasedAddress);
+      return () => {
+        contractAddressInput.removeEventListener('input', updateAliasedAddress);
+      };
+    }
+  }, [l1ContractAddress]);
 
   // Initialize contract (assuming the wallet is connected and on Sepolia network)
   const initializeContract = async () => {
@@ -268,7 +313,7 @@ const L1OwnerUpdateRequest: React.FC = () => {
           
           <div className="form-container">
             <div className="form-group">
-              <label htmlFor="contractAddress">L1 Contract Address:</label>
+              <label htmlFor="contractAddress">L1 Contract Address / L2 Aliased Incoming Contract Address:</label>
               <input
                 type="text"
                 id="contractAddress"
@@ -276,7 +321,14 @@ const L1OwnerUpdateRequest: React.FC = () => {
                 defaultValue={l1ContractAddress}
                 placeholder="Contract address"
               />
-              <small>The contract that will send the query to L2</small>
+              <span>The contract will send a query to L2 via 
+              {aliasedAddress && (
+                <span className="aliased-address-info">
+                  <b><span className="aliased-label"> Aliased Address:</span>
+                  <span className="aliased-value"> {aliasedAddress}</span></b>
+                </span>
+              )}
+              </span>
             </div>
             
             <div className="form-group">

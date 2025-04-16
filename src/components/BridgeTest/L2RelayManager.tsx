@@ -23,7 +23,7 @@ declare global {
 }
 
 const L2RelayManager: React.FC = () => {
-  const { isConnected, walletAddress, networkType, switchNetwork, connectWallet } = useBlockchain();
+  const { isConnected, walletAddress, networkType, switchNetwork, switchToLayer, connectWallet } = useBlockchain();
   
   // State variables
   const [l2RelayAddress, setL2RelayAddress] = useState<string>("");
@@ -184,6 +184,23 @@ const L2RelayManager: React.FC = () => {
         setIsUpdating(false);
         return;
       }
+
+      // Check if we're on the correct network and switch if necessary
+      const expectedNetwork = environment === 'testnet' ? 'arbitrum_testnet' : 'arbitrum_mainnet';
+      if (networkType !== expectedNetwork) {
+        toast(`Switching to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}...`);
+        try {
+          await switchToLayer('l2', environment);
+          toast(`Network switched to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}, please try again`);
+          setIsUpdating(false);
+          return;
+        } catch (switchError) {
+          console.error("Error switching network:", switchError);
+          toast.error(`Failed to switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}`);
+          setIsUpdating(false);
+          return;
+        }
+      }
       
       try {
         const provider = new ethers.BrowserProvider(window.ethereum);
@@ -225,9 +242,23 @@ const L2RelayManager: React.FC = () => {
     }
   };
 
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchToLayer('l2', environment);
+      toast.success(`Switched to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}`);
+    } catch (error) {
+      console.error("Error switching network:", error);
+      toast.error(`Failed to switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}`);
+    }
+  };
+
   if (isLoading) {
     return <div className="contract-section">Loading L2 Relay information...</div>;
   }
+
+  // Determine if we're on the correct network
+  const isCorrectNetwork = (environment === 'testnet' && networkType === 'arbitrum_testnet') || 
+                           (environment === 'mainnet' && networkType === 'arbitrum_mainnet');
 
   return (
     <div className="l2-relay-manager-section">
@@ -250,6 +281,25 @@ const L2RelayManager: React.FC = () => {
         >
           View L2Relay on Arbitrum
         </a>
+      </div>
+      
+      <div className="network-status-container">
+        <div className={`network-status ${isCorrectNetwork ? 'network-correct' : 'network-incorrect'}`}>
+          <span className="status-indicator"></span>
+          <span className="status-text">
+            {isCorrectNetwork 
+              ? `Connected to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}` 
+              : `Not on ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'} network`}
+          </span>
+        </div>
+        {!isCorrectNetwork && (
+          <button 
+            className="network-switch-button"
+            onClick={handleSwitchNetwork}
+          >
+            Switch to {environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}
+          </button>
+        )}
       </div>
       
       <div className="contract-info">
