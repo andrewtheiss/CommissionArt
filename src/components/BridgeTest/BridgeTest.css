@@ -549,4 +549,50 @@
   background-color: #4b6a8a;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Add these styles at the appropriate place in the file */
+
+.explorer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  justify-content: flex-start;
+}
+
+.explorer-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background-color: #0f172a;
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.explorer-link:hover {
+  background-color: #38bdf8;
+  color: #0f172a;
+}
+
+.explorer-link:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
+}
+
+/* Make sure explorer links are responsive */
+@media (max-width: 640px) {
+  .explorer-links {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .explorer-link {
+    width: 100%;
+  }
 } 

@@ -33,9 +33,6 @@ def __init__(_profile_template: address):
 
 @external
 def createProfile():
-    """
-    Create a new profile for a user
-    """
     assert self.accountToProfile[msg.sender] == empty(address), "Profile already exists"
     
     # Create a new profile contract for the user
@@ -49,45 +46,23 @@ def createProfile():
     self.accountToProfile[msg.sender] = profile
     self.userCount += 1
     
-    # Add to the list of users
-    if len(self.latestUsers) < 1000:
-        self.latestUsers.append(msg.sender)
+    # Add to the list of users in a rotating manner
+    self.latestUsers[self.userCount % 1000] = msg.sender
     
     log ProfileCreated(user=msg.sender, profile=profile)
 
 @view
 @external
 def getProfile(_user: address) -> address:
-    """
-    Get a user's profile contract address
-    """
     return self.accountToProfile[_user]
 
 @view
 @external
 def hasProfile(_user: address) -> bool:
-    """
-    Check if a user has a profile
-    """
     return self.accountToProfile[_user] != empty(address)
 
 @external
-def transferOwnership(_new_owner: address):
-    """
-    Transfer ownership of the ProfileHub contract
-    """
-    assert msg.sender == self.owner, "Only owner can transfer ownership"
-    assert _new_owner != empty(address), "Invalid new owner address"
-    
-    log OwnershipTransferred(previous_owner=self.owner, new_owner=_new_owner)
-    self.owner = _new_owner
-
-@external
-def updateProfileTemplate(_new_template: address):
-    """
-    Update the profile template contract
-    Only for future profiles, existing ones are not affected
-    """
+def updateProfileTemplateContract(_new_template: address):
     assert msg.sender == self.owner, "Only owner can update template"
     assert _new_template != empty(address), "Invalid template address"
     
@@ -96,21 +71,32 @@ def updateProfileTemplate(_new_template: address):
 
 @view
 @external
-def getUserProfiles(_start: uint256, _limit: uint256) -> DynArray[address, 100]:
-    """
-    Get a list of user profiles
-    @param _start Starting index
-    @param _limit Maximum number of profiles to return
-    @return List of user addresses with profiles
-    """
+def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     
-    if _start >= len(self.latestUsers):
+    # Get total number of users
+    total_users: uint256 = len(self.latestUsers)
+    if total_users == 0:
         return result
     
-    end: uint256 = min(_start + _limit, len(self.latestUsers))
+    # Cap at the most recent 1000 users
+    effective_users: uint256 = min(total_users, 1000)
+
+    # Calculate start index (from end, in reverse)
+    start_idx: uint256 = effective_users - (_page_number * _page_size)
+    if start_idx >= effective_users:
+        return result
     
-    for i in range(_start, end):
-        result.append(self.latestUsers[i])
+    # Calculate number of items to return, capped by page size and remaining users
+    items_to_return: uint256 = min(_page_size, start_idx)
+    items_to_return = min(items_to_return, 100)  # Cap at DynArray size
     
-    return result 
+    if items_to_return == 0:
+        return result
+    
+    # Populate result array in reverse order
+    for i: uint256 in range(0, items_to_return, bound=100):
+        idx: uint256 = start_idx - i - 1
+        result.append(self.latestUsers[idx])
+    
+    return result

@@ -694,269 +694,292 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   };
 
   return (
-    <div className="l3-lookup-section">
-      <h3>L3 Owner Registry Explorer</h3>
+    <div className="l3-owner-lookup-container">
+      <h3>L3 Owner Registry</h3>
       
-      <div className="network-action-bar">
-        <button 
-          className="network-switch-button" 
-          onClick={() => switchToLayer('l2', environment === 'testnet' ? 'testnet' : 'mainnet')}
-          title={`Switch to Arbitrum ${environment === 'testnet' ? 'Sepolia' : 'One'} to connect to L3`}
+      <div className="explorer-links">
+        <a 
+          href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${contractConfig.addresses.l3.testnet}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="explorer-link"
         >
-          Switch to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}
-        </button>
-        <div className="network-status">
-          {(networkType === 'arbitrum_testnet' && environment === 'testnet') || 
-           (networkType === 'arbitrum_mainnet' && environment === 'mainnet') ? 
-            <span className="connected-status">✓ Connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span> : 
-            <span className="disconnected-status">Not connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span>
-          }
-        </div>
-      </div>
-      
-      <div className="registry-info">
-        <h4>Registry Contract Details</h4>
-        <div className="info-item">
-          <span className="info-label">Contract Address:</span>
-          <span className="info-value">{registryInfo.contractAddress || 'Not set'}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">L2 Relay:</span>
-          <span className="info-value">{registryInfo.l2relay || 'Not loaded'}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">Commission Hub Template:</span>
-          <span className="info-value">{registryInfo.commissionHubTemplate || 'Not loaded'}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">Contract Owner:</span>
-          <span className="info-value">{registryInfo.contractOwner || 'Not loaded'}</span>
-          {isOwner && <span className="owner-badge">You are the owner</span>}
-        </div>
-        <button 
-          className="load-info-button" 
-          onClick={loadContractInfo}
-        >
-          Load Contract Info
-        </button>
-      </div>
-      
-      <div className="admin-toggle-container">
-        <button 
-          className="admin-toggle-button" 
-          onClick={() => setShowAdminPanel(!showAdminPanel)}
-          aria-expanded={showAdminPanel}
-        >
-          {showAdminPanel ? 'Hide Admin Panel' : 'Show Admin Panel'}
-        </button>
-      </div>
-      
-      {showAdminPanel && (
-        <div className="admin-panel">
-          <h4>Admin Controls</h4>
-          
-          <h5>L2 Relay Configuration</h5>
-          <form onSubmit={setL2RelayAddress} className="l2-relay-form">
-            <div className="input-group">
-              <label htmlFor="l2-relay-address">
-                L2 Relay Address 
-                {!isOwner && <span className="owner-required-badge">Owner Required</span>}
-              </label>
-              <input
-                type="text"
-                id="l2-relay-address"
-                value={newL2RelayAddress}
-                onChange={(e) => setNewL2RelayAddress(e.target.value)}
-                placeholder={contractConfig.addresses.l2?.[environment] || "Enter L2 relay address"}
-                disabled={isSettingL2Relay}
-              />
-            </div>
-
-            <div className="button-group">
-              <button 
-                type="submit" 
-                className="admin-button"
-                disabled={isSettingL2Relay}
-                title={!isOwner ? "Note: Transaction will fail due to contract-side owner check" : ""}
-              >
-                {isSettingL2Relay ? 'Setting L2 Relay...' : 'Set L2 Relay Address'}
-              </button>
-            </div>
-
-            {!isOwner && (
-              <p className="owner-note">Note: Only the contract owner can set the L2 relay address. The transaction will be rejected by the contract if you are not the owner.</p>
-            )}
-          </form>
-          
-          <hr className="admin-divider" />
-          
-          <h5>Direct NFT Registration (Bypass L2 Relay)</h5>
-          <div className="direct-registration-info">
-            <p className="warning-note">
-              This bypasses the normal flow and attempts to call <code>registerNFTOwnerFromParentChain</code> directly.
-              The call will likely fail unless your wallet is the L2 Relay address set in the contract.
-            </p>
-          </div>
-          
-          <form onSubmit={callRegisterNFTOwnerFromParentChain} className="direct-register-form">
-            <div className="input-group">
-              <label htmlFor="chain-id">Chain ID</label>
-              <input
-                type="text"
-                id="chain-id"
-                value={directRegisterParams.chainId}
-                onChange={(e) => handleDirectRegisterChange('chainId', e.target.value)}
-                placeholder="1"
-              />
-            </div>
-            
-            <div className="input-group">
-              <label htmlFor="nft-contract-direct">NFT Contract Address</label>
-              <input
-                type="text"
-                id="nft-contract-direct"
-                value={directRegisterParams.nftContract}
-                onChange={(e) => handleDirectRegisterChange('nftContract', e.target.value)}
-                placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-              />
-            </div>
-            
-            <div className="input-group">
-              <label htmlFor="token-id-direct">Token ID</label>
-              <input
-                type="text"
-                id="token-id-direct"
-                value={directRegisterParams.tokenId}
-                onChange={(e) => handleDirectRegisterChange('tokenId', e.target.value)}
-                placeholder="0"
-              />
-            </div>
-            
-            <div className="input-group">
-              <label htmlFor="owner-address">Owner Address</label>
-              <input
-                type="text"
-                id="owner-address"
-                value={directRegisterParams.ownerAddress}
-                onChange={(e) => handleDirectRegisterChange('ownerAddress', e.target.value)}
-                placeholder="0x3afb0b4ca9ab60165e207cb14067b07a04114413"
-              />
-            </div>
-            
-            <div className="button-group">
-              <button
-                type="submit"
-                className="admin-button"
-                disabled={directRegisterParams.isSubmitting}
-              >
-                {directRegisterParams.isSubmitting ? 'Registering...' : 'Register Directly'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-      
-      <hr className="registry-divider" />
-      
-      <form className="l3-lookup-form" onSubmit={submitL3Lookup}>
-        <div className="query-type-selector">
-          <label htmlFor="query-type">Query Type:</label>
-          <select
-            id="query-type"
-            value={l3LookupQuery.queryType}
-            onChange={(e) => handleL3LookupChange('queryType', e.target.value as any)}
+          View OwnerRegistry on L3 testnet
+        </a>
+        {contractConfig.addresses.l3.mainnet && (
+          <a 
+            href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${contractConfig.addresses.l3.mainnet}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="explorer-link"
           >
-            <option value="owner">Owner Lookup</option>
-            <option value="commissionHub">Commission Hub</option>
-            <option value="lastUpdated">Last Updated</option>
-            <option value="l2relay">L2 Relay Address</option>
-            <option value="commissionHubTemplate">Commission Hub Template</option>
-            <option value="contractOwner">Contract Owner</option>
-          </select>
-        </div>
-        
-        {['owner', 'commissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
-          <>
-            <div className="input-group">
-              <label htmlFor="nft-contract-address">NFT Contract Address</label>
-              <input
-                id="nft-contract-address"
-                type="text"
-                value={l3LookupQuery.contractAddress}
-                onChange={(e) => handleL3LookupChange('contractAddress', e.target.value)}
-                placeholder="0x..."
-                required
-              />
-            </div>
-            
-            <div className="input-group">
-              <label htmlFor="token-id">Token ID</label>
-              <input
-                id="token-id"
-                type="text"
-                value={l3LookupQuery.tokenId}
-                onChange={(e) => handleL3LookupChange('tokenId', e.target.value)}
-                placeholder="1"
-                required
-              />
-            </div>
-          </>
+            View OwnerRegistry on L3
+          </a>
         )}
-        
-        <div className="button-group">
-          <button
-            type="submit"
-            className="l3-lookup-button"
-            disabled={l3LookupQuery.isSubmitting}
+      </div>
+
+      <div className="l3-form-container">
+        <div className="network-action-bar">
+          <button 
+            className="network-switch-button" 
+            onClick={() => switchToLayer('l2', environment === 'testnet' ? 'testnet' : 'mainnet')}
+            title={`Switch to Arbitrum ${environment === 'testnet' ? 'Sepolia' : 'One'} to connect to L3`}
           >
-            {l3LookupQuery.isSubmitting ? 'Querying...' : `Query ${l3LookupQuery.queryType}`}
+            Switch to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}
+          </button>
+          <div className="network-status">
+            {(networkType === 'arbitrum_testnet' && environment === 'testnet') || 
+             (networkType === 'arbitrum_mainnet' && environment === 'mainnet') ? 
+              <span className="connected-status">✓ Connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span> : 
+              <span className="disconnected-status">Not connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span>
+            }
+          </div>
+        </div>
+        
+        <div className="registry-info">
+          <h4>Registry Contract Details</h4>
+          <div className="info-item">
+            <span className="info-label">Contract Address:</span>
+            <span className="info-value">{registryInfo.contractAddress || 'Not set'}</span>
+          </div>
+          <div className="info-item">
+            <span className="info-label">L2 Relay:</span>
+            <span className="info-value">{registryInfo.l2relay || 'Not loaded'}</span>
+          </div>
+          <div className="info-item">
+            <span className="info-label">Commission Hub Template:</span>
+            <span className="info-value">{registryInfo.commissionHubTemplate || 'Not loaded'}</span>
+          </div>
+          <div className="info-item">
+            <span className="info-label">Contract Owner:</span>
+            <span className="info-value">{registryInfo.contractOwner || 'Not loaded'}</span>
+            {isOwner && <span className="owner-badge">You are the owner</span>}
+          </div>
+          <button 
+            className="load-info-button" 
+            onClick={loadContractInfo}
+          >
+            Load Contract Info
           </button>
         </div>
-      </form>
-      
-      {l3LookupQuery.result && (
-        <div className="l3-lookup-result">
-          <h4>Query Result:</h4>
-          <div className="result-info">
-            {['owner', 'commissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
-              <>
-                <p>
-                  <strong>NFT Contract:</strong> 
-                  <span className="result-address">{l3LookupQuery.contractAddress}</span>
-                </p>
-                <p>
-                  <strong>Token ID:</strong> 
-                  <span className="result-value">{l3LookupQuery.tokenId}</span>
-                </p>
-              </>
-            )}
-            
-            {(['owner', 'l2relay', 'commissionHubTemplate', 'contractOwner'].includes(l3LookupQuery.queryType) || l3LookupQuery.result) && (
-              <p>
-                <strong>{l3LookupQuery.queryType === 'owner' ? 'Owner:' : 
-                  l3LookupQuery.queryType === 'l2relay' ? 'L2 Relay:' :
-                  l3LookupQuery.queryType === 'commissionHubTemplate' ? 'Commission Hub Template:' :
-                  l3LookupQuery.queryType === 'contractOwner' ? 'Contract Owner:' : 'Result:'}</strong> 
-                <span className="result-address">{l3LookupQuery.result}</span>
-              </p>
-            )}
-            
-            {(l3LookupQuery.queryType === 'commissionHub' || l3LookupQuery.commissionHub) && (
-              <p>
-                <strong>Commission Hub:</strong> 
-                <span className="result-address">{l3LookupQuery.commissionHub || 'Not created'}</span>
-              </p>
-            )}
-            
-            {(l3LookupQuery.queryType === 'lastUpdated' || l3LookupQuery.lastUpdated) && (
-              <p>
-                <strong>Last Updated:</strong> 
-                <span className="result-timestamp">{l3LookupQuery.lastUpdated || 'Never'}</span>
-              </p>
-            )}
-          </div>
+        
+        <div className="admin-toggle-container">
+          <button 
+            className="admin-toggle-button" 
+            onClick={() => setShowAdminPanel(!showAdminPanel)}
+            aria-expanded={showAdminPanel}
+          >
+            {showAdminPanel ? 'Hide Admin Panel' : 'Show Admin Panel'}
+          </button>
         </div>
-      )}
+        
+        {showAdminPanel && (
+          <div className="admin-panel">
+            <h4>Admin Controls</h4>
+            
+            <h5>L2 Relay Configuration</h5>
+            <form onSubmit={setL2RelayAddress} className="l2-relay-form">
+              <div className="input-group">
+                <label htmlFor="l2-relay-address">
+                  L2 Relay Address 
+                  {!isOwner && <span className="owner-required-badge">Owner Required</span>}
+                </label>
+                <input
+                  type="text"
+                  id="l2-relay-address"
+                  value={newL2RelayAddress}
+                  onChange={(e) => setNewL2RelayAddress(e.target.value)}
+                  placeholder={contractConfig.addresses.l2?.[environment] || "Enter L2 relay address"}
+                  disabled={isSettingL2Relay}
+                />
+              </div>
+
+              <div className="button-group">
+                <button 
+                  type="submit" 
+                  className="admin-button"
+                  disabled={isSettingL2Relay}
+                  title={!isOwner ? "Note: Transaction will fail due to contract-side owner check" : ""}
+                >
+                  {isSettingL2Relay ? 'Setting L2 Relay...' : 'Set L2 Relay Address'}
+                </button>
+              </div>
+
+              {!isOwner && (
+                <p className="owner-note">Note: Only the contract owner can set the L2 relay address. The transaction will be rejected by the contract if you are not the owner.</p>
+              )}
+            </form>
+            
+            <hr className="admin-divider" />
+            
+            <h5>Direct NFT Registration (Bypass L2 Relay)</h5>
+            <div className="direct-registration-info">
+              <p className="warning-note">
+                This bypasses the normal flow and attempts to call <code>registerNFTOwnerFromParentChain</code> directly.
+                The call will likely fail unless your wallet is the L2 Relay address set in the contract.
+              </p>
+            </div>
+            
+            <form onSubmit={callRegisterNFTOwnerFromParentChain} className="direct-register-form">
+              <div className="input-group">
+                <label htmlFor="chain-id">Chain ID</label>
+                <input
+                  type="text"
+                  id="chain-id"
+                  value={directRegisterParams.chainId}
+                  onChange={(e) => handleDirectRegisterChange('chainId', e.target.value)}
+                  placeholder="1"
+                />
+              </div>
+              
+              <div className="input-group">
+                <label htmlFor="nft-contract-direct">NFT Contract Address</label>
+                <input
+                  type="text"
+                  id="nft-contract-direct"
+                  value={directRegisterParams.nftContract}
+                  onChange={(e) => handleDirectRegisterChange('nftContract', e.target.value)}
+                  placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+                />
+              </div>
+              
+              <div className="input-group">
+                <label htmlFor="token-id-direct">Token ID</label>
+                <input
+                  type="text"
+                  id="token-id-direct"
+                  value={directRegisterParams.tokenId}
+                  onChange={(e) => handleDirectRegisterChange('tokenId', e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+              
+              <div className="input-group">
+                <label htmlFor="owner-address">Owner Address</label>
+                <input
+                  type="text"
+                  id="owner-address"
+                  value={directRegisterParams.ownerAddress}
+                  onChange={(e) => handleDirectRegisterChange('ownerAddress', e.target.value)}
+                  placeholder="0x3afb0b4ca9ab60165e207cb14067b07a04114413"
+                />
+              </div>
+              
+              <div className="button-group">
+                <button
+                  type="submit"
+                  className="admin-button"
+                  disabled={directRegisterParams.isSubmitting}
+                >
+                  {directRegisterParams.isSubmitting ? 'Registering...' : 'Register Directly'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+        
+        <hr className="registry-divider" />
+        
+        <form className="l3-lookup-form" onSubmit={submitL3Lookup}>
+          <div className="query-type-selector">
+            <label htmlFor="query-type">Query Type:</label>
+            <select
+              id="query-type"
+              value={l3LookupQuery.queryType}
+              onChange={(e) => handleL3LookupChange('queryType', e.target.value as any)}
+            >
+              <option value="owner">Owner Lookup</option>
+              <option value="commissionHub">Commission Hub</option>
+              <option value="lastUpdated">Last Updated</option>
+              <option value="l2relay">L2 Relay Address</option>
+              <option value="commissionHubTemplate">Commission Hub Template</option>
+              <option value="contractOwner">Contract Owner</option>
+            </select>
+          </div>
+          
+          {['owner', 'commissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
+            <>
+              <div className="input-group">
+                <label htmlFor="nft-contract-address">NFT Contract Address</label>
+                <input
+                  id="nft-contract-address"
+                  type="text"
+                  value={l3LookupQuery.contractAddress}
+                  onChange={(e) => handleL3LookupChange('contractAddress', e.target.value)}
+                  placeholder="0x..."
+                  required
+                />
+              </div>
+              
+              <div className="input-group">
+                <label htmlFor="token-id">Token ID</label>
+                <input
+                  id="token-id"
+                  type="text"
+                  value={l3LookupQuery.tokenId}
+                  onChange={(e) => handleL3LookupChange('tokenId', e.target.value)}
+                  placeholder="1"
+                  required
+                />
+              </div>
+            </>
+          )}
+          
+          <div className="button-group">
+            <button
+              type="submit"
+              className="l3-lookup-button"
+              disabled={l3LookupQuery.isSubmitting}
+            >
+              {l3LookupQuery.isSubmitting ? 'Querying...' : `Query ${l3LookupQuery.queryType}`}
+            </button>
+          </div>
+        </form>
+        
+        {l3LookupQuery.result && (
+          <div className="l3-lookup-result">
+            <h4>Query Result:</h4>
+            <div className="result-info">
+              {['owner', 'commissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
+                <>
+                  <p>
+                    <strong>NFT Contract:</strong> 
+                    <span className="result-address">{l3LookupQuery.contractAddress}</span>
+                  </p>
+                  <p>
+                    <strong>Token ID:</strong> 
+                    <span className="result-value">{l3LookupQuery.tokenId}</span>
+                  </p>
+                </>
+              )}
+              
+              {(['owner', 'l2relay', 'commissionHubTemplate', 'contractOwner'].includes(l3LookupQuery.queryType) || l3LookupQuery.result) && (
+                <p>
+                  <strong>{l3LookupQuery.queryType === 'owner' ? 'Owner:' : 
+                    l3LookupQuery.queryType === 'l2relay' ? 'L2 Relay:' :
+                    l3LookupQuery.queryType === 'commissionHubTemplate' ? 'Commission Hub Template:' :
+                    l3LookupQuery.queryType === 'contractOwner' ? 'Contract Owner:' : 'Result:'}</strong> 
+                  <span className="result-address">{l3LookupQuery.result}</span>
+                </p>
+              )}
+              
+              {(l3LookupQuery.queryType === 'commissionHub' || l3LookupQuery.commissionHub) && (
+                <p>
+                  <strong>Commission Hub:</strong> 
+                  <span className="result-address">{l3LookupQuery.commissionHub || 'Not created'}</span>
+                </p>
+              )}
+              
+              {(l3LookupQuery.queryType === 'lastUpdated' || l3LookupQuery.lastUpdated) && (
+                <p>
+                  <strong>Last Updated:</strong> 
+                  <span className="result-timestamp">{l3LookupQuery.lastUpdated || 'Never'}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

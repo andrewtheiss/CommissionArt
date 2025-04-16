@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { toast } from 'react-hot-toast';
 import './BridgeTest.css';
-import useContractConfig from '../../utils/useContractConfig';
+import contractConfigJson from '../../assets/contract_config.json';
 
 // Alias addition constant
 const ALIAS_ADDITION = "0x1111000000000000000000000000000000001111";
@@ -24,7 +24,6 @@ declare global {
 
 const L2RelayManager: React.FC = () => {
   const { isConnected, walletAddress, networkType, switchNetwork, connectWallet } = useBlockchain();
-  const { getContract, environment } = useContractConfig();
   
   // State variables
   const [l2RelayAddress, setL2RelayAddress] = useState<string>("");
@@ -39,6 +38,7 @@ const L2RelayManager: React.FC = () => {
   const [newChainId, setNewChainId] = useState<string>("1"); // Default to Ethereum mainnet
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
 
   // Update newSenderAddress when aliasedAddress changes
   useEffect(() => {
@@ -72,26 +72,20 @@ const L2RelayManager: React.FC = () => {
       try {
         setIsLoading(true);
         
+        // Get current environment based on network
+        const currentEnv: 'testnet' | 'mainnet' = networkType === 'arbitrum_mainnet' ? 'mainnet' : 'testnet';
+        setEnvironment(currentEnv);
+        
         // Get L2 Relay address from contract config with safe fallbacks
-        let l2Contract;
-        try {
-          l2Contract = getContract('testnet', 'l2');
-        } catch (error) {
-          console.warn("Error getting L2 contract from config:", error);
-          l2Contract = { address: '0x35177b4cd425AD4B495c1CF50Ea8755C72972375', contract: 'L2Relay' };
-        }
-        const relayAddress = l2Contract?.address || '0x35177b4cd425AD4B495c1CF50Ea8755C72972375';
+        const relayAddress = contractConfigJson.networks?.[currentEnv]?.l2?.address || 
+                              contractConfigJson.networks?.testnet?.l2?.address || 
+                              '0xce02464cF0e968f8719ACE0d871bEf3c4B786d4d';
         setL2RelayAddress(relayAddress);
         
         // Get L1 contract address with safe fallbacks
-        let l1Contract;
-        try {
-          l1Contract = getContract('testnet', 'l1');
-        } catch (error) {
-          console.warn("Error getting L1 contract from config:", error);
-          l1Contract = { address: '0xBbFA650E59be970E63b443B7B2D3E152D1A1b9B0', contract: 'L1QueryOwner' };
-        }
-        const l1Address = l1Contract?.address || '0xBbFA650E59be970E63b443B7B2D3E152D1A1b9B0';
+        const l1Address = contractConfigJson.networks?.[currentEnv]?.l1?.address || 
+                          contractConfigJson.networks?.testnet?.l1?.address || 
+                          '0x4BE47b12Ec86b335694254fB29F3570331af01C9';
         setL1ContractAddress(l1Address);
         
         // Calculate the aliased address
@@ -150,7 +144,7 @@ const L2RelayManager: React.FC = () => {
     };
     
     loadContractInfo();
-  }, [isConnected, getContract, ownerAddress, currentSender]);
+  }, [isConnected, networkType, ownerAddress, currentSender]);
 
   // Handle form submission
   const handleUpdateSender = async (e: React.FormEvent) => {
@@ -238,6 +232,25 @@ const L2RelayManager: React.FC = () => {
   return (
     <div className="l2-relay-manager-section">
       <h3>L2 Relay Manager</h3>
+      
+      <div className="explorer-links">
+        <a 
+          href={`https://sepolia.arbiscan.io/address/${contractConfigJson.networks.testnet.l2.address}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="explorer-link"
+        >
+          View L2Relay on Sepolia Arb
+        </a>
+        <a 
+          href={`https://arbiscan.io/address/${contractConfigJson.networks.mainnet?.l2?.address || l2RelayAddress}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="explorer-link"
+        >
+          View L2Relay on Arbitrum
+        </a>
+      </div>
       
       <div className="contract-info">
         <div className="info-row">

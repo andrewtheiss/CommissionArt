@@ -129,7 +129,7 @@ def submitCommission(_art_piece: address):
     # Need to assert that the art piece is actually an art piece
     assert self._isContract(_art_piece), "Art piece is not a contract"
 
-    is_whitelisted: bool = ArtPiece(_art_piece).isOnCommissionWhitelist(msg.sender)
+    is_whitelisted: bool = staticcall ArtPiece(_art_piece).isOnCommissionWhitelist(msg.sender)
     
     if is_whitelisted:
         # Add to verified list
@@ -229,7 +229,7 @@ def getVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[addre
         result.append(self.verifiedArt[_start_idx + i])
     
     return result
-    
+
 @view
 @external
 def getUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 1]:

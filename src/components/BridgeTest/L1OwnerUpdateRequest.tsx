@@ -209,6 +209,25 @@ const L1OwnerUpdateRequest: React.FC = () => {
     <div className="bridge-test-container">
       <h2>L1 Owner Update Request</h2>
       
+      <div className="explorer-links">
+        <a 
+          href={`https://sepolia.etherscan.io/address/${l1ContractAddress}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="explorer-link"
+        >
+          View L1 Messages on Sepolia
+        </a>
+        <a 
+          href={`https://etherscan.io/address/${contractConfigJson.networks.mainnet?.l1?.address || l1ContractAddress}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="explorer-link"
+        >
+          View L1 Messages on Explorer
+        </a>
+      </div>
+      
       {!isConnected ? (
         <div className="connect-wallet-container">
           <p>Please connect your wallet to use this feature</p>

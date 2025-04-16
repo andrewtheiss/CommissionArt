@@ -5,6 +5,7 @@ import ImageCompressor from './ImageCompressor';
 import BridgeTestContainer from './BridgeTest';
 import ErrorBoundary from './ErrorBoundary';
 import NFTRegistration from './NFTRegistration';
+import CommissionHub from './CommissionHub';
 import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
@@ -82,9 +83,9 @@ const MainTab: React.FC = () => {
   const [isImageLoading, setIsImageLoading] = useState(false);
   
   // Initialize activeTab from localStorage or default to 'viewer'
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'registration'>(() => {
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration'>(() => {
     const savedTab = localStorage.getItem('active_tab');
-    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || savedTab === 'registration') {
+    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || savedTab === 'commissioned' || savedTab === 'registration') {
       return savedTab;
     }
     return 'viewer';
@@ -278,6 +279,12 @@ const MainTab: React.FC = () => {
             Bridge Test
           </button>
           <button 
+            className={`tab-button ${activeTab === 'commissioned' ? 'active' : ''}`}
+            onClick={() => setActiveTab('commissioned')}
+          >
+            Commissioned Art
+          </button>
+          <button 
             className={`tab-button ${activeTab === 'registration' ? 'active' : ''}`}
             onClick={() => setActiveTab('registration')}
           >
@@ -364,6 +371,21 @@ const MainTab: React.FC = () => {
             </div>
           }>
             <BridgeTestContainer />
+          </ErrorBoundary>
+        ) : activeTab === 'commissioned' ? (
+          <ErrorBoundary fallback={
+            <div className="error-message-container">
+              <h3>Error in Commission Hub Component</h3>
+              <p>There was an error loading the Commission Hub component. This might be due to:</p>
+              <ul>
+                <li>Connection issues with the Owner Registry contract</li>
+                <li>Network connectivity issues</li>
+                <li>MetaMask connection problems</li>
+              </ul>
+              <p>Please check the console for more details.</p>
+            </div>
+          }>
+            <CommissionHub />
           </ErrorBoundary>
         ) : (
           <NFTRegistration />
