@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { toast } from 'react-hot-toast';
@@ -19,21 +19,35 @@ declare global {
 const L2RelayManager: React.FC = () => {
   const { isConnected, walletAddress, networkType, switchNetwork, switchToLayer, connectWallet } = useBlockchain();
   const { getContract, loading: configLoading, error: configError } = useContractConfig();
-  
+
   // State variables
   const [l2RelayAddress, setL2RelayAddress] = useState<string>("");
   const [l1ContractAddress, setL1ContractAddress] = useState<string>("");
   const [aliasedAddress, setAliasedAddress] = useState<string>("");
   const [ownerAddress, setOwnerAddress] = useState<string>("");
+  const [l3ContractAddress, setL3ContractAddress] = useState<string>("");
   const [currentL1ChainId, setCurrentL1ChainId] = useState<number>(0);
   const [currentSender, setCurrentSender] = useState<string>("");
-  
-  // Form state
+  const [isOwnerRevoked, setIsOwnerRevoked] = useState<boolean>(false);
+
+  // Form state for cross-chain sender
   const [newSenderAddress, setNewSenderAddress] = useState<string>("");
   const [newChainId, setNewChainId] = useState<string>("1"); // Default to Ethereum mainnet
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
+
+  // Form state for L3Contract updates
+  const [newL3ContractAddress, setNewL3ContractAddress] = useState<string>("");
+  const [isUpdatingL3Contract, setIsUpdatingL3Contract] = useState<boolean>(false);
+
+  // Ref to track if initial data has been loaded
+  const isDataLoadedRef = useRef(false);
+
+  // Reset isDataLoadedRef when networkType changes
+  useEffect(() => {
+    isDataLoadedRef.current = false;
+  }, [networkType]);
 
   // Update newSenderAddress when aliasedAddress changes
   useEffect(() => {
@@ -46,14 +60,14 @@ const L2RelayManager: React.FC = () => {
   const computeAliasedAddress = (l1Address: string): string => {
     try {
       if (!ethers.isAddress(l1Address)) return "";
-      
+
       // The formula is: L2 alias = L1 address + 0x1111000000000000000000000000000000001111
       const l1BigInt = ethers.toBigInt(l1Address);
       const aliasBigInt = ethers.toBigInt(ALIAS_ADDITION);
       const result = l1BigInt + aliasBigInt;
       // Convert BigInt to hex string with 0x prefix
       const aliased = "0x" + result.toString(16);
-      
+
       return aliased;
     } catch (error) {
       console.error("Error computing aliased address:", error);
@@ -61,105 +75,83 @@ const L2RelayManager: React.FC = () => {
     }
   };
 
-  // Load contract details from contract config
+  // Load all data
   useEffect(() => {
-    const loadContractInfo = async () => {
+    const loadAllData = async () => {
       try {
         setIsLoading(true);
-        
+
+        // Step 1: Load contract addresses from config
         if (configLoading) {
           return; // Wait for config to load
         }
-        
         if (configError) {
           console.error("Contract configuration error:", configError);
           toast.error("Failed to load contract configuration");
           return;
         }
-        
-        // Get current environment based on network
-        const currentEnv: 'testnet' | 'mainnet' = networkType === 'arbitrum_mainnet' ? 'mainnet' : 'testnet';
+
+        const currentEnv = networkType === 'arbitrum_mainnet' ? 'mainnet' : 'testnet';
         setEnvironment(currentEnv);
-        
-        // Get L2 Relay address from contract config
+
         const l2Contract = getContract(currentEnv, 'l2');
         const relayAddress = l2Contract?.address || '';
-        
         if (!relayAddress) {
           console.error("L2 relay address not found in configuration");
           toast.error("L2 relay address not configured");
           return;
         }
-        
         setL2RelayAddress(relayAddress);
-        
-        // Get L1 contract address
+
         const l1Contract = getContract(currentEnv, 'l1');
         const l1Address = l1Contract?.address || '';
-        
         if (!l1Address) {
           console.error("L1 contract address not found in configuration");
           toast.error("L1 contract address not configured");
           return;
         }
-        
         setL1ContractAddress(l1Address);
-        
-        // Calculate the aliased address
+
+        const l3Contract = getContract(currentEnv, 'l3');
+        const l3Address = l3Contract?.address || '';
+        setL3ContractAddress(l3Address);
+
         if (l1Address) {
           const aliased = computeAliasedAddress(l1Address);
           setAliasedAddress(aliased);
         }
-        
-        // If connected, fetch contract data
+
+        // Step 2: Fetch contract data if connected
         if (isConnected && relayAddress && ethers.isAddress(relayAddress) && window.ethereum) {
-          try {
-            // Load ABI from the JSON file
-            const L2RelayABI = abiLoader.loadABI('L2Relay');
-            if (!L2RelayABI) {
-              throw new Error('Failed to load L2Relay ABI');
-            }
-            
-            // Create provider and contract instance
-            const provider = new ethers.BrowserProvider(window.ethereum);
-            const contract = new ethers.Contract(relayAddress, L2RelayABI, provider);
-            
-            // Get owner with error handling
-            try {
-              const owner = await contract.owner();
-              setOwnerAddress(owner);
-            } catch (ownerError) {
-              console.warn("Could not fetch contract owner:", ownerError);
-              setOwnerAddress("");
-            }
-            
-            // Use L1 chain ID from our form default initially
-            const chainId = Number(newChainId);
-            setCurrentL1ChainId(chainId);
-            
-            // Get current sender for this chain ID with error handling
-            try {
-              // Use crossChainRegistryAddressByChainId instead of crossChainSenders
-              const sender = await contract.crossChainRegistryAddressByChainId(chainId);
-              setCurrentSender(sender);
-            } catch (senderError) {
-              console.warn("Could not fetch cross chain sender:", senderError);
-              setCurrentSender("");
-            }
-          } catch (contractError) {
-            console.warn("Error initializing contract:", contractError);
+          const provider = new ethers.BrowserProvider(window.ethereum);
+          const L2RelayABI = abiLoader.loadABI('L2Relay');
+          if (!L2RelayABI) {
+            throw new Error('Failed to load L2Relay ABI');
           }
-        } else {
-          console.info("Skipping contract data fetch - prerequisites not met", {
-            isConnected,
-            relayAddress,
-            validAddress: relayAddress ? ethers.isAddress(relayAddress) : false,
-            hasEthereum: !!window.ethereum
-          });
+          const contract = new ethers.Contract(relayAddress, L2RelayABI, provider);
+
+          const owner = await contract.owner();
+          setOwnerAddress(owner);
+
+          const revoked = await contract.isOwnerRevoked();
+          setIsOwnerRevoked(revoked);
+
+          const l3ContractAddr = await contract.l3Contract();
+          setL3ContractAddress(l3ContractAddr);
+          if (!isDataLoadedRef.current) {
+            setNewL3ContractAddress(l3ContractAddr);
+          }
+
+          const chainId = Number(newChainId);
+          setCurrentL1ChainId(chainId);
+
+          const sender = await contract.crossChainRegistryAddressByChainId(chainId);
+          setCurrentSender(sender);
+
+          isDataLoadedRef.current = true;
         }
       } catch (error) {
-        console.error("Error loading L2 Relay info:", error);
-        // Don't show toast on first load failures - too disruptive
+        console.error("Error loading data:", error);
         if (ownerAddress || currentSender) {
           toast.error("Failed to load L2 Relay contract information");
         }
@@ -167,27 +159,27 @@ const L2RelayManager: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
-    loadContractInfo();
-  }, [isConnected, networkType, ownerAddress, currentSender, configLoading, configError, getContract, newChainId]);
 
-  // Handle form submission
+    loadAllData();
+  }, [isConnected, networkType, configLoading, configError, getContract, newChainId]);
+
+  // Handle cross-chain sender form submission
   const handleUpdateSender = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!newSenderAddress || !ethers.isAddress(newSenderAddress)) {
       toast.error("Please enter a valid address for the sender");
       return;
     }
-    
+
     if (!newChainId || isNaN(Number(newChainId)) || Number(newChainId) <= 0) {
       toast.error("Please enter a valid chain ID");
       return;
     }
-    
+
     try {
       setIsUpdating(true);
-      
+
       // Check if wallet is connected
       if (!isConnected) {
         try {
@@ -202,7 +194,7 @@ const L2RelayManager: React.FC = () => {
           return;
         }
       }
-      
+
       // Check if we have ethereum provider
       if (!window.ethereum) {
         toast.error("Web3 provider not found. Please install MetaMask or another Web3 wallet");
@@ -216,7 +208,7 @@ const L2RelayManager: React.FC = () => {
         (environment === 'mainnet' && networkType !== 'arbitrum_mainnet')
       ) {
         toast.loading(`Switching to Arbitrum ${environment === 'mainnet' ? 'One' : 'Sepolia'}...`);
-        
+
         try {
           await switchToLayer('l2', environment);
           toast.dismiss();
@@ -228,224 +220,305 @@ const L2RelayManager: React.FC = () => {
           return;
         }
       }
-      
+
       // Now update the L2 Relay contract
       try {
         // Create provider and signer
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
-        
+
         // Load ABI and create contract instance
         const L2RelayABI = abiLoader.loadABI('L2Relay');
         if (!L2RelayABI) {
           throw new Error('Failed to load L2Relay ABI');
         }
-        
+
         const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, signer);
-        
+
         // Check if they really want to update the config
         const chainId = Number(newChainId);
         let needsConfirmation = false;
         let confirmationMessage = '';
-        
-        // Check if the current sender exists and we're changing it
-        if (currentSender && currentSender !== ethers.ZeroAddress && currentSender.toLowerCase() !== newSenderAddress.toLowerCase()) {
+
+        // If there's already a sender for this chain ID, confirm before overwriting
+        if (currentSender && currentSender !== ethers.ZeroAddress && currentL1ChainId === chainId) {
           needsConfirmation = true;
-          confirmationMessage = `You are about to replace the existing cross-chain sender (${currentSender}) for chain ID ${chainId} with a new sender (${newSenderAddress}). Are you sure?`;
+          confirmationMessage = `You're about to overwrite the current sender for chain ID ${chainId}.\nCurrent: ${currentSender}\nNew: ${newSenderAddress}\n\nProceed?`;
         }
-        
-        if (needsConfirmation) {
-          const isConfirmed = window.confirm(confirmationMessage);
-          if (!isConfirmed) {
-            toast.error("Update canceled");
-            setIsUpdating(false);
-            return;
-          }
-        }
-        
-        // Check if the user is the contract owner
-        const owner = await contract.owner();
-        if (!walletAddress || owner.toLowerCase() !== walletAddress.toLowerCase()) {
-          toast.error("You are not the owner of this contract");
+
+        // Confirm if needed
+        if (needsConfirmation && !window.confirm(confirmationMessage)) {
+          toast.error("Update canceled by user");
           setIsUpdating(false);
           return;
         }
-        
-        toast.loading(`Updating L2 Relay contract...`);
-        
-        // Call updateCrossChainQueryOwnerContract function with correct parameters
-        const tx = await contract.updateCrossChainQueryOwnerContract(
-          newSenderAddress,
-          chainId
-        );
-        
-        toast.dismiss();
-        toast.loading(`Transaction submitted: ${tx.hash}`);
-        
-        // Wait for transaction to be mined
+
+        // Call updateCrossChainQueryOwnerContract method
+        toast.loading("Updating cross-chain sender configuration...");
+        const tx = await contract.updateCrossChainQueryOwnerContract(newSenderAddress, chainId);
+
+        // Wait for transaction to be confirmed
         await tx.wait();
-        
         toast.dismiss();
-        toast.success("Cross-chain sender updated successfully");
-        
-        // Refresh contract info
+        toast.success(`Updated cross-chain sender for chain ID ${chainId}`);
+
+        // Update UI state
         setCurrentL1ChainId(chainId);
         setCurrentSender(newSenderAddress);
-        
       } catch (error) {
         toast.dismiss();
-        console.error("Error updating L2 Relay:", error);
-        toast.error(`Failed to update L2 Relay: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setIsUpdating(false);
+        console.error("Error updating cross-chain sender:", error);
+        toast.error(`Failed to update sender: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     } catch (error) {
-      console.error("Error updating cross-chain sender:", error);
-      toast.error("Failed to update cross-chain sender");
+      console.error("Error in updateSender:", error);
+      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
+  // Handle L3Contract update form submission
+  const handleUpdateL3Contract = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newL3ContractAddress || !ethers.isAddress(newL3ContractAddress)) {
+      toast.error("Please enter a valid address for the L3 contract");
+      return;
+    }
+
+    try {
+      setIsUpdatingL3Contract(true);
+
+      // Check if wallet is connected
+      if (!isConnected) {
+        try {
+          await connectWallet();
+          toast("Please connect your wallet to continue");
+          setIsUpdatingL3Contract(false);
+          return;
+        } catch (walletError) {
+          console.error("Error connecting wallet:", walletError);
+          toast.error("Please install and connect a Web3 wallet like MetaMask to proceed");
+          setIsUpdatingL3Contract(false);
+          return;
+        }
+      }
+
+      // Check if we have ethereum provider
+      if (!window.ethereum) {
+        toast.error("Web3 provider not found. Please install MetaMask or another Web3 wallet");
+        setIsUpdatingL3Contract(false);
+        return;
+      }
+
+      // Check if we're on the right network
+      if (
+        (environment === 'testnet' && networkType !== 'arbitrum_testnet') ||
+        (environment === 'mainnet' && networkType !== 'arbitrum_mainnet')
+      ) {
+        toast.loading(`Switching to Arbitrum ${environment === 'mainnet' ? 'One' : 'Sepolia'}...`);
+
+        try {
+          await switchToLayer('l2', environment);
+          toast.dismiss();
+          toast.success(`Switched to Arbitrum ${environment === 'mainnet' ? 'One' : 'Sepolia'}`);
+        } catch (switchError) {
+          toast.dismiss();
+          toast.error(`Failed to switch network: ${switchError instanceof Error ? switchError.message : 'Unknown error'}`);
+          setIsUpdatingL3Contract(false);
+          return;
+        }
+      }
+
+      // Now update the L2 Relay contract
+      try {
+        // Create provider and signer
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+
+        // Load ABI and create contract instance
+        const L2RelayABI = abiLoader.loadABI('L2Relay');
+        if (!L2RelayABI) {
+          throw new Error('Failed to load L2Relay ABI');
+        }
+
+        const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, signer);
+
+        // Check if they really want to update the L3 contract
+        let needsConfirmation = false;
+        let confirmationMessage = '';
+
+        // If there's already an L3 contract set, confirm before overwriting
+        if (l3ContractAddress && l3ContractAddress !== ethers.ZeroAddress && l3ContractAddress !== newL3ContractAddress) {
+          needsConfirmation = true;
+          confirmationMessage = `You're about to update the L3 contract address.\nCurrent: ${l3ContractAddress}\nNew: ${newL3ContractAddress}\n\nProceed?`;
+        }
+
+        // Confirm if needed
+        if (needsConfirmation && !window.confirm(confirmationMessage)) {
+          toast.error("Update canceled by user");
+          setIsUpdatingL3Contract(false);
+          return;
+        }
+
+        // Call setL3Contract method
+        toast.loading("Updating L3 contract address...");
+        const tx = await contract.setL3Contract(newL3ContractAddress);
+
+        // Wait for transaction to be confirmed
+        await tx.wait();
+        toast.dismiss();
+        toast.success("Updated L3 contract address");
+
+        // Update UI state
+        setL3ContractAddress(newL3ContractAddress);
+      } catch (error) {
+        toast.dismiss();
+        console.error("Error updating L3 contract address:", error);
+        toast.error(`Failed to update L3 contract: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Error in updateL3Contract:", error);
+      toast.error(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUpdatingL3Contract(false);
+    }
+  };
+
+  // Handle network switching
   const handleSwitchNetwork = async () => {
     try {
-      await switchToLayer('l2', environment);
-      toast.success(`Switched to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}`);
+      const targetLayer = 'l2';
+      await switchToLayer(targetLayer, environment);
     } catch (error) {
       console.error("Error switching network:", error);
-      toast.error(`Failed to switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}`);
+      toast.error(`Failed to switch network: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
-  if (isLoading) {
-    return <div className="contract-section">Loading L2 Relay information...</div>;
-  }
-
-  // Determine if we're on the correct network
-  const isCorrectNetwork = (environment === 'testnet' && networkType === 'arbitrum_testnet') || 
-                           (environment === 'mainnet' && networkType === 'arbitrum_mainnet');
+  const isL2Arbitrum = networkType === 'arbitrum_testnet' || networkType === 'arbitrum_mainnet';
+  const isOwner = isConnected && ownerAddress && walletAddress &&
+                 ownerAddress.toLowerCase() === walletAddress.toLowerCase() &&
+                 !isOwnerRevoked;
 
   return (
-    <div className="l2-relay-manager-section">
-      <h3>L2 Relay Manager</h3>
-      
-      <div className="explorer-links">
-        <a 
-          href={`https://sepolia.arbiscan.io/address/${getContract('testnet', 'l2')?.address || l2RelayAddress}`} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="explorer-link"
-        >
-          View L2Relay on Sepolia Arb
-        </a>
-        <a 
-          href={`https://arbiscan.io/address/${getContract('mainnet', 'l2')?.address || l2RelayAddress}`} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="explorer-link"
-        >
-          View L2Relay on Arbitrum
-        </a>
-      </div>
-      
-      <div className="network-status-container">
-        <div className={`network-status ${isCorrectNetwork ? 'network-correct' : 'network-incorrect'}`}>
-          <span className="status-indicator"></span>
-          <span className="status-text">
-            {isCorrectNetwork 
-              ? `Connected to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}` 
-              : `Not on ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'} network`}
-          </span>
+    <div className="l2-relay-manager">
+      <div className="card-content">
+        <div className="connection-status">
+          {isLoading ? (
+            <p className="loading">Loading contract info...</p>
+          ) : (
+            <div className="contract-info">
+              <div className="info-group">
+                <p className="info-label">Contract Address:</p>
+                <p className="info-value">{l2RelayAddress}</p>
+              </div>
+              <div className="info-group">
+                <p className="info-label">Owner:</p>
+                <p className="info-value">{ownerAddress || 'Not found'}</p>
+                {isOwnerRevoked && <span className="revoked-badge">Revoked</span>}
+              </div>
+              <div className="info-group">
+                <p className="info-label">L3 Contract:</p>
+                <p className="info-value">{l3ContractAddress || 'Not set'}</p>
+              </div>
+              <div className="info-group">
+                <p className="info-label">Sender for Chain ID {currentL1ChainId}:</p>
+                <p className="info-value">{currentSender || 'Not set'}</p>
+              </div>
+
+              {!isConnected && (
+                <button className="connect-button" onClick={connectWallet}>Connect Wallet</button>
+              )}
+
+              {isConnected && !isL2Arbitrum && (
+                <button className="switch-network-button" onClick={handleSwitchNetwork}>
+                  Switch to Arbitrum {environment === 'mainnet' ? 'One' : 'Sepolia'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
-        {!isCorrectNetwork && (
-          <button 
-            className="network-switch-button"
-            onClick={handleSwitchNetwork}
-          >
-            Switch to {environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}
-          </button>
-        )}
-      </div>
-      
-      <div className="contract-info">
-        <div className="info-row">
-          <span className="info-label">L2 Relay Contract:</span>
-          <span className="info-value">{l2RelayAddress || "Not configured"}</span>
-        </div>
-        
-        <div className="info-row">
-          <span className="info-label">Contract Owner:</span>
-          <span className="info-value">{ownerAddress || "Unknown"}</span>
-        </div>
-        
-        <div className="info-row">
-          <span className="info-label">Current L1 Sender (chain {currentL1ChainId}):</span>
-          <span className="info-value">{currentSender || "Not set"}</span>
-        </div>
-      </div>
-      
-      <div className="l1-address-info">
-        <h4>L1 to L2 Address Conversion</h4>
-        
-        <div className="info-row">
-          <span className="info-label">Original L1 Address:</span>
-          <span className="info-value">{l1ContractAddress || "Not configured"}</span>
-        </div>
-        
-        <div className="info-row">
-          <span className="info-label">Aliased L2 Address:</span>
-          <span className="info-value">{aliasedAddress || "Cannot compute alias"}</span>
-        </div>
-        
-        <div className="info-note">
-          <p>The L2 alias is computed by adding <code>{ALIAS_ADDITION}</code> to the L1 address.</p>
-          <p>This aliasing scheme is part of Optimism's cross-domain messaging system.</p>
-        </div>
-      </div>
-      
-      <div className="update-form">
-        <h4>Update Cross-Chain Sender</h4>
-        
-        <form onSubmit={handleUpdateSender}>
-          <div className="input-group">
-            <label>New Sender Address:</label>
-            <input
-              type="text"
-              value={newSenderAddress}
-              onChange={(e) => setNewSenderAddress(e.target.value)}
-              placeholder="0x..."
-              className="form-input"
-            />
-            <div className="input-help">The contract address that will be authorized to send messages from L1</div>
+
+        <div className="forms-container">
+          {/* L3 Contract Update Form - Always visible */}
+          <div className="form-section">
+            <h4>Update L3 Contract Address</h4>
+            <form onSubmit={handleUpdateL3Contract}>
+              <div className="form-group">
+                <label htmlFor="newL3ContractAddress">L3 Contract Address:</label>
+                <input
+                  id="newL3ContractAddress"
+                  type="text"
+                  placeholder="0x..."
+                  value={newL3ContractAddress}
+                  onChange={(e) => setNewL3ContractAddress(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  disabled={isUpdatingL3Contract}
+                  className="enabled-button"
+                >
+                  {isUpdatingL3Contract ? 'Updating...' : 'Update L3 Contract'}
+                </button>
+              </div>
+              <div className="info-note small">
+                <p>This updates the L3 contract address that the relay will forward ownership data to.</p>
+              </div>
+            </form>
           </div>
-          
-          <div className="input-group">
-            <label>Chain ID:</label>
-            <input
-              type="number"
-              value={newChainId}
-              onChange={(e) => setNewChainId(e.target.value)}
-              placeholder="1"
-              className="form-input"
-              min="1"
-            />
-            <div className="input-help">The chain ID of the source chain (1 for Ethereum mainnet)</div>
+
+          {/* Cross-Chain Sender Update Form - Always visible */}
+          <div className="form-section">
+            <h4>Add/Update Cross-Chain Sender</h4>
+            <form onSubmit={handleUpdateSender}>
+              <div className="form-group">
+                <label htmlFor="newChainId">Chain ID:</label>
+                <input
+                  id="newChainId"
+                  type="number"
+                  placeholder="1 for Ethereum mainnet"
+                  value={newChainId}
+                  onChange={(e) => setNewChainId(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="newSenderAddress">Sender Address:</label>
+                <input
+                  id="newSenderAddress"
+                  type="text"
+                  placeholder="0x..."
+                  value={newSenderAddress}
+                  onChange={(e) => setNewSenderAddress(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="enabled-button"
+                >
+                  {isUpdating ? 'Updating...' : 'Update Sender'}
+                </button>
+              </div>
+              <div className="info-note small">
+                <p>This authorizes an address to send cross-chain messages from the specified chain.</p>
+              </div>
+            </form>
           </div>
-          
-          <div className="info-note warning">
-            <p>Note: You must be the contract owner to update these parameters.</p>
-            <p>This will authorize the specified address to send cross-chain messages to this contract.</p>
-          </div>
-          
-          <button 
-            type="submit" 
-            className="update-button" 
-            disabled={isUpdating || !newSenderAddress || !newChainId}
-          >
-            {isUpdating ? "Updating..." : "Update Cross-Chain Sender"}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
 
-export default L2RelayManager; 
+export default L2RelayManager;

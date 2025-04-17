@@ -164,9 +164,6 @@ const BridgeTestContainer: React.FC = () => {
   // State for showing/hiding NFT Query
   const [showNFTQuery, setShowNFTQuery] = useState(false);
   
-  // State for showing/hiding L2 Relay Manager
-  const [showL2RelayManager, setShowL2RelayManager] = useState(false);
-  
   // State to track listening for events
   const [isListening, setIsListening] = useState(false);
   
@@ -893,291 +890,238 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
     <div className="bridge-test-container">
       <h2>CommissionArt NFT Bridge Testing</h2>
       
-      <div className="network-selection">
-        <div className="network-buttons">
-          <button
-            className={`network-button ${layer === 'l1' ? 'active' : ''}`}
-            onClick={() => handleLayerChange('l1')}
-          >
-            L1 (Ethereum)
-          </button>
-          <button
-            className={`network-button ${layer === 'l2' ? 'active' : ''}`}
-            onClick={() => handleLayerChange('l2')}
-          >
-            L2 (Arbitrum)
-          </button>
-        </div>
-        
-        <div className="environment-buttons">
-          <button
-            className={`environment-button ${environment === 'testnet' ? 'active' : ''}`}
-            onClick={() => handleEnvironmentChange('testnet')}
-          >
-            Testnet
-          </button>
-          <button
-            className={`environment-button ${environment === 'mainnet' ? 'active' : ''}`}
-            onClick={() => handleEnvironmentChange('mainnet')}
-          >
-            Mainnet
-          </button>
-        </div>
-      </div>
-      
-      {environment === 'testnet' && (
-        <div className="metamask-dropdown">
-          <button 
-            className="dropdown-toggle" 
-            onClick={() => setShowMetaMaskActions(!showMetaMaskActions)}
-          >
-            <span className="metamask-icon"></span>
-            MetaMask Network Tools
-            <span className={`dropdown-arrow ${showMetaMaskActions ? 'open' : ''}`}>▼</span>
-          </button>
-          
-          {showMetaMaskActions && (
-            <div className="metamask-actions">
-              <div className="action-group">
-                <h4>Add Network to MetaMask</h4>
-                <div className="button-group">
-                  <button 
-                    className="metamask-button add-network" 
-                    onClick={() => addNetworkToMetaMask('sepolia')}
-                    title="Add Sepolia to MetaMask"
-                  >
-                    Add Sepolia
+      {configLoading ? (
+        <div className="loading">Loading configuration...</div>
+      ) : (
+        <>
+          <div className="network-selection">
+            <div className="network-info">
+              <h3>Current Network</h3>
+              <p className={`network-type ${networkType.replace('_', '-')}`}>
+                {networkType === 'arbitrum_mainnet' ? 'Arbitrum One' :
+                 networkType === 'arbitrum_testnet' ? 'Arbitrum Sepolia' :
+                 networkType === 'prod' ? 'Ethereum Mainnet' :
+                 networkType === 'dev' || networkType === 'local' ? 'Sepolia Testnet' : 
+                 'Unknown Network'}
+              </p>
+              <p className="wallet-info">
+                {isConnected ? (
+                  <>
+                    <span className="wallet-address">
+                      {walletAddress && `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`}
+                    </span>
+                    <span className="connection-status connected">Connected</span>
+                  </>
+                ) : (
+                  <button onClick={connectWallet} className="connect-wallet-button">
+                    Connect Wallet
                   </button>
-                  <button 
-                    className="metamask-button add-network" 
-                    onClick={() => addNetworkToMetaMask('arbitrumSepolia')}
-                    title="Add Arbitrum Sepolia to MetaMask"
-                  >
-                    Add Arbitrum Sepolia
-                  </button>
-                </div>
-              </div>
-              
-              <div className="action-group">
-                <h4>Switch Network in MetaMask</h4>
-                <div className="button-group">
-                  <button 
-                    className="metamask-button switch-network" 
-                    onClick={() => switchNetworkInMetaMask('sepolia')}
-                    title="Switch to Sepolia in MetaMask"
-                  >
-                    Switch to Sepolia
-                  </button>
-                  <button 
-                    className="metamask-button switch-network" 
-                    onClick={() => switchNetworkInMetaMask('arbitrumSepolia')}
-                    title="Switch to Arbitrum Sepolia in MetaMask"
-                  >
-                    Switch to Arbitrum Sepolia
-                  </button>
-                </div>
-              </div>
+                )}
+              </p>
             </div>
-          )}
-        </div>
-      )}
-      
-      {/* Owner Registry (formerly L3 but actually on Arbitrum) */}
-      <L3OwnerLookup
-        environment={environment}
-        contractConfig={contractConfig}
-        setBridgeStatus={setBridgeStatus}
-      />
-      
-      {/* L1 Owner Update Request */}
-      <L1OwnerUpdateRequest />
-      
-      {/* Status Box - NFT Query will go BELOW this */}
-      <div className="status-box">
-        <h3>Status:</h3>
-        <pre>{bridgeStatus || 'No status updates yet. Actions will be displayed here.'}</pre>
-      </div>
-      
-      {/* Contract Configuration Dropdown */}
-      <div className="contract-config-dropdown">
-        <button 
-          className="dropdown-toggle" 
-          onClick={() => setShowContractConfig(!showContractConfig)}
-        >
-          Contract Configuration
-          <span className={`dropdown-arrow ${showContractConfig ? 'open' : ''}`}>▼</span>
-        </button>
-        
-        {showContractConfig && (
-          <div className="contract-config">
-            <div className="config-buttons">
-              <button 
-                className="config-button reset-button"
-                onClick={handleResetConfig}
-                title="Reset to default values"
-              >
-                Reset
-              </button>
-              <button 
-                className="config-button load-button"
-                onClick={handleLoadFromConfig}
-                disabled={configLoading || !contractsConfig}
-                title="Load addresses from the contract config file"
-              >
-                Load from Config
-              </button>
-            </div>
-            
-            <div className="config-section">
-              <h4>L1 Contracts</h4>
-              <div className="input-group">
-                <label>Testnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l1.testnet} 
-                  onChange={(e) => handleAddressChange('l1', 'testnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>Mainnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l1.mainnet} 
-                  onChange={(e) => handleAddressChange('l1', 'mainnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>ABI File:</label>
-                <select 
-                  value={contractConfig.abiFiles.l1}
-                  onChange={(e) => handleABIChange('l1', e.target.value)}
-                  className="abi-selector"
+            <div className="network-controls">
+              <h3>Switch Networks</h3>
+              <div className="network-buttons">
+                <button 
+                  className={`network-button ${layer === 'l1' ? 'active' : ''}`} 
+                  onClick={() => handleLayerChange('l1')}
                 >
-                  {availableAbis.map(abi => (
-                    <option key={abi} value={abi}>{abi}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            <div className="config-section">
-              <h4>L2 Contracts</h4>
-              <div className="input-group">
-                <label>Testnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l2.testnet} 
-                  onChange={(e) => handleAddressChange('l2', 'testnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>Mainnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l2.mainnet} 
-                  onChange={(e) => handleAddressChange('l2', 'mainnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>ABI File:</label>
-                <select 
-                  value={contractConfig.abiFiles.l2}
-                  onChange={(e) => handleABIChange('l2', e.target.value)}
-                  className="abi-selector"
+                  Layer 1 ({environment === 'testnet' ? 'Sepolia' : 'Ethereum'})
+                </button>
+                <button 
+                  className={`network-button ${layer === 'l2' ? 'active' : ''}`} 
+                  onClick={() => handleLayerChange('l2')}
                 >
-                  {availableAbis.map(abi => (
-                    <option key={abi} value={abi}>{abi}</option>
-                  ))}
-                </select>
+                  Layer 2 ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'})
+                </button>
               </div>
-            </div>
-            
-            <div className="config-section">
-              <h4>Owner Registry Contracts (on Arbitrum)</h4>
-              <div className="input-group">
-                <label>Arbitrum Sepolia Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l3.testnet} 
-                  onChange={(e) => handleAddressChange('l3', 'testnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>Arbitrum One Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l3.mainnet} 
-                  onChange={(e) => handleAddressChange('l3', 'mainnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>ABI File:</label>
-                <select 
-                  value={contractConfig.abiFiles.l3}
-                  onChange={(e) => handleABIChange('l3', e.target.value)}
-                  className="abi-selector"
+              <div className="environment-buttons">
+                <button 
+                  className={`environment-button ${environment === 'testnet' ? 'active' : ''}`} 
+                  onClick={() => handleEnvironmentChange('testnet')}
                 >
-                  {availableAbis.map(abi => (
-                    <option key={abi} value={abi}>{abi}</option>
-                  ))}
-                </select>
+                  Testnet
+                </button>
+                <button 
+                  className={`environment-button ${environment === 'mainnet' ? 'active' : ''}`} 
+                  onClick={() => handleEnvironmentChange('mainnet')}
+                >
+                  Mainnet
+                </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
-      
-      {/* L2 Relay Manager Toggle */}
-      <div className="nft-query-dropdown">
-        <button 
-          className="dropdown-toggle"
-          onClick={() => setShowL2RelayManager(!showL2RelayManager)}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path fill="none" d="M0 0h24v24H0z"/>
-            <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5 3c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 8h-8v-1c0-1.33 2.67-2 4-2s4 .67 4 2v1z" fill="currentColor"/>
-          </svg>
-          L2 Relay Manager (Cross-Chain Settings)
-          <span className="dropdown-arrow">{showL2RelayManager ? '▲' : '▼'}</span>
-        </button>
-        
-        {showL2RelayManager && (
-          <L2RelayManager />
-        )}
-      </div>
-      
-      {/* NFT Ownership Query Toggle - Below status */}
-      <div className="nft-query-dropdown">
-        <button 
-          className="dropdown-toggle"
-          onClick={() => setShowNFTQuery(!showNFTQuery)}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16">
-            <path fill="none" d="M0 0h24v24H0z"/>
-            <path d="M19 22H5a3 3 0 0 1-3-3V3a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v12h4v4a3 3 0 0 1-3 3zm-1-5v2a1 1 0 0 0 2 0v-2h-2zm-2 3V4H4v15a1 1 0 0 0 1 1h11zM6 7h8v2H6V7zm0 4h8v2H6v-2zm0 4h5v2H6v-2z" fill="currentColor"/>
-          </svg>
-          Query NFT Ownership from Arbitrum
-          <span className="dropdown-arrow">{showNFTQuery ? '▲' : '▼'}</span>
-        </button>
-        
-        {showNFTQuery && (
-          <NFTOwnershipQuery 
-            layer={layer}
-            environment={environment}
-            contractConfig={contractConfig}
-            setBridgeStatus={setBridgeStatus}
-            isListening={isListening}
-            setIsListening={setIsListening}
-            setLayer={setLayer}
-          />
-        )}
-      </div>
+          
+          <div className="bridge-components">
+            {/* L3 Owner Lookup Component - Always visible */}
+            <div className="component-section">
+              <h3>L3 Ownership Lookup (Arbitrum)</h3>
+              <L3OwnerLookup 
+                environment={environment} 
+                contractConfig={contractConfig} 
+                setBridgeStatus={setBridgeStatus}
+              />
+            </div>
+            
+            {/* L1 Owner Request Component - Always visible */}
+            <div className="component-section">
+              <h3>L1 NFT Owner Request (Sepolia)</h3>
+              <L1OwnerUpdateRequest />
+            </div>
+            
+            {/* L2 Relay Manager Component - Now always visible */}
+            <div className="component-section">
+              <h3>L2 Relay Manager (Arbitrum Sepolia)</h3>
+              <L2RelayManager />
+            </div>
+            
+            {/* NFT Query Toggle */}
+            <div className="component-section">
+              <div className="component-header" onClick={() => setShowNFTQuery(!showNFTQuery)}>
+                <h3>Advanced: Generic NFT Ownership Query</h3>
+                <span className="toggle-icon">{showNFTQuery ? '▼' : '►'}</span>
+              </div>
+              {showNFTQuery && <NFTOwnershipQuery 
+                layer={layer}
+                environment={environment}
+                contractConfig={contractConfig}
+                setBridgeStatus={setBridgeStatus}
+                isListening={isListening}
+                setIsListening={setIsListening}
+                setLayer={setLayer}
+              />}
+            </div>
+            
+            {/* Contract Config Toggle */}
+            <div className="component-section">
+              <div className="component-header" onClick={() => setShowContractConfig(!showContractConfig)}>
+                <h3>Contract Configuration</h3>
+                <span className="toggle-icon">{showContractConfig ? '▼' : '►'}</span>
+              </div>
+              {showContractConfig && (
+                <div className="contract-config">
+                  <h4>Contract Addresses</h4>
+                  
+                  {/* L1 Contract Address */}
+                  <div className="config-row">
+                    <label>L1 Contract (Sepolia):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l1.testnet} 
+                      onChange={(e) => handleAddressChange('l1', 'testnet', e.target.value)}
+                      placeholder="L1 Contract Address (Sepolia)"
+                    />
+                  </div>
+                  
+                  <div className="config-row">
+                    <label>L1 Contract (Mainnet):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l1.mainnet} 
+                      onChange={(e) => handleAddressChange('l1', 'mainnet', e.target.value)}
+                      placeholder="L1 Contract Address (Mainnet)"
+                    />
+                  </div>
+                  
+                  {/* L2 Contract Address */}
+                  <div className="config-row">
+                    <label>L2 Contract (Arbitrum Sepolia):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l2.testnet} 
+                      onChange={(e) => handleAddressChange('l2', 'testnet', e.target.value)}
+                      placeholder="L2 Contract Address (Arbitrum Sepolia)"
+                    />
+                  </div>
+                  
+                  <div className="config-row">
+                    <label>L2 Contract (Arbitrum One):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l2.mainnet} 
+                      onChange={(e) => handleAddressChange('l2', 'mainnet', e.target.value)}
+                      placeholder="L2 Contract Address (Arbitrum One)"
+                    />
+                  </div>
+                  
+                  {/* L3 Contract Address */}
+                  <div className="config-row">
+                    <label>L3 Contract (Arbitrum Sepolia):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l3.testnet} 
+                      onChange={(e) => handleAddressChange('l3', 'testnet', e.target.value)}
+                      placeholder="L3 Contract Address (Arbitrum Sepolia)"
+                    />
+                  </div>
+                  
+                  <div className="config-row">
+                    <label>L3 Contract (Arbitrum One):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l3.mainnet} 
+                      onChange={(e) => handleAddressChange('l3', 'mainnet', e.target.value)}
+                      placeholder="L3 Contract Address (Arbitrum One)"
+                    />
+                  </div>
+                  
+                  <h4>Contract ABIs</h4>
+                  
+                  {/* L1 Contract ABI */}
+                  <div className="config-row">
+                    <label>L1 Contract ABI:</label>
+                    <select 
+                      value={contractConfig.abiFiles.l1} 
+                      onChange={(e) => handleABIChange('l1', e.target.value)}
+                    >
+                      {availableAbis.map(abi => (
+                        <option key={abi} value={abi}>{abi}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* L2 Contract ABI */}
+                  <div className="config-row">
+                    <label>L2 Contract ABI:</label>
+                    <select 
+                      value={contractConfig.abiFiles.l2} 
+                      onChange={(e) => handleABIChange('l2', e.target.value)}
+                    >
+                      {availableAbis.map(abi => (
+                        <option key={abi} value={abi}>{abi}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* L3 Contract ABI */}
+                  <div className="config-row">
+                    <label>L3 Contract ABI:</label>
+                    <select 
+                      value={contractConfig.abiFiles.l3} 
+                      onChange={(e) => handleABIChange('l3', e.target.value)}
+                    >
+                      {availableAbis.map(abi => (
+                        <option key={abi} value={abi}>{abi}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="config-buttons">
+                    <button onClick={handleLoadFromConfig}>Load from Contract Config</button>
+                    <button onClick={handleResetConfig} className="reset-button">Reset</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bridge Status Section */}
+          <div className="bridge-status">
+            <h3>Bridge Status</h3>
+            <pre>{bridgeStatus}</pre>
+          </div>
+        </>
+      )}
     </div>
   );
 };
