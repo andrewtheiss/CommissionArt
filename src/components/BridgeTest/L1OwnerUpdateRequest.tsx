@@ -22,7 +22,8 @@ const L1OwnerUpdateRequest: React.FC = () => {
   const [bridgeStatus, setBridgeStatus] = useState<string>('Ready');
   const { isConnected, networkType, switchNetwork, connectWallet, walletAddress } = useBlockchain();
   const [aliasedAddress, setAliasedAddress] = useState<string>("");
-  const { getContract, loading: configLoading, error: configError } = useContractConfig();
+  const { getContract, loading: configLoading } = useContractConfig();
+  const [configError, setConfigError] = useState<Error | null>(null);
 
   // Get contract addresses from configuration
   const l1ContractAddress = getContract('testnet', 'l1')?.address || '';
@@ -248,6 +249,70 @@ const L1OwnerUpdateRequest: React.FC = () => {
     }
   };
 
+  // Function to execute a transaction with retry logic that increases gas by 10x on failure
+  const callQueryNFTWithRetry = async () => {
+    try {
+      const contract = await initializeContract();
+      if (!contract) return;
+      
+      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const tokenId = tokenIdRef.current?.value || '0';
+      const l2Receiver = l2ReceiverRef.current?.value || l2ContractAddress;
+      const ethValue = ethValueRef.current?.value || '0.001';
+      const ethValueWei = ethers.parseEther(ethValue);
+      
+      // Initial gas values
+      let maxSubmissionCost = BigInt('4500000000000');
+      let gasLimit = BigInt('1000000');
+      let maxFeePerGas = BigInt('100000000');
+      
+      setBridgeStatus('Sending transaction...');
+      
+      try {
+        const tx = await contract.queryNFTAndSendBack(
+          nftContract,
+          BigInt(tokenId), // Ensure tokenId is BigInt
+          l2Receiver,
+          maxSubmissionCost,
+          gasLimit,
+          maxFeePerGas,
+          { value: ethValueWei }
+        );
+        
+        setBridgeStatus('Transaction sent, awaiting confirmation...');
+        const receipt = await tx.wait();
+        setBridgeStatus(`Transaction confirmed: ${receipt.transactionHash}`);
+        
+      } catch (txError: any) {
+        setBridgeStatus(`Transaction failed: ${txError.message}`);
+        setBridgeStatus('Retrying with 10x maxSubmissionCost...');
+        
+        // Increase only maxSubmissionCost by 10x
+        maxSubmissionCost = maxSubmissionCost * 10n;
+        // Keep gasLimit and maxFeePerGas the same
+        
+        // Retry with increased maxSubmissionCost
+        const retryTx = await contract.queryNFTAndSendBack(
+          nftContract,
+          BigInt(tokenId),
+          l2Receiver,
+          maxSubmissionCost,
+          gasLimit,
+          maxFeePerGas,
+          { value: ethValueWei }
+        );
+        
+        setBridgeStatus('Retry transaction sent with 10x maxSubmissionCost, awaiting confirmation...');
+        const retryReceipt = await retryTx.wait();
+        setBridgeStatus(`Retry transaction confirmed: ${retryReceipt.transactionHash}`);
+      }
+      
+    } catch (error: any) {
+      setBridgeStatus(`Error: ${error.message}`);
+      console.error(error);
+    }
+  };
+
   // Handle wallet connection
   const handleConnectWallet = async () => {
     try {
@@ -409,6 +474,9 @@ const L1OwnerUpdateRequest: React.FC = () => {
               </button>
               <button onClick={callQueryNFTAndSendBackOptimized} className="secondary-button">
                 Send Request (Optimized Gas)
+              </button>
+              <button onClick={callQueryNFTWithRetry} className="secondary-button">
+                Send with Auto-Retry (10x Submission Cost)
               </button>
             </div>
           </div>
