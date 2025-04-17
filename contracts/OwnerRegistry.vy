@@ -121,6 +121,11 @@ def setCommissionHubTemplate(_new_template: address):
 def setL2Relay(_new_l2relay: address):
     assert msg.sender == self.owner, "Only owner can set L2 relay"
     self.l2Relay = _new_l2relay
+    log L2RelaySet(l2Relay=_new_l2relay)
+
+event L2RelaySet:
+    l2Relay: address
+    
     
 
 

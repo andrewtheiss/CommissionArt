@@ -96,6 +96,7 @@ Once ownership is rescinded, no more images can be added to the Registry.
 # Install plugins
 pip install eth-ape
 ape plugins install .
+pip install --upgrade eth-ape
 # (ape plugins install vyper alchemy -y)
 
 # add private key to the ape 'deployer' account

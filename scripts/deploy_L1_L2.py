@@ -87,8 +87,8 @@ def deploy_contracts():
     try:
         deployer = accounts.load("deployer")
     except:
-        deployer = import_account_from_private_key("deployer", passphrase, private_key)
-    deployer.set_autosign(True, passphrase=passphrase)
+        deployer = import_account_from_private_key("deployer", passphrase.encode('utf-8'), private_key)
+    deployer.set_autosign(True, passphrase=passphrase.encode('utf-8'))
 
     # Check if the user wants to do a full redeployment
     # For prodtest, we default to reusing L1 but redeploying L2/L3
