@@ -399,6 +399,7 @@ def deploy_contracts():
         print("3. Update your frontend configuration with the final production addresses")
     
     print(f"\nMake sure to use these contract addresses in your application.\n")
+    print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
     return l1_contract, l2_contract, l3_owner_registry, commission_hub_template
 

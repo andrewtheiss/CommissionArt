@@ -126,3 +126,11 @@ python -m site
 
  # Add C:\Users\andyComp\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p1\LocalCache\local-packages\Python311\Scripts to your path
  
+
+ # Decrypt the .env password file on mac
+ Using p7zip installed via brew (brew install p7zip)
+ 7z x -p1234 .env.7zencoded -o/tmp/env_temp && mv /tmp/env_temp/.env .env && rm -rf /tmp/env_temp
+
+ # Reacrhive the file after its been modified
+ 7z l -p"$PASSWORD" .env.7zencoded
+
