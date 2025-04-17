@@ -3,6 +3,9 @@
 interface ArbSys:
     def sendTxToL1(destination: address, calldataForL1: Bytes[1024]) -> uint256: payable
 
+interface L3OwnerRegistry:
+    def registerNFTOwnerFromParentChain(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address): nonpayable
+
 # Precompile address for ArbSys on Arbitrum
 ARBSYS: constant(address) = 0x0000000000000000000000000000000000000064
 

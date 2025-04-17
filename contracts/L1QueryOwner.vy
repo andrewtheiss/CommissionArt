@@ -47,7 +47,7 @@ def queryNFTAndSendBack(_nft_contract: address, _token_id: uint256, _l2_receiver
     """
     owner: address = staticcall IERC721(_nft_contract).ownerOf(_token_id)
     
-    func_selector: Bytes[4] = slice(keccak256("receiveNFTOwnerFromL1(uint256,address,uint256,address)"), 0, 4)
+    func_selector: Bytes[4] = slice(keccak256("receiveNFTOwnerFromCrossChainMessage(uint256,address,uint256,address)"), 0, 4)
     
     # Construct data with chain_id=1 (Ethereum), _nft_contract, _token_id, and owner as parameters
     data: Bytes[140] = concat(
