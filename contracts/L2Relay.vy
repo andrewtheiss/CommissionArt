@@ -3,14 +3,8 @@
 interface ArbSys:
     def sendTxToL1(destination: address, calldataForL1: Bytes[1024]) -> uint256: payable
 
-interface L3Registrar:
-    def registerNFTOwnerFromParentChain(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address): nonpayable
-
 # Precompile address for ArbSys on Arbitrum
 ARBSYS: constant(address) = 0x0000000000000000000000000000000000000064
-
-event L3RegistrarSet:
-    l3_registrar: indexed(address)
 
 event NFTRegistered:
     chain_id: indexed(uint256)
@@ -54,8 +48,21 @@ def setL3Contract(_new_l3_contract: address):
 @external
 def receiveNFTOwnerFromCrossChainMessage(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
     assert self.crossChainRegistryAddressByChainId[_chain_id] == msg.sender, "Sender not whitelisted for this chain"
-    registrar: L3Registrar = L3Registrar(self.l3Contract)
-    extcall registrar.registerNFTOwnerFromParentChain(_chain_id, _nft_contract, _token_id, _owner)
+  
+    # Compute the correct selector
+    selector: Bytes[4] = slice(keccak256("registerNFTOwnerFromParentChain(uint256,address,uint256,address)"), 0, 4)
+
+    # Encode parameters
+    chain_id_bytes: bytes32 = convert(_chain_id, bytes32)
+    nft_contract_bytes: bytes32 = convert(_nft_contract, bytes32)
+    token_id_bytes: bytes32 = convert(_token_id, bytes32)
+    owner_bytes: bytes32 = convert(_owner, bytes32)
+    
+    # Build the call data
+    data: Bytes[132] = concat(selector, chain_id_bytes, nft_contract_bytes, token_id_bytes, owner_bytes)
+    
+    # Make the raw call
+    raw_call(self.l3Contract, data, max_outsize=0)
     log NFTRegistered(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
 
 @external

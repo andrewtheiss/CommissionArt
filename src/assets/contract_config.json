@@ -2,15 +2,15 @@
   "networks": {
     "testnet": {
       "l1": {
-        "address": "0xC33b05110F84E2C2dB2d7A42a7F7f0f31a8335F9",
+        "address": "0xdA45F357536A6B1787c99670a006d49EC4fE7924",
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "0x2b2382CA921F038A9Cf5D22553aa376F3F6fC8E7",
+        "address": "0xaff1f261F8E02479c05764f07f882A55eC36B73b",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0xBC878c9b3292eDF2843274D691390cA4A2C0E3B9",
+        "address": "0x95651e2D98EF9437e6158d1933de8C6F8Ce191aA",
         "contract": "OwnerRegistry"
       }
     },
@@ -29,5 +29,5 @@
       }
     }
   },
-  "lastUpdated": "2025-04-17T10:50:38.019673"
+  "lastUpdated": "2025-04-17T15:46:02.404275"
 }
