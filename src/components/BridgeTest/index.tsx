@@ -170,94 +170,42 @@ const BridgeTestContainer: React.FC = () => {
   // State to track listening for events
   const [isListening, setIsListening] = useState(false);
   
-  // Default config
-  const defaultConfig: ContractConfig = {
-    addresses: {
-      l1: {
-        testnet: '0xBbFA650E59be970E63b443B7B2D3E152D1A1b9B0', // Sepolia
-        mainnet: '', // Ethereum
-      },
-      l2: {
-        testnet: '0x35177b4cd425AD4B495c1CF50Ea8755C72972375', // Arbitrum Sepolia
-        mainnet: '', // Arbitrum One
-      },
-      l3: {
-        testnet: '',
-        mainnet: '',
-      }
-    },
-    abiFiles: {
-      l1: 'L1QueryOwner',
-      l2: 'L2Relay',
-      l3: 'L3QueryOwner'
-    }
-  };
-  
   // Ensure contractsConfig is safely accessed by creating a safe version with extra null checks
   const safeContractsConfig = {
     networks: {
       testnet: {
         l1: {
-          address: contractsConfig?.networks?.testnet?.l1?.address || defaultConfig.addresses.l1.testnet,
-          contract: contractsConfig?.networks?.testnet?.l1?.contract || defaultConfig.abiFiles.l1
+          address: contractsConfig?.networks?.testnet?.l1?.address || '',
+          contract: contractsConfig?.networks?.testnet?.l1?.contract || 'L1QueryOwner'
         },
         l2: {
-          address: contractsConfig?.networks?.testnet?.l2?.address || defaultConfig.addresses.l2.testnet,
-          contract: contractsConfig?.networks?.testnet?.l2?.contract || defaultConfig.abiFiles.l2
+          address: contractsConfig?.networks?.testnet?.l2?.address || '',
+          contract: contractsConfig?.networks?.testnet?.l2?.contract || 'L2Relay'
         },
         l3: {
-          address: contractsConfig?.networks?.testnet?.l3?.address || defaultConfig.addresses.l3.testnet,
-          contract: contractsConfig?.networks?.testnet?.l3?.contract || defaultConfig.abiFiles.l3
+          address: contractsConfig?.networks?.testnet?.l3?.address || '',
+          contract: contractsConfig?.networks?.testnet?.l3?.contract || 'L3QueryOwner'
         }
       },
       mainnet: {
         l1: {
-          address: contractsConfig?.networks?.mainnet?.l1?.address || defaultConfig.addresses.l1.mainnet,
-          contract: contractsConfig?.networks?.mainnet?.l1?.contract || defaultConfig.abiFiles.l1
+          address: contractsConfig?.networks?.mainnet?.l1?.address || '',
+          contract: contractsConfig?.networks?.mainnet?.l1?.contract || 'L1QueryOwner'
         },
         l2: {
-          address: contractsConfig?.networks?.mainnet?.l2?.address || defaultConfig.addresses.l2.mainnet,
-          contract: contractsConfig?.networks?.mainnet?.l2?.contract || defaultConfig.abiFiles.l2
+          address: contractsConfig?.networks?.mainnet?.l2?.address || '',
+          contract: contractsConfig?.networks?.mainnet?.l2?.contract || 'L2Relay'
         },
         l3: {
-          address: contractsConfig?.networks?.mainnet?.l3?.address || defaultConfig.addresses.l3.mainnet,
-          contract: contractsConfig?.networks?.mainnet?.l3?.contract || defaultConfig.abiFiles.l3
+          address: contractsConfig?.networks?.mainnet?.l3?.address || '',
+          contract: contractsConfig?.networks?.mainnet?.l3?.contract || 'L3QueryOwner'
         }
       }
     }
   };
   
-  // Add an additional guard to ensure we always have valid contracts structure
-  const ensureValidContractsConfig = () => {
-    // Check if networks exists
-    if (!contractsConfig || !contractsConfig.networks) {
-      console.warn("Contract configuration missing or incomplete, using defaults");
-      return defaultConfig;
-    }
-    
-    // Check testnet/mainnet exist with l1/l2/l3 structures
-    const networksToCheck = ['testnet', 'mainnet'] as const;
-    const layersToCheck = ['l1', 'l2', 'l3'] as const;
-    
-    for (const network of networksToCheck) {
-      if (!contractsConfig.networks[network]) {
-        console.warn(`Network ${network} missing in configuration, using defaults`);
-        return defaultConfig;
-      }
-      
-      for (const layer of layersToCheck) {
-        if (!contractsConfig.networks[network][layer]) {
-          console.warn(`Layer ${layer} missing in ${network} configuration, using defaults`);
-          return defaultConfig;
-        }
-      }
-    }
-    
-    return contractsConfig;
-  }
-  
   // Use our safeguard function to ensure valid configuration
-  const verifiedConfig = ensureValidContractsConfig();
+  const verifiedConfig = safeContractsConfig;
   
   // State for contract addresses and ABIs - initialize with saved data or defaults
   const [contractConfig, setContractConfig] = useState<ContractConfig>(() => {
@@ -270,7 +218,20 @@ const BridgeTestContainer: React.FC = () => {
         console.error('Failed to parse saved configuration:', e);
       }
     }
-    return defaultConfig;
+    
+    // Initialize with empty addresses and default ABI names
+    return {
+      addresses: {
+        l1: { testnet: '', mainnet: '' },
+        l2: { testnet: '', mainnet: '' },
+        l3: { testnet: '', mainnet: '' }
+      },
+      abiFiles: {
+        l1: 'L1QueryOwner',
+        l2: 'L2Relay',
+        l3: 'L3QueryOwner'
+      }
+    };
   });
   
   // Selected ABI objects based on contract type
@@ -317,24 +278,24 @@ const BridgeTestContainer: React.FC = () => {
         // Load the deployed contract addresses from the configuration using our safe version
         const newAddresses = {
           l1: {
-            testnet: safeContractsConfig.networks.testnet.l1.address || defaultConfig.addresses.l1.testnet,
-            mainnet: safeContractsConfig.networks.mainnet.l1.address || defaultConfig.addresses.l1.mainnet,
+            testnet: safeContractsConfig.networks.testnet.l1.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l1.address || '',
           },
           l2: {
-            testnet: safeContractsConfig.networks.testnet.l2.address || defaultConfig.addresses.l2.testnet,
-            mainnet: safeContractsConfig.networks.mainnet.l2.address || defaultConfig.addresses.l2.mainnet,
+            testnet: safeContractsConfig.networks.testnet.l2.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l2.address || '',
           },
           l3: {
-            testnet: safeContractsConfig.networks.testnet.l3.address || defaultConfig.addresses.l3.testnet,
-            mainnet: safeContractsConfig.networks.mainnet.l3.address || defaultConfig.addresses.l3.mainnet,
+            testnet: safeContractsConfig.networks.testnet.l3.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l3.address || '',
           }
         };
         
         // Update contract ABIs based on configuration
         const newAbiFiles = {
-          l1: safeContractsConfig.networks.testnet.l1.contract || defaultConfig.abiFiles.l1,
-          l2: safeContractsConfig.networks.testnet.l2.contract || defaultConfig.abiFiles.l2,
-          l3: safeContractsConfig.networks.testnet.l3.contract || defaultConfig.abiFiles.l3
+          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwner',
+          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2Relay',
+          l3: safeContractsConfig.networks.testnet.l3.contract || 'L3QueryOwner'
         };
         
         // Update the contract configuration if any address has changed
@@ -389,7 +350,7 @@ const BridgeTestContainer: React.FC = () => {
   useEffect(() => {
     try {
       // Safely access the ABI file name with fallbacks
-      const abiFileName = contractConfig?.abiFiles?.[layer] || defaultConfig.abiFiles[layer];
+      const abiFileName = contractConfig?.abiFiles?.[layer] || 'L1QueryOwner';
       
       console.log(`Loading ABI for ${layer}: ${abiFileName}`);
       const abi = abiLoader.loadABI(abiFileName);
@@ -458,7 +419,18 @@ const BridgeTestContainer: React.FC = () => {
   // Reset contract configuration to defaults
   const handleResetConfig = () => {
     if (window.confirm('Are you sure you want to reset all contract configuration to defaults?')) {
-      setContractConfig(defaultConfig);
+      setContractConfig({
+        addresses: {
+          l1: { testnet: '', mainnet: '' },
+          l2: { testnet: '', mainnet: '' },
+          l3: { testnet: '', mainnet: '' }
+        },
+        abiFiles: {
+          l1: 'L1QueryOwner',
+          l2: 'L2Relay',
+          l3: 'L3QueryOwner'
+        }
+      });
       setBridgeStatus('Configuration reset to defaults');
     }
   };
@@ -475,24 +447,24 @@ const BridgeTestContainer: React.FC = () => {
         // Load the deployed contract addresses from the configuration using our safe version
         const newAddresses = {
           l1: {
-            testnet: safeContractsConfig.networks.testnet.l1.address || defaultConfig.addresses.l1.testnet,
-            mainnet: safeContractsConfig.networks.mainnet.l1.address || defaultConfig.addresses.l1.mainnet,
+            testnet: safeContractsConfig.networks.testnet.l1.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l1.address || '',
           },
           l2: {
-            testnet: safeContractsConfig.networks.testnet.l2.address || defaultConfig.addresses.l2.testnet,
-            mainnet: safeContractsConfig.networks.mainnet.l2.address || defaultConfig.addresses.l2.mainnet,
+            testnet: safeContractsConfig.networks.testnet.l2.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l2.address || '',
           },
           l3: {
-            testnet: safeContractsConfig.networks.testnet.l3.address || defaultConfig.addresses.l3.testnet,
-            mainnet: safeContractsConfig.networks.mainnet.l3.address || defaultConfig.addresses.l3.mainnet,
+            testnet: safeContractsConfig.networks.testnet.l3.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l3.address || '',
           }
         };
         
         // Update contract ABIs based on configuration
         const newAbiFiles = {
-          l1: safeContractsConfig.networks.testnet.l1.contract || defaultConfig.abiFiles.l1,
-          l2: safeContractsConfig.networks.testnet.l2.contract || defaultConfig.abiFiles.l2,
-          l3: safeContractsConfig.networks.testnet.l3.contract || defaultConfig.abiFiles.l3
+          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwner',
+          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2Relay',
+          l3: safeContractsConfig.networks.testnet.l3.contract || 'L3QueryOwner'
         };
         
         setContractConfig({
@@ -1010,7 +982,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
         </div>
       )}
       
-      {/* L3 Owner Registry Lookup */}
+      {/* Owner Registry (formerly L3 but actually on Arbitrum) */}
       <L3OwnerLookup
         environment={environment}
         contractConfig={contractConfig}
@@ -1125,9 +1097,9 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
             </div>
             
             <div className="config-section">
-              <h4>L3 Contracts</h4>
+              <h4>Owner Registry Contracts (on Arbitrum)</h4>
               <div className="input-group">
-                <label>Testnet Address:</label>
+                <label>Arbitrum Sepolia Address:</label>
                 <input 
                   type="text" 
                   value={contractConfig.addresses.l3.testnet} 
@@ -1136,7 +1108,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
                 />
               </div>
               <div className="input-group">
-                <label>Mainnet Address:</label>
+                <label>Arbitrum One Address:</label>
                 <input 
                   type="text" 
                   value={contractConfig.addresses.l3.mainnet} 
@@ -1190,7 +1162,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
             <path fill="none" d="M0 0h24v24H0z"/>
             <path d="M19 22H5a3 3 0 0 1-3-3V3a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v12h4v4a3 3 0 0 1-3 3zm-1-5v2a1 1 0 0 0 2 0v-2h-2zm-2 3V4H4v15a1 1 0 0 0 1 1h11zM6 7h8v2H6V7zm0 4h8v2H6v-2zm0 4h5v2H6v-2z" fill="currentColor"/>
           </svg>
-          Query NFT Ownership from L2 (Arbitrum)
+          Query NFT Ownership from Arbitrum
           <span className="dropdown-arrow">{showNFTQuery ? '▲' : '▼'}</span>
         </button>
         

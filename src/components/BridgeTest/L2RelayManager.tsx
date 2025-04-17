@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { toast } from 'react-hot-toast';
 import './BridgeTest.css';
-import contractConfigJson from '../../assets/contract_config.json';
+import useContractConfig from '../../utils/useContractConfig';
 
 // Alias addition constant
 const ALIAS_ADDITION = "0x1111000000000000000000000000000000001111";
@@ -24,6 +24,7 @@ declare global {
 
 const L2RelayManager: React.FC = () => {
   const { isConnected, walletAddress, networkType, switchNetwork, switchToLayer, connectWallet } = useBlockchain();
+  const { getContract, loading: configLoading, error: configError } = useContractConfig();
   
   // State variables
   const [l2RelayAddress, setL2RelayAddress] = useState<string>("");
@@ -66,26 +67,48 @@ const L2RelayManager: React.FC = () => {
     }
   };
 
-  // Load contract details from contract_config.json
+  // Load contract details from contract config
   useEffect(() => {
     const loadContractInfo = async () => {
       try {
         setIsLoading(true);
         
+        if (configLoading) {
+          return; // Wait for config to load
+        }
+        
+        if (configError) {
+          console.error("Contract configuration error:", configError);
+          toast.error("Failed to load contract configuration");
+          return;
+        }
+        
         // Get current environment based on network
         const currentEnv: 'testnet' | 'mainnet' = networkType === 'arbitrum_mainnet' ? 'mainnet' : 'testnet';
         setEnvironment(currentEnv);
         
-        // Get L2 Relay address from contract config with safe fallbacks
-        const relayAddress = contractConfigJson.networks?.[currentEnv]?.l2?.address || 
-                              contractConfigJson.networks?.testnet?.l2?.address || 
-                              '0xce02464cF0e968f8719ACE0d871bEf3c4B786d4d';
+        // Get L2 Relay address from contract config
+        const l2Contract = getContract(currentEnv, 'l2');
+        const relayAddress = l2Contract?.address || '';
+        
+        if (!relayAddress) {
+          console.error("L2 relay address not found in configuration");
+          toast.error("L2 relay address not configured");
+          return;
+        }
+        
         setL2RelayAddress(relayAddress);
         
-        // Get L1 contract address with safe fallbacks
-        const l1Address = contractConfigJson.networks?.[currentEnv]?.l1?.address || 
-                          contractConfigJson.networks?.testnet?.l1?.address || 
-                          '0x4BE47b12Ec86b335694254fB29F3570331af01C9';
+        // Get L1 contract address
+        const l1Contract = getContract(currentEnv, 'l1');
+        const l1Address = l1Contract?.address || '';
+        
+        if (!l1Address) {
+          console.error("L1 contract address not found in configuration");
+          toast.error("L1 contract address not configured");
+          return;
+        }
+        
         setL1ContractAddress(l1Address);
         
         // Calculate the aliased address
@@ -144,7 +167,7 @@ const L2RelayManager: React.FC = () => {
     };
     
     loadContractInfo();
-  }, [isConnected, networkType, ownerAddress, currentSender]);
+  }, [isConnected, networkType, ownerAddress, currentSender, configLoading, configError, getContract]);
 
   // Handle form submission
   const handleUpdateSender = async (e: React.FormEvent) => {
@@ -266,7 +289,7 @@ const L2RelayManager: React.FC = () => {
       
       <div className="explorer-links">
         <a 
-          href={`https://sepolia.arbiscan.io/address/${contractConfigJson.networks.testnet.l2.address}`} 
+          href={`https://sepolia.arbiscan.io/address/${getContract('testnet', 'l2')?.address || l2RelayAddress}`} 
           target="_blank" 
           rel="noopener noreferrer"
           className="explorer-link"
@@ -274,7 +297,7 @@ const L2RelayManager: React.FC = () => {
           View L2Relay on Sepolia Arb
         </a>
         <a 
-          href={`https://arbiscan.io/address/${contractConfigJson.networks.mainnet?.l2?.address || l2RelayAddress}`} 
+          href={`https://arbiscan.io/address/${getContract('mainnet', 'l2')?.address || l2RelayAddress}`} 
           target="_blank" 
           rel="noopener noreferrer"
           className="explorer-link"

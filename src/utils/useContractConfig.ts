@@ -23,56 +23,20 @@ interface ContractConfig {
   lastUpdated: string;
 }
 
-// Default config to use as fallback
-const DEFAULT_CONFIG: ContractConfig = {
-  networks: {
-    testnet: {
-      l1: {
-        address: "0x7312002419fd59829C0502d86bCc5fF31A0A973f",
-        contract: "L1QueryOwner"
-      },
-      l2: {
-        address: "0x81ED70eC160a03E508ef12aED22b258c1a6Eb25D", 
-        contract: "L2Relay"
-      },
-      l3: {
-        address: "0x275BB76Ffd0Be5276bca1F6C94e763E271aAC557",
-        contract: "OwnerRegistry"
-      }
-    },
-    mainnet: {
-      l1: {
-        address: "",
-        contract: "L1QueryOwner"
-      },
-      l2: {
-        address: "",
-        contract: "L2Relay"
-      },
-      l3: {
-        address: "",
-        contract: "OwnerRegistry"
-      }
-    }
-  },
-  lastUpdated: new Date().toISOString()
-};
-
 /**
  * Validates the configuration object to ensure it has all required fields
  * @param config Configuration object to validate
- * @returns Fixed configuration with defaults for missing fields
+ * @returns Validated configuration or throws an error
  */
 const validateConfig = (config: any): ContractConfig => {
+  // Check if config exists and is an object
   if (!config || typeof config !== 'object') {
-    console.warn('Invalid config format, using defaults');
-    return DEFAULT_CONFIG;
+    throw new Error('Invalid contract configuration format');
   }
 
   // Ensure networks object exists
   if (!config.networks || typeof config.networks !== 'object') {
-    console.warn('Missing networks in config, using defaults');
-    return DEFAULT_CONFIG;
+    throw new Error('Missing networks in contract configuration');
   }
 
   // Validate each network
@@ -81,23 +45,18 @@ const validateConfig = (config: any): ContractConfig => {
   
   for (const network of networks) {
     if (!config.networks[network] || typeof config.networks[network] !== 'object') {
-      console.warn(`Missing ${network} network in config, using defaults`);
-      return DEFAULT_CONFIG;
+      throw new Error(`Missing ${network} network in contract configuration`);
     }
     
     for (const layer of layers) {
       if (!config.networks[network][layer] || typeof config.networks[network][layer] !== 'object') {
-        console.warn(`Missing ${layer} in ${network} network, using defaults`);
-        return DEFAULT_CONFIG;
+        throw new Error(`Missing ${layer} in ${network} network configuration`);
       }
       
-      // Ensure ContractInfo fields exist
-      if (!config.networks[network][layer].address || 
-          typeof config.networks[network][layer].address !== 'string' ||
-          !config.networks[network][layer].contract || 
+      // Ensure ContractInfo fields exist - allow empty strings for both address and contract
+      if (typeof config.networks[network][layer].address !== 'string' ||
           typeof config.networks[network][layer].contract !== 'string') {
-        console.warn(`Invalid contract info for ${layer} in ${network}, using defaults`);
-        return DEFAULT_CONFIG;
+        throw new Error(`Invalid contract info for ${layer} in ${network} configuration`);
       }
     }
   }
@@ -129,8 +88,8 @@ export function useContractConfig() {
     try {
       setLoading(true);
       
-      // Use the imported JSON directly instead of fetching
-      console.log('Loading contract config from imported file');
+      // Use the imported JSON directly
+      console.log('Loading contract config from contract_config.json');
       
       // Validate the config and ensure it has all required fields
       const validatedConfig = validateConfig(contractConfigJson);
@@ -141,9 +100,7 @@ export function useContractConfig() {
     } catch (err) {
       console.error('Error loading contract configuration:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
-      
-      // Use default config as fallback
-      setConfig(DEFAULT_CONFIG);
+      setConfig(null);
     } finally {
       setLoading(false);
     }
@@ -166,8 +123,7 @@ export function useContractConfig() {
       return config.networks[environment][layer];
     } catch (err) {
       console.error('Error getting current contract:', err);
-      // Return default if there's an error
-      return DEFAULT_CONFIG.networks[environment][layer];
+      return undefined;
     }
   };
   
@@ -178,8 +134,7 @@ export function useContractConfig() {
       return config.networks[env][l];
     } catch (err) {
       console.error(`Error getting contract for ${env} ${l}:`, err);
-      // Return default if there's an error
-      return DEFAULT_CONFIG.networks[env][l];
+      return undefined;
     }
   };
   

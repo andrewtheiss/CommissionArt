@@ -163,12 +163,12 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   const loadContractInfo = async () => {
     // Ensure we're on the right network
     if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
-      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query L3 OwnerRegistry...');
-      switchToLayer('l2', 'testnet');
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query OwnerRegistry...');
+      switchToLayer('l3', 'testnet');
       return;
     } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Arbitrum One to query L3 OwnerRegistry...');
-      switchToLayer('l2', 'mainnet');
+      setBridgeStatus('Automatically switching to Arbitrum One to query OwnerRegistry...');
+      switchToLayer('l3', 'mainnet');
       return;
     }
     
@@ -185,7 +185,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       // Get the OwnerRegistry contract address
       const l3Address = contractConfig.addresses.l3[environment];
       if (!l3Address) {
-        throw new Error('L3 OwnerRegistry contract address not set');
+        throw new Error('OwnerRegistry contract address not set');
       }
       
       // Create a provider
@@ -695,25 +695,25 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
 
   return (
     <div className="l3-owner-lookup-container">
-      <h3>L3 Owner Registry</h3>
+      <h3>Owner Registry (on Arbitrum)</h3>
       
       <div className="explorer-links">
         <a 
-          href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${contractConfig.addresses.l3.testnet}`} 
+          href={`https://sepolia.arbiscan.io/address/${contractConfig.addresses.l3.testnet}`} 
           target="_blank" 
           rel="noopener noreferrer"
           className="explorer-link"
         >
-          View OwnerRegistry on L3 testnet
+          View OwnerRegistry on Arbitrum Sepolia
         </a>
         {contractConfig.addresses.l3.mainnet && (
           <a 
-            href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${contractConfig.addresses.l3.mainnet}`} 
+            href={`https://arbiscan.io/address/${contractConfig.addresses.l3.mainnet}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="explorer-link"
           >
-            View OwnerRegistry on L3
+            View OwnerRegistry on Arbitrum One
           </a>
         )}
       </div>
@@ -722,22 +722,22 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         <div className="network-action-bar">
           <button 
             className="network-switch-button" 
-            onClick={() => switchToLayer('l2', environment === 'testnet' ? 'testnet' : 'mainnet')}
-            title={`Switch to Arbitrum ${environment === 'testnet' ? 'Sepolia' : 'One'} to connect to L3`}
+            onClick={() => switchToLayer('l3', environment === 'testnet' ? 'testnet' : 'mainnet')}
+            title={`Switch to Arbitrum ${environment === 'testnet' ? 'Sepolia' : 'One'} to connect to OwnerRegistry`}
           >
-            Switch to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}
+            Switch to Arbitrum {environment === 'testnet' ? 'Sepolia' : 'One'}
           </button>
           <div className="network-status">
             {(networkType === 'arbitrum_testnet' && environment === 'testnet') || 
              (networkType === 'arbitrum_mainnet' && environment === 'mainnet') ? 
-              <span className="connected-status">✓ Connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span> : 
-              <span className="disconnected-status">Not connected to Arbitrum {environment === 'testnet' ? 'Testnet' : 'Mainnet'}</span>
+              <span className="connected-status">✓ Connected to Arbitrum {environment === 'testnet' ? 'Sepolia' : 'One'}</span> : 
+              <span className="disconnected-status">Not connected to Arbitrum {environment === 'testnet' ? 'Sepolia' : 'One'}</span>
             }
           </div>
         </div>
         
         <div className="registry-info">
-          <h4>Registry Contract Details</h4>
+          <h4>OwnerRegistry Contract</h4>
           <div className="info-item">
             <span className="info-label">Contract Address:</span>
             <span className="info-value">{registryInfo.contractAddress || 'Not set'}</span>

@@ -10,10 +10,10 @@ type NetworkType = 'animechain' | 'dev' | 'prod' | 'local' | 'arbitrum_testnet' 
 export const mapLayerToNetwork = (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet'): NetworkType => {
   if (layer === 'l1') {
     return environment === 'testnet' ? 'dev' : 'prod';
-  } else if (layer === 'l2') {
+  } else if (layer === 'l2' || layer === 'l3') {
+    // Both L2 and L3 are on Arbitrum (for now L3 contracts are deployed on Arbitrum)
     return environment === 'testnet' ? 'arbitrum_testnet' : 'arbitrum_mainnet';
   } else {
-    // L3 is animechain
     return 'animechain';
   }
 };

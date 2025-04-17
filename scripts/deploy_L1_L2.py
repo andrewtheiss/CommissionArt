@@ -121,13 +121,42 @@ def deploy_contracts():
     l3_owner_registry = None
     commission_hub_template = None
 
-    # First deploy CommissionHub template on L3
+    # Deploy L2Relay first with 0 parameters
+    with networks.parse_network_choice(l2_network) as provider:
+        if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l2_existing_address and input(f"Use existing L2Relay at {l2_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing L2Relay at: {l2_existing_address}")
+            l2_contract = project.L2Relay.at(l2_existing_address)
+        else:
+            print(f"Deploying L2Relay on {l2_network}")
+            try:
+                # For L2 deployments, we often need custom gas settings
+                gas_limit = 3000000  # Higher gas limit for L2
+                
+                # Deploy L2Relay with no parameters
+                l2_contract = deployer.deploy(
+                    project.L2Relay,
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"L2Relay deployed at: {l2_contract.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "l2", l2_contract.address, "L2Relay")
+                
+                print("=" * 50)  # Delimiter after L2Relay deployment
+                print("L2Relay deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying L2Relay: {e}")
+                sys.exit(1)
+
+    # Deploy CommissionHub template on L3 (as reference for OwnerRegistry)
     with networks.parse_network_choice(l3_network) as provider:
         if not full_redeploy and commission_hub_template_existing_address and input(f"Use existing CommissionHub template at {commission_hub_template_existing_address}? (Y/n): ").strip().lower() != 'n':
             print(f"Using existing CommissionHub template at: {commission_hub_template_existing_address}")
             commission_hub_template = project.CommissionHub.at(commission_hub_template_existing_address)
         else:
-            print(f"Deploying CommissionHub template on {l3_network}")
+            print(f"Deploying CommissionHub template on {l3_network} (as reference for OwnerRegistry)")
             try:
                 # For Arbitrum deployments, we may need higher gas limits
                 gas_limit = 3000000  # Higher gas limit
@@ -137,25 +166,16 @@ def deploy_contracts():
                     required_confirmations=1
                 )
                 print(f"CommissionHub template deployed at: {commission_hub_template.address}")
+                print(f"Note: This CommissionHub template is ONLY for reference in OwnerRegistry")
+                print(f"      Actual CommissionHub instances will be created through OwnerRegistry")
                 
-                # For now, we'll only store the owner registry address in the l3 field
-                # We'll add a comment here about the CommissionHub template address
-                print(f"Note: CommissionHub template address: {commission_hub_template.address}")
-                print(f"Save this address for reference; it's not currently stored in the config")
+                print("=" * 50)  # Delimiter after CommissionHub template deployment
+                print("CommissionHub template deployment completed")
+                print("=" * 50)
             except Exception as e:
                 print(f"Error deploying CommissionHub template: {e}")
                 sys.exit(1)
 
-    # Now deploy or use existing L2 contract (placeholder)
-    with networks.parse_network_choice(l2_network) as provider:
-        if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l2_existing_address and input(f"Use existing L2 contract at {l2_existing_address}? (Y/n): ").strip().lower() != 'n':
-            print(f"Using existing L2Relay at: {l2_existing_address}")
-            l2_contract = project.L2Relay.at(l2_existing_address)
-        else:
-            # Create a placeholder address for L2Relay - we don't deploy it yet
-            placeholder_address = "0x0000000000000000000000000000000000000000"
-            print(f"Created placeholder for L2Relay (will be deployed after OwnerRegistry)")
-            
     # Deploy or use existing OwnerRegistry on L3
     with networks.parse_network_choice(l3_network) as provider:
         if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l3_existing_address and input(f"Use existing OwnerRegistry at {l3_existing_address}? (Y/n): ").strip().lower() != 'n':
@@ -167,14 +187,11 @@ def deploy_contracts():
                 # For Arbitrum deployments, we may need higher gas limits
                 gas_limit = 3000000  # Higher gas limit
                 
-                # If we have an existing L2 contract, use its address, otherwise use a placeholder
-                l2_address = l2_contract.address if l2_contract else "0x0000000000000000000000000000000000000000"
-                
                 # Note: The deployer address (msg.sender) will automatically become the owner of the contract
                 print(f"OwnerRegistry will be owned by: {deployer.address}")
                 l3_owner_registry = deployer.deploy(
                     project.OwnerRegistry,
-                    l2_address,  # Placeholder or existing L2Relay address
+                    l2_contract.address,  # L2Relay address
                     commission_hub_template.address,  # CommissionHub template address
                     gas_limit=gas_limit,
                     required_confirmations=1
@@ -183,117 +200,43 @@ def deploy_contracts():
                 
                 # Update the frontend config
                 update_contract_address(config_network, "l3", l3_owner_registry.address, "OwnerRegistry")
+                
+                print("=" * 50)  # Delimiter after OwnerRegistry deployment
+                print("OwnerRegistry deployment completed")
+                print("=" * 50)
             except Exception as e:
                 print(f"Error deploying OwnerRegistry: {e}")
                 sys.exit(1)
 
-    # Now deploy the actual L2Relay with the correct L3 OwnerRegistry address
+    # Now update the L2Relay with the L3 OwnerRegistry address
     with networks.parse_network_choice(l2_network) as provider:
-        if l2_contract and not full_redeploy:
-            # If we're using an existing L2 contract, update its L3 contract address
-            print(f"Updating existing L2Relay with L3 OwnerRegistry address: {l3_owner_registry.address}")
+        print(f"Updating L2Relay with L3 OwnerRegistry address: {l3_owner_registry.address}")
+        try:
+            # Check the owner of the L2Relay contract
+            current_owner = l2_contract.owner()
+            print(f"L2Relay contract owner: {current_owner}")
+            print(f"Deployer address: {deployer.address}")
+            
+            if current_owner != deployer.address:
+                print(f"WARNING: Deployer address does not match L2Relay owner!")
+                print(f"This might be due to network connection issues or contract state not being properly synced.")
+                print(f"Attempting to continue anyway...")
+            
+            # Set the L3 contract address
+            tx = l2_contract.setL3Contract(l3_owner_registry.address)
+            print(f"L2Relay updated with L3 OwnerRegistry address")
+        except Exception as e:
+            print(f"Error updating L2Relay with L3 OwnerRegistry address: {e}")
+            print(f"Debug: Try manually checking the owner of the L2Relay contract")
+            
+            # Try getting more debugging information
             try:
-                # Check the owner of the L2Relay contract
                 current_owner = l2_contract.owner()
                 print(f"L2Relay contract owner: {current_owner}")
                 print(f"Deployer address: {deployer.address}")
                 
                 if current_owner != deployer.address:
-                    print(f"WARNING: Deployer address does not match L2Relay owner!")
-                    print(f"This might be due to network connection issues or contract state not being properly synced.")
-                    print(f"Attempting to continue anyway...")
-                
-                # Try to update the L3 contract address
-                tx = l2_contract.setL3Contract(l3_owner_registry.address)
-                print(f"L2Relay updated with L3 OwnerRegistry address")
-            except Exception as e:
-                print(f"Error updating L2Relay with L3 OwnerRegistry address: {e}")
-                print(f"Debug: Try manually checking the owner of the L2Relay contract")
-                
-                # Try getting more debugging information
-                try:
-                    current_owner = l2_contract.owner()
-                    print(f"L2Relay contract owner: {current_owner}")
-                    print(f"Deployer address: {deployer.address}")
-                    
-                    if current_owner != deployer.address:
-                        print(f"ISSUE IDENTIFIED: Deployer is not registered as the owner of L2Relay.")
-                        print(f"If this is unexpected, it might be due to network state inconsistency.")
-                        print(f"You may need to wait for transactions to be confirmed and try again.")
-                        
-                        # Check if we're in the same network context as the deployment
-                        print(f"Current network: {provider.network.name}")
-                        print(f"Please verify that you're connected to the same network where the contract was deployed.")
-                except Exception as debug_error:
-                    print(f"Could not get debugging information: {debug_error}")
-                
-                print(f"Please manually set the L3 contract address on L2Relay later using:")
-                print(f"L2Relay.setL3Contract({l3_owner_registry.address})")
-                
-                # Ask if the user wants to retry
-                if input("Do you want to retry updating the L3 contract address? (y/n): ").strip().lower() == 'y':
-                    try:
-                        print("Retrying in 5 seconds...")
-                        time.sleep(5)
-                        tx = l2_contract.setL3Contract(l3_owner_registry.address)
-                        print(f"L2Relay successfully updated with L3 OwnerRegistry address on retry")
-                    except Exception as retry_error:
-                        print(f"Error on retry: {retry_error}")
-                        print(f"You will need to manually set the L3 contract address later.")
-        else:
-            # Deploy a new L2Relay with the L3 OwnerRegistry address
-            print(f"Deploying L2Relay on {l2_network} with correct L3 OwnerRegistry address")
-            try:
-                # Use placeholder for L1 contract initially, but correct L3 address
-                placeholder_address = "0x0000000000000000000000000000000000000000"
-                
-                # For L2 deployments, we often need custom gas settings
-                gas_limit = 3000000  # Higher gas limit for L2
-                
-                l2_contract = deployer.deploy(
-                    project.L2Relay,
-                    placeholder_address,  # L1 placeholder - will update later
-                    l3_owner_registry.address,  # Correct L3 OwnerRegistry address
-                    gas_limit=gas_limit,
-                    required_confirmations=1
-                )
-                print(f"L2Relay deployed at: {l2_contract.address}")
-                
-                # Update the frontend config
-                update_contract_address(config_network, "l2", l2_contract.address, "L2Relay")
-            except Exception as e:
-                print(f"Error deploying L2Relay: {e}")
-                sys.exit(1)
-
-    # Now update the OwnerRegistry with the correct L2Relay address
-    with networks.parse_network_choice(l3_network) as provider:
-        print(f"Updating OwnerRegistry with L2Relay address: {l2_contract.address}")
-        try:
-            # Check the owner of the OwnerRegistry contract
-            current_owner = l3_owner_registry.owner()
-            print(f"OwnerRegistry contract owner: {current_owner}")
-            print(f"Deployer address: {deployer.address}")
-            
-            if current_owner != deployer.address:
-                print(f"WARNING: Deployer address does not match OwnerRegistry owner!")
-                print(f"This might be due to network connection issues or contract state not being properly synced.")
-                print(f"Attempting to continue anyway...")
-            
-            # Try to update the L2Relay address
-            tx = l3_owner_registry.setL2Relay(l2_contract.address)
-            print(f"OwnerRegistry updated with L2Relay address")
-        except Exception as e:
-            print(f"Error updating OwnerRegistry with L2Relay address: {e}")
-            print(f"Debug: Try manually checking the owner of the OwnerRegistry contract")
-            
-            # Try getting more debugging information
-            try:
-                current_owner = l3_owner_registry.owner()
-                print(f"OwnerRegistry contract owner: {current_owner}")
-                print(f"Deployer address: {deployer.address}")
-                
-                if current_owner != deployer.address:
-                    print(f"ISSUE IDENTIFIED: Deployer is not registered as the owner of OwnerRegistry.")
+                    print(f"ISSUE IDENTIFIED: Deployer is not registered as the owner of L2Relay.")
                     print(f"If this is unexpected, it might be due to network state inconsistency.")
                     print(f"You may need to wait for transactions to be confirmed and try again.")
                     
@@ -303,19 +246,19 @@ def deploy_contracts():
             except Exception as debug_error:
                 print(f"Could not get debugging information: {debug_error}")
             
-            print(f"Please manually set the L2Relay address on OwnerRegistry later using:")
-            print(f"OwnerRegistry.setL2Relay({l2_contract.address})")
+            print(f"Please manually set the L3 contract address on L2Relay later using:")
+            print(f"L2Relay.setL3Contract({l3_owner_registry.address})")
             
             # Ask if the user wants to retry
-            if input("Do you want to retry updating the L2Relay address? (y/n): ").strip().lower() == 'y':
+            if input("Do you want to retry updating the L3 contract address? (y/n): ").strip().lower() == 'y':
                 try:
                     print("Retrying in 5 seconds...")
                     time.sleep(5)
-                    tx = l3_owner_registry.setL2Relay(l2_contract.address)
-                    print(f"OwnerRegistry successfully updated with L2Relay address on retry")
+                    tx = l2_contract.setL3Contract(l3_owner_registry.address)
+                    print(f"L2Relay successfully updated with L3 OwnerRegistry address on retry")
                 except Exception as retry_error:
                     print(f"Error on retry: {retry_error}")
-                    print(f"You will need to manually set the L2Relay address later.")
+                    print(f"You will need to manually set the L3 contract address later.")
 
     # Deploy or use existing L1 contract on Ethereum
     with networks.parse_network_choice(l1_network) as provider:
@@ -364,61 +307,38 @@ def deploy_contracts():
                     
                     # Update the frontend config
                     update_contract_address(config_network, "l1", l1_contract.address, "L1QueryOwner")
+                    
+                    print("=" * 50)  # Delimiter after L1QueryOwner deployment
+                    print("L1QueryOwner deployment completed")
+                    print("=" * 50)
                 except Exception as e:
                     print(f"Error deploying L1QueryOwner: {e}")
                     sys.exit(1)
 
-    # Now update L2Relay with the L1QueryOwner address
+    # Set up cross-chain communication by registering L1QueryOwner in L2Relay for specific chain ID
     with networks.parse_network_choice(l2_network) as provider:
-        print(f"Updating L2Relay with L1QueryOwner address: {l1_contract.address}")
-        try:
-            # Check the owner of the L2Relay contract
-            current_owner = l2_contract.owner()
-            print(f"L2Relay contract owner: {current_owner}")
-            print(f"Deployer address: {deployer.address}")
+        if l1_contract:
+            # Get the L1 chain ID
+            if network_choice == "local":
+                l1_chain_id = 1337  # Default local chain ID
+            elif network_choice == "testnet":
+                l1_chain_id = 11155111  # Sepolia
+            else:
+                l1_chain_id = 1  # Ethereum Mainnet
             
-            if current_owner != deployer.address:
-                print(f"WARNING: Deployer address does not match L2Relay owner!")
-                print(f"This might be due to network connection issues or contract state not being properly synced.")
-                print(f"Attempting to continue anyway...")
+            # Allow customizing the chain ID
+            chain_id_input = input(f"Enter L1 chain ID to register (default: {l1_chain_id}): ").strip()
+            if chain_id_input and chain_id_input.isdigit():
+                l1_chain_id = int(chain_id_input)
             
-            # Try to update the L1 helper address
-            tx = l2_contract.setL1Helper(l1_contract.address)
-            print(f"L2Relay updated with L1QueryOwner address")
-        except Exception as e:
-            print(f"Error updating L2Relay with L1QueryOwner address: {e}")
-            print(f"Debug: Try manually checking the owner of the L2Relay contract")
-            
-            # Try getting more debugging information
+            print(f"Registering L1QueryOwner ({l1_contract.address}) for chain ID {l1_chain_id} in L2Relay")
             try:
-                current_owner = l2_contract.owner()
-                print(f"L2Relay contract owner: {current_owner}")
-                print(f"Deployer address: {deployer.address}")
-                
-                if current_owner != deployer.address:
-                    print(f"ISSUE IDENTIFIED: Deployer is not registered as the owner of L2Relay.")
-                    print(f"If this is unexpected, it might be due to network state inconsistency.")
-                    print(f"You may need to wait for transactions to be confirmed and try again.")
-                    
-                    # Check if we're in the same network context as the deployment
-                    print(f"Current network: {provider.network.name}")
-                    print(f"Please verify that you're connected to the same network where the contract was deployed.")
-            except Exception as debug_error:
-                print(f"Could not get debugging information: {debug_error}")
-            
-            print(f"Please manually set the L1 helper contract address on L2Relay later using:")
-            print(f"L2Relay.setL1Helper({l1_contract.address})")
-            
-            # Ask if the user wants to retry
-            if input("Do you want to retry updating the L1 helper address? (y/n): ").strip().lower() == 'y':
-                try:
-                    print("Retrying in 5 seconds...")
-                    time.sleep(5)
-                    tx = l2_contract.setL1Helper(l1_contract.address)
-                    print(f"L2Relay successfully updated with L1QueryOwner address on retry")
-                except Exception as retry_error:
-                    print(f"Error on retry: {retry_error}")
-                    print(f"You will need to manually set the L1 helper contract address later.")
+                tx = l2_contract.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id)
+                print(f"L1QueryOwner successfully registered in L2Relay for chain ID {l1_chain_id}")
+            except Exception as e:
+                print(f"Error registering L1QueryOwner in L2Relay: {e}")
+                print(f"You will need to manually register L1QueryOwner later using:")
+                print(f"L2Relay.updateCrossChainQueryOwnerContract({l1_contract.address}, {l1_chain_id})")
 
     # Print deployment summary
     print("\n=== Deployment Summary ===")
@@ -433,7 +353,7 @@ def deploy_contracts():
     elif network_choice == "prodtest":
         print(f"L3 Contracts (Animechain L3):")
         print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
-        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'} (for reference only)")
         print("\nNOTE: These are TEST contracts deployed to PRODUCTION networks.")
         print("They can be used for testing with real chain interactions, but should not be")
         print("considered the final production deployment.")
@@ -441,16 +361,23 @@ def deploy_contracts():
         print(f"L3 Contracts (Arbitrum Sepolia - temporary for testnet):")
     
     print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
-    print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+    print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'} (for reference only)")
     
     # Check if the contracts were properly linked
     if l2_contract:
         try:
-            l1_helper = l2_contract.l1_helper_contract()
             l3_contract = l2_contract.l3_contract()
             print(f"\nContract Links:")
-            print(f"  - L2Relay -> L1QueryOwner: {l1_helper}")
             print(f"  - L2Relay -> OwnerRegistry: {l3_contract}")
+            
+            # Check registered L1 contracts by chain
+            if l1_contract:
+                try:
+                    l1_chain_id_str = str(l1_chain_id) if 'l1_chain_id' in locals() else "unknown"
+                    l1_registered = l2_contract.crossChainRegistryAddressByChainId(l1_chain_id if 'l1_chain_id' in locals() else 1)
+                    print(f"  - L2Relay -> L1QueryOwner for chain {l1_chain_id_str}: {l1_registered}")
+                except Exception as e:
+                    print(f"Could not retrieve L1 registration info: {e}")
         except Exception as e:
             print(f"Could not retrieve contract links: {e}")
     
@@ -459,7 +386,7 @@ def deploy_contracts():
             l2relay = l3_owner_registry.l2relay()
             hub_template = l3_owner_registry.commission_hub_template()
             print(f"  - OwnerRegistry -> L2Relay: {l2relay}")
-            print(f"  - OwnerRegistry -> CommissionHub Template: {hub_template}")
+            print(f"  - OwnerRegistry -> CommissionHub Template: {hub_template} (for reference only)")
         except Exception as e:
             print(f"Could not retrieve OwnerRegistry links: {e}")
     

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import './BridgeTest.css';
-import contractConfigJson from '../../assets/contract_config.json';
 import l1QueryOwnerABI from '../../assets/abis/L1QueryOwner.json';
+import useContractConfig from '../../utils/useContractConfig';
 
 // Using the ethers LogDescription type
 type ParsedLog = ethers.LogDescription;
@@ -22,11 +22,12 @@ const L1OwnerUpdateRequest: React.FC = () => {
   const [bridgeStatus, setBridgeStatus] = useState<string>('Ready');
   const { isConnected, networkType, switchNetwork, connectWallet, walletAddress } = useBlockchain();
   const [aliasedAddress, setAliasedAddress] = useState<string>("");
+  const { getContract, loading: configLoading, error: configError } = useContractConfig();
 
   // Get contract addresses from configuration
-  const l1ContractAddress = contractConfigJson.networks.testnet.l1.address;
-  const l2ContractAddress = contractConfigJson.networks.testnet.l2.address;
-  const l3ContractAddress = contractConfigJson.networks.testnet.l3.address;
+  const l1ContractAddress = getContract('testnet', 'l1')?.address || '';
+  const l2ContractAddress = getContract('testnet', 'l2')?.address || '';
+  const l3ContractAddress = getContract('testnet', 'l3')?.address || '';
 
   // Refs for input elements
   const nftContractRef = useRef<HTMLInputElement>(null);
@@ -34,6 +35,14 @@ const L1OwnerUpdateRequest: React.FC = () => {
   const l2ReceiverRef = useRef<HTMLInputElement>(null);
   const ethValueRef = useRef<HTMLInputElement>(null);
   const contractAddressRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (configError) {
+      setBridgeStatus(`Contract configuration error: ${configError.message}`);
+    } else if (configLoading) {
+      setBridgeStatus('Loading contract configuration...');
+    }
+  }, [configLoading, configError]);
 
   // Compute aliased address from L1 address
   const computeAliasedAddress = (l1Address: string): string => {
@@ -250,6 +259,21 @@ const L1OwnerUpdateRequest: React.FC = () => {
     }
   };
 
+  // Show loading or error message if config isn't ready
+  if (configLoading) {
+    return <div className="bridge-test-container">Loading contract configuration...</div>;
+  }
+
+  if (configError) {
+    return <div className="bridge-test-container">
+      <h2>Configuration Error</h2>
+      <div className="error-message">
+        <p>Error loading contract configuration: {configError.message}</p>
+        <p>Please check that contract_config.json is properly configured.</p>
+      </div>
+    </div>;
+  }
+
   return (
     <div className="bridge-test-container">
       <h2>L1 Owner Update Request</h2>
@@ -264,7 +288,7 @@ const L1OwnerUpdateRequest: React.FC = () => {
           View L1 Messages on Sepolia
         </a>
         <a 
-          href={`https://etherscan.io/address/${contractConfigJson.networks.mainnet?.l1?.address || l1ContractAddress}`} 
+          href={`https://etherscan.io/address/${getContract('mainnet', 'l1')?.address || l1ContractAddress}`} 
           target="_blank" 
           rel="noopener noreferrer"
           className="explorer-link"
