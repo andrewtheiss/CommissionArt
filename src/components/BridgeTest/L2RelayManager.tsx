@@ -18,7 +18,7 @@ declare global {
 
 const L2RelayManager: React.FC = () => {
   const { isConnected, walletAddress, networkType, switchNetwork, switchToLayer, connectWallet } = useBlockchain();
-  const { getContract, loading: configLoading, error: configError } = useContractConfig();
+  const { getContract, loading: configLoading } = useContractConfig();
 
   // State variables
   const [l2RelayAddress, setL2RelayAddress] = useState<string>("");
@@ -43,10 +43,14 @@ const L2RelayManager: React.FC = () => {
 
   // Ref to track if initial data has been loaded
   const isDataLoadedRef = useRef(false);
+  const isCurrentNetworkLoadedRef = useRef<string | null>(null);
 
-  // Reset isDataLoadedRef when networkType changes
+  // Reset isDataLoadedRef only when switching to a network we haven't loaded data for yet
   useEffect(() => {
-    isDataLoadedRef.current = false;
+    if (networkType && isCurrentNetworkLoadedRef.current !== networkType) {
+      console.log(`[L2RelayManager] Network changed to ${networkType}, resetting loaded state`);
+      isDataLoadedRef.current = false;
+    }
   }, [networkType]);
 
   // Update newSenderAddress when aliasedAddress changes
@@ -75,54 +79,85 @@ const L2RelayManager: React.FC = () => {
     }
   };
 
+  // Function to fetch contract data based on current chain ID
+  const fetchContractData = async (chainId: number) => {
+    try {
+      console.log(`[L2RelayManager] Fetching contract data for chain ID ${chainId}...`);
+      if (isConnected && l2RelayAddress && ethers.isAddress(l2RelayAddress) && window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const L2RelayABI = abiLoader.loadABI('L2Relay');
+        if (!L2RelayABI) {
+          throw new Error('Failed to load L2Relay ABI');
+        }
+        const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, provider);
+
+        const sender = await contract.crossChainRegistryAddressByChainId(chainId);
+        setCurrentSender(sender);
+        setCurrentL1ChainId(chainId);
+        console.log(`[L2RelayManager] Data fetch complete for chain ID ${chainId}. Sender: ${sender}`);
+      }
+    } catch (error) {
+      console.error(`[L2RelayManager] Error fetching sender for chain ID ${chainId}:`, error);
+    }
+  };
+
   // Load all data
   useEffect(() => {
     const loadAllData = async () => {
+      // Skip if data is already loaded for this network
+      if (isDataLoadedRef.current && isCurrentNetworkLoadedRef.current === networkType) {
+        console.log(`[L2RelayManager] Data already loaded for ${networkType}, skipping load`);
+        return;
+      }
+
       try {
+        console.log('[L2RelayManager] Loading all contract data...');
         setIsLoading(true);
 
         // Step 1: Load contract addresses from config
         if (configLoading) {
+          console.log('[L2RelayManager] Config still loading, waiting...');
           return; // Wait for config to load
-        }
-        if (configError) {
-          console.error("Contract configuration error:", configError);
-          toast.error("Failed to load contract configuration");
-          return;
         }
 
         const currentEnv = networkType === 'arbitrum_mainnet' ? 'mainnet' : 'testnet';
         setEnvironment(currentEnv);
+        console.log(`[L2RelayManager] Environment set to: ${currentEnv}`);
 
         const l2Contract = getContract(currentEnv, 'l2');
         const relayAddress = l2Contract?.address || '';
         if (!relayAddress) {
-          console.error("L2 relay address not found in configuration");
+          console.error("[L2RelayManager] L2 relay address not found in configuration");
           toast.error("L2 relay address not configured");
           return;
         }
         setL2RelayAddress(relayAddress);
+        console.log(`[L2RelayManager] L2 relay address: ${relayAddress}`);
 
         const l1Contract = getContract(currentEnv, 'l1');
         const l1Address = l1Contract?.address || '';
         if (!l1Address) {
-          console.error("L1 contract address not found in configuration");
+          console.error("[L2RelayManager] L1 contract address not found in configuration");
           toast.error("L1 contract address not configured");
           return;
         }
         setL1ContractAddress(l1Address);
+        console.log(`[L2RelayManager] L1 contract address: ${l1Address}`);
 
         const l3Contract = getContract(currentEnv, 'l3');
         const l3Address = l3Contract?.address || '';
         setL3ContractAddress(l3Address);
+        console.log(`[L2RelayManager] L3 contract address: ${l3Address || 'not set'}`);
 
         if (l1Address) {
           const aliased = computeAliasedAddress(l1Address);
           setAliasedAddress(aliased);
+          console.log(`[L2RelayManager] Computed aliased address: ${aliased}`);
         }
 
         // Step 2: Fetch contract data if connected
         if (isConnected && relayAddress && ethers.isAddress(relayAddress) && window.ethereum) {
+          console.log('[L2RelayManager] Connected to wallet, fetching contract details...');
           const provider = new ethers.BrowserProvider(window.ethereum);
           const L2RelayABI = abiLoader.loadABI('L2Relay');
           if (!L2RelayABI) {
@@ -132,36 +167,61 @@ const L2RelayManager: React.FC = () => {
 
           const owner = await contract.owner();
           setOwnerAddress(owner);
+          console.log(`[L2RelayManager] Contract owner: ${owner}`);
 
           const revoked = await contract.isOwnerRevoked();
           setIsOwnerRevoked(revoked);
+          console.log(`[L2RelayManager] Owner revoked: ${revoked}`);
 
           const l3ContractAddr = await contract.l3Contract();
           setL3ContractAddress(l3ContractAddr);
+          console.log(`[L2RelayManager] L3 contract from contract: ${l3ContractAddr}`);
           if (!isDataLoadedRef.current) {
             setNewL3ContractAddress(l3ContractAddr);
           }
 
           const chainId = Number(newChainId);
-          setCurrentL1ChainId(chainId);
+          await fetchContractData(chainId);
 
-          const sender = await contract.crossChainRegistryAddressByChainId(chainId);
-          setCurrentSender(sender);
-
+          // Mark data as loaded for this network
           isDataLoadedRef.current = true;
+          isCurrentNetworkLoadedRef.current = networkType;
+          console.log(`[L2RelayManager] Initial data load complete for network ${networkType}`);
+        } else {
+          console.log('[L2RelayManager] Not connected to wallet or missing relay address, skipping contract detail fetching');
+          
+          // Even if we couldn't get contract details, mark basic config as loaded
+          if (relayAddress && l1Address) {
+            isDataLoadedRef.current = true;
+            isCurrentNetworkLoadedRef.current = networkType;
+            console.log(`[L2RelayManager] Basic configuration loaded for network ${networkType}`);
+          }
         }
       } catch (error) {
-        console.error("Error loading data:", error);
+        console.error("[L2RelayManager] Error loading data:", error);
         if (ownerAddress || currentSender) {
           toast.error("Failed to load L2 Relay contract information");
         }
       } finally {
         setIsLoading(false);
+        console.log('[L2RelayManager] Loading complete');
       }
     };
 
     loadAllData();
-  }, [isConnected, networkType, configLoading, configError, getContract, newChainId]);
+  }, [isConnected, networkType, configLoading, getContract]);
+
+  // Handle chain ID change for viewing current sender
+  const handleChainIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewChainId(value);
+    
+    if (value && !isNaN(Number(value))) {
+      const chainId = Number(value);
+      console.log(`[L2RelayManager] Chain ID changed to ${chainId}, fetching data...`);
+      fetchContractData(chainId);
+    }
+  };
 
   // Handle cross-chain sender form submission
   const handleUpdateSender = async (e: React.FormEvent) => {
@@ -484,7 +544,7 @@ const L2RelayManager: React.FC = () => {
                   type="number"
                   placeholder="1 for Ethereum mainnet"
                   value={newChainId}
-                  onChange={(e) => setNewChainId(e.target.value)}
+                  onChange={handleChainIdChange}
                   required
                 />
               </div>
