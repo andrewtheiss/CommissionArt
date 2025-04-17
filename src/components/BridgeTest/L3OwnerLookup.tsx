@@ -198,32 +198,40 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         throw new Error('Failed to connect to Ethereum provider');
       }
       
-      // Load ABI
-      let ownerRegistryABI;
-      try {
-        ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
-      } catch (error) {
-        console.log('Could not load OwnerRegistry ABI, using minimal ABI');
-        // Define minimal ABI with needed functions
-        ownerRegistryABI = [
-          "function l2relay() view returns (address)",
-          "function commission_hub_template() view returns (address)",
-          "function owner() view returns (address)",
-          "function lookupRegisteredOwner(address nft_contract, uint256 token_id) view returns (address)",
-          "function getLastUpdated(address nft_contract, uint256 token_id) view returns (uint256)",
-          "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)",
-          "function setL2Relay(address new_l2relay) external",
-          "function updateCrossChainQueryOwnerContract(address sender, uint256 chain_id) external"
-        ];
+      // Load ABI from JSON file
+      const ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
+      if (!ownerRegistryABI) {
+        throw new Error('Failed to load OwnerRegistry ABI');
       }
       
       // Create contract instance
       const contract = new ethers.Contract(l3Address, ownerRegistryABI, provider);
       
-      // Query public variables
-      const l2relay = await contract.l2relay();
-      const commissionHubTemplate = await contract.commission_hub_template();
-      const contractOwner = await contract.owner();
+      // Query public variables - use try/catch for each to handle potential errors
+      let l2relay = ethers.ZeroAddress;
+      let commissionHubTemplate = ethers.ZeroAddress;
+      let contractOwner = ethers.ZeroAddress;
+      
+      try {
+        l2relay = await contract.l2relay();
+      } catch (error) {
+        console.error('Error fetching l2relay:', error);
+        setBridgeStatus(prev => `${prev}\nError fetching l2relay. The contract might have changed.`);
+      }
+      
+      try {
+        commissionHubTemplate = await contract.commission_hub_template();
+      } catch (error) {
+        console.error('Error fetching commission_hub_template:', error);
+        setBridgeStatus(prev => `${prev}\nError fetching commission_hub_template. The contract might have changed.`);
+      }
+      
+      try {
+        contractOwner = await contract.owner();
+      } catch (error) {
+        console.error('Error fetching owner:', error);
+        setBridgeStatus(prev => `${prev}\nError fetching owner. The contract might have changed.`);
+      }
       
       // Update state
       setRegistryInfo({
@@ -299,22 +307,10 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         throw new Error('Failed to connect to Ethereum provider');
       }
       
-      // We need an ABI for the OwnerRegistry contract
-      // If not available in abiLoader, we'll create a minimal ABI for the functions we need
-      let ownerRegistryABI;
-      try {
-        ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
-      } catch (error) {
-        console.log('Could not load OwnerRegistry ABI, using minimal ABI');
-        // Define minimal ABI with needed functions
-        ownerRegistryABI = [
-          "function l2relay() view returns (address)",
-          "function commission_hub_template() view returns (address)",
-          "function owner() view returns (address)",
-          "function lookupRegisteredOwner(address nft_contract, uint256 token_id) view returns (address)",
-          "function getLastUpdated(address nft_contract, uint256 token_id) view returns (uint256)",
-          "function getCommissionHubByOwner(address nft_contract, uint256 token_id) view returns (address)"
-        ];
+      // Load ABI from JSON file
+      const ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
+      if (!ownerRegistryABI) {
+        throw new Error('Failed to load OwnerRegistry ABI');
       }
       
       // Create contract instance
@@ -382,13 +378,28 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         // These queries don't need NFT contract or token ID
         if (queryType === 'l2relay') {
           setBridgeStatus(prev => `${prev}\nQuerying L2 relay address...`);
-          result = await contract.l2relay();
+          try {
+            result = await contract.l2relay();
+          } catch (error) {
+            console.error('Error fetching l2relay:', error);
+            throw new Error('Failed to fetch l2relay. The contract might have changed.');
+          }
         } else if (queryType === 'commissionHubTemplate') {
           setBridgeStatus(prev => `${prev}\nQuerying commission hub template address...`);
-          result = await contract.commission_hub_template();
+          try {
+            result = await contract.commission_hub_template();
+          } catch (error) {
+            console.error('Error fetching commission_hub_template:', error);
+            throw new Error('Failed to fetch commission_hub_template. The contract might have changed.');
+          }
         } else if (queryType === 'contractOwner') {
           setBridgeStatus(prev => `${prev}\nQuerying contract owner address...`);
-          result = await contract.owner();
+          try {
+            result = await contract.owner();
+          } catch (error) {
+            console.error('Error fetching owner:', error);
+            throw new Error('Failed to fetch owner. The contract might have changed.');
+          }
         }
         
         // Update registry info

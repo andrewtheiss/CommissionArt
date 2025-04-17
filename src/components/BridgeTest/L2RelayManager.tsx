@@ -4,16 +4,10 @@ import { useBlockchain } from '../../utils/BlockchainContext';
 import { toast } from 'react-hot-toast';
 import './BridgeTest.css';
 import useContractConfig from '../../utils/useContractConfig';
+import abiLoader from '../../utils/abiLoader';
 
 // Alias addition constant
 const ALIAS_ADDITION = "0x1111000000000000000000000000000000001111";
-
-// L2Relay ABI (for the functions we need)
-const L2RelayABI = [
-  "function owner() view returns (address)",
-  "function crossChainSenders(uint256) view returns (address)",
-  "function updateCrossChainQueryOwnerContract(address sender, uint256 chain_id) external",
-];
 
 // Extend Window interface
 declare global {
@@ -120,6 +114,12 @@ const L2RelayManager: React.FC = () => {
         // If connected, fetch contract data
         if (isConnected && relayAddress && ethers.isAddress(relayAddress) && window.ethereum) {
           try {
+            // Load ABI from the JSON file
+            const L2RelayABI = abiLoader.loadABI('L2Relay');
+            if (!L2RelayABI) {
+              throw new Error('Failed to load L2Relay ABI');
+            }
+            
             // Create provider and contract instance
             const provider = new ethers.BrowserProvider(window.ethereum);
             const contract = new ethers.Contract(relayAddress, L2RelayABI, provider);
@@ -133,12 +133,14 @@ const L2RelayManager: React.FC = () => {
               setOwnerAddress("");
             }
             
-            // Get current L1 chain ID (assume Ethereum mainnet for demo)
-            setCurrentL1ChainId(1);
+            // Use L1 chain ID from our form default initially
+            const chainId = Number(newChainId);
+            setCurrentL1ChainId(chainId);
             
             // Get current sender for this chain ID with error handling
             try {
-              const sender = await contract.crossChainSenders(1); // Ethereum mainnet
+              // Use crossChainRegistryAddressByChainId instead of crossChainSenders
+              const sender = await contract.crossChainRegistryAddressByChainId(chainId);
               setCurrentSender(sender);
             } catch (senderError) {
               console.warn("Could not fetch cross chain sender:", senderError);
@@ -167,7 +169,7 @@ const L2RelayManager: React.FC = () => {
     };
     
     loadContractInfo();
-  }, [isConnected, networkType, ownerAddress, currentSender, configLoading, configError, getContract]);
+  }, [isConnected, networkType, ownerAddress, currentSender, configLoading, configError, getContract, newChainId]);
 
   // Handle form submission
   const handleUpdateSender = async (e: React.FormEvent) => {
@@ -208,60 +210,98 @@ const L2RelayManager: React.FC = () => {
         return;
       }
 
-      // Check if we're on the correct network and switch if necessary
-      const expectedNetwork = environment === 'testnet' ? 'arbitrum_testnet' : 'arbitrum_mainnet';
-      if (networkType !== expectedNetwork) {
-        toast(`Switching to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}...`);
+      // Check if we're on the right network
+      if (
+        (environment === 'testnet' && networkType !== 'arbitrum_testnet') ||
+        (environment === 'mainnet' && networkType !== 'arbitrum_mainnet')
+      ) {
+        toast.loading(`Switching to Arbitrum ${environment === 'mainnet' ? 'One' : 'Sepolia'}...`);
+        
         try {
           await switchToLayer('l2', environment);
-          toast(`Network switched to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}, please try again`);
-          setIsUpdating(false);
-          return;
+          toast.dismiss();
+          toast.success(`Switched to Arbitrum ${environment === 'mainnet' ? 'One' : 'Sepolia'}`);
         } catch (switchError) {
-          console.error("Error switching network:", switchError);
-          toast.error(`Failed to switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'}`);
+          toast.dismiss();
+          toast.error(`Failed to switch network: ${switchError instanceof Error ? switchError.message : 'Unknown error'}`);
           setIsUpdating(false);
           return;
         }
       }
       
+      // Now update the L2 Relay contract
       try {
+        // Create provider and signer
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
+        
+        // Load ABI and create contract instance
+        const L2RelayABI = abiLoader.loadABI('L2Relay');
+        if (!L2RelayABI) {
+          throw new Error('Failed to load L2Relay ABI');
+        }
+        
         const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, signer);
         
-        // Execute transaction
+        // Check if they really want to update the config
+        const chainId = Number(newChainId);
+        let needsConfirmation = false;
+        let confirmationMessage = '';
+        
+        // Check if the current sender exists and we're changing it
+        if (currentSender && currentSender !== ethers.ZeroAddress && currentSender.toLowerCase() !== newSenderAddress.toLowerCase()) {
+          needsConfirmation = true;
+          confirmationMessage = `You are about to replace the existing cross-chain sender (${currentSender}) for chain ID ${chainId} with a new sender (${newSenderAddress}). Are you sure?`;
+        }
+        
+        if (needsConfirmation) {
+          const isConfirmed = window.confirm(confirmationMessage);
+          if (!isConfirmed) {
+            toast.error("Update canceled");
+            setIsUpdating(false);
+            return;
+          }
+        }
+        
+        // Check if the user is the contract owner
+        const owner = await contract.owner();
+        if (!walletAddress || owner.toLowerCase() !== walletAddress.toLowerCase()) {
+          toast.error("You are not the owner of this contract");
+          setIsUpdating(false);
+          return;
+        }
+        
+        toast.loading(`Updating L2 Relay contract...`);
+        
+        // Call updateCrossChainQueryOwnerContract function with correct parameters
         const tx = await contract.updateCrossChainQueryOwnerContract(
           newSenderAddress,
-          Number(newChainId)
+          chainId
         );
         
-        toast.success("Transaction submitted. Waiting for confirmation...");
+        toast.dismiss();
+        toast.loading(`Transaction submitted: ${tx.hash}`);
         
         // Wait for transaction to be mined
         await tx.wait();
         
-        // Reset form
-        setNewChainId("1");
+        toast.dismiss();
+        toast.success("Cross-chain sender updated successfully");
         
-        toast.success("Successfully updated cross-chain sender!");
-      } catch (txError: any) {
-        console.error("Transaction error:", txError);
+        // Refresh contract info
+        setCurrentL1ChainId(chainId);
+        setCurrentSender(newSenderAddress);
         
-        // Handle common errors with user-friendly messages
-        if (txError.code === 'ACTION_REJECTED') {
-          toast.error("Transaction was rejected by the user");
-        } else if (txError.message && txError.message.includes("execution reverted")) {
-          toast.error("Transaction failed: You may not have permission to update the contract");
-        } else {
-          toast.error("Failed to update cross-chain sender: " + (txError.message || "Unknown error"));
-        }
+      } catch (error) {
+        toast.dismiss();
+        console.error("Error updating L2 Relay:", error);
+        toast.error(`Failed to update L2 Relay: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsUpdating(false);
       }
     } catch (error) {
       console.error("Error updating cross-chain sender:", error);
       toast.error("Failed to update cross-chain sender");
-    } finally {
-      setIsUpdating(false);
     }
   };
 
