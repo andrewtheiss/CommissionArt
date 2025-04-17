@@ -159,6 +159,26 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     return date.toLocaleString();
   };
 
+  // Add a helper function to handle common contract errors
+  const handleContractError = (error: any, functionName: string) => {
+    console.error(`Error calling ${functionName}:`, error);
+    
+    // Check if it's an ABI mismatch error
+    if (
+      error.message?.includes('missing revert data') || 
+      error.message?.includes('invalid argument') ||
+      error.message?.includes('no method with that name')
+    ) {
+      setBridgeStatus(prev => 
+        `${prev}\n\nERROR: ABI mismatch detected. The contract interface has changed or the ABI is outdated. ` +
+        `Function: ${functionName}\nError: ${error.message}\n` +
+        `Please try reloading the page or contact support.`
+      );
+    } else {
+      setBridgeStatus(prev => `${prev}\n\nError calling ${functionName}: ${error.message}`);
+    }
+  };
+
   // Load contract public variables
   const loadContractInfo = async () => {
     // Ensure we're on the right network
@@ -213,24 +233,21 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       let contractOwner = ethers.ZeroAddress;
       
       try {
-        l2relay = await contract.l2relay();
+        l2relay = await contract.l2Relay();
       } catch (error) {
-        console.error('Error fetching l2relay:', error);
-        setBridgeStatus(prev => `${prev}\nError fetching l2relay. The contract might have changed.`);
+        handleContractError(error, 'l2Relay()');
       }
       
       try {
-        commissionHubTemplate = await contract.commission_hub_template();
+        commissionHubTemplate = await contract.commissionHubTemplate();
       } catch (error) {
-        console.error('Error fetching commission_hub_template:', error);
-        setBridgeStatus(prev => `${prev}\nError fetching commission_hub_template. The contract might have changed.`);
+        handleContractError(error, 'commissionHubTemplate()');
       }
       
       try {
         contractOwner = await contract.owner();
       } catch (error) {
-        console.error('Error fetching owner:', error);
-        setBridgeStatus(prev => `${prev}\nError fetching owner. The contract might have changed.`);
+        handleContractError(error, 'owner()');
       }
       
       // Update state
@@ -339,37 +356,43 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           setBridgeStatus(prev => `${prev}\nQuerying registered owner for NFT contract ${contractAddress} and token ID ${tokenId}...`);
           // Convert tokenId to BigNumber
           const tokenIdBN = ethers.toBigInt(tokenId);
-          result = await contract.lookupRegisteredOwner(contractAddress, tokenIdBN);
+          // Use chain ID 1 by default (for Ethereum)
+          const chainId = 1n;
+          result = await contract.lookupRegisteredOwner(chainId, contractAddress, tokenIdBN);
           
           // If we get an owner, query other info too
           if (result && result !== ethers.ZeroAddress) {
-            commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenIdBN);
-            const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenIdBN);
+            commissionHub = await contract.getCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
+            const lastUpdatedTimestamp = await contract.getLastUpdated(chainId, contractAddress, tokenIdBN);
             lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           }
         } else if (queryType === 'commissionHub') {
           setBridgeStatus(prev => `${prev}\nQuerying commission hub for NFT contract ${contractAddress} and token ID ${tokenId}...`);
           // Convert tokenId to BigNumber
           const tokenIdBN = ethers.toBigInt(tokenId);
-          commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenIdBN);
+          // Use chain ID 1 by default (for Ethereum)
+          const chainId = 1n;
+          commissionHub = await contract.getCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
           
           // If we get a commission hub, query other info too
           if (commissionHub && commissionHub !== ethers.ZeroAddress) {
-            result = await contract.lookupRegisteredOwner(contractAddress, tokenIdBN);
-            const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenIdBN);
+            result = await contract.lookupRegisteredOwner(chainId, contractAddress, tokenIdBN);
+            const lastUpdatedTimestamp = await contract.getLastUpdated(chainId, contractAddress, tokenIdBN);
             lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           }
         } else if (queryType === 'lastUpdated') {
           setBridgeStatus(prev => `${prev}\nQuerying last updated timestamp for NFT contract ${contractAddress} and token ID ${tokenId}...`);
           // Convert tokenId to BigNumber
           const tokenIdBN = ethers.toBigInt(tokenId);
-          const lastUpdatedTimestamp = await contract.getLastUpdated(contractAddress, tokenIdBN);
+          // Use chain ID 1 by default (for Ethereum)
+          const chainId = 1n;
+          const lastUpdatedTimestamp = await contract.getLastUpdated(chainId, contractAddress, tokenIdBN);
           lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           
           // Also get the owner and commission hub
-          result = await contract.lookupRegisteredOwner(contractAddress, tokenIdBN);
+          result = await contract.lookupRegisteredOwner(chainId, contractAddress, tokenIdBN);
           if (result && result !== ethers.ZeroAddress) {
-            commissionHub = await contract.getCommissionHubByOwner(contractAddress, tokenIdBN);
+            commissionHub = await contract.getCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
           }
         }
       }
@@ -379,26 +402,26 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         if (queryType === 'l2relay') {
           setBridgeStatus(prev => `${prev}\nQuerying L2 relay address...`);
           try {
-            result = await contract.l2relay();
+            result = await contract.l2Relay();
           } catch (error) {
-            console.error('Error fetching l2relay:', error);
-            throw new Error('Failed to fetch l2relay. The contract might have changed.');
+            handleContractError(error, 'l2Relay()');
+            throw error;
           }
         } else if (queryType === 'commissionHubTemplate') {
           setBridgeStatus(prev => `${prev}\nQuerying commission hub template address...`);
           try {
-            result = await contract.commission_hub_template();
+            result = await contract.commissionHubTemplate();
           } catch (error) {
-            console.error('Error fetching commission_hub_template:', error);
-            throw new Error('Failed to fetch commission_hub_template. The contract might have changed.');
+            handleContractError(error, 'commissionHubTemplate()');
+            throw error;
           }
         } else if (queryType === 'contractOwner') {
           setBridgeStatus(prev => `${prev}\nQuerying contract owner address...`);
           try {
             result = await contract.owner();
           } catch (error) {
-            console.error('Error fetching owner:', error);
-            throw new Error('Failed to fetch owner. The contract might have changed.');
+            handleContractError(error, 'owner()');
+            throw error;
           }
         }
         
@@ -494,9 +517,9 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       } catch (error) {
         console.log('Could not load OwnerRegistry ABI, using minimal ABI with setL2Relay');
         ownerRegistryABI = [
-          "function l2relay() view returns (address)",
+          "function l2Relay() view returns (address)",
           "function owner() view returns (address)",
-          "function setL2Relay(address new_l2relay) external"
+          "function setL2Relay(address _new_l2relay) external"
         ];
       }
       
@@ -691,8 +714,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         } else if (error.message.includes("no matching fragment")) {
           setBridgeStatus(prev => 
             `${prev}\n\nTransaction failed: ABI mismatch error. ` +
-            `Please check developer console for more details and report this issue.`
-          );
+            `Please check developer console for more details and report this issue.`          );
         } else {
           setBridgeStatus(prev => `${prev}\n\nError with direct registration: ${error.message}`);
         }

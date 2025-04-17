@@ -366,7 +366,7 @@ def deploy_contracts():
     # Check if the contracts were properly linked
     if l2_contract:
         try:
-            l3_contract = l2_contract.l3_contract()
+            l3_contract = l2_contract.l3Contract()
             print(f"\nContract Links:")
             print(f"  - L2Relay -> OwnerRegistry: {l3_contract}")
             
@@ -383,8 +383,8 @@ def deploy_contracts():
     
     if l3_owner_registry:
         try:
-            l2relay = l3_owner_registry.l2relay()
-            hub_template = l3_owner_registry.commission_hub_template()
+            l2relay = l3_owner_registry.l2Relay()
+            hub_template = l3_owner_registry.commissionHubTemplate()
             print(f"  - OwnerRegistry -> L2Relay: {l2relay}")
             print(f"  - OwnerRegistry -> CommissionHub Template: {hub_template} (for reference only)")
         except Exception as e:

@@ -3,6 +3,11 @@
     "name": "Registered",
     "inputs": [
       {
+        "name": "chain_id",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
         "name": "nft_contract",
         "type": "address",
         "indexed": true
@@ -20,11 +25,16 @@
       {
         "name": "commission_hub",
         "type": "address",
-        "indexed": false
+        "indexed": true
       },
       {
         "name": "timestamp",
         "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "source",
+        "type": "address",
         "indexed": false
       }
     ],
@@ -34,6 +44,11 @@
   {
     "name": "CommissionHubCreated",
     "inputs": [
+      {
+        "name": "chain_id",
+        "type": "uint256",
+        "indexed": false
+      },
       {
         "name": "nft_contract",
         "type": "address",
@@ -47,6 +62,18 @@
       {
         "name": "commission_hub",
         "type": "address",
+        "indexed": true
+      }
+    ],
+    "anonymous": false,
+    "type": "event"
+  },
+  {
+    "name": "L2RelaySet",
+    "inputs": [
+      {
+        "name": "l2Relay",
+        "type": "address",
         "indexed": false
       }
     ],
@@ -56,7 +83,7 @@
   {
     "stateMutability": "view",
     "type": "function",
-    "name": "l2relay",
+    "name": "l2Relay",
     "inputs": [],
     "outputs": [
       {
@@ -68,7 +95,7 @@
   {
     "stateMutability": "view",
     "type": "function",
-    "name": "commission_hub_template",
+    "name": "commissionHubTemplate",
     "inputs": [],
     "outputs": [
       {
@@ -92,14 +119,18 @@
   {
     "stateMutability": "view",
     "type": "function",
-    "name": "last_updated",
+    "name": "lastUpdated",
     "inputs": [
       {
-        "name": "arg0",
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
         "type": "address"
       },
       {
-        "name": "arg1",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -116,15 +147,19 @@
     "name": "registerNFTOwnerFromParentChain",
     "inputs": [
       {
-        "name": "nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "token_id",
+        "name": "_chain_id",
         "type": "uint256"
       },
       {
-        "name": "owner",
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_owner",
         "type": "address"
       }
     ],
@@ -136,11 +171,15 @@
     "name": "lookupRegisteredOwner",
     "inputs": [
       {
-        "name": "nft_contract",
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
         "type": "address"
       },
       {
-        "name": "token_id",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -157,11 +196,15 @@
     "name": "getLastUpdated",
     "inputs": [
       {
-        "name": "nft_contract",
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
         "type": "address"
       },
       {
-        "name": "token_id",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -178,11 +221,78 @@
     "name": "getCommissionHubByOwner",
     "inputs": [
       {
-        "name": "nft_contract",
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
         "type": "address"
       },
       {
-        "name": "token_id",
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "stateMutability": "view",
+    "type": "function",
+    "name": "lookupEthereumRegisteredOwner",
+    "inputs": [
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getEthereumLastUpdated",
+    "inputs": [
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "stateMutability": "view",
+    "type": "function",
+    "name": "getEthereumCommissionHubByOwner",
+    "inputs": [
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -199,7 +309,7 @@
     "name": "setCommissionHubTemplate",
     "inputs": [
       {
-        "name": "new_template",
+        "name": "_new_template",
         "type": "address"
       }
     ],
@@ -211,7 +321,7 @@
     "name": "setL2Relay",
     "inputs": [
       {
-        "name": "new_l2relay",
+        "name": "_new_l2relay",
         "type": "address"
       }
     ],

@@ -471,22 +471,24 @@ const L2RelayManager: React.FC = () => {
           ) : (
             <div className="contract-info">
               <div className="info-group">
-                <p className="info-label">Contract Address:</p>
+                <p className="info-label">L2Relay Contract Address:</p>
                 <p className="info-value">{l2RelayAddress}</p>
               </div>
               <div className="info-group">
-                <p className="info-label">Owner:</p>
+                <p className="info-label">L2Relay Owner:</p>
                 <p className="info-value">{ownerAddress || 'Not found'}</p>
                 {isOwnerRevoked && <span className="revoked-badge">Revoked</span>}
               </div>
+              <br />
               <div className="info-group">
-                <p className="info-label">L3 Contract:</p>
+                <p className="info-label">OwnerRegistry (L3 -  Relay Destination):</p>
                 <p className="info-value">{l3ContractAddress || 'Not set'}</p>
               </div>
               <div className="info-group">
-                <p className="info-label">Sender for Chain ID {currentL1ChainId}:</p>
+                <p className="info-label">L1QueryOnwer Cross-Chain (L1 - Aliased Origin) for Chain ID {currentL1ChainId}:</p>
                 <p className="info-value">{currentSender || 'Not set'}</p>
               </div>
+              <br />
 
               {!isConnected && (
                 <button className="connect-button" onClick={connectWallet}>Connect Wallet</button>
@@ -507,7 +509,7 @@ const L2RelayManager: React.FC = () => {
             <h4>Update L3 Contract Address</h4>
             <form onSubmit={handleUpdateL3Contract}>
               <div className="form-group">
-                <label htmlFor="newL3ContractAddress">L3 Contract Address:</label>
+                <label htmlFor="newL3ContractAddress">OwnerRegistry (L3 - Relay Destination):</label>
                 <input
                   id="newL3ContractAddress"
                   type="text"
@@ -528,14 +530,14 @@ const L2RelayManager: React.FC = () => {
                 </button>
               </div>
               <div className="info-note small">
-                <p>This updates the L3 contract address that the relay will forward ownership data to.</p>
+                <p>This updates the L1QueryOwner Cross-Chain (L1 - Aliased Origin) for Chain ID {currentL1ChainId}.</p>
               </div>
             </form>
           </div>
 
           {/* Cross-Chain Sender Update Form - Always visible */}
           <div className="form-section">
-            <h4>Add/Update Cross-Chain Sender</h4>
+            <h4>Add/Update Aliased Cross-Chain L1 Sender (by NFT collection ID)</h4>
             <form onSubmit={handleUpdateSender}>
               <div className="form-group">
                 <label htmlFor="newChainId">Chain ID:</label>
