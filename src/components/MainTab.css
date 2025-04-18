@@ -185,33 +185,149 @@
   color: #666;
 }
 
-.tab-buttons {
+.tab-navigation {
   display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #eee;
-  padding-bottom: 10px;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #2a2f45;
+  padding-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .tab-button {
-  padding: 10px 20px;
-  background-color: transparent;
+  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 4px;
+  background: none;
+  font-size: 1rem;
+  color: #b8b9bf;
   cursor: pointer;
-  font-size: 16px;
-  color: #666;
-  transition: all 0.3s;
+  transition: all 0.2s ease;
+  border-radius: 4px;
 }
 
 .tab-button:hover {
-  color: #333;
-  background-color: #f5f5f5;
+  background: #262b3d;
+  color: #e0e0e0;
 }
 
 .tab-button.active {
-  color: #4CAF50;
-  font-weight: bold;
-  border-bottom: 2px solid #4CAF50;
-  margin-bottom: -12px;
+  background: #5e72e4;
+  color: white;
+  font-weight: 500;
+}
+
+/* Connection Banner */
+.connection-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background-color: #1e2130;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #2a2f45;
+}
+
+.connection-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #b8b9bf;
+  font-size: 0.9rem;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #e74c3c;
+}
+
+.status-dot.connected {
+  background-color: #2ecc71;
+}
+
+.connect-button {
+  padding: 0.5rem 1rem;
+  background-color: #5e72e4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.connect-button:hover {
+  background-color: #4e61c9;
+}
+
+.wallet-address {
+  font-family: monospace;
+  background-color: #262b3d;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #434968;
+  color: #e0e0e0;
+}
+
+/* Tab Content */
+.tab-content {
+  padding: 1rem;
+  background-color: #1e2130;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  min-height: 300px;
+  border: 1px solid #2a2f45;
+}
+
+/* Network Selection */
+.network-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #434968;
+  border-radius: 4px;
+  background-color: #262b3d;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+}
+
+.network-select:focus {
+  outline: none;
+  border-color: #5e72e4;
+}
+
+.network-select option {
+  background-color: #1e2130;
+  color: #e0e0e0;
+}
+
+@media (max-width: 768px) {
+  .tab-navigation {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .tab-button {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .connection-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .connection-status {
+    width: 100%;
+    justify-content: space-between;
+  }
 } 

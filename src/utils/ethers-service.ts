@@ -13,7 +13,9 @@ class EthersService {
     dev: [
       'https://rpc.sepolia.org',
       'https://eth-sepolia.public.blastapi.io',
-      'https://ethereum-sepolia.blockpi.network/v1/rpc/public'
+      'https://rpc.sepolia.dev',
+      'https://ethereum-sepolia-rpc.publicnode.com',
+      'https://endpoints.omniatech.io/v1/eth/sepolia/public'
     ],
     prod: [
       'https://ethereum.publicnode.com',
@@ -22,7 +24,7 @@ class EthersService {
     ],
     arbitrum_testnet: [
       'https://sepolia-rollup.arbitrum.io/rpc',
-      'https://arbitrum-sepolia.blockpi.network/v1/rpc/public'
+      'https://arbitrum-sepolia-rpc.publicnode.com'
     ],
     arbitrum_mainnet: [
       'https://arb1.arbitrum.io/rpc',
@@ -115,7 +117,78 @@ class EthersService {
     this.currentProviderIndex = 0;
     this.network = config.networks[networkType];
     this.connectProvider();
+    
+    // Request wallet to switch networks
+    this.requestWalletNetworkSwitch(networkType);
+    
     return this.network;
+  }
+
+  /**
+   * Check if a browser wallet is available
+   */
+  public hasBrowserWallet(): boolean {
+    return typeof window !== 'undefined' && !!window.ethereum;
+  }
+
+  /**
+   * Request the wallet to switch to the specified network
+   */
+  public async requestWalletNetworkSwitch(networkType: NetworkType) {
+    if (!this.hasBrowserWallet()) {
+      console.warn('No wallet detected for network switching');
+      return false;
+    }
+    
+    const targetNetwork = config.networks[networkType];
+    
+    try {
+      // Format chain ID as hexadecimal string required by MetaMask
+      const chainIdHex = `0x${targetNetwork.chainId.toString(16)}`;
+      
+      // Request network switch
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: chainIdHex }],
+        });
+        
+        console.log(`Successfully switched to network: ${targetNetwork.name}`);
+        return true;
+      } catch (switchError: any) {
+        // This error code indicates the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [
+                {
+                  chainId: chainIdHex,
+                  chainName: targetNetwork.name,
+                  rpcUrls: [targetNetwork.rpcUrl],
+                  nativeCurrency: {
+                    name: targetNetwork.currency || 'ETH',
+                    symbol: targetNetwork.currency || 'ETH',
+                    decimals: 18,
+                  },
+                },
+              ],
+            });
+            console.log(`Successfully added and switched to network: ${targetNetwork.name}`);
+            return true;
+          } catch (addError) {
+            console.error('Error adding network to wallet:', addError);
+            return false;
+          }
+        } else {
+          console.error('Error switching network in wallet:', switchError);
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error('Error requesting network switch:', error);
+      return false;
+    }
   }
 
   /**
@@ -160,13 +233,33 @@ class EthersService {
   }
 
   /**
+   * Get browser wallet provider if available
+   */
+  public getBrowserProvider(): ethers.BrowserProvider | null {
+    if (this.hasBrowserWallet()) {
+      try {
+        return new ethers.BrowserProvider(window.ethereum);
+      } catch (error) {
+        console.error('Error creating browser provider:', error);
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Get signer if connected via browser wallet
    */
   public async getSigner() {
-    if (window.ethereum) {
+    const browserProvider = this.getBrowserProvider();
+    if (browserProvider) {
       try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        return await provider.getSigner();
+        await this.requestWalletNetworkSwitch(
+          Object.keys(config.networks).find(
+            key => config.networks[key as NetworkType].chainId === this.network.chainId
+          ) as NetworkType
+        );
+        return await browserProvider.getSigner();
       } catch (error) {
         console.error('Error getting signer:', error);
         return null;

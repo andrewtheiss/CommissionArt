@@ -3,6 +3,9 @@ import { useBlockchain } from '../../utils/BlockchainContext';
 import useContractConfig from '../../utils/useContractConfig';
 import abiLoader from '../../utils/abiLoader';
 import NFTOwnershipQuery from './NFTOwnershipQuery';
+import L3OwnerLookup from './L3OwnerLookup';
+import L1OwnerUpdateRequest from './L1OwnerUpdateRequest';
+import L2RelayManager from './L2RelayManager';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
 import { parseEther, toBigInt } from "ethers";
@@ -17,6 +20,10 @@ interface ContractAddresses {
     testnet: string;
     mainnet: string;
   };
+  l3: {
+    testnet: string;
+    mainnet: string;
+  };
 }
 
 // Interface for contract ABIs with ABI files
@@ -25,6 +32,7 @@ interface ContractConfig {
   abiFiles: {
     l1: string;
     l2: string;
+    l3: string;
   };
 }
 
@@ -51,7 +59,7 @@ const NETWORK_CONFIG = {
     chainName: "Sepolia Testnet",
     rpcUrls: [
       "https://eth-sepolia.public.blastapi.io",
-      "https://ethereum-sepolia.blockpi.network/v1/rpc/public",
+      "https://rpc.sepolia.dev",
       "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161" // Public Infura ID
     ],
     nativeCurrency: {
@@ -79,7 +87,73 @@ const NETWORK_CONFIG = {
   }
 };
 
-const BridgeTest: React.FC = () => {
+const BridgeTestContainer: React.FC = () => {
+  // Add error state
+  const [blockchainError, setBlockchainError] = useState<string | null>(null);
+  
+  // Try-catch for blockchain context
+  let blockchainContext;
+  try {
+    blockchainContext = useBlockchain();
+  } catch (error) {
+    console.error("Error accessing blockchain context:", error);
+    setBlockchainError("Failed to access blockchain services. Make sure MetaMask is installed and accessible.");
+    // Return a fallback UI
+    return (
+      <div className="bridge-test-container error">
+        <h2>CommissionArt NFT Bridge Testing</h2>
+        <div className="error-message">
+          <h3>Blockchain Connection Error</h3>
+          <p>{blockchainError}</p>
+          <p>Please ensure that:</p>
+          <ul>
+            <li>MetaMask extension is installed and enabled</li>
+            <li>You are logged in to MetaMask</li>
+            <li>Your browser allows access to the MetaMask extension</li>
+          </ul>
+          <button onClick={() => window.location.reload()}>Retry Connection</button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Destructure blockchain context values
+  const { 
+    networkType, 
+    switchNetwork, 
+    switchToLayer, 
+    connectWallet, 
+    walletAddress, 
+    isConnected 
+  } = blockchainContext;
+  
+  // Try-catch for contract config
+  let configContext;
+  try {
+    configContext = useContractConfig();
+  } catch (error) {
+    console.error("Error accessing contract configuration:", error);
+    // Return a fallback UI
+    return (
+      <div className="bridge-test-container error">
+        <h2>CommissionArt NFT Bridge Testing</h2>
+        <div className="error-message">
+          <h3>Contract Configuration Error</h3>
+          <p>Failed to load contract configuration. This may be due to missing or malformed configuration files.</p>
+          <button onClick={() => window.location.reload()}>Retry</button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Destructure contract config values
+  const { 
+    loading: configLoading, 
+    config: contractsConfig, 
+    getContract, 
+    reloadConfig 
+  } = configContext;
+  
   // State for network selection
   const [layer, setLayer] = useState<'l1' | 'l2'>('l1');
   const [environment, setEnvironment] = useState<'testnet' | 'mainnet'>('testnet');
@@ -87,32 +161,48 @@ const BridgeTest: React.FC = () => {
   // State for showing/hiding MetaMask actions dropdown
   const [showMetaMaskActions, setShowMetaMaskActions] = useState(false);
   
-  // Get blockchain context
-  const { networkType, switchNetwork, connectWallet, walletAddress, isConnected } = useBlockchain();
-  
-  // Get contract configuration
-  const { loading: configLoading, config: contractsConfig, getContract, reloadConfig } = useContractConfig();
+  // State for showing/hiding NFT Query
+  const [showNFTQuery, setShowNFTQuery] = useState(false);
   
   // State to track listening for events
   const [isListening, setIsListening] = useState(false);
   
-  // Default config
-  const defaultConfig: ContractConfig = {
-    addresses: {
-      l1: {
-        testnet: '', // Sepolia
-        mainnet: '', // Ethereum
+  // Ensure contractsConfig is safely accessed by creating a safe version with extra null checks
+  const safeContractsConfig = {
+    networks: {
+      testnet: {
+        l1: {
+          address: contractsConfig?.networks?.testnet?.l1?.address || '',
+          contract: contractsConfig?.networks?.testnet?.l1?.contract || 'L1QueryOwner'
+        },
+        l2: {
+          address: contractsConfig?.networks?.testnet?.l2?.address || '',
+          contract: contractsConfig?.networks?.testnet?.l2?.contract || 'L2Relay'
+        },
+        l3: {
+          address: contractsConfig?.networks?.testnet?.l3?.address || '',
+          contract: contractsConfig?.networks?.testnet?.l3?.contract || 'L3QueryOwner'
+        }
       },
-      l2: {
-        testnet: '', // Arbitrum Sepolia
-        mainnet: '', // Arbitrum One
+      mainnet: {
+        l1: {
+          address: contractsConfig?.networks?.mainnet?.l1?.address || '',
+          contract: contractsConfig?.networks?.mainnet?.l1?.contract || 'L1QueryOwner'
+        },
+        l2: {
+          address: contractsConfig?.networks?.mainnet?.l2?.address || '',
+          contract: contractsConfig?.networks?.mainnet?.l2?.contract || 'L2Relay'
+        },
+        l3: {
+          address: contractsConfig?.networks?.mainnet?.l3?.address || '',
+          contract: contractsConfig?.networks?.mainnet?.l3?.contract || 'L3QueryOwner'
+        }
       }
-    },
-    abiFiles: {
-      l1: 'L1QueryOwner',
-      l2: 'L2Relay'
     }
   };
+  
+  // Use our safeguard function to ensure valid configuration
+  const verifiedConfig = safeContractsConfig;
   
   // State for contract addresses and ABIs - initialize with saved data or defaults
   const [contractConfig, setContractConfig] = useState<ContractConfig>(() => {
@@ -125,7 +215,20 @@ const BridgeTest: React.FC = () => {
         console.error('Failed to parse saved configuration:', e);
       }
     }
-    return defaultConfig;
+    
+    // Initialize with empty addresses and default ABI names
+    return {
+      addresses: {
+        l1: { testnet: '', mainnet: '' },
+        l2: { testnet: '', mainnet: '' },
+        l3: { testnet: '', mainnet: '' }
+      },
+      abiFiles: {
+        l1: 'L1QueryOwner',
+        l2: 'L2Relay',
+        l3: 'L3QueryOwner'
+      }
+    };
   });
   
   // Selected ABI objects based on contract type
@@ -168,128 +271,125 @@ const BridgeTest: React.FC = () => {
   // Load contract addresses from configuration when it's available
   useEffect(() => {
     if (contractsConfig && !configLoading) {
-      // Load the deployed contract addresses from the configuration
-      const newAddresses = {
-        l1: {
-          testnet: getContract('testnet', 'l1')?.address || '',
-          mainnet: getContract('mainnet', 'l1')?.address || '',
-        },
-        l2: {
-          testnet: getContract('testnet', 'l2')?.address || '',
-          mainnet: getContract('mainnet', 'l2')?.address || '',
-        }
-      };
-      
-      // Update contract ABIs based on configuration
-      const newAbiFiles = {
-        l1: getContract('testnet', 'l1')?.contract || 'L1QueryOwner',
-        l2: getContract('testnet', 'l2')?.contract || 'L2Relay'
-      };
-      
-      // Update the contract configuration if any address has changed
-      if (
-        newAddresses.l1.testnet !== contractConfig.addresses.l1.testnet ||
-        newAddresses.l1.mainnet !== contractConfig.addresses.l1.mainnet ||
-        newAddresses.l2.testnet !== contractConfig.addresses.l2.testnet ||
-        newAddresses.l2.mainnet !== contractConfig.addresses.l2.mainnet ||
-        newAbiFiles.l1 !== contractConfig.abiFiles.l1 ||
-        newAbiFiles.l2 !== contractConfig.abiFiles.l2
-      ) {
-        setContractConfig({
-          addresses: newAddresses,
-          abiFiles: newAbiFiles
-        });
-        
-        setBridgeStatus(prev => {
-          return `${prev ? prev + '\n\n' : ''}Loaded contract addresses from configuration.`;
-        });
-      }
-    }
-  }, [contractsConfig, configLoading, getContract]);
-  
-  // Update network when layer changes
-  useEffect(() => {
-    if (layer === 'l1') {
-      if (environment === 'testnet') {
-        switchNetwork('dev'); // Switch to Sepolia
-      } else {
-        switchNetwork('prod'); // Switch to Ethereum Mainnet
-      }
-    } else { // L2 
-      if (environment === 'testnet') {
-        switchNetwork('arbitrum_testnet'); // Switch to Arbitrum Sepolia
-        setBridgeStatus('Connected to Arbitrum Sepolia testnet');
-      } else {
-        switchNetwork('arbitrum_mainnet'); // Switch to Arbitrum One
-        setBridgeStatus('Connected to Arbitrum One mainnet');
-      }
-    }
-    
-    // Force reload the contract config when changing networks
-    if (!configLoading && contractsConfig) {
-      // Small delay to ensure network switch completes first
-      setTimeout(() => {
-        // Reload the contract configuration
-        reloadConfig();
-        
-        // Update the UI with new addresses
+      try {
+        // Load the deployed contract addresses from the configuration using our safe version
         const newAddresses = {
           l1: {
-            testnet: getContract('testnet', 'l1')?.address || '',
-            mainnet: getContract('mainnet', 'l1')?.address || '',
+            testnet: safeContractsConfig.networks.testnet.l1.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l1.address || '',
           },
           l2: {
-            testnet: getContract('testnet', 'l2')?.address || '',
-            mainnet: getContract('mainnet', 'l2')?.address || '',
+            testnet: safeContractsConfig.networks.testnet.l2.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l2.address || '',
+          },
+          l3: {
+            testnet: safeContractsConfig.networks.testnet.l3.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l3.address || '',
           }
         };
         
-        setContractConfig(prev => ({
-          ...prev,
-          addresses: newAddresses
-        }));
+        // Update contract ABIs based on configuration
+        const newAbiFiles = {
+          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwner',
+          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2Relay',
+          l3: safeContractsConfig.networks.testnet.l3.contract || 'L3QueryOwner'
+        };
         
-        setBridgeStatus(prev => {
-          return `${prev ? prev + '\n\n' : ''}Updated contract addresses for ${layer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${environment}.`;
-        });
-      }, 500);
+        // Update the contract configuration if any address has changed
+        if (
+          newAddresses.l1.testnet !== contractConfig.addresses.l1.testnet ||
+          newAddresses.l1.mainnet !== contractConfig.addresses.l1.mainnet ||
+          newAddresses.l2.testnet !== contractConfig.addresses.l2.testnet ||
+          newAddresses.l2.mainnet !== contractConfig.addresses.l2.mainnet ||
+          newAddresses.l3.testnet !== contractConfig.addresses.l3.testnet ||
+          newAddresses.l3.mainnet !== contractConfig.addresses.l3.mainnet ||
+          newAbiFiles.l1 !== contractConfig.abiFiles.l1 ||
+          newAbiFiles.l2 !== contractConfig.abiFiles.l2 ||
+          newAbiFiles.l3 !== contractConfig.abiFiles.l3
+        ) {
+          setContractConfig({
+            addresses: newAddresses,
+            abiFiles: newAbiFiles
+          });
+          
+          setBridgeStatus(prev => {
+            return `${prev ? prev + '\n\n' : ''}Loaded contract addresses from configuration.`;
+          });
+        }
+      } catch (error) {
+        console.error("Error updating contract configuration:", error);
+        // Don't update the configuration if there's an error
+      }
     }
-  }, [layer, environment, switchNetwork]);
+  }, [contractsConfig, configLoading]);
+  
+  // Handle layer selection change
+  const handleLayerChange = (newLayer: 'l1' | 'l2') => {
+    setLayer(newLayer);
+    
+    // Automatically switch to the appropriate network when layer is changed
+    switchToLayer(newLayer, environment);
+    
+    setBridgeStatus(`Switched to ${newLayer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${environment === 'testnet' ? 'testnet' : 'mainnet'}`);
+  };
+  
+  // Handle environment selection change
+  const handleEnvironmentChange = (newEnvironment: 'testnet' | 'mainnet') => {
+    setEnvironment(newEnvironment);
+    
+    // Automatically switch to the appropriate network when environment is changed
+    switchToLayer(layer, newEnvironment);
+    
+    setBridgeStatus(`Switched to ${layer === 'l1' ? 'Ethereum' : 'Arbitrum'} ${newEnvironment === 'testnet' ? 'testnet' : 'mainnet'}`);
+  };
   
   // Update selected ABI when layer or ABI file changes
   useEffect(() => {
-    const abiFileName = contractConfig.abiFiles[layer];
-    const abi = abiLoader.loadABI(abiFileName);
-    
-    if (abi) {
-      setSelectedABI(abi);
+    try {
+      // Safely access the ABI file name with fallbacks
+      const abiFileName = contractConfig?.abiFiles?.[layer] || 'L1QueryOwner';
       
-      // Get method names for this ABI
-      const methods = abiLoader.getMethodNames(abiFileName);
-      setMethodNames(methods);
+      console.log(`Loading ABI for ${layer}: ${abiFileName}`);
+      const abi = abiLoader.loadABI(abiFileName);
       
-      // Show available methods
-      const methodsStr = methods.join(', ');
+      if (abi) {
+        setSelectedABI(abi);
+        
+        // Get method names for this ABI
+        const methods = abiLoader.getMethodNames(abiFileName);
+        setMethodNames(methods);
+        
+        // Show available methods
+        const methodsStr = methods.join(', ');
+        setBridgeStatus(prev => {
+          // Keep connection status if it exists
+          if (prev.includes('Connected to')) {
+            return `${prev}\n\nSelected ABI: ${abiFileName}\nAvailable methods: ${methodsStr}`;
+          }
+          return `Selected ABI: ${abiFileName}\nAvailable methods: ${methodsStr}`;
+        });
+      } else {
+        setBridgeStatus(prev => {
+          // Keep connection status if it exists
+          if (prev.includes('Connected to')) {
+            return `${prev}\n\nError: Could not load ABI for ${abiFileName}`;
+          }
+          return `Error: Could not load ABI for ${abiFileName}`;
+        });
+      }
+    } catch (error) {
+      console.error("Error loading ABI:", error);
       setBridgeStatus(prev => {
-        // Keep connection status if it exists
         if (prev.includes('Connected to')) {
-          return `${prev}\n\nSelected ABI: ${abiFileName}\nAvailable methods: ${methodsStr}`;
+          return `${prev}\n\nError loading ABI: ${error instanceof Error ? error.message : String(error)}`;
         }
-        return `Selected ABI: ${abiFileName}\nAvailable methods: ${methodsStr}`;
-      });
-    } else {
-      setBridgeStatus(prev => {
-        // Keep connection status if it exists
-        if (prev.includes('Connected to')) {
-          return `${prev}\n\nError: Could not load ABI for ${abiFileName}`;
-        }
-        return `Error: Could not load ABI for ${abiFileName}`;
+        return `Error loading ABI: ${error instanceof Error ? error.message : String(error)}`;
       });
     }
   }, [layer, contractConfig.abiFiles]);
   
   // Handle contract address changes
-  const handleAddressChange = (layer: 'l1' | 'l2', env: 'testnet' | 'mainnet', value: string) => {
+  const handleAddressChange = (layer: 'l1' | 'l2' | 'l3', env: 'testnet' | 'mainnet', value: string) => {
     setContractConfig(prev => ({
       ...prev,
       addresses: {
@@ -303,7 +403,7 @@ const BridgeTest: React.FC = () => {
   };
   
   // Handle ABI selection changes
-  const handleABIChange = (layer: 'l1' | 'l2', value: string) => {
+  const handleABIChange = (layer: 'l1' | 'l2' | 'l3', value: string) => {
     setContractConfig(prev => ({
       ...prev,
       abiFiles: {
@@ -316,56 +416,77 @@ const BridgeTest: React.FC = () => {
   // Reset contract configuration to defaults
   const handleResetConfig = () => {
     if (window.confirm('Are you sure you want to reset all contract configuration to defaults?')) {
-      setContractConfig(defaultConfig);
+      setContractConfig({
+        addresses: {
+          l1: { testnet: '', mainnet: '' },
+          l2: { testnet: '', mainnet: '' },
+          l3: { testnet: '', mainnet: '' }
+        },
+        abiFiles: {
+          l1: 'L1QueryOwner',
+          l2: 'L2Relay',
+          l3: 'L3QueryOwner'
+        }
+      });
       setBridgeStatus('Configuration reset to defaults');
     }
   };
   
   // Load from contract config file
   const handleLoadFromConfig = () => {
-    if (configLoading || !contractsConfig) {
+    if (configLoading) {
       setBridgeStatus('Contract configuration is still loading...');
       return;
     }
     
     if (window.confirm('Load contract addresses from the application configuration file?')) {
-      // Load the deployed contract addresses from the configuration
-      const newAddresses = {
-        l1: {
-          testnet: getContract('testnet', 'l1')?.address || '',
-          mainnet: getContract('mainnet', 'l1')?.address || '',
-        },
-        l2: {
-          testnet: getContract('testnet', 'l2')?.address || '',
-          mainnet: getContract('mainnet', 'l2')?.address || '',
-        }
-      };
-      
-      // Update contract ABIs based on configuration
-      const newAbiFiles = {
-        l1: getContract('testnet', 'l1')?.contract || 'L1QueryOwner',
-        l2: getContract('testnet', 'l2')?.contract || 'L2Relay'
-      };
-      
-      setContractConfig({
-        addresses: newAddresses,
-        abiFiles: newAbiFiles
-      });
-      
-      setBridgeStatus('Contract addresses loaded from configuration file.');
+      try {
+        // Load the deployed contract addresses from the configuration using our safe version
+        const newAddresses = {
+          l1: {
+            testnet: safeContractsConfig.networks.testnet.l1.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l1.address || '',
+          },
+          l2: {
+            testnet: safeContractsConfig.networks.testnet.l2.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l2.address || '',
+          },
+          l3: {
+            testnet: safeContractsConfig.networks.testnet.l3.address || '',
+            mainnet: safeContractsConfig.networks.mainnet.l3.address || '',
+          }
+        };
+        
+        // Update contract ABIs based on configuration
+        const newAbiFiles = {
+          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwner',
+          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2Relay',
+          l3: safeContractsConfig.networks.testnet.l3.contract || 'L3QueryOwner'
+        };
+        
+        setContractConfig({
+          addresses: newAddresses,
+          abiFiles: newAbiFiles
+        });
+        
+        setBridgeStatus('Contract addresses loaded from configuration file.');
+      } catch (error) {
+        console.error("Error loading from config:", error);
+        setBridgeStatus('Error loading contract addresses from configuration file.');
+      }
     }
   };
   
   // Functions to add networks to MetaMask
   const addNetworkToMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
-    if (!window.ethereum) {
+    if (typeof window === 'undefined' || !window.ethereum) {
       alert('MetaMask is not installed. Please install it to use this feature.');
       return;
     }
     
     try {
       const params = NETWORK_CONFIG[network];
-      await window.ethereum.request({
+      await (window as any).ethereum.request({
         method: 'wallet_addEthereumChain',
         params: [params],
       });
@@ -381,48 +502,20 @@ const BridgeTest: React.FC = () => {
     }
   };
   
-  // Function to switch networks in MetaMask
+  // Function to switch networks in MetaMask - updated to use switchToLayer
   const switchNetworkInMetaMask = async (network: 'sepolia' | 'arbitrumSepolia') => {
-    if (!window.ethereum) {
+    if (typeof window === 'undefined' || !window.ethereum) {
       alert('MetaMask is not installed. Please install it to use this feature.');
       return;
     }
     
-    try {
-      const chainIdHex = NETWORK_CONFIG[network].chainId;
-      
-      try {
-        // First try to switch to the network
-        await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: chainIdHex }],
-        });
-        
-        setBridgeStatus(prev => 
-          `${prev ? prev + '\n\n' : ''}Successfully switched to ${NETWORK_CONFIG[network].chainName}.`
-        );
-      } catch (switchError: any) {
-        // If the error code is 4902, the network isn't added yet
-        if (switchError.code === 4902) {
-          // Add the network first and then try to switch again
-          await addNetworkToMetaMask(network);
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: chainIdHex }],
-          });
-          
-          setBridgeStatus(prev => 
-            `${prev ? prev + '\n\n' : ''}Successfully added and switched to ${NETWORK_CONFIG[network].chainName}.`
-          );
-        } else {
-          throw switchError;
-        }
-      }
-    } catch (error: any) {
-      console.error(`Error switching to ${network} in MetaMask:`, error);
-      setBridgeStatus(prev => 
-        `${prev ? prev + '\n\n' : ''}Error switching network in MetaMask: ${error.message || error}`
-      );
+    // Use our switchToLayer functionality for network switching
+    if (network === 'sepolia') {
+      switchToLayer('l1', 'testnet');
+      setBridgeStatus(prev => `${prev ? prev + '\n\n' : ''}Requested switch to Sepolia testnet.`);
+    } else if (network === 'arbitrumSepolia') {
+      switchToLayer('l2', 'testnet');
+      setBridgeStatus(prev => `${prev ? prev + '\n\n' : ''}Requested switch to Arbitrum Sepolia testnet.`);
     }
   };
 
@@ -436,6 +529,11 @@ const BridgeTest: React.FC = () => {
     try {
       setGasEstimation(prev => ({ ...prev, estimating: true, estimationComplete: false }));
       setBridgeStatus('Estimating gas for retryable ticket...');
+
+      // Check if window.ethereum exists
+      if (typeof window === 'undefined' || !window.ethereum) {
+        throw new Error('MetaMask is not installed or not accessible');
+      }
 
       // Get form values or use defaults
       const nftContractElement = document.getElementById('nftContract') as HTMLInputElement;
@@ -451,7 +549,7 @@ const BridgeTest: React.FC = () => {
       const contractAddress = '0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2';
 
       // Get L1 provider
-      const l1Provider = new ethers.BrowserProvider(window.ethereum);
+      const l1Provider = new ethers.BrowserProvider((window as any).ethereum);
       
       // Create a mock L2 provider for Arbitrum Sepolia
       const l2Provider = new ethers.JsonRpcProvider("https://sepolia-rollup.arbitrum.io/rpc");
@@ -572,6 +670,11 @@ const BridgeTest: React.FC = () => {
     try {
       setBridgeStatus('Preparing to query NFT ownership and send result to L2...');
 
+      // Check if window.ethereum exists
+      if (typeof window === 'undefined' || !window.ethereum) {
+        throw new Error('MetaMask is not installed or not accessible');
+      }
+
       // Get form values or use defaults
       const nftContractElement = document.getElementById('nftContract') as HTMLInputElement;
       const tokenIdElement = document.getElementById('tokenId') as HTMLInputElement;
@@ -602,7 +705,7 @@ const BridgeTest: React.FC = () => {
 - Max Fee Per Gas: ${ethers.formatUnits(maxFeePerGas, "gwei")} gwei`);
 
       // Create contract instance
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       
       // Confirm we're on the right network
@@ -690,6 +793,11 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
     try {
       setBridgeStatus('Preparing to query NFT ownership with optimized gas parameters...');
 
+      // Check if window.ethereum exists
+      if (typeof window === 'undefined' || !window.ethereum) {
+        throw new Error('MetaMask is not installed or not accessible');
+      }
+
       // Get form values or use defaults
       const nftContractElement = document.getElementById('nftContract') as HTMLInputElement;
       const tokenIdElement = document.getElementById('tokenId') as HTMLInputElement;
@@ -715,7 +823,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
 - Max Fee Per Gas: ${ethers.formatUnits(gasEstimation.maxFeePerGas, "gwei")} gwei`);
 
       // Create contract instance
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = await provider.getSigner();
       
       // Confirm we're on the right network
@@ -780,341 +888,242 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
 
   return (
     <div className="bridge-test-container">
-      <h2>Bridge Test</h2>
+      <h2>CommissionArt NFT Bridge Testing</h2>
       
-      <div className="network-selector-container">
-        <div className="selector-group">
-          <label>Layer:</label>
-          <div className="toggle-buttons">
-            <button 
-              className={`toggle-button ${layer === 'l1' ? 'active' : ''}`}
-              onClick={() => setLayer('l1')}
-            >
-              L1 (Ethereum)
-            </button>
-            <button 
-              className={`toggle-button ${layer === 'l2' ? 'active' : ''}`}
-              onClick={() => setLayer('l2')}
-            >
-              L2 (Arbitrum)
-            </button>
-          </div>
-        </div>
-        
-        <div className="selector-group">
-          <label>Environment:</label>
-          <div className="toggle-buttons">
-            <button 
-              className={`toggle-button ${environment === 'testnet' ? 'active' : ''}`}
-              onClick={() => setEnvironment('testnet')}
-            >
-              Testnet
-            </button>
-            <button 
-              className={`toggle-button ${environment === 'mainnet' ? 'active' : ''}`}
-              onClick={() => setEnvironment('mainnet')}
-            >
-              Mainnet
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {environment === 'testnet' && (
-        <div className="metamask-dropdown">
-          <button 
-            className="dropdown-toggle" 
-            onClick={() => setShowMetaMaskActions(!showMetaMaskActions)}
-          >
-            <span className="metamask-icon"></span>
-            MetaMask Network Tools
-            <span className={`dropdown-arrow ${showMetaMaskActions ? 'open' : ''}`}>▼</span>
-          </button>
-          
-          {showMetaMaskActions && (
-            <div className="metamask-actions">
-              <div className="action-group">
-                <h4>Add Network to MetaMask</h4>
-                <div className="button-group">
-                  <button 
-                    className="metamask-button add-network" 
-                    onClick={() => addNetworkToMetaMask('sepolia')}
-                    title="Add Sepolia to MetaMask"
-                  >
-                    Add Sepolia
+      {configLoading ? (
+        <div className="loading">Loading configuration...</div>
+      ) : (
+        <>
+          <div className="network-selection">
+            <div className="network-info">
+              <h3>Current Network</h3>
+              <p className={`network-type ${networkType.replace('_', '-')}`}>
+                {networkType === 'arbitrum_mainnet' ? 'Arbitrum One' :
+                 networkType === 'arbitrum_testnet' ? 'Arbitrum Sepolia' :
+                 networkType === 'prod' ? 'Ethereum Mainnet' :
+                 networkType === 'dev' || networkType === 'local' ? 'Sepolia Testnet' : 
+                 'Unknown Network'}
+              </p>
+              <p className="wallet-info">
+                {isConnected ? (
+                  <>
+                    <span className="wallet-address">
+                      {walletAddress && `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}`}
+                    </span>
+                    <span className="connection-status connected">Connected</span>
+                  </>
+                ) : (
+                  <button onClick={connectWallet} className="connect-wallet-button">
+                    Connect Wallet
                   </button>
-                  <button 
-                    className="metamask-button add-network" 
-                    onClick={() => addNetworkToMetaMask('arbitrumSepolia')}
-                    title="Add Arbitrum Sepolia to MetaMask"
-                  >
-                    Add Arbitrum Sepolia
-                  </button>
-                </div>
+                )}
+              </p>
+            </div>
+            <div className="network-controls">
+              <h3>Switch Networks</h3>
+              <div className="network-buttons">
+                <button 
+                  className={`network-button ${layer === 'l1' ? 'active' : ''}`} 
+                  onClick={() => handleLayerChange('l1')}
+                >
+                  Layer 1 ({environment === 'testnet' ? 'Sepolia' : 'Ethereum'})
+                </button>
+                <button 
+                  className={`network-button ${layer === 'l2' ? 'active' : ''}`} 
+                  onClick={() => handleLayerChange('l2')}
+                >
+                  Layer 2 ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'})
+                </button>
               </div>
-              
-              <div className="action-group">
-                <h4>Switch Network in MetaMask</h4>
-                <div className="button-group">
-                  <button 
-                    className="metamask-button switch-network" 
-                    onClick={() => switchNetworkInMetaMask('sepolia')}
-                    title="Switch to Sepolia in MetaMask"
-                  >
-                    Switch to Sepolia
-                  </button>
-                  <button 
-                    className="metamask-button switch-network" 
-                    onClick={() => switchNetworkInMetaMask('arbitrumSepolia')}
-                    title="Switch to Arbitrum Sepolia in MetaMask"
-                  >
-                    Switch to Arbitrum Sepolia
-                  </button>
-                </div>
+              <div className="environment-buttons">
+                <button 
+                  className={`environment-button ${environment === 'testnet' ? 'active' : ''}`} 
+                  onClick={() => handleEnvironmentChange('testnet')}
+                >
+                  Testnet
+                </button>
+                <button 
+                  className={`environment-button ${environment === 'mainnet' ? 'active' : ''}`} 
+                  onClick={() => handleEnvironmentChange('mainnet')}
+                >
+                  Mainnet
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+          
+          <div className="bridge-components">
+            {/* L3 Owner Lookup Component - Always visible */}
+            <div className="component-section">
+              <h3>L3 Ownership Lookup (Arbitrum)</h3>
+              <L3OwnerLookup 
+                environment={environment} 
+                contractConfig={contractConfig} 
+                setBridgeStatus={setBridgeStatus}
+              />
+            </div>
+            
+            {/* L1 Owner Request Component - Always visible */}
+            <div className="component-section">
+              <h3>L1 NFT Owner Request (Sepolia)</h3>
+              <L1OwnerUpdateRequest />
+            </div>
+            
+            {/* L2 Relay Manager Component - Now always visible */}
+            <div className="component-section">
+              <h3>L2 Relay Manager (Arbitrum Sepolia)</h3>
+              <L2RelayManager />
+            </div>
+            
+            {/* NFT Query Toggle */}
+            <div className="component-section">
+              <div className="component-header" onClick={() => setShowNFTQuery(!showNFTQuery)}>
+                <h3>Advanced: Generic NFT Ownership Query</h3>
+                <span className="toggle-icon">{showNFTQuery ? '▼' : '►'}</span>
+              </div>
+              {showNFTQuery && <NFTOwnershipQuery 
+                layer={layer}
+                environment={environment}
+                contractConfig={contractConfig}
+                setBridgeStatus={setBridgeStatus}
+                isListening={isListening}
+                setIsListening={setIsListening}
+                setLayer={setLayer}
+              />}
+            </div>
+            
+            {/* Contract Config Toggle */}
+            <div className="component-section">
+              <div className="component-header" onClick={() => setShowContractConfig(!showContractConfig)}>
+                <h3>Contract Configuration</h3>
+                <span className="toggle-icon">{showContractConfig ? '▼' : '►'}</span>
+              </div>
+              {showContractConfig && (
+                <div className="contract-config">
+                  <h4>Contract Addresses</h4>
+                  
+                  {/* L1 Contract Address */}
+                  <div className="config-row">
+                    <label>L1 Contract (Sepolia):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l1.testnet} 
+                      onChange={(e) => handleAddressChange('l1', 'testnet', e.target.value)}
+                      placeholder="L1 Contract Address (Sepolia)"
+                    />
+                  </div>
+                  
+                  <div className="config-row">
+                    <label>L1 Contract (Mainnet):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l1.mainnet} 
+                      onChange={(e) => handleAddressChange('l1', 'mainnet', e.target.value)}
+                      placeholder="L1 Contract Address (Mainnet)"
+                    />
+                  </div>
+                  
+                  {/* L2 Contract Address */}
+                  <div className="config-row">
+                    <label>L2 Contract (Arbitrum Sepolia):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l2.testnet} 
+                      onChange={(e) => handleAddressChange('l2', 'testnet', e.target.value)}
+                      placeholder="L2 Contract Address (Arbitrum Sepolia)"
+                    />
+                  </div>
+                  
+                  <div className="config-row">
+                    <label>L2 Contract (Arbitrum One):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l2.mainnet} 
+                      onChange={(e) => handleAddressChange('l2', 'mainnet', e.target.value)}
+                      placeholder="L2 Contract Address (Arbitrum One)"
+                    />
+                  </div>
+                  
+                  {/* L3 Contract Address */}
+                  <div className="config-row">
+                    <label>L3 Contract (Arbitrum Sepolia):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l3.testnet} 
+                      onChange={(e) => handleAddressChange('l3', 'testnet', e.target.value)}
+                      placeholder="L3 Contract Address (Arbitrum Sepolia)"
+                    />
+                  </div>
+                  
+                  <div className="config-row">
+                    <label>L3 Contract (Arbitrum One):</label>
+                    <input 
+                      type="text" 
+                      value={contractConfig.addresses.l3.mainnet} 
+                      onChange={(e) => handleAddressChange('l3', 'mainnet', e.target.value)}
+                      placeholder="L3 Contract Address (Arbitrum One)"
+                    />
+                  </div>
+                  
+                  <h4>Contract ABIs</h4>
+                  
+                  {/* L1 Contract ABI */}
+                  <div className="config-row">
+                    <label>L1 Contract ABI:</label>
+                    <select 
+                      value={contractConfig.abiFiles.l1} 
+                      onChange={(e) => handleABIChange('l1', e.target.value)}
+                    >
+                      {availableAbis.map(abi => (
+                        <option key={abi} value={abi}>{abi}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* L2 Contract ABI */}
+                  <div className="config-row">
+                    <label>L2 Contract ABI:</label>
+                    <select 
+                      value={contractConfig.abiFiles.l2} 
+                      onChange={(e) => handleABIChange('l2', e.target.value)}
+                    >
+                      {availableAbis.map(abi => (
+                        <option key={abi} value={abi}>{abi}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* L3 Contract ABI */}
+                  <div className="config-row">
+                    <label>L3 Contract ABI:</label>
+                    <select 
+                      value={contractConfig.abiFiles.l3} 
+                      onChange={(e) => handleABIChange('l3', e.target.value)}
+                    >
+                      {availableAbis.map(abi => (
+                        <option key={abi} value={abi}>{abi}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="config-buttons">
+                    <button onClick={handleLoadFromConfig}>Load from Contract Config</button>
+                    <button onClick={handleResetConfig} className="reset-button">Reset</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bridge Status Section */}
+          <div className="bridge-status">
+            <h3>Bridge Status</h3>
+            <pre>{bridgeStatus}</pre>
+          </div>
+        </>
       )}
-      
-      {/* Query NFT Ownership Form */}
-      <div className="nft-query-form-section">
-        <h3>Call queryNFTAndSendBack on Sepolia</h3>
-        <div className="info-message">
-          This will query the NFT ownership on L1 and send the result to L2 via a retryable ticket.
-        </div>
-        
-        <div className="form-container">
-          <div className="input-group">
-            <label>NFT Contract Address:</label>
-            <input 
-              type="text" 
-              id="nftContract"
-              defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-              placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>Token ID:</label>
-            <input 
-              type="text" 
-              id="tokenId"
-              defaultValue="0"
-              placeholder="0"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>L2 Receiver Address:</label>
-            <input 
-              type="text" 
-              id="l2Receiver"
-              defaultValue="0xef02F150156e45806aaF17A60B5541D079FE13e6"
-              placeholder="0xef02F150156e45806aaF17A60B5541D079FE13e6"
-            />
-          </div>
-          
-          <div className="input-group">
-            <label>ETH Value (for cross-chain fees):</label>
-            <input 
-              type="text" 
-              id="ethValue"
-              defaultValue="0.001"
-              placeholder="0.001"
-            />
-            <div className="field-help">
-              Amount of ETH to send with the transaction. This covers cross-chain fees, gas costs, and L2 execution.
-            </div>
-          </div>
-          
-          <div className="gas-estimate-section">
-            <button
-              className="estimate-gas-button"
-              onClick={estimateRetryableTicketGas}
-              disabled={gasEstimation.estimating}
-            >
-              {gasEstimation.estimating ? 'Estimating...' : 'Estimate Gas'}
-            </button>
-            
-            {gasEstimation.estimationComplete && (
-              <div className="gas-estimation-results">
-                <div className="estimation-result-item">
-                  <span>Max Submission Cost:</span>
-                  <span>{ethers.formatEther(gasEstimation.maxSubmissionCost)} ETH</span>
-                </div>
-                <div className="estimation-result-item">
-                  <span>Gas Limit:</span>
-                  <span>{gasEstimation.gasLimit}</span>
-                </div>
-                <div className="estimation-result-item">
-                  <span>Max Fee Per Gas:</span>
-                  <span>{ethers.formatUnits(gasEstimation.maxFeePerGas, "gwei")} gwei</span>
-                </div>
-                <div className="estimation-result-item total">
-                  <span>Total Est. Cost:</span>
-                  <span>{gasEstimation.totalEstimatedCost} ETH</span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="contract-info">
-            <p>Contract: <span>0xbd25dC4bDe33A14AE54c4BEeDE14297E4235a4e2</span> (Sepolia)</p>
-            <div className="default-gas-info">
-              <p>Default parameters:</p>
-              <ul>
-                <li>Max Submission Cost: 0.0045 ETH (high safety value)</li>
-                <li>Gas Limit: 1,000,000</li>
-                <li>Max Fee Per Gas: 0.1 gwei</li>
-              </ul>
-            </div>
-            <a 
-              href="https://sepolia-retryable-tx-dashboard.arbitrum.io/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="arb-link"
-            >
-              View on Arbitrum Retryable Dashboard
-            </a>
-          </div>
-          
-          <div className="button-group">
-            <button 
-              className="query-button"
-              onClick={callQueryNFTAndSendBack}
-            >
-              Submit with Safe Parameters
-            </button>
-            <button 
-              className="query-button optimized"
-              onClick={callQueryNFTAndSendBackOptimized}
-              disabled={!gasEstimation.estimationComplete}
-            >
-              Submit with Optimized Gas
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* NFT Ownership Query Component */}
-      <NFTOwnershipQuery 
-        layer={layer}
-        environment={environment}
-        contractConfig={contractConfig}
-        setBridgeStatus={setBridgeStatus}
-        isListening={isListening}
-        setIsListening={setIsListening}
-        setLayer={setLayer}
-      />
-      
-      {/* Contract Configuration Dropdown */}
-      <div className="contract-config-dropdown">
-        <button 
-          className="dropdown-toggle" 
-          onClick={() => setShowContractConfig(!showContractConfig)}
-        >
-          Contract Configuration
-          <span className={`dropdown-arrow ${showContractConfig ? 'open' : ''}`}>▼</span>
-        </button>
-        
-        {showContractConfig && (
-          <div className="contract-config">
-            <div className="config-buttons">
-              <button 
-                className="config-button reset-button"
-                onClick={handleResetConfig}
-                title="Reset to default values"
-              >
-                Reset
-              </button>
-              <button 
-                className="config-button load-button"
-                onClick={handleLoadFromConfig}
-                disabled={configLoading || !contractsConfig}
-                title="Load addresses from the contract config file"
-              >
-                Load from Config
-              </button>
-            </div>
-            
-            <div className="config-section">
-              <h4>L1 Contracts</h4>
-              <div className="input-group">
-                <label>Testnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l1.testnet} 
-                  onChange={(e) => handleAddressChange('l1', 'testnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>Mainnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l1.mainnet} 
-                  onChange={(e) => handleAddressChange('l1', 'mainnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>ABI File:</label>
-                <select 
-                  value={contractConfig.abiFiles.l1}
-                  onChange={(e) => handleABIChange('l1', e.target.value)}
-                  className="abi-selector"
-                >
-                  {availableAbis.map(abi => (
-                    <option key={abi} value={abi}>{abi}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            <div className="config-section">
-              <h4>L2 Contracts</h4>
-              <div className="input-group">
-                <label>Testnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l2.testnet} 
-                  onChange={(e) => handleAddressChange('l2', 'testnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>Mainnet Address:</label>
-                <input 
-                  type="text" 
-                  value={contractConfig.addresses.l2.mainnet} 
-                  onChange={(e) => handleAddressChange('l2', 'mainnet', e.target.value)}
-                  placeholder="0x..."
-                />
-              </div>
-              <div className="input-group">
-                <label>ABI File:</label>
-                <select 
-                  value={contractConfig.abiFiles.l2}
-                  onChange={(e) => handleABIChange('l2', e.target.value)}
-                  className="abi-selector"
-                >
-                  {availableAbis.map(abi => (
-                    <option key={abi} value={abi}>{abi}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      <div className="status-box">
-        <h3>Status</h3>
-        <pre>{bridgeStatus || 'No status updates yet. Actions will be displayed here.'}</pre>
-      </div>
     </div>
   );
 };
 
-export default BridgeTest; 
+export default BridgeTestContainer; 
