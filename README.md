@@ -134,3 +134,48 @@ python -m site
  # Reacrhive the file after its been modified
  7z l -p"$PASSWORD" .env.7zencoded
 
+
+
+
+# Deployment
+As of commit e84f4ff you can compile the contract code and get the back end linked by:
+1. ape compile --force
+2. ape run deploy_L1_L2
+ - Choose testnet
+ - L2 Contract will not update, this needs to be done manually
+3. ape run compile_and_extract_abis
+ - At this point you should see the contract_config.json file updated with the new contract addresses
+
+** Checkpoint
+4. npm run dev
+5. Scroll down and verify L1 information under BridgeTest:
+ FORWARD:
+ - NFTs can be checked on the L1OwnerQuery contract. When the L1->L2 cross chain call is made, the incoming
+     addressed does NOT match the L1 sending address.  Instead it is aliased by adding 
+     0x11111000000...00000000011111 to the end.
+   If the address of the L1 contract is 0xDdc84E4CF833b5AE92A2aA7F4edc59bdcB4b6F0F
+      the aliased contract of the L1 is 0xeed94e4cf833b5ae92a2aa7f4edc59bdcb4b8020
+
+ - Verify L1 Contract Settings match the contract_config.json settings
+   -  (Note: This should be updated and show all the L1,L2,L3 contracts under this section)
+ - Verify L3 OwnerRegistry Contract settings match the contract_config.json settings
+   -  (Note: This should be updated and show all the L1,L2,L3 contracts under this section)
+
+ - UPDATE L2 Contract Settings:
+   - The L2 Links to L1 and the L3
+- Please register the L1QueryOwner ALIASED address to whitelist its abiliaty to update NFT contract owners
+    on the L1.  The aliased address for the above example is:
+     0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06 and chain ID 1 (to be testnet)
+- Please register the L3 contract address so that the L2 knows how to Relay the owners to the L3
+       
+- Now that everything is linked, lookup the owners of a few NFTs on the L1 via the button:
+    Send Request(Safe Parameters) which queries the owner with the provided form values.
+- Modify the Token ID to #1 and send again
+
+
+6. Be patient.  You need to verify calls on the L1, L2 and L3.  
+    - Metamask should have the signed messages to the L1 calls
+    - After ~5 minutes on the L2, you should see the relay contract:
+        i.e. https://sepolia.arbiscan.io/address/0x233be9576A524299bf9E4633c845ea28FF0868a4
+    - After 10 more seconds you should see the L3 contract call.
+        TODO: Eventually this will require ANOTHER cross-chain message

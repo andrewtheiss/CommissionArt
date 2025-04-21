@@ -506,7 +506,7 @@ const L2RelayManager: React.FC = () => {
         <div className="forms-container">
           {/* L3 Contract Update Form - Always visible */}
           <div className="form-section">
-            <h4>Update L3 Contract Address</h4>
+            <h4>L2Relay - Update L3 Contract Address</h4>
             <form onSubmit={handleUpdateL3Contract}>
               <div className="form-group">
                 <label htmlFor="newL3ContractAddress">OwnerRegistry (L3 - Relay Destination):</label>
@@ -537,7 +537,7 @@ const L2RelayManager: React.FC = () => {
 
           {/* Cross-Chain Sender Update Form - Always visible */}
           <div className="form-section">
-            <h4>Add/Update Aliased Cross-Chain L1 Sender (by NFT collection ID)</h4>
+            <h4>L2 - Add/Update ALIASED Cross-Chain L1 Owner Query Sender (by NFT collection ID)</h4>
             <form onSubmit={handleUpdateSender}>
               <div className="form-group">
                 <label htmlFor="newChainId">Chain ID:</label>
