@@ -194,7 +194,7 @@ def main():
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
             l1_chain_id = 1  # For mainnet
-            tx = l2_relay.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id)
+            tx = l2_relay.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id, sender=deployer)
             print(f"L1QueryOwner registered in L2Relay for chain ID {l1_chain_id}")
     
     elif deploy_mode == "l2only":
