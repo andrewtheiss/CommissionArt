@@ -186,8 +186,8 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       setBridgeStatus('Automatically switching to Arbitrum Sepolia to query OwnerRegistry...');
       switchToLayer('l3', 'testnet');
       return;
-    } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Arbitrum One to query OwnerRegistry...');
+    } else if (networkType !== 'animechain' && environment === 'mainnet') {
+      setBridgeStatus('Automatically switching to Animechain L3 to query OwnerRegistry...');
       switchToLayer('l3', 'mainnet');
       return;
     }
@@ -275,14 +275,14 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   const submitL3Lookup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Ensure we're on Arbitrum - auto switch if needed
+    // Ensure we're on the right network
     if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
-      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query L3 OwnerRegistry...');
-      switchToLayer('l2', 'testnet');
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query OwnerRegistry...');
+      switchToLayer('l3', 'testnet');
       return;
-    } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Arbitrum One to query L3 OwnerRegistry...');
-      switchToLayer('l2', 'mainnet');
+    } else if (networkType !== 'animechain' && environment === 'mainnet') {
+      setBridgeStatus('Automatically switching to Animechain L3 to query OwnerRegistry...');
+      switchToLayer('l3', 'mainnet');
       return;
     }
     
@@ -470,20 +470,20 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   const setL2RelayAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate the L2 relay address
-    if (!ethers.isAddress(newL2RelayAddress)) {
-      setBridgeStatus(prev => `${prev}\n\nError: Invalid L2 relay address format`);
+    // Ensure we're on the right network
+    if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia...');
+      switchToLayer('l3', 'testnet');
+      return;
+    } else if (networkType !== 'animechain' && environment === 'mainnet') {
+      setBridgeStatus('Automatically switching to Animechain L3...');
+      switchToLayer('l3', 'mainnet');
       return;
     }
     
-    // Ensure we're on Arbitrum
-    if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
-      setBridgeStatus('Automatically switching to Arbitrum Sepolia to set L2 relay...');
-      switchToLayer('l2', 'testnet');
-      return;
-    } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Arbitrum One to set L2 relay...');
-      switchToLayer('l2', 'mainnet');
+    // Validate the L2 relay address
+    if (!ethers.isAddress(newL2RelayAddress)) {
+      setBridgeStatus(prev => `${prev}\n\nError: Invalid L2 relay address format`);
       return;
     }
     
@@ -565,6 +565,17 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   const callRegisterNFTOwnerFromParentChain = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Ensure we're on the right network
+    if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia...');
+      switchToLayer('l3', 'testnet');
+      return;
+    } else if (networkType !== 'animechain' && environment === 'mainnet') {
+      setBridgeStatus('Automatically switching to Animechain L3...');
+      switchToLayer('l3', 'mainnet');
+      return;
+    }
+    
     // Validate input parameters
     if (!ethers.isAddress(directRegisterParams.nftContract)) {
       setBridgeStatus(prev => `${prev}\n\nError: Invalid NFT contract address format`);
@@ -592,17 +603,6 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       }
     } catch (error) {
       setBridgeStatus(prev => `${prev}\n\nError: ${error instanceof Error ? error.message : 'Invalid numeric input'}`);
-      return;
-    }
-    
-    // Ensure we're on Arbitrum
-    if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
-      setBridgeStatus('Automatically switching to Arbitrum Sepolia for direct registration...');
-      switchToLayer('l2', 'testnet');
-      return;
-    } else if (networkType !== 'arbitrum_mainnet' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Arbitrum One for direct registration...');
-      switchToLayer('l2', 'mainnet');
       return;
     }
     
@@ -728,25 +728,27 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
 
   return (
     <div className="l3-owner-lookup-container">
-      <h3>Owner Registry (on Arbitrum)</h3>
+      <h3>Owner Registry ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'})</h3>
       
       <div className="explorer-links">
-        <a 
-          href={`https://sepolia.arbiscan.io/address/${contractConfig.addresses.l3.testnet}`} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="explorer-link"
-        >
-          View OwnerRegistry on Arbitrum Sepolia
-        </a>
-        {contractConfig.addresses.l3.mainnet && (
+        {environment === 'testnet' && (
           <a 
-            href={`https://arbiscan.io/address/${contractConfig.addresses.l3.mainnet}`} 
+            href={`https://sepolia.arbiscan.io/address/${contractConfig.addresses.l3.testnet}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="explorer-link"
           >
-            View OwnerRegistry on Arbitrum One
+            View OwnerRegistry on Arbitrum Sepolia
+          </a>
+        )}
+        {environment === 'mainnet' && contractConfig.addresses.l3.mainnet && (
+          <a 
+            href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${contractConfig.addresses.l3.mainnet}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="explorer-link"
+          >
+            View OwnerRegistry on Animechain L3
           </a>
         )}
       </div>
@@ -755,16 +757,16 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         <div className="network-action-bar">
           <button 
             className="network-switch-button" 
-            onClick={() => switchToLayer('l3', environment === 'testnet' ? 'testnet' : 'mainnet')}
-            title={`Switch to Arbitrum ${environment === 'testnet' ? 'Sepolia' : 'One'} to connect to OwnerRegistry`}
+            onClick={() => switchToLayer('l3', environment)}
+            title={`Switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'} to connect to OwnerRegistry`}
           >
-            Switch to Arbitrum {environment === 'testnet' ? 'Sepolia' : 'One'}
+            Switch to {environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'}
           </button>
           <div className="network-status">
-            {(networkType === 'arbitrum_testnet' && environment === 'testnet') || 
-             (networkType === 'arbitrum_mainnet' && environment === 'mainnet') ? 
-              <span className="connected-status">✓ Connected to Arbitrum {environment === 'testnet' ? 'Sepolia' : 'One'}</span> : 
-              <span className="disconnected-status">Not connected to Arbitrum {environment === 'testnet' ? 'Sepolia' : 'One'}</span>
+            {((networkType === 'arbitrum_testnet' && environment === 'testnet') || 
+              (networkType === 'animechain' && environment === 'mainnet')) ? 
+              <span className="connected-status">✓ Connected to {environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'}</span> : 
+              <span className="disconnected-status">Not connected to {environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'}</span>
             }
           </div>
         </div>

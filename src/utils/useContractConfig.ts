@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBlockchain } from './BlockchainContext';
 import contractConfigJson from '../assets/contract_config.json';
 
@@ -50,14 +50,14 @@ export function useContractConfig() {
   }, [networkType]);
 
   // Get current contract address based on active environment and layer
-  const getCurrentContract = (): ContractInfo => {
+  const getCurrentContract = useCallback((): ContractInfo => {
     return config.networks[environment][layer];
-  };
+  }, [config, environment, layer]);
 
   // Get specific contract by environment and layer
-  const getContract = (env: 'testnet' | 'mainnet', l: 'l1' | 'l2' | 'l3'): ContractInfo => {
+  const getContract = useCallback((env: 'testnet' | 'mainnet', l: 'l1' | 'l2' | 'l3'): ContractInfo => {
     return config.networks[env][l];
-  };
+  }, [config]);
 
   return {
     loading,

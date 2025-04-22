@@ -69,248 +69,158 @@ def get_optimized_gas_params(provider):
         print("EIP-1559 not supported on this network, using default gas settings")
         return {}
 
-def deploy_l2_relay(deployer):
-    """Deploy L2Relay contract on Arbitrum mainnet"""
-    print("\n--- Deploying L2Relay on Arbitrum Mainnet ---")
+def deploy_l1_query_owner(deployer, network_type="mainnet"):
+    print("\n--- L1QueryOwner Setup ---")
     
-    # Use the Arbitrum mainnet network
+    l1_network = "ethereum:mainnet:alchemy"
+    inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet Inbox
+    
+    existing_l1_address = get_contract_address(network_type, "l1")
+    if existing_l1_address:
+        print(f"Found existing L1QueryOwner in config: {existing_l1_address}")
+        use_existing = input("Use existing L1QueryOwner? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.L1QueryOwner.at(existing_l1_address)
+    
+    print(f"Deploying new L1QueryOwner on {l1_network}...")
+    
+    with networks.parse_network_choice(l1_network) as provider:
+        l1_contract = deployer.deploy(project.L1QueryOwner, inbox_address, required_confirmations=1)
+        print(f"L1QueryOwner deployed at: {l1_contract.address}")
+        update_contract_address(network_type, "l1", l1_contract.address, "L1QueryOwner")
+        return l1_contract
+
+def deploy_l2_relay(deployer, network_type="mainnet"):
+    print("\n--- L2Relay Setup ---")
+    
+    existing_l2_address = get_contract_address(network_type, "l2")
+    if existing_l2_address:
+        print(f"Found existing L2Relay in config: {existing_l2_address}")
+        use_existing = input("Use existing L2Relay? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.L2Relay.at(existing_l2_address)
+    
+    print("Deploying new L2Relay on Arbitrum Mainnet...")
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
-        print(f"Connected to Arbitrum Mainnet (Chain ID: {provider.chain_id})")
-        if provider.chain_id != ARBITRUM_MAINNET_CONFIG['chain_id']:
-            raise ValueError(f"Provider chain ID {provider.chain_id} does not match expected {ARBITRUM_MAINNET_CONFIG['chain_id']}")
-        
-        # Get optimized gas parameters
         gas_params = get_optimized_gas_params(provider)
-        
-        # Deploy L2Relay contract
-        print("Deploying L2Relay contract...")
         deploy_kwargs = {"required_confirmations": 1}
         if gas_params:
             deploy_kwargs.update({
                 "max_fee": gas_params["max_fee"],
                 "max_priority_fee": gas_params["max_priority_fee"]
             })
-            
-        l2_relay = deployer.deploy(
-            project.L2Relay,
-            **deploy_kwargs
-        )
-        
-        # Print deployment information
-        print("\nL2Relay Deployment Summary:")
-        print(f"L2Relay Contract: {l2_relay.address}")
-        print(f"Owner: {l2_relay.owner()}")
-        print(f"L3 Inbox Address (Hardcoded): {L3_INBOX_ADDRESS}")
-        
-        # Save to config
-        update_contract_address("mainnet", "l2", l2_relay.address, "L2Relay")
-        
+        l2_relay = deployer.deploy(project.L2Relay, **deploy_kwargs)
+        print(f"L2Relay deployed at: {l2_relay.address}")
+        update_contract_address(network_type, "l2", l2_relay.address, "L2Relay")
         return l2_relay
 
 def deploy_commission_hub_template(deployer, network_type="mainnet"):
-    """Deploy CommissionHub template on Animechain L3 or use existing one"""
     print("\n--- CommissionHub Template Setup ---")
     
-    # Check if CommissionHub is already in the configuration
     existing_hub_address = get_contract_address(network_type, "commissionHub")
-    
     if existing_hub_address:
         print(f"Found existing CommissionHub template in config: {existing_hub_address}")
         use_existing = input("Use existing CommissionHub template? (y/n) [y]: ").strip().lower() or "y"
-        
         if use_existing == "y":
             return project.CommissionHub.at(existing_hub_address)
     
     print("Deploying new CommissionHub Template on Animechain L3...")
-    
-    # Use the custom network
     with networks.parse_network_choice("ethereum:animechain") as provider:
-        print(f"Connected to L3 chain (Chain ID: {provider.chain_id})")
-        if provider.chain_id != ANIMECHAIN_CONFIG['chain_id']:
-            raise ValueError(f"Provider chain ID {provider.chain_id} does not match expected {ANIMECHAIN_CONFIG['chain_id']}")
-        
-        # Get optimized gas parameters
         gas_params = get_optimized_gas_params(provider)
-        
-        # Deploy CommissionHub template
         deploy_kwargs = {"required_confirmations": 0}
         if gas_params:
             deploy_kwargs.update({
                 "max_fee": gas_params["max_fee"],
                 "max_priority_fee": gas_params["max_priority_fee"]
             })
-            
-        commission_hub_template = deployer.deploy(
-            project.CommissionHub,
-            **deploy_kwargs
-        )
-        
-        # Print deployment information
-        print("\nCommissionHub Template Deployment Summary:")
-        print(f"CommissionHub Template: {commission_hub_template.address}")
-        
-        # Save to config
+        commission_hub_template = deployer.deploy(project.CommissionHub, **deploy_kwargs)
+        print(f"CommissionHub Template deployed at: {commission_hub_template.address}")
         update_contract_address(network_type, "commissionHub", commission_hub_template.address, "CommissionHub")
-        
         return commission_hub_template
 
-def deploy_owner_registry(deployer, l2_relay_address=None, commission_hub_template_address=None, network_type="mainnet"):
-    """Deploy OwnerRegistry contract on Animechain L3"""
-    print("\n--- Deploying OwnerRegistry on Animechain L3 ---")
+def deploy_owner_registry(deployer, l2_relay_address, commission_hub_template_address, network_type="mainnet"):
+    print("\n--- OwnerRegistry Setup ---")
     
-    # Use the custom network
+    existing_l3_address = get_contract_address(network_type, "l3")
+    if existing_l3_address:
+        print(f"Found existing OwnerRegistry in config: {existing_l3_address}")
+        use_existing = input("Use existing OwnerRegistry? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.OwnerRegistry.at(existing_l3_address)
+    
+    print("Deploying new OwnerRegistry on Animechain L3...")
     with networks.parse_network_choice("ethereum:animechain") as provider:
-        print(f"Connected to L3 chain (Chain ID: {provider.chain_id})")
-        if provider.chain_id != ANIMECHAIN_CONFIG['chain_id']:
-            raise ValueError(f"Provider chain ID {provider.chain_id} does not match expected {ANIMECHAIN_CONFIG['chain_id']}")
-        
-        # Get input for L2 relay address if not provided
-        if not l2_relay_address:
-            existing_l2_address = get_contract_address(network_type, "l2")
-            if existing_l2_address:
-                print(f"Found existing L2Relay in config: {existing_l2_address}")
-                use_existing = input(f"Use existing L2Relay address? (y/n) [y]: ").strip().lower() or "y"
-                if use_existing == "y":
-                    l2_relay_address = existing_l2_address
-                else:
-                    l2_relay_address = input("Enter L2 relay address: ").strip()
-            else:
-                l2_relay_address = input("Enter L2 relay address: ").strip()
-        
-        # Get input for commission hub template if not provided
-        if not commission_hub_template_address:
-            existing_hub_address = get_contract_address(network_type, "commissionHub")
-            if existing_hub_address:
-                print(f"Found existing CommissionHub in config: {existing_hub_address}")
-                use_existing = input(f"Use existing CommissionHub template address? (y/n) [y]: ").strip().lower() or "y"
-                if use_existing == "y":
-                    commission_hub_template_address = existing_hub_address
-                else:
-                    commission_hub_template_address = input("Enter commission hub template address: ").strip()
-            else:
-                commission_hub_template_address = input("Enter commission hub template address: ").strip()
-        
-        # Validate inputs
-        if not l2_relay_address or not commission_hub_template_address:
-            raise ValueError("Both L2 relay and commission hub template addresses are required")
-        
-        # Get optimized gas parameters
         gas_params = get_optimized_gas_params(provider)
-        
-        # Deploy OwnerRegistry contract
-        print("\nDeploying OwnerRegistry contract...")
-        deploy_kwargs = {
-            "required_confirmations": 0
-        }
+        deploy_kwargs = {"required_confirmations": 0}
         if gas_params:
             deploy_kwargs.update({
                 "max_fee": gas_params["max_fee"],
                 "max_priority_fee": gas_params["max_priority_fee"]
             })
-            
-        owner_registry = deployer.deploy(
-            project.OwnerRegistry, 
-            l2_relay_address, 
-            commission_hub_template_address,
-            **deploy_kwargs
-        )
-        
-        # Print deployment information
-        print("\nOwnerRegistry Deployment Summary:")
-        print(f"OwnerRegistry Contract: {owner_registry.address}")
-        print(f"L2 Relay: {owner_registry.l2Relay()}")
-        print(f"Commission Hub Template: {owner_registry.commissionHubTemplate()}")
-        print(f"Owner: {owner_registry.owner()}")
-        
-        # Save to config
+        owner_registry = deployer.deploy(project.OwnerRegistry, l2_relay_address, commission_hub_template_address, **deploy_kwargs)
+        print(f"OwnerRegistry deployed at: {owner_registry.address}")
         update_contract_address(network_type, "l3", owner_registry.address, "OwnerRegistry")
-        
         return owner_registry
 
 def update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry):
-    """Update L2Relay with L3 OwnerRegistry address"""
     print("\n--- Updating L2Relay with L3 OwnerRegistry Address ---")
-    
-    # Use the Arbitrum mainnet network
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
-        print(f"Connected to Arbitrum Mainnet (Chain ID: {provider.chain_id})")
-        
-        # Get optimized gas parameters
         gas_params = get_optimized_gas_params(provider)
-        
-        # Update L2Relay with L3 OwnerRegistry address
-        print(f"Setting L3 contract address to: {owner_registry.address}")
-        
         tx_kwargs = {}
         if gas_params:
             tx_kwargs.update({
                 "max_fee": gas_params["max_fee"],
                 "max_priority_fee": gas_params["max_priority_fee"]
             })
-            
         tx = l2_relay.setL3Contract(owner_registry.address, sender=deployer, **tx_kwargs)
-        
         print("L2Relay successfully updated with L3 OwnerRegistry address")
 
 def main():
-    # Choose deployment mode
+    network_type = "mainnet"  # Always use mainnet
     deploy_mode = input("Enter deployment mode (full, l2only, l3only): ").strip().lower()
     
-    # Choose network type (mainnet/testnet)
-    network_type = input("Enter network type (mainnet, testnet) [mainnet]: ").strip().lower() or "mainnet"
-    
-    # Setup deployer account
     deployer = setup_deployer()
     
+    l1_contract = None
     l2_relay = None
     owner_registry = None
     commission_hub_template = None
     
-    # Deploy based on selected mode
-    if deploy_mode in ["full", "l2only"]:
-        # Deploy L2Relay on Arbitrum mainnet
-        l2_relay = deploy_l2_relay(deployer)
-    
-    if deploy_mode in ["full", "l3only"]:
-        # Deploy CommissionHub template first
+    if deploy_mode == "full":
+        l1_contract = deploy_l1_query_owner(deployer, network_type)
+        l2_relay = deploy_l2_relay(deployer, network_type)
         commission_hub_template = deploy_commission_hub_template(deployer, network_type)
-        
-        # If we're only deploying L3 but need L2 address
-        if deploy_mode == "l3only" and not l2_relay:
-            l2_relay_address = get_contract_address(network_type, "l2")
-            if l2_relay_address:
-                print(f"Found existing L2Relay in config: {l2_relay_address}")
-                use_existing = input(f"Use existing L2Relay address? (y/n) [y]: ").strip().lower() or "y"
-                if use_existing == "y":
-                    l2_relay_address = l2_relay_address
-                else:
-                    l2_relay_address = input("Enter L2Relay address: ").strip()
-            else:
-                l2_relay_address = input("Enter existing L2Relay address: ").strip()
-        else:
-            l2_relay_address = l2_relay.address if l2_relay else None
-            
-        # Deploy OwnerRegistry with L2Relay address and CommissionHub template
-        owner_registry = deploy_owner_registry(
-            deployer, 
-            l2_relay_address,
-            commission_hub_template.address if commission_hub_template else None,
-            network_type
-        )
-    
-    # Update L2Relay with L3 OwnerRegistry address if both were deployed or provided
-    if deploy_mode == "full" and l2_relay and owner_registry:
+        owner_registry = deploy_owner_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
-    elif deploy_mode != "full" and input("Update L2Relay with L3 OwnerRegistry address? (y/n): ").strip().lower() == 'y':
-        # For non-full deployments, ask if update is needed
+        with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
+            l1_chain_id = 1  # For mainnet
+            tx = l2_relay.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id)
+            print(f"L1QueryOwner registered in L2Relay for chain ID {l1_chain_id}")
+    
+    elif deploy_mode == "l2only":
+        l2_relay = deploy_l2_relay(deployer, network_type)
+    
+    elif deploy_mode == "l3only":
+        commission_hub_template = deploy_commission_hub_template(deployer, network_type)
+        l2_address = get_contract_address(network_type, "l2")
+        if l2_address:
+            use_existing = input(f"Use existing L2Relay at {l2_address}? (y/n) [y]: ").strip().lower() or "y"
+            if use_existing != "y":
+                l2_address = input("Enter L2 relay address: ").strip()
+        else:
+            l2_address = input("Enter L2 relay address: ").strip()
+        ch_address = commission_hub_template.address if commission_hub_template else get_contract_address(network_type, "commissionHub")
+        if not ch_address:
+            ch_address = input("Enter CommissionHub template address: ").strip()
+        owner_registry = deploy_owner_registry(deployer, l2_address, ch_address, network_type)
+    
+    if deploy_mode != "full" and input("Update L2Relay with L3 OwnerRegistry address? (y/n): ").strip().lower() == 'y':
         if not l2_relay:
-            l2_relay_address = input("Enter L2Relay address: ").strip()
-            l2_relay = project.L2Relay.at(l2_relay_address)
-        
+            l2_address = input("Enter L2Relay address: ").strip()
+            l2_relay = project.L2Relay.at(l2_address)
         if not owner_registry:
             owner_registry_address = input("Enter OwnerRegistry address: ").strip()
             owner_registry = project.OwnerRegistry.at(owner_registry_address)
-        
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
     
     print("\n=== Deployment Complete ===")
