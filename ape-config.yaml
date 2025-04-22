@@ -28,16 +28,19 @@ ethereum:
     default_provider: alchemy
   sepolia:
     default_provider: alchemy
-  custom:
-    host: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
-    chain_id: 69000
-    default_provider: web3
-  
+
 node:
   ethereum:
-    custom:
-      uri: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
     goerli:
       uri: https://eth-goerli.g.alchemy.com/
     sepolia:
       uri: https://eth-sepolia.g.alchemy.com/
+    animechain:
+      uri: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
+
+networks:
+  custom:
+    - name: animechain
+      chain_id: 69000
+      ecosystem: ethereum
+      default_provider: node
