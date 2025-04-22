@@ -227,7 +227,7 @@ def deploy_owner_registry(deployer, l2_relay_address=None, commission_hub_templa
         
         return owner_registry
 
-def update_l2_relay_with_l3_contract(l2_relay, owner_registry):
+def update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry):
     """Update L2Relay with L3 OwnerRegistry address"""
     print("\n--- Updating L2Relay with L3 OwnerRegistry Address ---")
     
@@ -248,7 +248,7 @@ def update_l2_relay_with_l3_contract(l2_relay, owner_registry):
                 "max_priority_fee": gas_params["max_priority_fee"]
             })
             
-        tx = l2_relay.setL3Contract(owner_registry.address, **tx_kwargs)
+        tx = l2_relay.setL3Contract(owner_registry.address, sender=deployer, **tx_kwargs)
         
         print("L2Relay successfully updated with L3 OwnerRegistry address")
 
@@ -300,7 +300,7 @@ def main():
     
     # Update L2Relay with L3 OwnerRegistry address if both were deployed or provided
     if deploy_mode == "full" and l2_relay and owner_registry:
-        update_l2_relay_with_l3_contract(l2_relay, owner_registry)
+        update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
     elif deploy_mode != "full" and input("Update L2Relay with L3 OwnerRegistry address? (y/n): ").strip().lower() == 'y':
         # For non-full deployments, ask if update is needed
         if not l2_relay:
@@ -311,7 +311,7 @@ def main():
             owner_registry_address = input("Enter OwnerRegistry address: ").strip()
             owner_registry = project.OwnerRegistry.at(owner_registry_address)
         
-        update_l2_relay_with_l3_contract(l2_relay, owner_registry)
+        update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
     
     print("\n=== Deployment Complete ===")
     print("Contract addresses have been saved to the configuration file")
