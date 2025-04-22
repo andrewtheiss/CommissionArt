@@ -16,7 +16,11 @@ declare global {
   }
 }
 
-const L2RelayManager: React.FC = () => {
+interface L2RelayManagerProps {
+  setBridgeStatus: (status: string | ((prev: string) => string)) => void;
+}
+
+const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
   const { isConnected, walletAddress, networkType, switchNetwork, switchToLayer, connectWallet } = useBlockchain();
   const { getContract, loading: configLoading } = useContractConfig();
 
@@ -120,7 +124,8 @@ const L2RelayManager: React.FC = () => {
           return; // Wait for config to load
         }
 
-        const currentEnv = networkType === 'arbitrum_mainnet' ? 'mainnet' : 'testnet';
+        // Set environment based on network type
+        const currentEnv = networkType.includes('mainnet') ? 'mainnet' : 'testnet';
         setEnvironment(currentEnv);
         console.log(`[L2RelayManager] Environment set to: ${currentEnv}`);
 
@@ -449,11 +454,16 @@ const L2RelayManager: React.FC = () => {
   // Handle network switching
   const handleSwitchNetwork = async () => {
     try {
-      const targetLayer = 'l2';
-      await switchToLayer(targetLayer, environment);
+      if (environment === 'testnet') {
+        setBridgeStatus('Switching to Arbitrum Sepolia for L2Relay contract...');
+        await switchToLayer('l2', 'testnet');
+      } else {
+        setBridgeStatus('Switching to Arbitrum mainnet for L2Relay contract...');
+        await switchToLayer('l2', 'mainnet');
+      }
     } catch (error) {
-      console.error("Error switching network:", error);
-      toast.error(`Failed to switch network: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('[L2RelayManager] Error switching network:', error);
+      toast.error('Failed to switch network. Please try manually in MetaMask.');
     }
   };
 

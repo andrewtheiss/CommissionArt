@@ -150,8 +150,7 @@ const BridgeTestContainer: React.FC = () => {
   const { 
     loading: configLoading, 
     config: contractsConfig, 
-    getContract, 
-    reloadConfig 
+    getContract
   } = configContext;
   
   // State for network selection
@@ -965,14 +964,20 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
             
             {/* L1 Owner Request Component - Always visible */}
             <div className="component-section">
-              <h3>L1 NFT Owner Request (Sepolia)</h3>
-              <L1OwnerUpdateRequest />
+              <h3>L1 NFT Owner Request ({environment === 'testnet' ? 'Sepolia' : 'Ethereum Mainnet'})</h3>
+              <L1OwnerUpdateRequest 
+                environment={environment}
+                contractConfig={contractConfig}
+                setBridgeStatus={setBridgeStatus}
+              />
             </div>
             
             {/* L2 Relay Manager Component - Now always visible */}
             <div className="component-section">
-              <h3>L2 Relay Manager (Arbitrum Sepolia)</h3>
-              <L2RelayManager />
+              <h3>L2 Relay Manager ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'})</h3>
+              <L2RelayManager 
+                setBridgeStatus={setBridgeStatus}
+              />
             </div>
             
             {/* NFT Query Toggle */}
