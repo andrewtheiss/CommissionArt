@@ -29,6 +29,10 @@ def get_default_config():
                 "l3": {
                     "address": "",
                     "contract": "OwnerRegistry"
+                },
+                "commissionHub": {
+                    "address": "",
+                    "contract": "CommissionHub"
                 }
             },
             "mainnet": {
@@ -43,6 +47,10 @@ def get_default_config():
                 "l3": {
                     "address": "",
                     "contract": "OwnerRegistry"
+                },
+                "commissionHub": {
+                    "address": "",
+                    "contract": "CommissionHub"
                 }
             }
         },
@@ -76,7 +84,7 @@ def validate_config(config):
             print(f"Added missing network '{network}' to configuration")
         else:
             # Check for required layers in each network
-            required_layers = ["l1", "l2", "l3"]
+            required_layers = ["l1", "l2", "l3", "commissionHub"]
             for layer in required_layers:
                 if layer not in config["networks"][network]:
                     config["networks"][network][layer] = default_config["networks"][network][layer]
@@ -145,7 +153,7 @@ def update_contract_address(network, layer, address, contract_name=None):
     
     Args:
         network (str): 'testnet' or 'mainnet'
-        layer (str): 'l1', 'l2', or 'l3'
+        layer (str): 'l1', 'l2', 'l3', or 'commissionHub'
         address (str): The contract address
         contract_name (str, optional): Contract name to update
     """
@@ -179,7 +187,7 @@ def get_contract_address(network, layer):
     
     Args:
         network (str): 'testnet' or 'mainnet'
-        layer (str): 'l1', 'l2', or 'l3'
+        layer (str): 'l1', 'l2', 'l3', or 'commissionHub'
         
     Returns:
         str: The contract address or empty string if not found

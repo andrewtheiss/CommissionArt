@@ -135,24 +135,17 @@ def relayToL3(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _o
     
     # Create retryable ticket to L3
     l3_inbox: L3Inbox = L3Inbox(L3_INBOX)
-    ticket_id: Bytes[32] = raw_call(
-        L3_INBOX,
-        concat(
-            slice(keccak256("createRetryableTicket(address,uint256,uint256,address,address,uint256,uint256,uint256,bytes)"), 0, 4),
-            convert(self.l3Contract, bytes32),  # to: L3 contract address
-            convert(l2CallValue, bytes32),      # l2CallValue
-            convert(maxSubmissionCost, bytes32), # maxSubmissionCost
-            convert(msg.sender, bytes32),       # excessFeeRefundAddress
-            convert(msg.sender, bytes32),       # callValueRefundAddress
-            convert(gasLimit, bytes32),         # gasLimit
-            convert(maxFeePerGas, bytes32),     # maxFeePerGas
-            convert(0, bytes32),                # tokenTotalFeeAmount (0 for ETH)
-            convert(192, bytes32),              # data offset
-            convert(len(calldata), bytes32),    # data length
-            calldata                            # data
-        ),
-        value=msg.value,
-        max_outsize=32
+    ticket_id: uint256 = extcall l3_inbox.createRetryableTicket(
+        self.l3Contract,
+        l2CallValue,
+        maxSubmissionCost,
+        msg.sender,
+        msg.sender,
+        gasLimit,
+        maxFeePerGas,
+        0,  # totalTokenFeeAmount
+        calldata,
+        value=msg.value
     )
     
     log NFTRegistered(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)

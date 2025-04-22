@@ -12,6 +12,10 @@
       "l3": {
         "address": "0x233be9576A524299bf9E4633c845ea28FF0868a4",
         "contract": "OwnerRegistry"
+      },
+      "commissionHub": {
+        "address": "",
+        "contract": "CommissionHub"
       }
     },
     "mainnet": {
@@ -20,14 +24,18 @@
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "",
+        "address": "0x6b6E999b2797F71B5F547c0d52d3eCC57EBcF1fb",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "",
-        "contract": ""
+        "address": "0x6dE2e4B1D5bAF3A5542FA894020f5Ea6D68382ae",
+        "contract": "OwnerRegistry"
+      },
+      "commissionHub": {
+        "address": "0x097154F2d01F4a756538Ed206C10eDa14c7e9d29",
+        "contract": "CommissionHub"
       }
     }
   },
-  "lastUpdated": "2025-04-21T07:38:14.219484"
+  "lastUpdated": "2025-04-22T13:00:41.363875"
 }
