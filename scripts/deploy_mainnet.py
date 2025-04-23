@@ -73,7 +73,7 @@ def deploy_l1_query_owner(deployer, network_type="mainnet"):
     print("\n--- L1QueryOwner Setup ---")
     
     l1_network = "ethereum:mainnet:alchemy"
-    inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet Inbox
+    inbox_address = "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f"  # Mainnet Inbox
     
     existing_l1_address = get_contract_address(network_type, "l1")
     if existing_l1_address:

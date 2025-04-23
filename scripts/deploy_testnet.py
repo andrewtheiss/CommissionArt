@@ -294,7 +294,7 @@ def deploy_contracts():
                 elif network_choice == "testnet":
                     inbox_address = "0xaAe29B0366299461418F5324a79Afc425BE5ae21"  # Sepolia for retryable tickets
                 else:
-                    inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet
+                    inbox_address = "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f"  # Mainnet
                 
                 # Allow customizing the inbox address
                 inbox_input = input(f"Enter Arbitrum Inbox address (default: {inbox_address}): ").strip()

@@ -8,6 +8,9 @@ import L1OwnerUpdateRequest from './L1OwnerUpdateRequest';
 import L2RelayManager from './L2RelayManager';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
+import { NodeInterface__factory } from '@arbitrum/sdk/dist/lib/abi/factories/NodeInterface__factory';
+import { NODE_INTERFACE_ADDRESS } from '@arbitrum/sdk/dist/lib/dataEntities/constants';
+
 import { parseEther, toBigInt } from "ethers";
 
 // Interface for contract addresses
