@@ -3,8 +3,11 @@ import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import './BridgeTest.css';
 import l1QueryOwnerABI from '../../assets/abis/L1QueryOwner.json';
+import { NodeInterface__factory } from '@arbitrum/sdk/dist/lib/abi/factories/NodeInterface__factory';
+import { NODE_INTERFACE_ADDRESS } from '@arbitrum/sdk/dist/lib/dataEntities/constants';
 import useContractConfig from '../../utils/useContractConfig';
 import abiLoader from '../../utils/abiLoader';
+import { estimateL1ToL2Gas } from '../../utils/gasEstimator';
 
 // Using the ethers LogDescription type
 type ParsedLog = ethers.LogDescription;
@@ -71,6 +74,12 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [events, setEvents] = useState<Array<ethers.LogDescription | ethers.Log>>([]);
   const [isListening, setIsListening] = useState<boolean>(false);
+  const [isEstimatingGas, setIsEstimatingGas] = useState<boolean>(false);
+  const [gasEstimates, setGasEstimates] = useState<{
+    maxSubmissionCost: string;
+    gasLimit: string;
+    maxFeePerGas: string;
+  } | null>(null);
   
   // Refs for input elements
   const nftContractRef = useRef<HTMLInputElement>(null);
@@ -220,6 +229,143 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
       setBridgeStatus(`Error initializing contract: ${error.message}`);
       console.error('Contract initialization error:', error);
       return null;
+    }
+  };
+
+  // Function to estimate gas parameters
+  const estimateGasParameters = async () => {
+    try {
+      if (!isConnected) {
+        setBridgeStatus('Please connect your wallet to estimate gas');
+        return;
+      }
+
+      // Check network based on environment
+      const targetNetwork = environment === 'testnet' ? 'dev' : 'prod';
+      if (networkType !== targetNetwork) {
+        setBridgeStatus(`Please switch to ${environment === 'testnet' ? 'Sepolia' : 'Ethereum Mainnet'} network`);
+        return;
+      }
+
+      setIsEstimatingGas(true);
+      setBridgeStatus('Estimating gas parameters...');
+
+      // Get input values from refs
+      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const tokenId = tokenIdRef.current?.value || '0';
+      const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment];
+      
+      // Use the window.ethereum directly to get a provider
+      if (!window.ethereum) {
+        setBridgeStatus('MetaMask or another web3 wallet is required');
+        return;
+      }
+      
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const currentContractAddress = contractAddressRef.current?.value || contractAddress;
+
+      // Call the gas estimator
+      const estimates = await estimateL1ToL2Gas(
+        provider,
+        currentContractAddress,
+        nftContract,
+        tokenId,
+        l2Receiver
+      );
+
+      // Update state with string versions of the bigint values
+      setGasEstimates({
+        maxSubmissionCost: estimates.maxSubmissionCost.toString(),
+        gasLimit: estimates.gasLimit.toString(),
+        maxFeePerGas: estimates.maxFeePerGas.toString()
+      });
+
+      setBridgeStatus('Gas estimation completed successfully');
+    } catch (error: any) {
+      setBridgeStatus(`Gas estimation error: ${error.message}`);
+      console.error('Gas estimation error:', error);
+    } finally {
+      setIsEstimatingGas(false);
+    }
+  };
+
+  // Use estimated gas values if available
+  const callQueryNFTAndSendBackWithEstimatedGas = async () => {
+    try {
+      setBridgeStatus('Checking network...');
+      
+      const contract = await initializeContract();
+      if (!contract) return;
+
+      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const tokenId = tokenIdRef.current?.value || '0';
+      const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment];
+      const ethValue = ethValueRef.current?.value || '0.001';
+      const ethValueWei = ethers.parseEther(ethValue);
+
+      if (!l2Receiver || !ethers.isAddress(l2Receiver)) {
+        setBridgeStatus('Invalid or missing L2 receiver address from config');
+        return;
+      }
+
+      // Use estimated gas values if available, otherwise use defaults
+      const maxSubmissionCost = gasEstimates 
+        ? BigInt(gasEstimates.maxSubmissionCost)
+        : BigInt('4500000000000');
+      
+      const gasLimit = gasEstimates
+        ? BigInt(gasEstimates.gasLimit)
+        : BigInt('1000000');
+      
+      const maxFeePerGas = gasEstimates
+        ? BigInt(gasEstimates.maxFeePerGas)
+        : BigInt('100000000');
+
+      setBridgeStatus('Sending transaction with estimated gas values...');
+      setIsSubmitting(true);
+
+      const tx = await contract.queryNFTAndSendBack(
+        nftContract,
+        BigInt(tokenId),
+        l2Receiver,
+        maxSubmissionCost,
+        gasLimit,
+        maxFeePerGas,
+        { value: ethValueWei }
+      );
+
+      setBridgeStatus('Transaction sent, awaiting confirmation...');
+      const receipt = await tx.wait();
+
+      // Parse logs for OwnerQueried event
+      const ownerQueriedEvents: ParsedLog[] = [];
+      if (receipt?.logs) {
+        for (const log of receipt.logs) {
+          try {
+            if (log.topics && log.data) {
+               const parsedLog = contract.interface.parseLog(log as any);
+               if (parsedLog && parsedLog.name === 'OwnerQueried') {
+                  ownerQueriedEvents.push(parsedLog);
+               }
+            }
+          } catch (error) {
+            console.warn('Could not parse log:', log, error);
+          }
+        }
+      }
+
+      if (ownerQueriedEvents.length > 0) {
+        const event = ownerQueriedEvents[0];
+        const ticketId = event.args[3];
+        setBridgeStatus(`Transaction confirmed! Ticket ID: ${ticketId?.toString()}`);
+      } else {
+        setBridgeStatus('Transaction confirmed, but no OwnerQueried event found.');
+      }
+    } catch (error: any) {
+      setBridgeStatus(`Error: ${error.message}`);
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -603,14 +749,52 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
                   <small>Covers Arbitrum retryable ticket fees.</small>
                 </div>
                 
+                {gasEstimates && (
+                  <div className="gas-estimates-container">
+                    <h4>Estimated Gas Parameters</h4>
+                    <div className="info-section small-text">
+                      <div className="info-item">
+                        <span className="info-label">Max Submission Cost:</span>
+                        <span className="info-value">{gasEstimates.maxSubmissionCost}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Gas Limit:</span>
+                        <span className="info-value">{gasEstimates.gasLimit}</span>
+                      </div>
+                      <div className="info-item">
+                        <span className="info-label">Max Fee Per Gas:</span>
+                        <span className="info-value">{gasEstimates.maxFeePerGas}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="button-group">
-                  <button onClick={callQueryNFTAndSendBack} className="primary-button" disabled={isSubmitting}>
+                  <button 
+                    onClick={estimateGasParameters} 
+                    className="secondary-button" 
+                    disabled={isEstimatingGas || isSubmitting}
+                  >
+                    {isEstimatingGas ? 'Estimating...' : 'Estimate Gas'}
+                  </button>
+                  
+                  <button 
+                    onClick={callQueryNFTAndSendBackWithEstimatedGas} 
+                    className="primary-button" 
+                    disabled={isSubmitting || isEstimatingGas}
+                  >
+                    {isSubmitting ? 'Sending...' : 'Send with Estimated Gas'}
+                  </button>
+                  
+                  <button onClick={callQueryNFTAndSendBack} className="secondary-button" disabled={isSubmitting || isEstimatingGas}>
                     {isSubmitting ? 'Sending...' : 'Send Request (Safe Gas)'}
                   </button>
-                  <button onClick={callQueryNFTAndSendBackOptimized} className="secondary-button" disabled={isSubmitting}>
+                  
+                  <button onClick={callQueryNFTAndSendBackOptimized} className="secondary-button" disabled={isSubmitting || isEstimatingGas}>
                     {isSubmitting ? 'Sending...' : 'Send Request (Optimized Gas)'}
                   </button>
-                  <button onClick={callQueryNFTWithRetry} className="secondary-button" disabled={isSubmitting}>
+                  
+                  <button onClick={callQueryNFTWithRetry} className="secondary-button" disabled={isSubmitting || isEstimatingGas}>
                     {isSubmitting ? 'Sending...' : 'Send with Retry (10x Gas)'}
                   </button>
                 </div>

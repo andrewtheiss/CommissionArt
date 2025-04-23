@@ -226,6 +226,7 @@ def main():
     print("\n=== Deployment Complete ===")
     print("Contract addresses have been saved to the configuration file")
     print("Make sure to save these addresses for your application")
+    print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
 if __name__ == "__main__":
     main()

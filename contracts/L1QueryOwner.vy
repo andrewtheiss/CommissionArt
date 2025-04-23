@@ -80,6 +80,69 @@ def queryNFTAndSendBack(_nft_contract: address, _token_id: uint256, _l2_receiver
     # Log the event
     log OwnerQueried(chain_id=1, nft_contract=_nft_contract, token_id=_token_id, owner=owner, ticket_id=ticket_id)
 
+@external
+@view
+def getInboxAddress() -> address:
+    return INBOX
+
+@internal
+def _get_nft_contract_owner(nft_contract: address, token_id: uint256) -> address:
+    return staticcall IERC721(nft_contract).ownerOf(token_id)
+
+@external
+@view
+def getNftContractOwner(nft_contract: address, token_id: uint256) -> address:
+    return self._get_nft_contract_owner(nft_contract, token_id)
+
+
+@external
+@payable
+def queryNFTAndSendBackAutoGas(_nft_contract: address, _token_id: uint256, _l2_receiver: address):
+    """
+    @notice Queries the NFT owner and sends the result to L2 via Inbox
+    @param _nft_contract The ERC721 NFT contract address on L1
+    @param _token_id The token ID to query
+    @param _l2_receiver The L2 contract address to receive the result
+    @param _max_submission_cost The maximum cost of submitting the retryable ticket (in wei)
+    @param _gas_limit The gas limit for executing the message on L2
+    @param _max_fee_per_gas The maximum fee per gas for L2 execution (in wei)
+    """
+    owner: address = staticcall IERC721(_nft_contract).ownerOf(_token_id)
+    
+    func_selector: Bytes[4] = slice(keccak256("receiveNFTOwnerFromCrossChainMessage(uint256,address,uint256,address)"), 0, 4)
+    
+    # Construct data with chain_id=1 (Ethereum), _nft_contract, _token_id, and owner as parameters
+    data: Bytes[140] = concat(
+        func_selector,
+        convert(1, bytes32),  # Default to Ethereum mainnet (chain ID 1)
+        convert(_nft_contract, bytes32),
+        convert(_token_id, bytes32),
+        convert(owner, bytes32)
+    )
+
+    # Calculate minimum required ETH
+    min_required_eth: uint256 = _max_submission_cost + (_gas_limit * _max_fee_per_gas)
+    
+    # Ensure enough ETH is provided
+    assert msg.value >= min_required_eth, "Insufficient ETH for gas costs"
+    
+    # Create the retryable ticket
+    ticket_id: uint256 = extcall IERC20Inbox(INBOX).createRetryableTicket(
+        _l2_receiver,
+        0,
+        _max_submission_cost,
+        msg.sender,
+        msg.sender,
+        _gas_limit,
+        _max_fee_per_gas,
+        data,
+        value=msg.value
+    )
+    
+    # Log the event
+    log OwnerQueried(chain_id=1, nft_contract=_nft_contract, token_id=_token_id, owner=owner, ticket_id=ticket_id)
+
+
 event OwnerQueried:
     chain_id: uint256
     nft_contract: indexed(address)
