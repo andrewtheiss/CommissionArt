@@ -16,6 +16,10 @@
       "commissionHub": {
         "address": "",
         "contract": "CommissionHub"
+      },
+      "artPiece": {
+        "address": "",
+        "contract": "ArtPiece"
       }
     },
     "mainnet": {
@@ -28,14 +32,18 @@
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0x3C48D34CC40a03f89dD610d712EC01cb623F8FD7",
+        "address": "0x18420aEEE09A7D802cbBc7C003fffCAf13b112dB",
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "0xb1538c93dd9f7979F672E6e5844503D1ab682fB1",
+        "address": "0x90e942261b5C6850a932f818750356fe16e28320",
         "contract": "CommissionHub"
+      },
+      "artPiece": {
+        "address": "0x53Bb8F3F7aDD3c48F6abA824e29DBB8D4C5C751D",
+        "contract": "ArtPiece"
       }
     }
   },
-  "lastUpdated": "2025-04-23T10:23:08.980566"
+  "lastUpdated": "2025-04-24T14:47:22.848805"
 }
