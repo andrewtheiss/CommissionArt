@@ -543,7 +543,7 @@ const BridgeTestContainer: React.FC = () => {
       const l2ReceiverElement = document.getElementById('l2Receiver') as HTMLInputElement;
 
       // Use the form values or fallback to defaults
-      const nftContract = nftContractElement?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractElement?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdElement?.value || '0';
       const l2Receiver = l2ReceiverElement?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
       
@@ -684,7 +684,7 @@ const BridgeTestContainer: React.FC = () => {
       const ethValueElement = document.getElementById('ethValue') as HTMLInputElement;
 
       // Use the form values or fallback to defaults
-      const nftContract = nftContractElement?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractElement?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdElement?.value || '0';
       const l2Receiver = l2ReceiverElement?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
       const ethValue = ethValueElement?.value || '0.001';
@@ -807,7 +807,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
       const ethValueElement = document.getElementById('ethValue') as HTMLInputElement;
 
       // Use the form values or fallback to defaults
-      const nftContract = nftContractElement?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractElement?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdElement?.value || '0';
       const l2Receiver = l2ReceiverElement?.value || '0xef02F150156e45806aaF17A60B5541D079FE13e6';
       const ethValue = ethValueElement?.value || '0.001';

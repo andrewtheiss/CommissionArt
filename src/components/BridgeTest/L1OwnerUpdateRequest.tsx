@@ -251,7 +251,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
       setBridgeStatus('Estimating gas parameters...');
 
       // Get input values from refs
-      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractRef.current?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdRef.current?.value || '0';
       const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment];
       
@@ -297,7 +297,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
       const contract = await initializeContract();
       if (!contract) return;
 
-      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractRef.current?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdRef.current?.value || '0';
       const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment];
       const ethValue = ethValueRef.current?.value || '0.001';
@@ -379,7 +379,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
       if (!contract) return; // initializeContract handles error messages
 
       // Get input values from refs
-      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractRef.current?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdRef.current?.value || '0';
       const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment]; // Use correct env
       const ethValue = ethValueRef.current?.value || '0.001';
@@ -471,7 +471,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
       const contract = await initializeContract();
       if (!contract) return;
 
-      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractRef.current?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdRef.current?.value || '0';
       const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment];
       const ethValue = ethValueRef.current?.value || '0.001';
@@ -512,7 +512,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
       const contract = await initializeContract();
       if (!contract) return;
       
-      const nftContract = nftContractRef.current?.value || '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06';
+      const nftContract = nftContractRef.current?.value || '0xED5AF388653567Af2F388E6224dC7C4b3241C544';
       const tokenId = tokenIdRef.current?.value || '0';
       const l2Receiver = l2ReceiverRef.current?.value || contractConfig.addresses.l2[environment];
       const ethValue = ethValueRef.current?.value || '0.001';
@@ -705,7 +705,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
                     type="text"
                     id="nftContract"
                     ref={nftContractRef}
-                    defaultValue="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06" // Example Address
+                    defaultValue="0xED5AF388653567Af2F388E6224dC7C4b3241C544" // Example Address
                     placeholder="0x..."
                     disabled={isSubmitting}
                   />

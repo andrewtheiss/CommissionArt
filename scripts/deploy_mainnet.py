@@ -11,6 +11,9 @@ from decimal import Decimal
 sys.path.append(str(Path(__file__).parent))
 from contract_config_writer import get_contract_address, update_contract_address
 
+# Alias addition constant
+ALIAS_ADDITION = "0x1111000000000000000000000000000000001111"
+
 ANIMECHAIN_CONFIG = {
     "name": "animechain",
     "chain_id": 69000,
@@ -194,8 +197,12 @@ def main():
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
             l1_chain_id = 1  # For mainnet
-            tx = l2_relay.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id, sender=deployer)
-            print(f"L1QueryOwner registered in L2Relay for chain ID {l1_chain_id}")
+            # Create aliased L1 address
+            l1_address_int = int(l1_contract.address, 16)
+            alias_addition_int = int(ALIAS_ADDITION, 16)
+            aliased_l1_address = "0x" + hex(l1_address_int + alias_addition_int)[2:].zfill(40)
+            tx = l2_relay.updateCrossChainQueryOwnerContract(aliased_l1_address, l1_chain_id, sender=deployer)
+            print(f"Aliased L1QueryOwner ({aliased_l1_address}) registered in L2Relay for chain ID {l1_chain_id}")
     
     elif deploy_mode == "l2only":
         l2_relay = deploy_l2_relay(deployer, network_type)

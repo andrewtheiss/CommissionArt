@@ -20,22 +20,22 @@
     },
     "mainnet": {
       "l1": {
-        "address": "0x6E28577074170227E7D3C646D840514e9BE0333C",
+        "address": "0x3eC1990b0bA44fA97FE0f851569E08af5fCD0B34",
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "0x079DD95beb22B7e2e76Af1d563774F0f4deAebe2",
+        "address": "0x5174f3e6F83CF2283b7677829356C8Bc6fCe578f",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0x23857d41Bf378E769272597f6ED5c19aD619317D",
+        "address": "0x3C48D34CC40a03f89dD610d712EC01cb623F8FD7",
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "0x6d800746369709D4Ce0fe9F34799e9973cfdA1A7",
+        "address": "0xb1538c93dd9f7979F672E6e5844503D1ab682fB1",
         "contract": "CommissionHub"
       }
     }
   },
-  "lastUpdated": "2025-04-22T13:53:39.985683"
+  "lastUpdated": "2025-04-23T10:23:08.980566"
 }

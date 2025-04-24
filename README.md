@@ -165,7 +165,7 @@ As of commit e84f4ff you can compile the contract code and get the back end link
    - The L2 Links to L1 and the L3
 - Please register the L1QueryOwner ALIASED address to whitelist its abiliaty to update NFT contract owners
     on the L1.  The aliased address for the above example is:
-     0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06 and chain ID 1 (to be testnet)
+     0xED5AF388653567Af2F388E6224dC7C4b3241C544 and chain ID 1 (to be testnet)
 - Please register the L3 contract address so that the L2 knows how to Relay the owners to the L3
        
 - Now that everything is linked, lookup the owners of a few NFTs on the L1 via the button:

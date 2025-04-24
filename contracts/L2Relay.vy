@@ -70,7 +70,12 @@ def setL3Contract(_new_l3_contract: address):
     self.l3Contract = _new_l3_contract
 
 @external
-def receiveNFTOwnerFromCrossChainMessage(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
+@payable
+def receiveNFTOwnerFromCrossChainMessage(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address,
+
+    _max_submission_cost: uint256, # default = 4500000000000,
+    _gas_limit: uint256, # default = 1000000,
+    _max_fee_per_gas: uint256 # = 100000000):
     assert self.crossChainRegistryAddressByChainId[_chain_id] == msg.sender, "Sender not whitelisted for this chain"
   
     # Compute the correct selector
@@ -149,4 +154,3 @@ def relayToL3(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _o
     )
     
     log NFTRegistered(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
-
