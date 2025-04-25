@@ -236,6 +236,54 @@ def update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry):
         tx = l2_relay.setL3Contract(owner_registry.address, sender=deployer, **tx_kwargs)
         print("L2Relay successfully updated with L3 OwnerRegistry address")
 
+def deploy_profile_template(deployer, network_type="mainnet"):
+    print("\n--- Profile Template Setup ---")
+    
+    existing_profile_template_address = get_contract_address(network_type, "profileTemplate")
+    if existing_profile_template_address:
+        print(f"Found existing Profile template in config: {existing_profile_template_address}")
+        use_existing = input("Use existing Profile template? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.Profile.at(existing_profile_template_address)
+    
+    print("Deploying new Profile template on Animechain L3...")
+    with networks.parse_network_choice("ethereum:animechain") as provider:
+        gas_params = get_optimized_gas_params(provider)
+        deploy_kwargs = {"required_confirmations": 0}
+        if gas_params:
+            deploy_kwargs.update({
+                "max_fee": gas_params["max_fee"],
+                "max_priority_fee": gas_params["max_priority_fee"]
+            })
+        profile_template = deployer.deploy(project.Profile, **deploy_kwargs)
+        print(f"Profile template deployed at: {profile_template.address}")
+        update_contract_address(network_type, "profileTemplate", profile_template.address, "Profile")
+        return profile_template
+
+def deploy_profile_hub(deployer, profile_template_address, network_type="mainnet"):
+    print("\n--- ProfileHub Setup ---")
+    
+    existing_profile_hub_address = get_contract_address(network_type, "profileHub")
+    if existing_profile_hub_address:
+        print(f"Found existing ProfileHub in config: {existing_profile_hub_address}")
+        use_existing = input("Use existing ProfileHub? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.ProfileHub.at(existing_profile_hub_address)
+    
+    print("Deploying new ProfileHub on Animechain L3...")
+    with networks.parse_network_choice("ethereum:animechain") as provider:
+        gas_params = get_optimized_gas_params(provider)
+        deploy_kwargs = {"required_confirmations": 0}
+        if gas_params:
+            deploy_kwargs.update({
+                "max_fee": gas_params["max_fee"],
+                "max_priority_fee": gas_params["max_priority_fee"]
+            })
+        profile_hub = deployer.deploy(project.ProfileHub, profile_template_address, **deploy_kwargs)
+        print(f"ProfileHub deployed at: {profile_hub.address}")
+        update_contract_address(network_type, "profileHub", profile_hub.address, "ProfileHub")
+        return profile_hub
+
 def main():
     network_type = "mainnet"  # Always use mainnet
     deploy_mode = input("Enter deployment mode (full, l2only, l3only): ").strip().lower()
@@ -247,10 +295,16 @@ def main():
     owner_registry = None
     commission_hub_template = None
     art_piece_stencil = None
+    profile_template = None
+    profile_hub = None
     
     if deploy_mode == "full":
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
+        
+        # Deploy Profile template and ProfileHub
+        profile_template = deploy_profile_template(deployer, network_type)
+        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
         
         l1_contract = deploy_l1_query_owner(deployer, network_type)
         l2_relay = deploy_l2_relay(deployer, network_type)
@@ -275,6 +329,10 @@ def main():
     elif deploy_mode == "l3only":
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
+        
+        # Deploy Profile template and ProfileHub
+        profile_template = deploy_profile_template(deployer, network_type)
+        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
         
         # Deploy CommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)

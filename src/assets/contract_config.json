@@ -20,6 +20,14 @@
       "artPiece": {
         "address": "",
         "contract": "ArtPiece"
+      },
+      "profileTemplate": {
+        "address": "",
+        "contract": "Profile"
+      },
+      "profileHub": {
+        "address": "",
+        "contract": "ProfileHub"
       }
     },
     "mainnet": {
@@ -42,8 +50,16 @@
       "artPiece": {
         "address": "0x53Bb8F3F7aDD3c48F6abA824e29DBB8D4C5C751D",
         "contract": "ArtPiece"
+      },
+      "profileTemplate": {
+        "address": "0xf7c109c53Cd01e876c090f6E9D2E4C0ADf812F18",
+        "contract": "Profile"
+      },
+      "profileHub": {
+        "address": "0x7B3F3B5627996B5Fa96C7EbD81E01a3d196Ca582",
+        "contract": "ProfileHub"
       }
     }
   },
-  "lastUpdated": "2025-04-24T14:47:22.848805"
+  "lastUpdated": "2025-04-24T18:02:13.342105"
 }
