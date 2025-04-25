@@ -6,6 +6,7 @@ import CommissionedArtABI from '../assets/abis/CommissionedArt.json';
 import RegistryABI from '../assets/abis/Registry.json';
 import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 import OwnerRegistryABI from '../assets/abis/OwnerRegistry.json';
+import ArtPieceABI from '../assets/abis/ArtPiece.json';
 
 // Map of ABI names to their actual content
 const abiMap: { [key: string]: any } = {
@@ -15,7 +16,8 @@ const abiMap: { [key: string]: any } = {
   'CommissionedArt': CommissionedArtABI,
   'Registry': RegistryABI,
   'SimpleERC721': SimpleERC721ABI,
-  'OwnerRegistry': OwnerRegistryABI
+  'OwnerRegistry': OwnerRegistryABI,
+  'ArtPiece': ArtPieceABI
 };
 
 /**

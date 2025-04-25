@@ -1,0 +1,281 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "from_owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "to_owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "tagger",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "tagged_person",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "is_artist",
+        "type": "bool"
+      }
+    ],
+    "name": "PersonTagged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "person",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "status",
+        "type": "bool"
+      }
+    ],
+    "name": "TagValidated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_image_data_input",
+        "type": "bytes"
+      },
+      {
+        "name": "_title_input",
+        "type": "string"
+      },
+      {
+        "name": "_description_input",
+        "type": "bytes"
+      },
+      {
+        "name": "_owner_input",
+        "type": "address"
+      },
+      {
+        "name": "_artist_input",
+        "type": "address"
+      },
+      {
+        "name": "_commission_hub",
+        "type": "address"
+      },
+      {
+        "name": "_ai_generated",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "getImageData",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTitle",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getDescription",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getArtist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_new_owner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_person",
+        "type": "address"
+      }
+    ],
+    "name": "isTaggedValidated",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllTaggedAddresses",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_person",
+        "type": "address"
+      }
+    ],
+    "name": "tagPerson",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "validateTag",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "invalidateTag",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_person",
+        "type": "address"
+      }
+    ],
+    "name": "isPersonTagged",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_commissioner",
+        "type": "address"
+      },
+      {
+        "name": "_status",
+        "type": "bool"
+      }
+    ],
+    "name": "setCommissionWhitelist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_commissioner",
+        "type": "address"
+      }
+    ],
+    "name": "isOnCommissionWhitelist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "aiGenerated",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] 

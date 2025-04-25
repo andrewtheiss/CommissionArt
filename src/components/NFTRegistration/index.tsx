@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { compressImage, getImageOrientation, revokePreviewUrl, CompressionResult, FormatType } from '../../utils/ImageCompressorUtil';
 import './NFTRegistration.css';
+import { ethers } from 'ethers';
+import contractConfig from '../../assets/contract_config.json';
+import abiLoader from '../../utils/abiLoader';
+import ethersService from '../../utils/ethers-service';
 
 // Define ArtistForm as a separate component with onBack prop
 const ArtistForm: React.FC<{
@@ -24,6 +28,8 @@ const ArtistForm: React.FC<{
   isTrulyConnected: boolean;
   connectWallet: () => void;
   walletAddress: string | null;
+  networkType: string;
+  switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => void;
   onBack: () => void; // Added onBack prop
 }> = ({
   artworkTitle,
@@ -45,6 +51,8 @@ const ArtistForm: React.FC<{
   isTrulyConnected,
   connectWallet,
   walletAddress,
+  networkType,
+  switchToLayer,
   onBack, // Destructure onBack
 }) => {
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,16 +117,84 @@ const ArtistForm: React.FC<{
       alert("Please enter a title for your artwork");
       return;
     }
-    console.log("Registering artwork:", {
-      artist: walletAddress,
-      artworkTitle,
-      artworkDescription,
-      descriptionBytes,
-      imageSize: compressedResult.compressedSize,
-      imageFormat: compressedResult.format,
-      dimensions: compressedResult.dimensions,
-    });
-    alert("Artwork registration initiated!");
+
+    try {
+      // Show loading state first
+      setIsCompressing(true); // Reuse the compressing state to show loading
+
+      // First, make sure we're on the AnimeChain L3 network
+      if (networkType !== 'animechain') {
+        await switchToLayer('l3', 'mainnet');
+      }
+
+      // Get the signer for transaction
+      const signer = await ethersService.getSigner();
+      if (!signer) {
+        throw new Error("Failed to get signer");
+      }
+
+      // Get the ArtPiece contract factory from the ABI
+      const artPieceAbi = abiLoader.loadABI('ArtPiece');
+      if (!artPieceAbi) {
+        throw new Error("Failed to load ArtPiece ABI");
+      }
+      
+      // Get the bytes representation of the image and description
+      if (!compressedResult.blob) {
+        throw new Error("Compressed image blob is not available");
+      }
+      
+      // Convert the image to bytes
+      const imageData = new Uint8Array(await compressedResult.blob.arrayBuffer());
+      const titleStr = artworkTitle.trim();
+      const descriptionBytes = new TextEncoder().encode(artworkDescription);
+
+      // Get the commissionHub address from the config
+      const commissionHubAddress = contractConfig.networks.mainnet.commissionHub.address;
+      
+      console.log("Deploying contract with:", {
+        imageDataSize: imageData.length,
+        title: titleStr,
+        description: artworkDescription,
+        owner: walletAddress,
+        artist: walletAddress,
+        commissionHub: commissionHubAddress,
+      });
+
+      // Create the factory for deploying the contract
+      const factory = new ethers.ContractFactory(artPieceAbi, '', signer);
+      
+      // Deploy the contract with the artwork data
+      const contract = await factory.deploy(
+        imageData,
+        titleStr,
+        descriptionBytes,
+        walletAddress,  // owner
+        walletAddress,  // artist (same as owner for now)
+        commissionHubAddress || ethers.ZeroAddress,
+        false  // not AI generated
+      );
+
+      // Wait for the deployment transaction to be mined
+      const receipt = await contract.waitForDeployment();
+      const contractAddress = await contract.getAddress();
+      
+      setIsCompressing(false);
+      alert(`Artwork registered successfully! Contract address: ${contractAddress}`);
+      console.log("Artwork registered successfully:", {
+        artist: walletAddress,
+        owner: walletAddress,
+        artworkTitle: titleStr,
+        contractAddress: contractAddress,
+        imageSize: compressedResult.compressedSize,
+        imageFormat: compressedResult.format,
+        dimensions: compressedResult.dimensions,
+      });
+    } catch (error) {
+      setIsCompressing(false);
+      console.error("Error registering artwork:", error);
+      alert(`Error registering artwork: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
 
   return (
@@ -257,7 +333,7 @@ const ArtistForm: React.FC<{
 
 const NFTRegistration: React.FC = () => {
   const [userType, setUserType] = useState<'none' | 'artist' | 'commissioner'>('none');
-  const { isConnected, connectWallet, walletAddress, networkType } = useBlockchain();
+  const { isConnected, connectWallet, walletAddress, networkType, switchToLayer } = useBlockchain();
 
   const [artworkTitle, setArtworkTitle] = useState<string>('');
   const [artworkDescription, setArtworkDescription] = useState<string>('');
@@ -434,6 +510,8 @@ const NFTRegistration: React.FC = () => {
           isTrulyConnected={isTrulyConnected}
           connectWallet={connectWallet}
           walletAddress={walletAddress}
+          networkType={networkType}
+          switchToLayer={switchToLayer}
           onBack={() => setUserType('none')} // Pass onBack prop
         />
       ) : (

@@ -566,3 +566,40 @@ form {
     width: 100%;
   }
 } 
+
+.art-registration-section {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.art-register-form .input-group {
+  margin-bottom: 15px;
+}
+
+.art-register-form label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.art-register-form input,
+.art-register-form textarea {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.register-art-button {
+  background-color: #28a745;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.register-art-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
