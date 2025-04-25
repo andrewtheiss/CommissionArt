@@ -57,7 +57,7 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
   
   // State for NFT query
   const [nftQuery, setNftQuery] = useState<NFTQuery>({
-    contractAddress: environment === 'testnet' ? '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06' : '',
+    contractAddress: environment === 'testnet' ? '0xED5AF388653567Af2F388E6224dC7C4b3241C544' : '',
     tokenId: environment === 'testnet' ? '1' : '',
     ethValue: '0.001', // Default ETH value for cross-chain messaging
     isSubmitting: false,
@@ -70,7 +70,7 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
     if (environment === 'testnet') {
       setNftQuery(prev => ({
         ...prev,
-        contractAddress: '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06',
+        contractAddress: '0xED5AF388653567Af2F388E6224dC7C4b3241C544',
         tokenId: prev.tokenId || '1'
       }));
     }
@@ -346,7 +346,7 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
       <h3>Query NFT Ownership from L2 (Arbitrum)</h3>
       {environment === 'testnet' && (
         <div className="info-message">
-          Using default Sepolia NFT contract: <code>0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06</code>
+          Using default Sepolia NFT contract: <code>0xED5AF388653567Af2F388E6224dC7C4b3241C544</code>
         </div>
       )}
       

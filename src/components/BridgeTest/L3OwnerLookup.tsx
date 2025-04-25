@@ -55,7 +55,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   
   // State for L3 lookup query
   const [l3LookupQuery, setL3LookupQuery] = useState<L3LookupQuery>({
-    contractAddress: environment === 'testnet' ? '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06' : '', // Default NFT contract address
+    contractAddress: environment === 'testnet' ? '0xED5AF388653567Af2F388E6224dC7C4b3241C544' : '', // Default NFT contract address
     tokenId: environment === 'testnet' ? '1' : '',
     isSubmitting: false,
     result: '',
@@ -83,7 +83,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   // Add state for direct registration form
   const [directRegisterParams, setDirectRegisterParams] = useState({
     chainId: '1',
-    nftContract: environment === 'testnet' ? '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06' : '',
+    nftContract: environment === 'testnet' ? '0xED5AF388653567Af2F388E6224dC7C4b3241C544' : '',
     tokenId: '0',
     ownerAddress: '0x3afb0b4ca9ab60165e207cb14067b07a04114413',
     isSubmitting: false
@@ -94,7 +94,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     if (environment === 'testnet') {
       setL3LookupQuery(prev => ({
         ...prev,
-        contractAddress: '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06',
+        contractAddress: '0xED5AF388653567Af2F388E6224dC7C4b3241C544',
         tokenId: prev.tokenId || '1'
       }));
       
@@ -130,7 +130,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     if (environment === 'testnet') {
       setDirectRegisterParams(prev => ({
         ...prev,
-        nftContract: '0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06'
+        nftContract: '0xED5AF388653567Af2F388E6224dC7C4b3241C544'
       }));
     }
   }, [environment]);
@@ -874,7 +874,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
                   id="nft-contract-direct"
                   value={directRegisterParams.nftContract}
                   onChange={(e) => handleDirectRegisterChange('nftContract', e.target.value)}
-                  placeholder="0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06"
+                  placeholder="0xED5AF388653567Af2F388E6224dC7C4b3241C544"
                 />
               </div>
               

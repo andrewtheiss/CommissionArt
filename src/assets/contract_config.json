@@ -16,26 +16,34 @@
       "commissionHub": {
         "address": "",
         "contract": "CommissionHub"
+      },
+      "artPiece": {
+        "address": "",
+        "contract": "ArtPiece"
       }
     },
     "mainnet": {
       "l1": {
-        "address": "0x6E28577074170227E7D3C646D840514e9BE0333C",
+        "address": "0x3eC1990b0bA44fA97FE0f851569E08af5fCD0B34",
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "0x079DD95beb22B7e2e76Af1d563774F0f4deAebe2",
+        "address": "0x5174f3e6F83CF2283b7677829356C8Bc6fCe578f",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0x23857d41Bf378E769272597f6ED5c19aD619317D",
+        "address": "0x18420aEEE09A7D802cbBc7C003fffCAf13b112dB",
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "0x6d800746369709D4Ce0fe9F34799e9973cfdA1A7",
+        "address": "0x90e942261b5C6850a932f818750356fe16e28320",
         "contract": "CommissionHub"
+      },
+      "artPiece": {
+        "address": "0x53Bb8F3F7aDD3c48F6abA824e29DBB8D4C5C751D",
+        "contract": "ArtPiece"
       }
     }
   },
-  "lastUpdated": "2025-04-22T13:53:39.985683"
+  "lastUpdated": "2025-04-24T14:47:22.848805"
 }

@@ -149,4 +149,3 @@ def relayToL3(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _o
     )
     
     log NFTRegistered(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
-

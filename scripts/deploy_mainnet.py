@@ -11,6 +11,9 @@ from decimal import Decimal
 sys.path.append(str(Path(__file__).parent))
 from contract_config_writer import get_contract_address, update_contract_address
 
+# Alias addition constant
+ALIAS_ADDITION = "0x1111000000000000000000000000000000001111"
+
 ANIMECHAIN_CONFIG = {
     "name": "animechain",
     "chain_id": 69000,
@@ -73,7 +76,7 @@ def deploy_l1_query_owner(deployer, network_type="mainnet"):
     print("\n--- L1QueryOwner Setup ---")
     
     l1_network = "ethereum:mainnet:alchemy"
-    inbox_address = "0x1c479675ad559DC151F6Ec7ed3FbF8ceE79582B6"  # Mainnet Inbox
+    inbox_address = "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f"  # Mainnet Inbox
     
     existing_l1_address = get_contract_address(network_type, "l1")
     if existing_l1_address:
@@ -114,7 +117,46 @@ def deploy_l2_relay(deployer, network_type="mainnet"):
         update_contract_address(network_type, "l2", l2_relay.address, "L2Relay")
         return l2_relay
 
-def deploy_commission_hub_template(deployer, network_type="mainnet"):
+def deploy_art_piece_stencil(deployer, network_type="mainnet"):
+    print("\n--- ArtPiece Stencil Setup ---")
+    
+    existing_art_piece_address = get_contract_address(network_type, "artPiece")
+    if existing_art_piece_address:
+        print(f"Found existing ArtPiece stencil in config: {existing_art_piece_address}")
+        use_existing = input("Use existing ArtPiece stencil? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.ArtPiece.at(existing_art_piece_address)
+    
+    print("Deploying new ArtPiece Stencil on Animechain L3...")
+    with networks.parse_network_choice("ethereum:animechain") as provider:
+        gas_params = get_optimized_gas_params(provider)
+        deploy_kwargs = {"required_confirmations": 0}
+        if gas_params:
+            deploy_kwargs.update({
+                "max_fee": gas_params["max_fee"],
+                "max_priority_fee": gas_params["max_priority_fee"]
+            })
+        
+        # Deploy ArtPiece with empty parameters (stencil contract)
+        empty_image_data = b""
+        empty_title = ""
+        empty_description = b""
+        art_piece_stencil = deployer.deploy(
+            project.ArtPiece, 
+            empty_image_data, 
+            empty_title, 
+            empty_description, 
+            deployer.address,  # Owner as deployer
+            deployer.address,  # Artist as deployer
+            deployer.address,  # Commission hub (will be updated later)
+            False,  # Not AI generated
+            **deploy_kwargs
+        )
+        print(f"ArtPiece Stencil deployed at: {art_piece_stencil.address}")
+        update_contract_address(network_type, "artPiece", art_piece_stencil.address, "ArtPiece")
+        return art_piece_stencil
+
+def deploy_commission_hub_template(deployer, art_piece_stencil_address=None, network_type="mainnet"):
     print("\n--- CommissionHub Template Setup ---")
     
     existing_hub_address = get_contract_address(network_type, "commissionHub")
@@ -136,6 +178,25 @@ def deploy_commission_hub_template(deployer, network_type="mainnet"):
         commission_hub_template = deployer.deploy(project.CommissionHub, **deploy_kwargs)
         print(f"CommissionHub Template deployed at: {commission_hub_template.address}")
         update_contract_address(network_type, "commissionHub", commission_hub_template.address, "CommissionHub")
+        
+        # Whitelist the ArtPiece stencil if provided
+        if art_piece_stencil_address:
+            print(f"Whitelisting ArtPiece stencil ({art_piece_stencil_address}) in CommissionHub...")
+            tx_kwargs = {}
+            if gas_params:
+                tx_kwargs.update({
+                    "max_fee": gas_params["max_fee"],
+                    "max_priority_fee": gas_params["max_priority_fee"]
+                })
+            
+            # Set the whitelisted ArtPiece contract
+            tx = commission_hub_template.setWhitelistedArtPieceContract(
+                art_piece_stencil_address, 
+                sender=deployer,
+                **tx_kwargs
+            )
+            print(f"ArtPiece stencil whitelisted in CommissionHub")
+            
         return commission_hub_template
 
 def deploy_owner_registry(deployer, l2_relay_address, commission_hub_template_address, network_type="mainnet"):
@@ -185,23 +246,39 @@ def main():
     l2_relay = None
     owner_registry = None
     commission_hub_template = None
+    art_piece_stencil = None
     
     if deploy_mode == "full":
+        # Deploy ArtPiece stencil first
+        art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
+        
         l1_contract = deploy_l1_query_owner(deployer, network_type)
         l2_relay = deploy_l2_relay(deployer, network_type)
-        commission_hub_template = deploy_commission_hub_template(deployer, network_type)
+        
+        # Deploy CommissionHub and whitelist the ArtPiece contract
+        commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
+        
         owner_registry = deploy_owner_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
             l1_chain_id = 1  # For mainnet
-            tx = l2_relay.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id, sender=deployer)
-            print(f"L1QueryOwner registered in L2Relay for chain ID {l1_chain_id}")
+            # Create aliased L1 address
+            l1_address_int = int(l1_contract.address, 16)
+            alias_addition_int = int(ALIAS_ADDITION, 16)
+            aliased_l1_address = "0x" + hex(l1_address_int + alias_addition_int)[2:].zfill(40)
+            tx = l2_relay.updateCrossChainQueryOwnerContract(aliased_l1_address, l1_chain_id, sender=deployer)
+            print(f"Aliased L1QueryOwner ({aliased_l1_address}) registered in L2Relay for chain ID {l1_chain_id}")
     
     elif deploy_mode == "l2only":
         l2_relay = deploy_l2_relay(deployer, network_type)
     
     elif deploy_mode == "l3only":
-        commission_hub_template = deploy_commission_hub_template(deployer, network_type)
+        # Deploy ArtPiece stencil first
+        art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
+        
+        # Deploy CommissionHub and whitelist the ArtPiece contract
+        commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
+        
         l2_address = get_contract_address(network_type, "l2")
         if l2_address:
             use_existing = input(f"Use existing L2Relay at {l2_address}? (y/n) [y]: ").strip().lower() or "y"
@@ -226,6 +303,7 @@ def main():
     print("\n=== Deployment Complete ===")
     print("Contract addresses have been saved to the configuration file")
     print("Make sure to save these addresses for your application")
+    print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
 if __name__ == "__main__":
     main()

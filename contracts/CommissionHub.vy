@@ -17,6 +17,9 @@ imageDataContracts: public(HashMap[uint256, address])
 l1Contract: public(address)  # Address of the NFT contract on L1
 isOwnershipRescinded: public(bool)  # Flag to track if ownership has been rescinded
 
+# Track allowed ArtPiece contracts
+whitelistedArtPieceContract: public(address)
+
 # Track commissions
 latestVerifiedArt: public(address[300])
 verifiedArt: public(DynArray[address, 100000])
@@ -58,6 +61,9 @@ event CommissionerWhitelisted:
     commissioner: indexed(address)
     status: bool
 
+event ArtPieceContractWhitelisted:
+    art_piece_contract: indexed(address)
+
 @deploy
 def __init__():
     self.owner = msg.sender
@@ -68,6 +74,7 @@ def __init__():
     self.countVerifiedCommissions = 0
     self.countUnverifiedCommissions = 0
     self.nextLatestVerifiedArtIndex = 0
+    self.whitelistedArtPieceContract = empty(address)
 
 @external
 def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _registry: address):
@@ -108,6 +115,21 @@ def setL1Contract(_l1_contract_address: address):
     self.l1Contract = _l1_contract_address
     log L1ContractSet(l1_contract=_l1_contract_address)
 
+@external
+def setWhitelistedArtPieceContract(_art_piece_contract: address):
+    """
+    Sets the whitelisted ArtPiece contract that can be used for submissions
+    """
+    # Check rescinded status first
+    assert not self.isOwnershipRescinded, "Ownership has been rescinded"
+    # Only owner can set the whitelisted contract
+    assert msg.sender == self.owner, "Only owner can set whitelisted contract"
+    assert _art_piece_contract != empty(address), "Invalid ArtPiece contract address"
+    
+    # Set the whitelisted contract
+    self.whitelistedArtPieceContract = _art_piece_contract
+    log ArtPieceContractWhitelisted(art_piece_contract=_art_piece_contract)
+
 @internal
 @view
 def _isContract(_addr: address) -> bool:
@@ -125,9 +147,12 @@ def _isContract(_addr: address) -> bool:
 
 @external
 def submitCommission(_art_piece: address):
-
     # Need to assert that the art piece is actually an art piece
     assert self._isContract(_art_piece), "Art piece is not a contract"
+    
+    # Check whitelisted contract (always enforced)
+    assert self.whitelistedArtPieceContract != empty(address), "No ArtPiece contract whitelisted"
+    assert _art_piece == self.whitelistedArtPieceContract, "Art piece is not from approved contract"
 
     is_whitelisted: bool = staticcall ArtPiece(_art_piece).isOnCommissionWhitelist(msg.sender)
     
@@ -156,6 +181,10 @@ def submitCommission(_art_piece: address):
 def verifyCommission(_art_piece: address, _submitter: address):
     # Only owner or authorized users can verify
     assert msg.sender == self.owner, "Not authorized to verify"
+    
+    # Check whitelisted contract (always enforced)
+    assert self.whitelistedArtPieceContract != empty(address), "No ArtPiece contract whitelisted"
+    assert _art_piece == self.whitelistedArtPieceContract, "Art piece is not from approved contract"
     
     # Update user's unverified count
     if self.unverifiedCountByUser[_submitter] > 0:
