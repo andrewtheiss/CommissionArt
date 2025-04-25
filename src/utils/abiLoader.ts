@@ -8,6 +8,23 @@ import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 import OwnerRegistryABI from '../assets/abis/OwnerRegistry.json';
 import ArtPieceABI from '../assets/abis/ArtPiece.json';
 
+// Profile ABIs
+// These are simplified ABIs with just the methods we need
+const ProfileHubABI = [
+  "function hasProfile(address) view returns (bool)",
+  "function getProfile(address) view returns (address)",
+  "function createProfile()"
+];
+
+const ProfileABI = [
+  "function owner() view returns (address)",
+  "function isArtist() view returns (bool)",
+  "function setIsArtist(bool)",
+  "function profileImage() view returns (bytes)",
+  "function getRecentCommissions(uint256, uint256) view returns (address[])",
+  "function setProfileImage(bytes)"
+];
+
 // Map of ABI names to their actual content
 const abiMap: { [key: string]: any } = {
   'L1QueryOwner': L1QueryOwnerABI,
@@ -17,7 +34,9 @@ const abiMap: { [key: string]: any } = {
   'Registry': RegistryABI,
   'SimpleERC721': SimpleERC721ABI,
   'OwnerRegistry': OwnerRegistryABI,
-  'ArtPiece': ArtPieceABI
+  'ArtPiece': ArtPieceABI,
+  'ProfileHub': ProfileHubABI,
+  'Profile': ProfileABI
 };
 
 /**

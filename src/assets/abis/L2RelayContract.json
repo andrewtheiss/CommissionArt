@@ -1,0 +1,143 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "unique_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "RequestSent",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnerReceived",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "name": "new_l1_helper",
+        "type": "address"
+      }
+    ],
+    "name": "setL1Helper",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "new_l3_contract",
+        "type": "address"
+      }
+    ],
+    "name": "setL3Contract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "requestNFTOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "receiveResultFromL1",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l1_helper_contract",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l3_contract",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "initial_l1_helper",
+        "type": "address"
+      },
+      {
+        "name": "initial_l3_contract",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  }
+]

@@ -1,150 +1,86 @@
 [
   {
-    "name": "Registered",
+    "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
         "name": "chain_id",
-        "type": "uint256",
-        "indexed": false
+        "type": "uint256"
       },
       {
+        "indexed": true,
         "name": "nft_contract",
-        "type": "address",
-        "indexed": true
+        "type": "address"
       },
       {
+        "indexed": true,
         "name": "token_id",
-        "type": "uint256",
-        "indexed": true
+        "type": "uint256"
       },
       {
+        "indexed": false,
         "name": "owner",
-        "type": "address",
-        "indexed": false
+        "type": "address"
       },
       {
+        "indexed": true,
         "name": "commission_hub",
-        "type": "address",
-        "indexed": true
+        "type": "address"
       },
       {
+        "indexed": false,
         "name": "timestamp",
-        "type": "uint256",
-        "indexed": false
+        "type": "uint256"
       },
       {
+        "indexed": false,
         "name": "source",
-        "type": "address",
-        "indexed": false
+        "type": "address"
       }
     ],
-    "anonymous": false,
+    "name": "Registered",
     "type": "event"
   },
   {
-    "name": "CommissionHubCreated",
+    "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
         "name": "chain_id",
-        "type": "uint256",
-        "indexed": false
+        "type": "uint256"
       },
       {
+        "indexed": true,
         "name": "nft_contract",
-        "type": "address",
-        "indexed": true
+        "type": "address"
       },
       {
+        "indexed": true,
         "name": "token_id",
-        "type": "uint256",
-        "indexed": true
+        "type": "uint256"
       },
       {
+        "indexed": true,
         "name": "commission_hub",
-        "type": "address",
-        "indexed": true
+        "type": "address"
       }
     ],
-    "anonymous": false,
+    "name": "CommissionHubCreated",
     "type": "event"
   },
   {
-    "name": "L2RelaySet",
+    "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
         "name": "l2Relay",
-        "type": "address",
-        "indexed": false
+        "type": "address"
       }
     ],
-    "anonymous": false,
+    "name": "L2RelaySet",
     "type": "event"
   },
   {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "l2Relay",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "commissionHubTemplate",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "owner",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "lastUpdated",
-    "inputs": [
-      {
-        "name": "_chain_id",
-        "type": "uint256"
-      },
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ]
-  },
-  {
-    "stateMutability": "nonpayable",
-    "type": "function",
-    "name": "registerNFTOwnerFromParentChain",
     "inputs": [
       {
         "name": "_chain_id",
@@ -163,168 +99,296 @@
         "type": "address"
       }
     ],
-    "outputs": []
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "lookupRegisteredOwner",
-    "inputs": [
-      {
-        "name": "_chain_id",
-        "type": "uint256"
-      },
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "getLastUpdated",
-    "inputs": [
-      {
-        "name": "_chain_id",
-        "type": "uint256"
-      },
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "getCommissionHubByOwner",
-    "inputs": [
-      {
-        "name": "_chain_id",
-        "type": "uint256"
-      },
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "lookupEthereumRegisteredOwner",
-    "inputs": [
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "getEthereumLastUpdated",
-    "inputs": [
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ]
-  },
-  {
-    "stateMutability": "view",
-    "type": "function",
-    "name": "getEthereumCommissionHubByOwner",
-    "inputs": [
-      {
-        "name": "_nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ]
-  },
-  {
+    "name": "registerNFTOwnerFromParentChain",
+    "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function",
-    "name": "setCommissionHubTemplate",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "lookupRegisteredOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getLastUpdated",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCommissionHubByOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "lookupEthereumRegisteredOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getEthereumLastUpdated",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getEthereumCommissionHubByOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "name": "_new_template",
         "type": "address"
       }
     ],
-    "outputs": []
+    "name": "setCommissionHubTemplate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    "stateMutability": "nonpayable",
-    "type": "function",
-    "name": "setL2Relay",
     "inputs": [
       {
         "name": "_new_l2relay",
         "type": "address"
       }
     ],
-    "outputs": []
+    "name": "setL2Relay",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "l2Relay",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "commissionHubTemplate",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      },
+      {
+        "name": "arg1",
+        "type": "address"
+      },
+      {
+        "name": "arg2",
+        "type": "uint256"
+      }
+    ],
+    "name": "commissionHubs",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      },
+      {
+        "name": "arg1",
+        "type": "address"
+      },
+      {
+        "name": "arg2",
+        "type": "uint256"
+      }
+    ],
+    "name": "owners",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      },
+      {
+        "name": "arg1",
+        "type": "address"
+      },
+      {
+        "name": "arg2",
+        "type": "uint256"
+      }
+    ],
+    "name": "lastUpdated",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_initial_l2relay",
+        "type": "address"
+      },
+      {
+        "name": "_initial_commission_hub_template",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
   }
-] 
+]

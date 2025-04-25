@@ -5,6 +5,7 @@
 
 interface Profile:
     def initialize(_owner: address): nonpayable
+    def deployer() -> address: view
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
@@ -28,6 +29,9 @@ event ProfileTemplateUpdated:
 @deploy
 def __init__(_profile_template: address):
     self.owner = msg.sender
+    # Verify the profile template was deployed by the same address
+    template_deployer: address = staticcall Profile(_profile_template).deployer()
+    assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
     self.userCount = 0
 

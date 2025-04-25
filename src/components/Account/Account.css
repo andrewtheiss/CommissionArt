@@ -1,0 +1,242 @@
+.account-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.account-container h2 {
+  margin-bottom: 24px;
+  color: #333;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  overflow: hidden;
+}
+
+.connect-card {
+  text-align: center;
+  padding: 40px;
+}
+
+.error-card {
+  background-color: #ffeef0;
+  border-left: 4px solid #d32f2f;
+}
+
+.error-card h3 {
+  color: #d32f2f;
+  margin-top: 0;
+}
+
+.wallet-info {
+  font-family: monospace;
+  background: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 16px 0;
+  word-break: break-all;
+}
+
+.connect-button, .create-profile-button {
+  background: #4a6cf7;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 16px;
+}
+
+.connect-button:hover, .create-profile-button:hover {
+  background: #3a5ce7;
+}
+
+.connect-button:disabled, .create-profile-button:disabled {
+  background: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #666;
+}
+
+.loading-spinner:after {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin-left: 10px;
+  border: 2px solid #ddd;
+  border-top: 2px solid #4a6cf7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message, .error-banner {
+  color: #d32f2f;
+  margin: 16px 0;
+  padding: 12px;
+  background: rgba(211, 47, 47, 0.1);
+  border-radius: 4px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.profile-image-container {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.profile-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  color: #666;
+  background: #e0e0e0;
+}
+
+.profile-info {
+  flex-grow: 1;
+}
+
+.profile-info h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.wallet-address, .profile-address {
+  font-family: monospace;
+  background: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  word-break: break-all;
+}
+
+.artist-status {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.artist-toggle {
+  background: transparent;
+  border: 1px solid;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.artist-toggle.activate {
+  color: #4caf50;
+  border-color: #4caf50;
+}
+
+.artist-toggle.deactivate {
+  color: #f44336;
+  border-color: #f44336;
+}
+
+.artist-toggle.activate:hover {
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.artist-toggle.deactivate:hover {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.artist-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.commission-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.commission-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.commission-item:last-child {
+  border-bottom: none;
+}
+
+.commission-address {
+  font-family: monospace;
+}
+
+.view-commission-link {
+  background: #f0f0f0;
+  color: #333;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.view-commission-link:hover {
+  background: #e0e0e0;
+}
+
+.no-commissions {
+  color: #666;
+  text-align: center;
+  padding: 24px;
+} 

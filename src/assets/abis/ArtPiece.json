@@ -56,40 +56,6 @@
     "type": "event"
   },
   {
-    "inputs": [
-      {
-        "name": "_image_data_input",
-        "type": "bytes"
-      },
-      {
-        "name": "_title_input",
-        "type": "string"
-      },
-      {
-        "name": "_description_input",
-        "type": "bytes"
-      },
-      {
-        "name": "_owner_input",
-        "type": "address"
-      },
-      {
-        "name": "_artist_input",
-        "type": "address"
-      },
-      {
-        "name": "_commission_hub",
-        "type": "address"
-      },
-      {
-        "name": "_ai_generated",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
     "inputs": [],
     "name": "getImageData",
     "outputs": [
@@ -277,5 +243,107 @@
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "taggedAddresses",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "isTagged",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      }
+    ],
+    "name": "taggedList",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "commissionWhitelist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_image_data_input",
+        "type": "bytes"
+      },
+      {
+        "name": "_title_input",
+        "type": "string"
+      },
+      {
+        "name": "_description_input",
+        "type": "bytes"
+      },
+      {
+        "name": "_owner_input",
+        "type": "address"
+      },
+      {
+        "name": "_artist_input",
+        "type": "address"
+      },
+      {
+        "name": "_commission_hub",
+        "type": "address"
+      },
+      {
+        "name": "_ai_generated",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
   }
-] 
+]

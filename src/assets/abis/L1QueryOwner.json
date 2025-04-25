@@ -4,11 +4,16 @@
     "inputs": [
       {
         "indexed": false,
+        "name": "chain_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
         "name": "nft_contract",
         "type": "address"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "name": "token_id",
         "type": "uint256"
       },
@@ -29,21 +34,49 @@
   {
     "inputs": [
       {
-        "name": "nft_contract",
+        "name": "_nft_contract",
         "type": "address"
       },
       {
-        "name": "token_id",
+        "name": "_token_id",
         "type": "uint256"
       },
       {
-        "name": "l2_receiver",
+        "name": "_l2_receiver",
         "type": "address"
+      },
+      {
+        "name": "_l2CallValue",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_submission_cost",
+        "type": "uint256"
+      },
+      {
+        "name": "_gas_limit",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_fee_per_gas",
+        "type": "uint256"
       }
     ],
     "name": "queryNFTAndSendBack",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getInboxAddress",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -55,85 +88,22 @@
       {
         "name": "token_id",
         "type": "uint256"
-      },
-      {
-        "name": "l2_receiver",
-        "type": "address"
-      },
-      {
-        "name": "max_submission_cost",
-        "type": "uint256"
       }
     ],
-    "name": "queryNFTAndSendBack",
-    "outputs": [],
-    "stateMutability": "payable",
+    "name": "getNftContractOwner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "token_id",
-        "type": "uint256"
-      },
-      {
-        "name": "l2_receiver",
-        "type": "address"
-      },
-      {
-        "name": "max_submission_cost",
-        "type": "uint256"
-      },
-      {
-        "name": "gas_limit",
-        "type": "uint256"
-      }
-    ],
-    "name": "queryNFTAndSendBack",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "token_id",
-        "type": "uint256"
-      },
-      {
-        "name": "l2_receiver",
-        "type": "address"
-      },
-      {
-        "name": "max_submission_cost",
-        "type": "uint256"
-      },
-      {
-        "name": "gas_limit",
-        "type": "uint256"
-      },
-      {
-        "name": "max_fee_per_gas",
-        "type": "uint256"
-      }
-    ],
-    "name": "queryNFTAndSendBack",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "inbox_address",
+        "name": "_inbox_address",
         "type": "address"
       }
     ],

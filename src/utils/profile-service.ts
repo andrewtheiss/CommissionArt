@@ -17,10 +17,16 @@ class ProfileService {
 
       const userAddress = await signer.getAddress();
       const hubAddress = this.getProfileHubAddress();
+      
+      if (!hubAddress) {
+        console.error("ProfileHub address not configured");
+        return false;
+      }
+      
       const hubAbi = abiLoader.loadABI('ProfileHub');
       
-      if (!hubAddress || !hubAbi) {
-        console.error("ProfileHub address or ABI not found");
+      if (!hubAbi) {
+        console.error("ProfileHub ABI not found");
         return false;
       }
 
@@ -44,13 +50,19 @@ class ProfileService {
       }
 
       const hubAddress = this.getProfileHubAddress();
+      
+      if (!hubAddress) {
+        throw new Error("ProfileHub address not configured in contract_config.json");
+      }
+      
       const hubAbi = abiLoader.loadABI('ProfileHub');
       
-      if (!hubAddress || !hubAbi) {
-        throw new Error("ProfileHub address or ABI not found");
+      if (!hubAbi) {
+        throw new Error("ProfileHub ABI not found");
       }
 
       const hubContract = new ethers.Contract(hubAddress, hubAbi, signer);
+      console.log("Creating profile via ProfileHub at:", hubAddress);
       const tx = await hubContract.createProfile();
       await tx.wait();
 
@@ -90,10 +102,16 @@ class ProfileService {
   public async getProfileAddress(userAddress: string): Promise<string | null> {
     try {
       const hubAddress = this.getProfileHubAddress();
+      
+      if (!hubAddress) {
+        console.error("ProfileHub address not configured");
+        return null;
+      }
+      
       const hubAbi = abiLoader.loadABI('ProfileHub');
       
-      if (!hubAddress || !hubAbi) {
-        console.error("ProfileHub address or ABI not found");
+      if (!hubAbi) {
+        console.error("ProfileHub ABI not found");
         return null;
       }
 
@@ -150,9 +168,17 @@ class ProfileService {
    * @returns string The ProfileHub contract address
    */
   private getProfileHubAddress(): string {
-    // Use mainnet for now, consider adding networkType parameter
+    // Get the current network from ethersService
     const networkType = ethersService.getNetwork().name === "Sepolia" ? "testnet" : "mainnet";
-    return contractConfig.networks[networkType].profileHub.address;
+    
+    // Get the address from the contract config
+    const address = contractConfig.networks[networkType].profileHub.address;
+    
+    if (!address) {
+      console.warn(`ProfileHub address for ${networkType} is not configured in contract_config.json`);
+    }
+    
+    return address;
   }
 }
 

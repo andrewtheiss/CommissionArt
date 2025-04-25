@@ -247,7 +247,11 @@ def deploy_profile_template(deployer, network_type="mainnet"):
         deploy_kwargs.update(gas_params)
         profile_template = deployer.deploy(project.Profile, **deploy_kwargs)
         print(f"Profile template deployed at: {profile_template.address}")
+        
+        # Update the contract address in the configuration
         update_contract_address(network_type, "profileTemplate", profile_template.address, "Profile")
+        print(f"Updated profileTemplate address in configuration")
+        
         return profile_template
 
 def deploy_profile_hub(deployer, profile_template_address, network_type="mainnet"):
@@ -267,7 +271,11 @@ def deploy_profile_hub(deployer, profile_template_address, network_type="mainnet
         deploy_kwargs.update(gas_params)
         profile_hub = deployer.deploy(project.ProfileHub, profile_template_address, **deploy_kwargs)
         print(f"ProfileHub deployed at: {profile_hub.address}")
+        
+        # Update the contract address in the configuration
         update_contract_address(network_type, "profileHub", profile_hub.address, "ProfileHub")
+        print(f"Updated profileHub address in configuration")
+        
         return profile_hub
 
 def main():
@@ -354,6 +362,22 @@ def main():
     
     print("\n=== Deployment Complete ===")
     print("Contract addresses have been saved to the configuration file")
+    
+    # Run compile_and_extract_abis script to update ABIs
+    update_abis = input("Update ABIs now? (y/n) [y]: ").strip().lower() 
+    if update_abis == "" or update_abis == "y":
+        print("\nCompiling contracts and extracting ABIs...")
+        # Import the function here to avoid circular imports
+        import sys
+        from pathlib import Path
+        sys.path.append(str(Path(__file__).parent))
+        from compile_and_extract_abis import extract_abis_to_folder
+        try:
+            extract_abis_to_folder()
+            print("Successfully updated ABIs")
+        except Exception as e:
+            print(f"Error updating ABIs: {str(e)}")
+    
     print("Make sure to save these addresses for your application")
     print(f"\nPlease run: ape run compile_and_extract_abis\n")
 

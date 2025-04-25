@@ -7,6 +7,7 @@
 # State Variables
 
 # Owner of the profile (user address)
+deployer: public(address)  # New variable to store the deployer's address
 owner: public(address)
 profileImage: public(Bytes[45000])
 profileImageCount: public(uint256)
@@ -39,8 +40,13 @@ proceedsAddress: public(address)                               # Address to rece
 # Profile expansion (for future features)
 profileExpansion: public(address)
 
+
+# Constructor
+@deploy
+def __init__():
+    self.deployer = msg.sender  # Set deployer to msg.sender during deployment
+
 # Initialization Function
-# Called by ProfileHub after cloning to set the owner
 @external
 def initialize(_owner: address):
     assert self.owner == empty(address), "Already initialized"
