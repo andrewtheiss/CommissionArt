@@ -40,26 +40,26 @@
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0x16153F052d53DDa3839d2f7dEeF47A60859CA7a8",
+        "address": "0x51C11796198289c3e3e3AD6e11B137e94ed2e793",
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "0x3c6C9Bb839518E410570D619E5F89bBF050cd9a3",
+        "address": "0x25C570A8D56dc2Ff6e643507DA234F7e668a8541",
         "contract": "CommissionHub"
       },
       "artPiece": {
-        "address": "0x6142aF1D56dBF49c1d988E7B48D92CB9334905a4",
+        "address": "0x83590cBcC7b6C766Aab438b3e371FADee8885646",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0x43B830f955B014669687F8969D96b9c2A4b70B40",
+        "address": "0x58785bac268d0cB4cFeC48194A0Fcd6b389B24f9",
         "contract": "Profile"
       },
       "profileHub": {
-        "address": "0x661E6857D20BF53082780f8ed2A82A486CEBaab0",
+        "address": "0xF8Ef457CD83981fCEfD3c0Cdba6289101db00EB4",
         "contract": "ProfileHub"
       }
     }
   },
-  "lastUpdated": "2025-04-24T19:35:23.701762"
+  "lastUpdated": "2025-04-24T20:12:48.981157"
 }

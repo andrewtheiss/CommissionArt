@@ -47,11 +47,15 @@ def createProfile():
     extcall profile_instance.initialize(msg.sender)
     
     # Update our records
+    # TODO - actuall save the latest 10 even if we max out
+    if (self.userCount < 1000):
+        self.latestUsers.append(msg.sender)
+    else:
+        self.latestUsers.pop()
+        self.latestUsers.append(msg.sender)
+
     self.accountToProfile[msg.sender] = profile
     self.userCount += 1
-    
-    # Add to the list of users in a rotating manner
-    self.latestUsers[self.userCount % 1000] = msg.sender
     
     log ProfileCreated(user=msg.sender, profile=profile)
 
