@@ -48,18 +48,18 @@
         "contract": "CommissionHub"
       },
       "artPiece": {
-        "address": "0x83590cBcC7b6C766Aab438b3e371FADee8885646",
+        "address": "0x5bec2438Cf146eB2d167e7DAde98800765d15022",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0x58785bac268d0cB4cFeC48194A0Fcd6b389B24f9",
+        "address": "0x01077A4094c299DC12BEA10dA23e2E975fF281f6",
         "contract": "Profile"
       },
       "profileHub": {
-        "address": "0xF8Ef457CD83981fCEfD3c0Cdba6289101db00EB4",
+        "address": "0x455E116b007aF839c85007E1a4eC6FD4701Ac7f7",
         "contract": "ProfileHub"
       }
     }
   },
-  "lastUpdated": "2025-04-24T20:12:48.981157"
+  "lastUpdated": "2025-04-25T07:40:12.323391"
 }

@@ -20,6 +20,10 @@ unverifiedCommissions: public(DynArray[address, 10000])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
+# Art pieces collection
+myArt: public(DynArray[address, 100000])
+myArtCount: public(uint256)
+
 # Profile socials and counters
 likedProfiles: public(DynArray[address, 10000])
 likedProfileCount: public(uint256)
@@ -40,6 +44,14 @@ proceedsAddress: public(address)                               # Address to rece
 # Profile expansion (for future features)
 profileExpansion: public(address)
 
+# Interface for ArtPiece contract
+interface ArtPiece:
+    def getOwner() -> address: view
+    def getArtist() -> address: view
+
+# Interface for ArtPiece factory
+interface ArtPieceFactory:
+    def createArtPiece(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool) -> address: nonpayable
 
 # Constructor
 @deploy
@@ -64,6 +76,7 @@ def initialize(_owner: address):
     self.linkedProfileCount = 0
     self.myCommissionCount = 0
     self.additionalMintErc1155Count = 0
+    self.myArtCount = 0
 
 # Helper Functions
 
@@ -386,3 +399,97 @@ def removeMapCommissionToMintErc1155(_commission: address):
 def getMapCommissionToMintErc1155(_commission: address) -> address:
     assert self.isArtist, "Only artists have map commission to mint ERC1155"
     return self.commissionToMintErc1155Map[_commission]
+
+## Art Pieces
+
+@external
+def createArtPiece(_art_piece_factory: address, _image_data: Bytes[45000], _title: String[100], _description: Bytes[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+    """
+    Create a new art piece through this profile
+    _art_piece_factory: Address of the ArtPiece factory contract
+    _is_artist: True if caller is the artist, False if caller is the commissioner
+    _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
+    """
+    assert msg.sender == self.owner, "Only profile owner can create art"
+    assert _art_piece_factory != empty(address), "ArtPiece factory address required"
+    
+    # Determine owner and artist based on caller's role
+    owner_input: address = empty(address)
+    artist_input: address = empty(address)
+    
+    if _is_artist:
+        # Caller is the artist
+        artist_input = self.owner  # The profile owner is the artist
+        owner_input = _other_party if _other_party != empty(address) else self.owner  # If no commissioner specified, owner is also artist
+    else:
+        # Caller is the commissioner/owner
+        owner_input = self.owner  # The profile owner is the commissioner
+        artist_input = _other_party if _other_party != empty(address) else self.owner  # If no artist specified, commissioner is also artist
+    
+    # Create the art piece through the factory
+    factory: ArtPieceFactory = ArtPieceFactory(_art_piece_factory)
+    art_piece_address: address = extcall factory.createArtPiece(
+        _image_data,
+        _title,
+        _description,
+        owner_input,
+        artist_input,
+        _commission_hub,
+        _ai_generated
+    )
+    
+    # Add to my art collection
+    self._addToArray(self.myArt, art_piece_address)
+    self.myArtCount += 1
+    
+    return art_piece_address
+
+@external
+def addArtPiece(_art_piece: address):
+    assert msg.sender == self.owner, "Only owner can add art piece"
+    
+    # Get the art piece owner and artist
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    art_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    
+    # Verify the profile owner is either the art piece owner or artist
+    assert self.owner == art_owner or self.owner == art_artist, "Can only add art you own or created"
+    
+    self._addToArray(self.myArt, _art_piece)
+    self.myArtCount += 1
+
+@external
+def removeArtPiece(_art_piece: address):
+    assert msg.sender == self.owner, "Only owner can remove art piece"
+    self._removeFromArray(self.myArt, _art_piece)
+    self.myArtCount -= 1
+
+@view
+@external
+def getArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    return self._getArraySlice(self.myArt, _page, _page_size)
+
+@view
+@external
+def getRecentArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    return self._getArraySliceReverse(self.myArt, self.myArtCount, _page, _page_size)
+
+@view
+@external
+def getLatestArtPieces() -> DynArray[address, 5]:
+    result: DynArray[address, 5] = []
+    
+    # If no art pieces exist, return empty array
+    if self.myArtCount == 0:
+        return result
+    
+    # Get minimum of 5 or available art pieces
+    items_to_return: uint256 = min(5, self.myArtCount)
+    
+    # Add most recent art pieces
+    for i: uint256 in range(0, items_to_return, bound=5):
+        idx: uint256 = self.myArtCount - 1 - i
+        result.append(self.myArt[idx])
+    
+    return result

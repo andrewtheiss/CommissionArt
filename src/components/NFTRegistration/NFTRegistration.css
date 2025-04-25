@@ -603,3 +603,36 @@ form {
   background-color: #6c757d;
   cursor: not-allowed;
 }
+
+.highlight-box {
+  background-color: rgba(94, 114, 228, 0.15);
+  border: 1px solid var(--accent-primary);
+  border-radius: 4px;
+  padding: 10px 15px;
+  margin: 10px 0;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(94, 114, 228, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(94, 114, 228, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(94, 114, 228, 0);
+  }
+}
+
+/* Style for profile-based registration button */
+.submit-button.profile-button {
+  background-color: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+.submit-button.profile-button:hover {
+  background-color: var(--accent-secondary);
+  border-color: var(--accent-secondary);
+}
