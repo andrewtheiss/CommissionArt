@@ -32,34 +32,34 @@
     },
     "mainnet": {
       "l1": {
-        "address": "0x3eC1990b0bA44fA97FE0f851569E08af5fCD0B34",
+        "address": "0x9Ff3BE6A1f0aa275c61cD231eC3C4469730CC3FD",
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "0x5174f3e6F83CF2283b7677829356C8Bc6fCe578f",
+        "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0x18420aEEE09A7D802cbBc7C003fffCAf13b112dB",
+        "address": "0x3476aF97ce7774C080fEBFF5C4ca0C539a95A1c7",
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "0x90e942261b5C6850a932f818750356fe16e28320",
+        "address": "0xF4509926A1877CBD7b39381B27662aE69c1DCAbD",
         "contract": "CommissionHub"
       },
       "artPiece": {
-        "address": "0x53Bb8F3F7aDD3c48F6abA824e29DBB8D4C5C751D",
+        "address": "0xC53a550EE40a06af34b24AB7d691EE0f7DE28b60",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0xf7c109c53Cd01e876c090f6E9D2E4C0ADf812F18",
+        "address": "0xfe8EfcD1E7cbfDaF7843d1A19461962cE58E86C6",
         "contract": "Profile"
       },
       "profileHub": {
-        "address": "0x7B3F3B5627996B5Fa96C7EbD81E01a3d196Ca582",
+        "address": "0x3A222fc3A50e9D15f6B607Cb33f3a2468afe6316",
         "contract": "ProfileHub"
       }
     }
   },
-  "lastUpdated": "2025-04-24T18:02:13.342105"
+  "lastUpdated": "2025-04-24T18:31:37.982584"
 }
