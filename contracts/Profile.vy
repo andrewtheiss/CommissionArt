@@ -48,10 +48,7 @@ profileExpansion: public(address)
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
-
-# Interface for ArtPiece factory
-interface ArtPieceFactory:
-    def createArtPiece(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool) -> address: nonpayable
+    def initialize(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
 
 # Constructor
 @deploy
@@ -403,15 +400,15 @@ def getMapCommissionToMintErc1155(_commission: address) -> address:
 ## Art Pieces
 
 @external
-def createArtPiece(_art_piece_factory: address, _image_data: Bytes[45000], _title: String[100], _description: Bytes[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _title: String[100], _description: Bytes[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
     """
     Create a new art piece through this profile
-    _art_piece_factory: Address of the ArtPiece factory contract
+    _art_piece_template: Address of the ArtPiece template contract to clone
     _is_artist: True if caller is the artist, False if caller is the commissioner
     _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
     """
     assert msg.sender == self.owner, "Only profile owner can create art"
-    assert _art_piece_factory != empty(address), "ArtPiece factory address required"
+    assert _art_piece_template != empty(address), "ArtPiece template address required"
     
     # Determine owner and artist based on caller's role
     owner_input: address = empty(address)
@@ -426,9 +423,12 @@ def createArtPiece(_art_piece_factory: address, _image_data: Bytes[45000], _titl
         owner_input = self.owner  # The profile owner is the commissioner
         artist_input = _other_party if _other_party != empty(address) else self.owner  # If no artist specified, commissioner is also artist
     
-    # Create the art piece through the factory
-    factory: ArtPieceFactory = ArtPieceFactory(_art_piece_factory)
-    art_piece_address: address = extcall factory.createArtPiece(
+    # Create minimal proxy to the ArtPiece template
+    art_piece_address: address = create_minimal_proxy_to(_art_piece_template)
+    
+    # Initialize the art piece proxy
+    art_piece: ArtPiece = ArtPiece(art_piece_address)
+    extcall art_piece.initialize(
         _image_data,
         _title,
         _description,

@@ -9,6 +9,7 @@ description: Bytes[200]  # Description with 200 byte limit
 owner: address
 artist: address
 aiGenerated: public(bool)
+initialized: public(bool)  # Flag to track if the contract has been initialized
 
 # Mapping to store tags/associations with validation status
 # address => bool (validated status)
@@ -36,13 +37,26 @@ event TagValidated:
     status: bool
 
 @deploy
-def __init__(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool):
+def __init__():
+    """
+    Empty constructor for create_minimal_proxy_to
+    """
+    self.initialized = False
+
+@external
+def initialize(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool):
+    """
+    Initialize the ArtPiece contract, can only be called once
+    """
+    assert not self.initialized, "Already initialized"
     self.imageData = _image_data_input
     self.title = _title_input
     self.description = _description_input
     self.owner = _owner_input
     self.artist = _artist_input
     self.aiGenerated = _ai_generated
+    self.initialized = True
+
 @external
 @view
 def getImageData() -> Bytes[45000]:
