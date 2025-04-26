@@ -597,7 +597,7 @@
   {
     "inputs": [
       {
-        "name": "_art_piece_factory",
+        "name": "_art_piece_template",
         "type": "address"
       },
       {

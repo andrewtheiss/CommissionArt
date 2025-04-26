@@ -56,6 +56,42 @@
     "type": "event"
   },
   {
+    "inputs": [
+      {
+        "name": "_image_data_input",
+        "type": "bytes"
+      },
+      {
+        "name": "_title_input",
+        "type": "string"
+      },
+      {
+        "name": "_description_input",
+        "type": "bytes"
+      },
+      {
+        "name": "_owner_input",
+        "type": "address"
+      },
+      {
+        "name": "_artist_input",
+        "type": "address"
+      },
+      {
+        "name": "_commission_hub",
+        "type": "address"
+      },
+      {
+        "name": "_ai_generated",
+        "type": "bool"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getImageData",
     "outputs": [
@@ -245,6 +281,18 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "initialized",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "name": "arg0",
@@ -313,36 +361,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "name": "_image_data_input",
-        "type": "bytes"
-      },
-      {
-        "name": "_title_input",
-        "type": "string"
-      },
-      {
-        "name": "_description_input",
-        "type": "bytes"
-      },
-      {
-        "name": "_owner_input",
-        "type": "address"
-      },
-      {
-        "name": "_artist_input",
-        "type": "address"
-      },
-      {
-        "name": "_commission_hub",
-        "type": "address"
-      },
-      {
-        "name": "_ai_generated",
-        "type": "bool"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   }

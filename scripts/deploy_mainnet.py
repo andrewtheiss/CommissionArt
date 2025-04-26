@@ -149,20 +149,13 @@ def deploy_art_piece_stencil(deployer, network_type="mainnet"):
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
         deploy_kwargs.update(gas_params)
-        empty_image_data = b""
-        empty_title = ""
-        empty_description = b""
+        
+        # Deploy with empty constructor
         art_piece_stencil = deployer.deploy(
-            project.ArtPiece, 
-            empty_image_data, 
-            empty_title, 
-            empty_description, 
-            deployer.address,  # Owner as deployer
-            deployer.address,  # Artist as deployer
-            deployer.address,  # Commission hub (will be updated later)
-            False,  # Not AI generated
+            project.ArtPiece,
             **deploy_kwargs
         )
+        
         print(f"ArtPiece Stencil deployed at: {art_piece_stencil.address}")
         update_contract_address(network_type, "artPiece", art_piece_stencil.address, "ArtPiece")
         return art_piece_stencil
@@ -245,6 +238,8 @@ def deploy_profile_template(deployer, network_type="mainnet"):
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
         deploy_kwargs.update(gas_params)
+        
+        # Deploy profile template with correct constructor
         profile_template = deployer.deploy(project.Profile, **deploy_kwargs)
         print(f"Profile template deployed at: {profile_template.address}")
         
