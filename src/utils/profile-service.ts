@@ -164,6 +164,31 @@ class ProfileService {
   }
 
   /**
+   * Get the ABI for the ArtPiece contract
+   * @returns Interface The ABI for the ArtPiece contract
+   */
+  public async getArtPieceAbi(): Promise<any> {
+    try {
+      const artPieceAbi = abiLoader.loadABI('ArtPiece');
+      if (!artPieceAbi) {
+        throw new Error("ArtPiece ABI not found");
+      }
+      return artPieceAbi;
+    } catch (error) {
+      console.error("Error loading ArtPiece ABI:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the provider from ethers service
+   * @returns ethers.Provider The current provider
+   */
+  public getProvider(): ethers.Provider | null {
+    return ethersService.getProvider();
+  }
+
+  /**
    * Get the ProfileHub contract address from config
    * @returns string The ProfileHub contract address
    */

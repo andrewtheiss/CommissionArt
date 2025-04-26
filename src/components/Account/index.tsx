@@ -12,16 +12,26 @@ const formatAddress = (address: string | null) => {
 
 const Account: React.FC = () => {
   const { isConnected, connectWallet, walletAddress, network } = useBlockchain();
+  
+  // Profile data and loading states
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
   const [profile, setProfile] = useState<ethers.Contract | null>(null);
   const [hasProfile, setHasProfile] = useState<boolean>(false);
   const [isArtist, setIsArtist] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [profileChecking, setProfileChecking] = useState<boolean>(true);
+  const [profileDataLoading, setProfileDataLoading] = useState<boolean>(false);
+  const [profileImageLoading, setProfileImageLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
   // Commission data
   const [recentCommissions, setRecentCommissions] = useState<string[]>([]);
   const [loadingCommissions, setLoadingCommissions] = useState<boolean>(false);
+  
+  // Art pieces data
+  const [recentArtPieces, setRecentArtPieces] = useState<string[]>([]);
+  const [totalArtPieces, setTotalArtPieces] = useState<number>(0);
+  const [loadingArtPieces, setLoadingArtPieces] = useState<boolean>(false);
+  const [artPieceDetails, setArtPieceDetails] = useState<{[address: string]: {title: string, imageUrl: string | null}}>({});
   
   // Profile image
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -30,16 +40,17 @@ const Account: React.FC = () => {
   const [creatingProfile, setCreatingProfile] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
 
+  // Check if user has a profile
   useEffect(() => {
     const checkProfileStatus = async () => {
       if (!isConnected || !walletAddress) {
-        setIsLoading(false);
+        setProfileChecking(false);
         setHasProfile(false);
         return;
       }
       
       try {
-        setIsLoading(true);
+        setProfileChecking(true);
         setError(null);
         setConfigError(null);
         
@@ -56,27 +67,8 @@ const Account: React.FC = () => {
           const profileContract = await profileService.getMyProfile();
           setProfile(profileContract);
           
-          if (profileContract) {
-            // Get artist status
-            const artistStatus = await profileContract.isArtist();
-            setIsArtist(artistStatus);
-            
-            // Get profile image
-            try {
-              const imageData = await profileContract.profileImage();
-              if (imageData && imageData.length > 0) {
-                // Convert bytes to data URL
-                const blob = new Blob([imageData], { type: 'image/avif' });
-                const imageUrl = URL.createObjectURL(blob);
-                setProfileImage(imageUrl);
-              }
-            } catch (err) {
-              console.error("Error loading profile image:", err);
-            }
-            
-            // Load recent commissions
-            loadRecentCommissions(profileContract);
-          }
+          // Log profile address for debugging
+          console.log("Connected to Profile at:", address);
         }
       } catch (err: any) {
         console.error("Error checking profile:", err);
@@ -88,20 +80,85 @@ const Account: React.FC = () => {
           setError("Failed to check profile status. Please try again.");
         }
       } finally {
-        setIsLoading(false);
+        setProfileChecking(false);
       }
     };
     
     checkProfileStatus();
+  }, [isConnected, walletAddress, network]);
+  
+  // Load profile data after we have the profile contract
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!profile) return;
+      
+      try {
+        setProfileDataLoading(true);
+        
+        // Get artist status
+        const artistStatus = await profile.isArtist();
+        setIsArtist(artistStatus);
+      } catch (err) {
+        console.error("Error loading profile data:", err);
+        setError("Failed to load profile data. Please try again.");
+      } finally {
+        setProfileDataLoading(false);
+      }
+    };
+    
+    loadProfileData();
+  }, [profile]);
+  
+  // Load profile image separately
+  useEffect(() => {
+    const loadProfileImage = async () => {
+      if (!profile) return;
+      
+      try {
+        setProfileImageLoading(true);
+        
+        const imageData = await profile.profileImage();
+        if (imageData && imageData.length > 0) {
+          // Convert bytes to data URL
+          const blob = new Blob([imageData], { type: 'image/avif' });
+          const imageUrl = URL.createObjectURL(blob);
+          setProfileImage(imageUrl);
+        }
+      } catch (err) {
+        console.error("Error loading profile image:", err);
+      } finally {
+        setProfileImageLoading(false);
+      }
+    };
+    
+    loadProfileImage();
     
     // Cleanup function
     return () => {
-      // Revoke any object URLs to avoid memory leaks
       if (profileImage) {
         URL.revokeObjectURL(profileImage);
       }
+      
+      // Revoke art piece image URLs
+      Object.values(artPieceDetails).forEach(details => {
+        if (details.imageUrl) URL.revokeObjectURL(details.imageUrl);
+      });
     };
-  }, [isConnected, walletAddress, network]);
+  }, [profile]);
+  
+  // Load commissions separately
+  useEffect(() => {
+    if (!profile) return;
+    
+    loadRecentCommissions(profile);
+  }, [profile]);
+  
+  // Load art pieces separately
+  useEffect(() => {
+    if (!profile) return;
+    
+    loadArtPieces(profile);
+  }, [profile]);
   
   const loadRecentCommissions = async (profileContract: ethers.Contract) => {
     try {
@@ -113,6 +170,69 @@ const Account: React.FC = () => {
       console.error("Error loading commissions:", err);
     } finally {
       setLoadingCommissions(false);
+    }
+  };
+  
+  const loadArtPieces = async (profileContract: ethers.Contract) => {
+    try {
+      setLoadingArtPieces(true);
+      
+      console.log("Loading art pieces from profile contract:", profileContract.target);
+      
+      // Get the total count of art pieces
+      const artCount = await profileContract.myArtCount();
+      setTotalArtPieces(Number(artCount));
+      console.log("Total art pieces:", Number(artCount));
+      
+      // Instead of using paging, let's use the getLatestArtPieces method which returns the 5 most recent
+      const artPieces = await profileContract.getLatestArtPieces();
+      console.log("Latest art pieces:", artPieces);
+      
+      setRecentArtPieces(artPieces);
+      
+      // Load details for each art piece
+      const artPieceAbi = await profileService.getArtPieceAbi();
+      if (artPieceAbi) {
+        const details: {[address: string]: {title: string, imageUrl: string | null}} = {};
+        const provider = profileService.getProvider();
+        
+        if (provider) {
+          for (const address of artPieces) {
+            if (!address) continue; // Skip empty addresses
+            
+            try {
+              console.log("Loading details for art piece:", address);
+              const artPieceContract = new ethers.Contract(address, artPieceAbi, provider);
+              const title = await artPieceContract.title();
+              
+              // Get image data
+              let imageUrl = null;
+              try {
+                const imageData = await artPieceContract.imageData();
+                if (imageData && imageData.length > 0) {
+                  const blob = new Blob([imageData], { type: 'image/avif' });
+                  imageUrl = URL.createObjectURL(blob);
+                }
+              } catch (err) {
+                console.error(`Error loading image for art piece ${address}:`, err);
+              }
+              
+              details[address] = { title, imageUrl };
+            } catch (err) {
+              console.error(`Error loading details for art piece ${address}:`, err);
+              details[address] = { title: 'Unknown Art Piece', imageUrl: null };
+            }
+          }
+          
+          setArtPieceDetails(details);
+        } else {
+          console.error("Provider not available");
+        }
+      }
+    } catch (err) {
+      console.error("Error loading art pieces:", err);
+    } finally {
+      setLoadingArtPieces(false);
     }
   };
   
@@ -159,7 +279,7 @@ const Account: React.FC = () => {
     if (!profile) return;
     
     try {
-      setIsLoading(true);
+      setProfileDataLoading(true);
       // Call the contract method
       const tx = await profile.setIsArtist(status);
       // Wait for transaction to be mined
@@ -170,7 +290,7 @@ const Account: React.FC = () => {
       console.error("Error setting artist status:", err);
       setError(`Failed to ${status ? 'become' : 'stop being'} an artist. Please try again.`);
     } finally {
-      setIsLoading(false);
+      setProfileDataLoading(false);
     }
   };
   
@@ -186,11 +306,11 @@ const Account: React.FC = () => {
     );
   }
   
-  if (isLoading) {
+  if (profileChecking) {
     return (
       <div className="account-container">
         <h2>Your Account</h2>
-        <div className="loading-spinner">Loading profile...</div>
+        <div className="loading-spinner">Checking profile...</div>
       </div>
     );
   }
@@ -239,7 +359,11 @@ const Account: React.FC = () => {
         <div className="account-card profile-card">
           <div className="profile-header">
             <div className="profile-image-container">
-              {profileImage ? (
+              {profileImageLoading ? (
+                <div className="profile-image-loading">
+                  <div className="mini-spinner"></div>
+                </div>
+              ) : profileImage ? (
                 <img src={profileImage} alt="Profile" className="profile-image" />
               ) : (
                 <div className="profile-image-placeholder">
@@ -256,14 +380,20 @@ const Account: React.FC = () => {
                 Profile: {formatAddress(profileAddress)}
               </p>
               <div className="artist-status">
-                <span>Artist Status: {isArtist ? 'Active' : 'Inactive'}</span>
-                <button 
-                  className={`artist-toggle ${isArtist ? 'deactivate' : 'activate'}`}
-                  onClick={() => handleSetArtistStatus(!isArtist)}
-                  disabled={isLoading}
-                >
-                  {isArtist ? 'Deactivate' : 'Activate'} Artist Mode
-                </button>
+                {profileDataLoading ? (
+                  <div className="mini-spinner">Loading status...</div>
+                ) : (
+                  <>
+                    <span>Artist Status: {isArtist ? 'Active' : 'Inactive'}</span>
+                    <button 
+                      className={`artist-toggle ${isArtist ? 'deactivate' : 'activate'}`}
+                      onClick={() => handleSetArtistStatus(!isArtist)}
+                      disabled={profileDataLoading}
+                    >
+                      {isArtist ? 'Deactivate' : 'Activate'} Artist Mode
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -289,6 +419,58 @@ const Account: React.FC = () => {
             </ul>
           ) : (
             <p className="no-commissions">No commissions found.</p>
+          )}
+        </div>
+        
+        <div className="account-card art-pieces-card">
+          <h3>My Art Pieces {totalArtPieces > 0 && <span className="count-badge">{totalArtPieces}</span>}</h3>
+          {loadingArtPieces ? (
+            <div className="loading-spinner">Loading art pieces...</div>
+          ) : recentArtPieces.length > 0 ? (
+            <div>
+              <p className="art-count">Total: {totalArtPieces} art piece{totalArtPieces !== 1 ? 's' : ''}</p>
+              <div className="art-pieces-grid">
+                {recentArtPieces.map((address, index) => {
+                  if (!address) return null; // Skip empty addresses
+                  const details = artPieceDetails[address] || { title: 'Loading...', imageUrl: null };
+                  return (
+                    <div key={index} className="art-piece-item">
+                      <div className="art-piece-image-container">
+                        {details.imageUrl ? (
+                          <img src={details.imageUrl} alt={details.title} className="art-piece-image" />
+                        ) : (
+                          <div className="art-piece-image-placeholder">Art</div>
+                        )}
+                      </div>
+                      <div className="art-piece-info">
+                        <h4 className="art-piece-title">{details.title}</h4>
+                        <div className="art-piece-address">{formatAddress(address)}</div>
+                        <a 
+                          href={`#/art/${address}`} 
+                          className="view-art-piece-link"
+                        >
+                          View Details
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {totalArtPieces > recentArtPieces.length && (
+                <div className="view-all-link-container">
+                  <a href="#/art/gallery" className="view-all-link">View All Art Pieces</a>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p className="art-count">Total: {totalArtPieces} art pieces</p>
+              {totalArtPieces > 0 ? (
+                <p className="loading-error">Art pieces found but couldn't be loaded. Please try again later.</p>
+              ) : (
+                <p className="no-art-pieces">No art pieces found.</p>
+              )}
+            </div>
           )}
         </div>
       </div>
