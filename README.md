@@ -179,3 +179,11 @@ As of commit e84f4ff you can compile the contract code and get the back end link
         i.e. https://sepolia.arbiscan.io/address/0x233be9576A524299bf9E4633c845ea28FF0868a4
     - After 10 more seconds you should see the L3 contract call.
         TODO: Eventually this will require ANOTHER cross-chain message
+
+
+# REMIXD Setup
+remixd -s <absolute-path-to-the-shared-folder> --remix-ide https://remix.ethereum.org
+remixd -s C:\Users\andre\Documents\Git\CommissionArt --remix-ide https://remix.ethereum.org
+
+
+

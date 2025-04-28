@@ -210,10 +210,12 @@ def getUnverifiedCount(_user: address) -> uint256:
 def getLatestVerifiedArt(_count: uint256, _page: uint256 = 0) -> DynArray[address, 3]:
     result: DynArray[address, 3] = []
     
-    # Limit to available pieces
-    available: uint256 = min(self.countVerifiedCommissions, 3)
-    if available == 0:
+    # Early return if no verified art pieces
+    if self.countVerifiedCommissions == 0:
         return result
+    
+    # Limit to available pieces
+    available: uint256 = min(self.countVerifiedCommissions, 300)
     
     # Calculate start index based on page and count
     items_per_page: uint256 = min(_count, 3)
@@ -228,25 +230,30 @@ def getLatestVerifiedArt(_count: uint256, _page: uint256 = 0) -> DynArray[addres
     if count == 0:
         return result
     
-    # Adjust start_idx for circular buffer if buffer is full
+    # Calculate buffer start differently based on fill level
     buffer_start: uint256 = 0
-    if self.countVerifiedCommissions >= 3:
-        buffer_start = self.nextLatestVerifiedArtIndex % 3
+    if self.countVerifiedCommissions >= 300:
+        # When buffer is full, use the next index as starting point
+        buffer_start = self.nextLatestVerifiedArtIndex
+    else:
+        # When buffer is partially filled, start from the beginning
+        buffer_start = 0
     
     # Populate result array
     for i: uint256 in range(0, count, bound=3):
-        idx: uint256 = (buffer_start + start_idx + i) % 3
+        idx: uint256 = (buffer_start + start_idx + i) % 300
         if self.latestVerifiedArt[idx] != empty(address):
             result.append(self.latestVerifiedArt[idx])
     
     return result
+
 @view
 @external
 def getVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 1000]:
     result: DynArray[address, 1000] = []
     
-    # Early return if start index is out of bounds
-    if _start_idx >= self.countVerifiedCommissions:
+    # Early return if no verified art or start index is out of bounds
+    if self.countVerifiedCommissions == 0 or _start_idx >= self.countVerifiedCommissions:
         return result
     
     # Calculate end index, capped by array size and max return size
@@ -264,8 +271,8 @@ def getVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[addre
 def getUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 1]:
     result: DynArray[address, 1] = []
     
-    # Early return if start index is out of bounds
-    if _start_idx >= self.countUnverifiedCommissions:
+    # Early return if no unverified art or start index is out of bounds
+    if self.countUnverifiedCommissions == 0 or _start_idx >= self.countUnverifiedCommissions:
         return result
     
     # Calculate end index, capped by array size and max return size

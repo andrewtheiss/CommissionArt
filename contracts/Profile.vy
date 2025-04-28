@@ -487,9 +487,11 @@ def getLatestArtPieces() -> DynArray[address, 5]:
     # Get minimum of 5 or available art pieces
     items_to_return: uint256 = min(5, self.myArtCount)
     
-    # Add most recent art pieces
+    # Start from the last (most recent) item and work backwards
+    # Using safe indexing to prevent underflow
     for i: uint256 in range(0, items_to_return, bound=5):
-        idx: uint256 = self.myArtCount - 1 - i
-        result.append(self.myArt[idx])
+        if i < self.myArtCount:  # Safety check
+            idx: uint256 = self.myArtCount - 1 - i
+            result.append(self.myArt[idx])
     
     return result

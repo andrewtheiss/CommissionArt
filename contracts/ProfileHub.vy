@@ -6,6 +6,7 @@
 interface Profile:
     def initialize(_owner: address): nonpayable
     def deployer() -> address: view
+    def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _title: String[100], _description: Bytes[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address: nonpayable
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
@@ -25,6 +26,11 @@ event OwnershipTransferred:
 event ProfileTemplateUpdated:
     previous_template: indexed(address)
     new_template: indexed(address)
+    
+event ArtPieceCreated:
+    profile: indexed(address)
+    art_piece: indexed(address)
+    user: indexed(address)
 
 @deploy
 def __init__(_profile_template: address):
@@ -108,3 +114,64 @@ def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[add
         result.append(self.latestUsers[idx])
     
     return result
+
+@external
+def createNewCommissionAndRegisterProfile(
+    _art_piece_template: address,
+    _image_data: Bytes[45000],
+    _title: String[100],
+    _description: Bytes[200],
+    _is_artist: bool,
+    _other_party: address,
+    _commission_hub: address,
+    _ai_generated: bool
+) -> (address, address):
+    """
+    @notice Creates a new profile for the caller if needed, then creates a new art piece
+    @param _art_piece_template The address of the ArtPiece template
+    @param _image_data The image data for the art piece
+    @param _title The title of the art piece
+    @param _description The description of the art piece
+    @param _is_artist Whether the caller is the artist
+    @param _other_party The address of the other party (artist or commissioner)
+    @param _commission_hub The commission hub address
+    @param _ai_generated Whether the art is AI generated
+    @return Tuple of (profile_address, art_piece_address)
+    """
+    # Check if the user already has a profile
+    assert self.accountToProfile[msg.sender] == empty(address), "Profile already exists"
+    
+    # Create a new profile
+    profile: address = create_minimal_proxy_to(self.profileTemplate)
+    profile_instance: Profile = Profile(profile)
+    
+    # Initialize the profile
+    extcall profile_instance.initialize(msg.sender)
+    
+    # Update profile records
+    if (self.userCount < 1000):
+        self.latestUsers.append(msg.sender)
+    else:
+        self.latestUsers.pop()
+        self.latestUsers.append(msg.sender)
+
+    self.accountToProfile[msg.sender] = profile
+    self.userCount += 1
+    
+    log ProfileCreated(user=msg.sender, profile=profile)
+    
+    # Create the art piece on the profile
+    art_piece: address = extcall profile_instance.createArtPiece(
+        _art_piece_template,
+        _image_data,
+        _title,
+        _description,
+        _is_artist,
+        _other_party,
+        _commission_hub,
+        _ai_generated
+    )
+    
+    log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
+    
+    return (profile, art_piece)
