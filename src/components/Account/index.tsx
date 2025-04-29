@@ -11,7 +11,7 @@ const formatAddress = (address: string | null) => {
 };
 
 const Account: React.FC = () => {
-  const { isConnected, connectWallet, walletAddress, network } = useBlockchain();
+  const { isConnected, connectWallet, walletAddress, network, networkType, switchToLayer } = useBlockchain();
   
   // Profile data and loading states
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
@@ -39,6 +39,78 @@ const Account: React.FC = () => {
   // Create profile
   const [creatingProfile, setCreatingProfile] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
+
+  // For wallet connection
+  const isTrulyConnected = isConnected && !!walletAddress;
+
+  const handleDisconnect = () => {
+    if (window.ethereum && window.ethereum.removeAllListeners) {
+      try {
+        window.ethereum.removeAllListeners();
+      } catch (err) {
+        console.error("Failed to remove ethereum listeners:", err);
+      }
+    }
+    localStorage.setItem('active_tab', 'account');
+    localStorage.setItem('wallet_disconnect_requested', 'true');
+    window.location.reload();
+  };
+
+  useEffect(() => {
+    if (localStorage.getItem('wallet_disconnect_requested') === 'true') {
+      localStorage.removeItem('wallet_disconnect_requested');
+      console.log("Wallet disconnected as requested");
+      if (window.ethereum) {
+        try {
+          if (window.ethereum._state && window.ethereum._state.accounts) {
+            window.ethereum._state.accounts = [];
+          }
+        } catch (err) {
+          console.error("Error forcing wallet disconnect:", err);
+        }
+      }
+    }
+  }, []);
+
+  const ConnectionBar = () => (
+    <div className="connection-bar">
+      {!isTrulyConnected ? (
+        <>
+          <div className="connection-status disconnected">
+            <span className="status-icon"></span>
+            <span className="status-text">Wallet Not Connected</span>
+          </div>
+          <button className="connect-wallet-button" onClick={connectWallet}>
+            Connect Wallet
+          </button>
+          {isConnected && !walletAddress && (
+            <div className="connection-error-message">
+              <p>Connection detected but no wallet address available. Please try reconnecting.</p>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="connection-status connected">
+            <span className="status-icon"></span>
+            <div className="connection-details">
+              <span className="status-text">
+                Connected to: <span className="network-name">
+                  {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
+                </span>
+              </span>
+              <span className="wallet-address">
+                {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
+              </span>
+            </div>
+          </div>
+          <button className="disconnect-wallet-button" onClick={handleDisconnect}>
+            Disconnect
+          </button>
+        </>
+      )}
+    </div>
+  );
 
   // Check if user has a profile
   useEffect(() => {
@@ -294,44 +366,22 @@ const Account: React.FC = () => {
     }
   };
   
-  if (!isConnected) {
-    return (
-      <div className="account-container">
-        <h2>Your Account</h2>
-        <div className="account-card connect-card">
-          <p>Connect your wallet to view your profile</p>
-          <button className="connect-button" onClick={connectWallet}>Connect Wallet</button>
-        </div>
-      </div>
-    );
-  }
-  
-  if (profileChecking) {
-    return (
-      <div className="account-container">
-        <h2>Your Account</h2>
+  return (
+    <div className="account-container">
+      <h2>Your Account</h2>
+      <ConnectionBar />
+      
+      {error && <div className="error-banner">{error}</div>}
+      
+      {profileChecking ? (
         <div className="loading-spinner">Checking profile...</div>
-      </div>
-    );
-  }
-  
-  if (configError) {
-    return (
-      <div className="account-container">
-        <h2>Your Account</h2>
+      ) : configError ? (
         <div className="account-card error-card">
           <h3>Configuration Error</h3>
           <p>{configError}</p>
           <p>Current network: {network.name}</p>
         </div>
-      </div>
-    );
-  }
-  
-  if (!hasProfile) {
-    return (
-      <div className="account-container">
-        <h2>Your Account</h2>
+      ) : !hasProfile && isTrulyConnected ? (
         <div className="account-card">
           <h3>No Profile Found</h3>
           <p>You don't have a profile yet. Create one to start using the platform.</p>
@@ -345,135 +395,131 @@ const Account: React.FC = () => {
           </button>
           {error && <div className="error-message">{error}</div>}
         </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="account-container">
-      <h2>Your Account</h2>
-      
-      {error && <div className="error-banner">{error}</div>}
-      
-      <div className="account-grid">
-        <div className="account-card profile-card">
-          <div className="profile-header">
-            <div className="profile-image-container">
-              {profileImageLoading ? (
-                <div className="profile-image-loading">
-                  <div className="mini-spinner"></div>
-                </div>
-              ) : profileImage ? (
-                <img src={profileImage} alt="Profile" className="profile-image" />
-              ) : (
-                <div className="profile-image-placeholder">
-                  {walletAddress ? walletAddress.substring(2, 4).toUpperCase() : '??'}
-                </div>
-              )}
-            </div>
-            <div className="profile-info">
-              <h3>Profile</h3>
-              <p className="wallet-address">
-                Wallet: {formatAddress(walletAddress)}
-              </p>
-              <p className="profile-address">
-                Profile: {formatAddress(profileAddress)}
-              </p>
-              <div className="artist-status">
-                {profileDataLoading ? (
-                  <div className="mini-spinner">Loading status...</div>
+      ) : isTrulyConnected ? (
+        <div className="account-grid">
+          <div className="account-card profile-card">
+            <div className="profile-header">
+              <div className="profile-image-container">
+                {profileImageLoading ? (
+                  <div className="profile-image-loading">
+                    <div className="mini-spinner"></div>
+                  </div>
+                ) : profileImage ? (
+                  <img src={profileImage} alt="Profile" className="profile-image" />
                 ) : (
-                  <>
-                    <span>Artist Status: {isArtist ? 'Active' : 'Inactive'}</span>
-                    <button 
-                      className={`artist-toggle ${isArtist ? 'deactivate' : 'activate'}`}
-                      onClick={() => handleSetArtistStatus(!isArtist)}
-                      disabled={profileDataLoading}
-                    >
-                      {isArtist ? 'Deactivate' : 'Activate'} Artist Mode
-                    </button>
-                  </>
+                  <div className="profile-image-placeholder">
+                    {walletAddress ? walletAddress.substring(2, 4).toUpperCase() : '??'}
+                  </div>
                 )}
+              </div>
+              <div className="profile-info">
+                <h3>Profile</h3>
+                <p className="wallet-address">
+                  Wallet: {formatAddress(walletAddress)}
+                </p>
+                <p className="profile-address">
+                  Profile: {formatAddress(profileAddress)}
+                </p>
+                <div className="artist-status">
+                  {profileDataLoading ? (
+                    <div className="mini-spinner">Loading status...</div>
+                  ) : (
+                    <>
+                      <span>Artist Status: {isArtist ? 'Active' : 'Inactive'}</span>
+                      <button 
+                        className={`artist-toggle ${isArtist ? 'deactivate' : 'activate'}`}
+                        onClick={() => handleSetArtistStatus(!isArtist)}
+                        disabled={profileDataLoading}
+                      >
+                        {isArtist ? 'Deactivate' : 'Activate'} Artist Mode
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        
-        <div className="account-card commissions-card">
-          <h3>Recent Commissions</h3>
-          {loadingCommissions ? (
-            <div className="loading-spinner">Loading commissions...</div>
-          ) : recentCommissions.length > 0 ? (
-            <ul className="commission-list">
-              {recentCommissions.map((address, index) => (
-                <li key={index} className="commission-item">
-                  <div className="commission-address">{formatAddress(address)}</div>
-                  <a 
-                    href={`#/commission/${address}`} 
-                    className="view-commission-link"
-                  >
-                    View
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="no-commissions">No commissions found.</p>
-          )}
-        </div>
-        
-        <div className="account-card art-pieces-card">
-          <h3>My Art Pieces {totalArtPieces > 0 && <span className="count-badge">{totalArtPieces}</span>}</h3>
-          {loadingArtPieces ? (
-            <div className="loading-spinner">Loading art pieces...</div>
-          ) : recentArtPieces.length > 0 ? (
-            <div>
-              <p className="art-count">Total: {totalArtPieces} art piece{totalArtPieces !== 1 ? 's' : ''}</p>
-              <div className="art-pieces-grid">
-                {recentArtPieces.map((address, index) => {
-                  if (!address) return null; // Skip empty addresses
-                  const details = artPieceDetails[address] || { title: 'Loading...', imageUrl: null };
-                  return (
-                    <div key={index} className="art-piece-item">
-                      <div className="art-piece-image-container">
-                        {details.imageUrl ? (
-                          <img src={details.imageUrl} alt={details.title} className="art-piece-image" />
-                        ) : (
-                          <div className="art-piece-image-placeholder">Art</div>
-                        )}
+          
+          <div className="account-card commissions-card">
+            <h3>Recent Commissions</h3>
+            {loadingCommissions ? (
+              <div className="loading-spinner">Loading commissions...</div>
+            ) : recentCommissions.length > 0 ? (
+              <ul className="commission-list">
+                {recentCommissions.map((address, index) => (
+                  <li key={index} className="commission-item">
+                    <div className="commission-address">{formatAddress(address)}</div>
+                    <a 
+                      href={`#/commission/${address}`} 
+                      className="view-commission-link"
+                    >
+                      View
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-commissions">No commissions found.</p>
+            )}
+          </div>
+          
+          <div className="account-card art-pieces-card">
+            <h3>My Art Pieces {totalArtPieces > 0 && <span className="count-badge">{totalArtPieces}</span>}</h3>
+            {loadingArtPieces ? (
+              <div className="loading-spinner">Loading art pieces...</div>
+            ) : recentArtPieces.length > 0 ? (
+              <div>
+                <p className="art-count">Total: {totalArtPieces} art piece{totalArtPieces !== 1 ? 's' : ''}</p>
+                <div className="art-pieces-grid">
+                  {recentArtPieces.map((address, index) => {
+                    if (!address) return null; // Skip empty addresses
+                    const details = artPieceDetails[address] || { title: 'Loading...', imageUrl: null };
+                    return (
+                      <div key={index} className="art-piece-item">
+                        <div className="art-piece-image-container">
+                          {details.imageUrl ? (
+                            <img src={details.imageUrl} alt={details.title} className="art-piece-image" />
+                          ) : (
+                            <div className="art-piece-image-placeholder">Art</div>
+                          )}
+                        </div>
+                        <div className="art-piece-info">
+                          <h4 className="art-piece-title">{details.title}</h4>
+                          <div className="art-piece-address">{formatAddress(address)}</div>
+                          <a 
+                            href={`#/art/${address}`} 
+                            className="view-art-piece-link"
+                          >
+                            View Details
+                          </a>
+                        </div>
                       </div>
-                      <div className="art-piece-info">
-                        <h4 className="art-piece-title">{details.title}</h4>
-                        <div className="art-piece-address">{formatAddress(address)}</div>
-                        <a 
-                          href={`#/art/${address}`} 
-                          className="view-art-piece-link"
-                        >
-                          View Details
-                        </a>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {totalArtPieces > recentArtPieces.length && (
-                <div className="view-all-link-container">
-                  <a href="#/art/gallery" className="view-all-link">View All Art Pieces</a>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <p className="art-count">Total: {totalArtPieces} art pieces</p>
-              {totalArtPieces > 0 ? (
-                <p className="loading-error">Art pieces found but couldn't be loaded. Please try again later.</p>
-              ) : (
-                <p className="no-art-pieces">No art pieces found.</p>
-              )}
-            </div>
-          )}
+                {totalArtPieces > recentArtPieces.length && (
+                  <div className="view-all-link-container">
+                    <a href="#/art/gallery" className="view-all-link">View All Art Pieces</a>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="art-count">Total: {totalArtPieces} art pieces</p>
+                {totalArtPieces > 0 ? (
+                  <p className="loading-error">Art pieces found but couldn't be loaded. Please try again later.</p>
+                ) : (
+                  <p className="no-art-pieces">No art pieces found.</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="account-card connect-card">
+          <p>Please connect your wallet to view your profile</p>
+        </div>
+      )}
     </div>
   );
 };

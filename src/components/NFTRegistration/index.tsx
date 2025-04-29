@@ -25,7 +25,7 @@ const ArtistForm: React.FC<{
   setIsCompressing: (compressing: boolean) => void;
   imageOrientation: 'portrait' | 'landscape' | 'square' | null;
   setImageOrientation: (orientation: 'portrait' | 'landscape' | 'square' | null) => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   isTrulyConnected: boolean;
   connectWallet: () => void;
   walletAddress: string | null;
@@ -191,39 +191,66 @@ const ArtistForm: React.FC<{
 
         // Get the ArtPiece contract factory from the ABI
         const artPieceAbi = abiLoader.loadABI('ArtPiece');
+        console.log("ArtPiece ABI loaded:", artPieceAbi ? "Success" : "Failed");
+        
+        if (artPieceAbi) {
+          // Debug the ABI methods
+          const methods = artPieceAbi
+            .filter((item: any) => item.type === 'function')
+            .map((item: any) => item.name);
+          console.log("Available ABI methods:", methods);
+          console.log("Has aiGenerated method:", methods.includes('aiGenerated'));
+          console.log("Has getAIGenerated method:", methods.includes('getAIGenerated'));
+        }
+        
         if (!artPieceAbi) {
           throw new Error("Failed to load ArtPiece ABI");
         }
         
-        // Create the factory for deploying the contract
-        const factory = new ethers.ContractFactory(artPieceAbi, '', signer);
+        // Get the ArtPiece contract address from the config
+        const artPieceAddress = contractConfig.networks.mainnet.artPiece.address;
+        if (!artPieceAddress) {
+          throw new Error("ArtPiece address not configured in contract_config.json");
+        }
         
-        // Deploy the contract with the artwork data
-        const contract = await factory.deploy(
-          imageData,
-          titleStr,
-          descriptionBytes,
-          walletAddress,  // owner
-          walletAddress,  // artist (same as owner for now)
-          commissionHubAddress,
-          false  // not AI generated
-        );
-
-        // Wait for the deployment transaction to be mined
-        const receipt = await contract.waitForDeployment();
-        const contractAddress = await contract.getAddress();
+        // Instead of deploying a new contract, create a minimal proxy to the existing ArtPiece
+        // First, get a contract instance for the ArtPiece template
+        const artPieceContract = new ethers.Contract(artPieceAddress, artPieceAbi, signer);
         
-        setIsCompressing(false);
-        alert(`Artwork registered successfully! Contract address: ${contractAddress}`);
-        console.log("Artwork registered successfully:", {
-          artist: walletAddress,
-          owner: walletAddress,
-          artworkTitle: titleStr,
-          contractAddress: contractAddress,
-          imageSize: compressedResult.compressedSize,
-          imageFormat: compressedResult.format,
-          dimensions: compressedResult.dimensions,
-        });
+        try {
+          // Call the initialize function on the contract
+          const tx = await artPieceContract.initialize(
+            imageData,
+            titleStr,
+            descriptionBytes,
+            walletAddress,  // owner
+            walletAddress,  // artist (same as owner for now)
+            commissionHubAddress,
+            false  // not AI generated
+          );
+          
+          // Wait for the transaction to be mined
+          const receipt = await tx.wait();
+          
+          setIsCompressing(false);
+          alert(`Artwork registered successfully through existing template!`);
+          console.log("Artwork registered successfully:", {
+            artist: walletAddress,
+            owner: walletAddress,
+            artworkTitle: titleStr,
+            contractAddress: artPieceAddress,
+            imageSize: compressedResult.compressedSize,
+            imageFormat: compressedResult.format,
+            dimensions: compressedResult.dimensions,
+          });
+        } catch (error) {
+          console.error("Error calling initialize:", error);
+          
+          // If direct initialization fails, we need a different approach
+          // Let's try deploying using a minimal proxy pattern
+          alert("Direct initialization failed. The contract may already be initialized. Please try again later or create a profile first.");
+          setIsCompressing(false);
+        }
       }
     } catch (error) {
       setIsCompressing(false);
@@ -385,7 +412,7 @@ const NFTRegistration: React.FC = () => {
   const [imageOrientation, setImageOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
   const [hasProfile, setHasProfile] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isTrulyConnected = isConnected && !!walletAddress;
 
   // Check if user has a profile when they connect

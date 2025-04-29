@@ -14,45 +14,34 @@
       },
       {
         "indexed": false,
-        "name": "unique_id",
-        "type": "uint256"
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "commission_hub",
+        "type": "address"
       }
     ],
-    "name": "RequestSent",
+    "name": "Registered",
     "type": "event"
   },
   {
-    "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
         "name": "owner",
         "type": "address"
       }
     ],
-    "name": "OwnerReceived",
-    "type": "event"
-  },
-  {
-    "inputs": [
-      {
-        "name": "new_l1_helper",
-        "type": "address"
-      }
-    ],
-    "name": "setL1Helper",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "new_l3_contract",
-        "type": "address"
-      }
-    ],
-    "name": "setL3Contract",
+    "name": "registerOwner",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -68,31 +57,7 @@
         "type": "uint256"
       }
     ],
-    "name": "requestNFTOwner",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "owner",
-        "type": "address"
-      }
-    ],
-    "name": "receiveResultFromL1",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "l1_helper_contract",
+    "name": "getOwner",
     "outputs": [
       {
         "name": "",
@@ -104,7 +69,19 @@
   },
   {
     "inputs": [],
-    "name": "l3_contract",
+    "name": "l2relay",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "commission_hub_template",
     "outputs": [
       {
         "name": "",
@@ -129,11 +106,53 @@
   {
     "inputs": [
       {
-        "name": "initial_l1_helper",
+        "name": "arg0",
         "type": "address"
       },
       {
-        "name": "initial_l3_contract",
+        "name": "arg1",
+        "type": "uint256"
+      }
+    ],
+    "name": "commission_hubs",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      },
+      {
+        "name": "arg1",
+        "type": "uint256"
+      }
+    ],
+    "name": "owners",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "initial_l2relay",
+        "type": "address"
+      },
+      {
+        "name": "initial_commission_hub_template",
         "type": "address"
       }
     ],

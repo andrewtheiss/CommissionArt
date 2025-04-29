@@ -51,6 +51,28 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "profile",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "art_piece",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "ArtPieceCreated",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "createProfile",
     "outputs": [],
@@ -122,6 +144,55 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece_template",
+        "type": "address"
+      },
+      {
+        "name": "_image_data",
+        "type": "bytes"
+      },
+      {
+        "name": "_title",
+        "type": "string"
+      },
+      {
+        "name": "_description",
+        "type": "bytes"
+      },
+      {
+        "name": "_is_artist",
+        "type": "bool"
+      },
+      {
+        "name": "_other_party",
+        "type": "address"
+      },
+      {
+        "name": "_commission_hub",
+        "type": "address"
+      },
+      {
+        "name": "_ai_generated",
+        "type": "bool"
+      }
+    ],
+    "name": "createNewCommissionAndRegisterProfile",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      },
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

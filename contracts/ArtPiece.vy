@@ -44,7 +44,15 @@ def __init__():
     self.initialized = False
 
 @external
-def initialize(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool):
+def initialize(
+    _image_data_input: Bytes[45000],
+    _title_input: String[100], 
+    _description_input: Bytes[200], 
+    _owner_input: address, 
+    _artist_input: address, 
+    _commission_hub: address, 
+    _ai_generated: bool
+):
     """
     Initialize the ArtPiece contract, can only be called once
     """
@@ -177,4 +185,12 @@ def isOnCommissionWhitelist(_commissioner: address) -> bool:
     Check if an address is whitelisted for commissioning
     """
     return self.commissionWhitelist[_commissioner]
+
+@external
+@view
+def getAIGenerated() -> bool:
+    """
+    Return whether the artwork was AI generated
+    """
+    return self.aiGenerated
 

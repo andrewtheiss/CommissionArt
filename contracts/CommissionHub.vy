@@ -1,5 +1,5 @@
 # @version 0.4.1
-# Contains a list of NFTs that the owner has registered
+# Contains a list of Art Pieces per a given NFT
 # Allows for verification of the commissions
 # Allows for creation of a new commission
 

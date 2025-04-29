@@ -2,6 +2,7 @@
 # ProfileHub - Central registry for user profiles
 # Maps user addresses to their profile contracts
 # Allows for creation of new profiles and querying existing ones
+# Keeps track of all Profiles on app
 
 interface Profile:
     def initialize(_owner: address): nonpayable

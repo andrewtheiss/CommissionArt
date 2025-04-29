@@ -1,0 +1,137 @@
+[
+  {
+    "inputs": [
+      {
+        "name": "_item",
+        "type": "address"
+      }
+    ],
+    "name": "add_to_array",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_item",
+        "type": "address"
+      }
+    ],
+    "name": "remove_from_array",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "get_array_slice",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "get_array_slice_reverse",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_item",
+        "type": "address"
+      }
+    ],
+    "name": "contains",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "get_length",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "get_at",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_index",
+        "type": "uint256"
+      },
+      {
+        "name": "_item",
+        "type": "address"
+      }
+    ],
+    "name": "set_at",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "clear_array",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
