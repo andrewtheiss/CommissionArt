@@ -176,3 +176,36 @@ def createNewArtPieceAndRegisterProfile(
     log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
     
     return (profile, art_piece)
+
+@external
+def createProfileFromContract(_profile_contract: address) -> address:
+    """
+    @notice Creates a new profile for the caller using a provided profile contract
+    @param _profile_contract The address of the profile contract to use as a template
+    @return The address of the newly created profile
+    """
+    assert self.accountToProfile[msg.sender] == empty(address), "Profile already exists"
+    
+    # TODO: Add whitelisting for profile contracts that can be used with create_minimal_proxy_to
+    
+    # Create a new profile contract for the user
+    profile: address = create_minimal_proxy_to(_profile_contract)
+    profile_instance: Profile = Profile(profile)
+    
+    # Initialize the profile with the user as the owner
+    extcall profile_instance.initialize(msg.sender)
+    
+    # Update our records
+    # TODO - actuall save the latest 10 even if we max out
+    if (self.userCount < 1000):
+        self.latestUsers.append(msg.sender)
+    else:
+        self.latestUsers.pop()
+        self.latestUsers.append(msg.sender)
+
+    self.accountToProfile[msg.sender] = profile
+    self.userCount += 1
+    
+    log ProfileCreated(user=msg.sender, profile=profile)
+    
+    return profile

@@ -177,3 +177,35 @@ def test_artist_creates_commission_for_user(setup):
     assert art_piece.getTitle() == title
     assert art_piece.getDescription() == description
     assert art_piece.getAIGenerated() == True 
+
+def test_create_profile_from_contract(setup):
+    """Test creating a profile using a provided profile contract"""
+    user = setup["user"]
+    profile_hub = setup["profile_hub"]
+    profile_template = setup["profile_template"]
+    
+    # Verify user doesn't have a profile yet
+    assert profile_hub.hasProfile(user.address) == False
+    
+    # Create profile using the provided profile contract
+    tx = profile_hub.createProfileFromContract(
+        profile_template.address,
+        sender=user
+    )
+    
+    # Verify profile was created and registered
+    assert profile_hub.hasProfile(user.address) == True
+    
+    # Get the profile address from the hub
+    profile_address = profile_hub.getProfile(user.address)
+    
+    # Load the profile contract
+    profile = project.Profile.at(profile_address)
+    
+    # Verify the profile owner is set correctly
+    assert profile.owner() == user.address
+    
+    # Verify initial state of the profile
+    assert profile.myArtCount() == 0
+    assert profile.isArtist() == False
+    assert profile.allowUnverifiedCommissions() == True 
