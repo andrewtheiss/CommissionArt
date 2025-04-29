@@ -1,0 +1,331 @@
+import pytest
+from ape import accounts, project
+
+@pytest.fixture
+def setup():
+    # Get accounts for testing
+    deployer = accounts.test_accounts[0]
+    owner = accounts.test_accounts[1]
+    artist = accounts.test_accounts[2]
+    other_user = accounts.test_accounts[3]
+    
+    # Deploy Profile template
+    profile_template = project.Profile.deploy(sender=deployer)
+    
+    # Deploy ProfileHub
+    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    
+    # Create profiles for testing
+    profile_hub.createProfile(sender=owner)
+    profile_hub.createProfile(sender=artist)
+    
+    owner_profile_address = profile_hub.getProfile(owner.address)
+    artist_profile_address = profile_hub.getProfile(artist.address)
+    
+    owner_profile = project.Profile.at(owner_profile_address)
+    artist_profile = project.Profile.at(artist_profile_address)
+    
+    # Set artist status for artist profile
+    artist_profile.setIsArtist(True, sender=artist)
+    
+    # Deploy ArtPiece template for art piece tests
+    art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    return {
+        "deployer": deployer,
+        "owner": owner,
+        "artist": artist,
+        "other_user": other_user,
+        "profile_template": profile_template,
+        "profile_hub": profile_hub,
+        "owner_profile": owner_profile,
+        "artist_profile": artist_profile,
+        "art_piece_template": art_piece_template
+    }
+
+def test_initialization(setup):
+    """Test initialization and initial state"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    deployer = setup["deployer"]
+    
+    # Check owner profile initial state
+    assert owner_profile.owner() == owner.address
+    assert owner_profile.deployer() == deployer.address
+    assert owner_profile.isArtist() is False
+    assert owner_profile.allowUnverifiedCommissions() is True
+    assert owner_profile.profileExpansion() == "0x" + "0" * 40
+    assert owner_profile.proceedsAddress() == owner.address
+    
+    # Check all counts are initialized to zero
+    assert owner_profile.profileImageCount() == 0
+    assert owner_profile.commissionCount() == 0
+    assert owner_profile.unverifiedCommissionCount() == 0
+    assert owner_profile.likedProfileCount() == 0
+    assert owner_profile.linkedProfileCount() == 0
+    assert owner_profile.myCommissionCount() == 0
+    assert owner_profile.additionalMintErc1155Count() == 0
+    assert owner_profile.myArtCount() == 0
+    
+    # Check artist profile
+    assert artist_profile.owner() == artist.address
+    assert artist_profile.isArtist() is True
+    assert artist_profile.proceedsAddress() == artist.address
+
+def test_set_is_artist(setup):
+    """Test setting artist status"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    
+    # Initial state
+    assert owner_profile.isArtist() is False
+    
+    # Set to true
+    owner_profile.setIsArtist(True, sender=owner)
+    assert owner_profile.isArtist() is True
+    
+    # Set to false
+    owner_profile.setIsArtist(False, sender=owner)
+    assert owner_profile.isArtist() is False
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        owner_profile.setIsArtist(True, sender=other_user)
+
+def test_profile_image_methods(setup):
+    """Test profile image methods"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    
+    # Test initial state
+    assert owner_profile.profileImageCount() == 0
+    assert len(owner_profile.profileImage()) == 0
+    
+    # Test setting profile image
+    image1 = b"test profile image 1" * 10
+    owner_profile.setProfileImage(image1, sender=owner)
+    assert owner_profile.profileImage() == image1
+    assert owner_profile.profileImageCount() == 0  # First image doesn't increment count
+    
+    # Set second image to trigger history storage
+    image2 = b"test profile image 2" * 10
+    owner_profile.setProfileImage(image2, sender=owner)
+    assert owner_profile.profileImage() == image2
+    assert owner_profile.profileImageCount() == 1
+    
+    # Set third image
+    image3 = b"test profile image 3" * 10
+    owner_profile.setProfileImage(image3, sender=owner)
+    assert owner_profile.profileImage() == image3
+    assert owner_profile.profileImageCount() == 2
+    
+    # Test getProfileImageByIndex
+    historical_image1 = owner_profile.getProfileImageByIndex(0)
+    assert historical_image1 == image1
+    
+    historical_image2 = owner_profile.getProfileImageByIndex(1)
+    assert historical_image2 == image2
+    
+    # Test invalid index
+    with pytest.raises(Exception):
+        owner_profile.getProfileImageByIndex(2)  # Index out of bounds
+    
+    # Test getRecentProfileImages
+    recent_images = owner_profile.getRecentProfileImages(5)
+    assert len(recent_images) == 3
+    assert recent_images[0] == image3  # Current image first
+    assert recent_images[1] == image2
+    assert recent_images[2] == image1
+    
+    # Test with smaller count
+    recent_images_2 = owner_profile.getRecentProfileImages(2)
+    assert len(recent_images_2) == 2
+    assert recent_images_2[0] == image3
+    assert recent_images_2[1] == image2
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        owner_profile.setProfileImage(b"unauthorized image", sender=other_user)
+
+def test_set_allow_unverified_commissions(setup):
+    """Test setting allow unverified commissions flag"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    
+    # Initial state
+    assert owner_profile.allowUnverifiedCommissions() is True
+    
+    # Set to false
+    owner_profile.setAllowUnverifiedCommissions(False, sender=owner)
+    assert owner_profile.allowUnverifiedCommissions() is False
+    
+    # Set to true again
+    owner_profile.setAllowUnverifiedCommissions(True, sender=owner)
+    assert owner_profile.allowUnverifiedCommissions() is True
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        owner_profile.setAllowUnverifiedCommissions(False, sender=other_user)
+
+def test_set_profile_expansion(setup):
+    """Test setting profile expansion address"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    
+    # Initial state
+    assert owner_profile.profileExpansion() == "0x" + "0" * 40
+    
+    # Set expansion address
+    expansion_address = "0x" + "1" * 40
+    owner_profile.setProfileExpansion(expansion_address, sender=owner)
+    assert owner_profile.profileExpansion() == expansion_address
+    
+    # Change expansion address
+    new_expansion = "0x" + "2" * 40
+    owner_profile.setProfileExpansion(new_expansion, sender=owner)
+    assert owner_profile.profileExpansion() == new_expansion
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        owner_profile.setProfileExpansion("0x" + "3" * 40, sender=other_user)
+
+def test_set_proceeds_address(setup):
+    """Test setting proceeds address (artist-only)"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    
+    # Initial state
+    assert artist_profile.proceedsAddress() == artist.address
+    
+    # Set proceeds address
+    proceeds_address = "0x" + "a" * 40
+    artist_profile.setProceedsAddress(proceeds_address, sender=artist)
+    assert artist_profile.proceedsAddress() == proceeds_address
+    
+    # Non-artist profile should fail
+    with pytest.raises(Exception):
+        owner_profile.setProceedsAddress(proceeds_address, sender=owner)
+    
+    # Set owner as artist to test
+    owner_profile.setIsArtist(True, sender=owner)
+    
+    # Now should work
+    owner_profile.setProceedsAddress(proceeds_address, sender=owner)
+    assert owner_profile.proceedsAddress() == proceeds_address
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        artist_profile.setProceedsAddress("0x" + "b" * 40, sender=other_user)
+
+def test_whitelist_methods(setup):
+    """Test whitelist management methods"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    artist = setup["artist"]
+    
+    # Initial state - should be false for any address
+    test_address = "0x" + "f" * 40
+    assert owner_profile.whitelist(test_address) is False
+    assert owner_profile.whitelist(artist.address) is False
+    
+    # Add to whitelist
+    owner_profile.addToWhitelist(test_address, sender=owner)
+    assert owner_profile.whitelist(test_address) is True
+    
+    # Add another
+    owner_profile.addToWhitelist(artist.address, sender=owner)
+    assert owner_profile.whitelist(artist.address) is True
+    
+    # Remove from whitelist
+    owner_profile.removeFromWhitelist(test_address, sender=owner)
+    assert owner_profile.whitelist(test_address) is False
+    assert owner_profile.whitelist(artist.address) is True
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        owner_profile.addToWhitelist(other_user.address, sender=other_user)
+    
+    with pytest.raises(Exception):
+        owner_profile.removeFromWhitelist(artist.address, sender=other_user)
+
+def test_blacklist_methods(setup):
+    """Test blacklist management methods"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    other_user = setup["other_user"]
+    artist = setup["artist"]
+    
+    # Initial state - should be false for any address
+    test_address = "0x" + "d" * 40
+    assert owner_profile.blacklist(test_address) is False
+    assert owner_profile.blacklist(artist.address) is False
+    
+    # Add to blacklist
+    owner_profile.addToBlacklist(test_address, sender=owner)
+    assert owner_profile.blacklist(test_address) is True
+    
+    # Add another
+    owner_profile.addToBlacklist(artist.address, sender=owner)
+    assert owner_profile.blacklist(artist.address) is True
+    
+    # Remove from blacklist
+    owner_profile.removeFromBlacklist(test_address, sender=owner)
+    assert owner_profile.blacklist(test_address) is False
+    assert owner_profile.blacklist(artist.address) is True
+    
+    # Attempt by non-owner should fail
+    with pytest.raises(Exception):
+        owner_profile.addToBlacklist(other_user.address, sender=other_user)
+    
+    with pytest.raises(Exception):
+        owner_profile.removeFromBlacklist(artist.address, sender=other_user)
+
+def test_create_art_piece(setup):
+    """Test creating art pieces through profile"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    artist = setup["artist"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Test initial state
+    assert owner_profile.myArtCount() == 0
+    
+    # Create an art piece as commissioner
+    image_data = b"test art image data" * 10
+    title = "Test Art Piece"
+    description = b"Test description for art piece"
+    
+    # Simple test of creating art - full tests covered in test_profile_art_creation.py
+    owner_profile.createArtPiece(
+        art_piece_template.address,
+        image_data,
+        title,
+        description,
+        False,  # Not as artist
+        artist.address,  # Artist address
+        "0x" + "0" * 40,  # Commission hub
+        False,  # Not AI generated
+        sender=owner
+    )
+    
+    # Verify count increased
+    assert owner_profile.myArtCount() == 1
+    
+    # Get the art piece
+    art_pieces = owner_profile.getArtPieces(0, 1)
+    assert len(art_pieces) == 1
+    
+    art_piece = project.ArtPiece.at(art_pieces[0])
+    assert art_piece.getTitle() == title
+    assert art_piece.getOwner() == owner.address
+    assert art_piece.getArtist() == artist.address 
