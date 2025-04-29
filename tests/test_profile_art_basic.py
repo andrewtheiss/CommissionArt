@@ -15,7 +15,11 @@ def setup():
     owner = accounts.test_accounts[2]
     tagged_person = accounts.test_accounts[3]
     commissioner = accounts.test_accounts[4]
-    
+    xtra1 = accounts.test_accounts[5]
+    xtra2 = accounts.test_accounts[6]
+    xtra3 = accounts.test_accounts[7]
+    xtra4 = accounts.test_accounts[8]
+    xtra5 = accounts.test_accounts[9]
     # Deploy CommissionHub
     commission_hub = project.CommissionHub.deploy(sender=deployer)
     
@@ -52,7 +56,12 @@ def setup():
         "profile_hub": profile_hub,
         "art_piece_template": art_piece_template,
         "owner_profile": owner_profile,
-        "artist_profile": artist_profile
+        "artist_profile": artist_profile,
+        "xtra1": xtra1,
+        "xtra2": xtra2,
+        "xtra3": xtra3,
+        "xtra4": xtra4,
+        "xtra5": xtra5
     }
 
 def test_profile_basic_info(setup):
@@ -320,3 +329,285 @@ def test_get_art_piece_at_index_multiple(setup):
     # Test with invalid index - should revert
     with pytest.raises(Exception):
         owner_profile.getArtPieceAtIndex(3)  # Index out of bounds 
+
+def test_array_slice_functionality(setup):
+    """Test the _getArraySlice functionality through liked profiles"""
+    owner = setup["owner"]
+    profile_hub = setup["profile_hub"]
+    owner_profile = setup["owner_profile"]
+    xtra1 = setup["xtra1"]
+    xtra2 = setup["xtra2"]
+    xtra3 = setup["xtra3"]
+    xtra4 = setup["xtra4"]
+    xtra5 = setup["xtra5"]
+    
+    # Create a limited set of profiles to test with
+    test_accounts = [xtra1, xtra2, xtra3, xtra4, xtra5]
+    artist = setup["artist"]  # Already has a profile
+    
+    profiles_to_like = []
+    # First add the existing artist profile
+    profiles_to_like.append(profile_hub.getProfile(artist.address))
+    
+    # Then add the test accounts' profiles
+    for account in test_accounts:
+        profile_hub.createProfile(sender=account)
+        profile_address = profile_hub.getProfile(account.address)
+        profiles_to_like.append(profile_address)
+    
+    # Like all the profiles
+    for profile in profiles_to_like:
+        owner_profile.addLikedProfile(profile, sender=owner)
+    
+    # Verify we have the expected number of liked profiles (6 total)
+    assert owner_profile.likedProfileCount() == 6
+    
+    # Test page 0 with size 3 (should return first 3 profiles)
+    page_0 = owner_profile.getLikedProfiles(0, 3)
+    assert len(page_0) == 3
+    for i in range(3):
+        assert page_0[i] == profiles_to_like[i]
+    
+    # Test page 1 with size 3 (should return profiles 3-5)
+    page_1 = owner_profile.getLikedProfiles(1, 3)
+    assert len(page_1) == 3
+    for i in range(3):
+        assert page_1[i] == profiles_to_like[i + 3]
+    
+    # Test page 2 with size 3 (should return empty array - out of bounds)
+    page_2 = owner_profile.getLikedProfiles(2, 3)
+    assert len(page_2) == 0
+    
+    # Test with larger page size (should respect array bounds)
+    large_page = owner_profile.getLikedProfiles(0, 10)
+    assert len(large_page) == 6  # Only 6 items exist
+    
+    # Test with smaller page size
+    small_pages_total = []
+    for i in range(6):  # Get 6 pages of size 1
+        page = owner_profile.getLikedProfiles(i, 1)
+        small_pages_total.extend(page)
+    
+    assert len(small_pages_total) == 6  # Should have retrieved all 6 items
+    
+    # Test partial page
+    partial_page = owner_profile.getLikedProfiles(1, 5)  # 6 total items, page 1 with size 5 should just return the 6th item
+    assert len(partial_page) == 1
+    assert partial_page[0] == profiles_to_like[5]
+
+def test_array_slice_reverse_functionality(setup):
+    """Test the _getArraySliceReverse functionality through liked profiles"""
+    owner = setup["owner"]
+    profile_hub = setup["profile_hub"]
+    owner_profile = setup["owner_profile"]
+    xtra1 = setup["xtra1"]
+    xtra2 = setup["xtra2"]
+    xtra3 = setup["xtra3"]
+    xtra4 = setup["xtra4"]
+    xtra5 = setup["xtra5"]
+    
+    # Use a subset of accounts for testing
+    test_accounts = [xtra1, xtra2, xtra3, xtra4, xtra5]
+    
+    profiles_to_like = []
+    for account in test_accounts:
+        profile_hub.createProfile(sender=account)
+        profile_address = profile_hub.getProfile(account.address)
+        profiles_to_like.append(profile_address)
+    
+    # Like all the profiles
+    for profile in profiles_to_like:
+        owner_profile.addLikedProfile(profile, sender=owner)
+    
+    # Verify we have the expected number of liked profiles
+    assert owner_profile.likedProfileCount() == 5
+    
+    # Test page 0 with size 2 (should return last 2 profiles in reverse)
+    page_0 = owner_profile.getRecentLikedProfiles(0, 2)
+    assert len(page_0) == 2
+    assert page_0[0] == profiles_to_like[4]  # Most recent first
+    assert page_0[1] == profiles_to_like[3]
+    
+    # Test page 1 with size 2 (should return profiles 2-1 in reverse)
+    page_1 = owner_profile.getRecentLikedProfiles(1, 2)
+    assert len(page_1) == 2
+    assert page_1[0] == profiles_to_like[2]
+    assert page_1[1] == profiles_to_like[1]
+    
+    # Test page 2 with size 2 (should return profile 0)
+    page_2 = owner_profile.getRecentLikedProfiles(2, 2)
+    assert len(page_2) == 1
+    assert page_2[0] == profiles_to_like[0]
+    
+    # Test page 3 with size 2 (should return empty array - out of bounds)
+    page_3 = owner_profile.getRecentLikedProfiles(3, 2)
+    assert len(page_3) == 0
+    
+    # Test with larger page size (should respect array bounds and return in reverse)
+    large_page = owner_profile.getRecentLikedProfiles(0, 10)
+    assert len(large_page) == 5  # Only 5 items exist
+    for i in range(5):
+        assert large_page[i] == profiles_to_like[4 - i]  # Reverse order
+
+def test_remove_from_array_functionality(setup):
+    """Test the _removeFromArray functionality through liked profiles"""
+    owner = setup["owner"]
+    profile_hub = setup["profile_hub"]
+    owner_profile = setup["owner_profile"]
+    xtra1 = setup["xtra1"]
+    xtra2 = setup["xtra2"]
+    xtra3 = setup["xtra3"]
+    
+    # Use a smaller subset
+    test_accounts = [xtra1, xtra2, xtra3]
+    
+    # Create profiles to like
+    profiles_to_like = []
+    for account in test_accounts:
+        profile_hub.createProfile(sender=account)
+        profile_address = profile_hub.getProfile(account.address)
+        profiles_to_like.append(profile_address)
+    
+    # Like all the profiles
+    for profile in profiles_to_like:
+        owner_profile.addLikedProfile(profile, sender=owner)
+    
+    # Verify we have the expected number of liked profiles
+    assert owner_profile.likedProfileCount() == 3
+    
+    # Get initial profiles array
+    initial_profiles = owner_profile.getLikedProfiles(0, 10)
+    assert len(initial_profiles) == 3
+    
+    # 1. Remove an item and verify count decreased
+    first_item = profiles_to_like[0]
+    owner_profile.removeLikedProfile(first_item, sender=owner)
+    assert owner_profile.likedProfileCount() == 2
+    
+    # Get the updated array
+    remaining_profiles = owner_profile.getLikedProfiles(0, 10)
+    assert len(remaining_profiles) == 2
+    
+    # Count occurrences of the removed item (should be 0)
+    removed_item_count = sum(1 for profile in remaining_profiles if profile == first_item)
+    assert removed_item_count == 0, f"Removed item {first_item} still found in the array"
+    
+    # 2. Remove another item and verify count decreased again
+    second_item = profiles_to_like[1]
+    owner_profile.removeLikedProfile(second_item, sender=owner)
+    assert owner_profile.likedProfileCount() == 1
+    
+    # Get the updated array
+    remaining_profiles = owner_profile.getLikedProfiles(0, 10)
+    assert len(remaining_profiles) == 1
+    assert remaining_profiles[0] == profiles_to_like[2], "Only the third item should remain"
+    
+    # 3. Remove the last item and verify array is empty
+    last_item = profiles_to_like[2]
+    owner_profile.removeLikedProfile(last_item, sender=owner)
+    assert owner_profile.likedProfileCount() == 0
+    
+    # Check that the array is now empty
+    final_profiles = owner_profile.getLikedProfiles(0, 10)
+    assert len(final_profiles) == 0
+    
+    # 4. Try to remove an item that doesn't exist (should revert)
+    non_existent_profile = "0x0000000000000000000000000000000000001234"
+    with pytest.raises(Exception):
+        owner_profile.removeLikedProfile(non_existent_profile, sender=owner)
+
+def test_complex_array_operations(setup):
+    """Test a combination of array operations in sequence"""
+    owner = setup["owner"]
+    profile_hub = setup["profile_hub"]
+    owner_profile = setup["owner_profile"]
+    xtra1 = setup["xtra1"]
+    xtra2 = setup["xtra2"]
+    xtra3 = setup["xtra3"]
+    xtra4 = setup["xtra4"]
+    xtra5 = setup["xtra5"]
+    
+    # Start with a clean state - remove any existing liked profiles
+    existing_profiles = owner_profile.getLikedProfiles(0, 20)
+    for profile in existing_profiles:
+        try:
+            owner_profile.removeLikedProfile(profile, sender=owner)
+        except:
+            pass
+    
+    # Verify clean state
+    assert owner_profile.likedProfileCount() == 0
+    
+    # Use available accounts
+    test_accounts = [xtra1, xtra2, xtra3, xtra4, xtra5]
+    
+    # Create profiles
+    profiles = []
+    for account in test_accounts:
+        profile_hub.createProfile(sender=account)
+        profile_address = profile_hub.getProfile(account.address)
+        profiles.append(profile_address)
+    
+    # Phase 1: Add first 3 profiles
+    for i in range(3):
+        owner_profile.addLikedProfile(profiles[i], sender=owner)
+    
+    # Verify count and content
+    assert owner_profile.likedProfileCount() == 3
+    page = owner_profile.getLikedProfiles(0, 10)
+    assert len(page) == 3
+    recent = owner_profile.getRecentLikedProfiles(0, 10)
+    assert len(recent) == 3
+    
+    # Most recent should be the last one added
+    assert recent[0] == profiles[2]
+    
+    # Phase 2: Remove middle profile
+    owner_profile.removeLikedProfile(profiles[1], sender=owner)
+    
+    # Get updated state
+    page = owner_profile.getLikedProfiles(0, 10)
+    
+    # Verify count
+    assert owner_profile.likedProfileCount() == 2, f"Expected 2 profiles, got {owner_profile.likedProfileCount()}"
+    assert len(page) == 2, f"Expected 2 profiles, got {len(page)}"
+    
+    # Verify correct items remain
+    remaining_profiles = set(page)
+    expected_remaining = {profiles[0], profiles[2]}
+    assert remaining_profiles == expected_remaining, f"Remaining profiles {remaining_profiles} don't match expected {expected_remaining}"
+    
+    # Phase 3: Add 2 more profiles
+    for i in range(3, 5):
+        owner_profile.addLikedProfile(profiles[i], sender=owner)
+    
+    # Verify count and content
+    assert owner_profile.likedProfileCount() == 4
+    page = owner_profile.getLikedProfiles(0, 10)
+    assert len(page) == 4
+    
+    # Phase 4: Test reverse ordering - most recent first
+    recent = owner_profile.getRecentLikedProfiles(0, 10)
+    assert len(recent) == 4
+    
+    # Check the first 2 items match the most recently added
+    assert recent[0] == profiles[4], f"Expected most recent to be profiles[4], got {recent[0]}"
+    assert recent[1] == profiles[3], f"Expected second most recent to be profiles[3], got {recent[1]}"
+    
+    # Phase 5: Test pagination
+    recent_0 = owner_profile.getRecentLikedProfiles(0, 2)
+    recent_1 = owner_profile.getRecentLikedProfiles(1, 2)
+    
+    assert len(recent_0) == 2
+    assert len(recent_1) == 2
+    
+    # Most recent 2 items should be profiles[4] and profiles[3]
+    assert recent_0[0] == profiles[4]
+    assert recent_0[1] == profiles[3]
+    
+    # Next 2 items should be the remaining profiles
+    # We can't guarantee the exact order because of the swap-to-remove algorithm
+    # Just verify they're in the list
+    assert recent_1[0] in [profiles[0], profiles[2]]
+    assert recent_1[1] in [profiles[0], profiles[2]]
+    assert recent_1[0] != recent_1[1]  # Make sure they're different 
