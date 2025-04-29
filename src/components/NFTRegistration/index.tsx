@@ -186,7 +186,7 @@ const ArtistForm: React.FC<{
         setIsCompressing(false);
         alert(`Artwork registered successfully via Profile!`);
       } else {
-        // Direct ArtPiece creation (existing flow)
+        // Direct ArtPiece creation flow for users without a profile
         console.log("Deploying ArtPiece contract directly...");
 
         // Get the ArtPiece contract factory from the ABI
@@ -207,49 +207,94 @@ const ArtistForm: React.FC<{
           throw new Error("Failed to load ArtPiece ABI");
         }
         
-        // Get the ArtPiece contract address from the config
-        const artPieceAddress = contractConfig.networks.mainnet.artPiece.address;
-        if (!artPieceAddress) {
-          throw new Error("ArtPiece address not configured in contract_config.json");
-        }
-        
-        // Instead of deploying a new contract, create a minimal proxy to the existing ArtPiece
-        // First, get a contract instance for the ArtPiece template
-        const artPieceContract = new ethers.Contract(artPieceAddress, artPieceAbi, signer);
-        
         try {
-          // Call the initialize function on the contract
-          const tx = await artPieceContract.initialize(
+          // There are two options:
+          // 1. Create a profile and then register the artwork through the profile
+          // 2. Use a direct contract deployment 
+          
+          // For simplicity and better user experience, let's create a profile for them
+          // and register the artwork at the same time
+          
+          // Get the ProfileHub contract
+          const profileHubAddress = contractConfig.networks.mainnet.profileHub.address;
+          const profileHubAbi = abiLoader.loadABI('ProfileHub');
+          
+          if (!profileHubAddress || !profileHubAbi) {
+            throw new Error("ProfileHub configuration not found");
+          }
+          
+          const profileHub = new ethers.Contract(profileHubAddress, profileHubAbi, signer);
+          
+          // Get the template ArtPiece address
+          const artPieceTemplateAddress = contractConfig.networks.mainnet.artPiece.address;
+          if (!artPieceTemplateAddress) {
+            throw new Error("ArtPiece template address not configured");
+          }
+          
+          console.log("Creating profile and registering artwork in one transaction...");
+          
+          // Create profile and register artwork
+          const tx = await profileHub.createNewCommissionAndRegisterProfile(
+            artPieceTemplateAddress,
             imageData,
             titleStr,
             descriptionBytes,
-            walletAddress,  // owner
-            walletAddress,  // artist (same as owner for now)
+            true, // is artist
+            ethers.ZeroAddress, // no other party
             commissionHubAddress,
-            false  // not AI generated
+            false // not AI generated
           );
+          
+          console.log("Transaction sent:", tx.hash);
           
           // Wait for the transaction to be mined
           const receipt = await tx.wait();
+          console.log("Transaction confirmed:", receipt);
+          
+          // Extract profile and art piece addresses from the event logs
+          let profileAddress = null;
+          let artPieceAddress = null;
+          
+          for (const log of receipt.logs) {
+            try {
+              const parsedLog = profileHub.interface.parseLog(log);
+              if (parsedLog && parsedLog.name === "ProfileCreated") {
+                profileAddress = parsedLog.args.profile;
+              } else if (parsedLog && parsedLog.name === "ArtPieceCreated") {
+                artPieceAddress = parsedLog.args.art_piece;
+              }
+            } catch (error) {
+              // Skip logs that can't be parsed
+              continue;
+            }
+          }
+          
+          if (!profileAddress || !artPieceAddress) {
+            throw new Error("Failed to extract profile or artwork addresses from receipt");
+          }
           
           setIsCompressing(false);
-          alert(`Artwork registered successfully through existing template!`);
-          console.log("Artwork registered successfully:", {
+          alert(`Profile created and artwork registered successfully!\nProfile: ${profileAddress}\nArtwork: ${artPieceAddress}`);
+          console.log("Registration successful:", {
+            profileAddress,
+            artPieceAddress,
             artist: walletAddress,
             owner: walletAddress,
             artworkTitle: titleStr,
-            contractAddress: artPieceAddress,
             imageSize: compressedResult.compressedSize,
             imageFormat: compressedResult.format,
             dimensions: compressedResult.dimensions,
           });
-        } catch (error) {
-          console.error("Error calling initialize:", error);
           
-          // If direct initialization fails, we need a different approach
-          // Let's try deploying using a minimal proxy pattern
-          alert("Direct initialization failed. The contract may already be initialized. Please try again later or create a profile first.");
+        } catch (error) {
+          console.error("Error deploying ArtPiece contract:", error);
           setIsCompressing(false);
+          
+          if (String(error).includes("execution reverted")) {
+            alert(`Error: Your transaction was reverted. This could be because the contract already exists or there was an issue with the parameters.`);
+          } else {
+            alert(`Error deploying artwork contract: ${error instanceof Error ? error.message : String(error)}`);
+          }
         }
       }
     } catch (error) {
