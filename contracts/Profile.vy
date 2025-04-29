@@ -238,7 +238,28 @@ def addCommission(_commission: address):
 @external
 def removeCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove commission"
-    self._removeFromArray(self.commissions, _commission)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.commissions), bound=1000):
+        if self.commissions[i] == _commission:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Commission not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.commissions) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.commissions[len(self.commissions) - 1]
+        # Replace the item to remove with the last item
+        self.commissions[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.commissions.pop()
     self.commissionCount -= 1
 
 @view
@@ -262,7 +283,28 @@ def addUnverifiedCommission(_commission: address):
 @external
 def removeUnverifiedCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove unverified commission"
-    self._removeFromArray(self.unverifiedCommissions, _commission)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
+        if self.unverifiedCommissions[i] == _commission:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Unverified commission not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.unverifiedCommissions) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
+        # Replace the item to remove with the last item
+        self.unverifiedCommissions[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.unverifiedCommissions.pop()
     self.unverifiedCommissionCount -= 1
 
 @view
@@ -286,7 +328,28 @@ def addLikedProfile(_profile: address):
 @external
 def removeLikedProfile(_profile: address):
     assert msg.sender == self.owner, "Only owner can remove liked profile"
-    self._removeFromArray(self.likedProfiles, _profile)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.likedProfiles), bound=1000):
+        if self.likedProfiles[i] == _profile:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Profile not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.likedProfiles) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.likedProfiles[len(self.likedProfiles) - 1]
+        # Replace the item to remove with the last item
+        self.likedProfiles[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.likedProfiles.pop()
     self.likedProfileCount -= 1
 
 @view
@@ -310,7 +373,28 @@ def linkProfile(_profile: address):
 @external
 def removeLinkedProfile(_profile: address):
     assert msg.sender == self.owner, "Only owner can remove linked profile"
-    self._removeFromArray(self.linkedProfiles, _profile)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.linkedProfiles), bound=1000):
+        if self.linkedProfiles[i] == _profile:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Linked profile not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.linkedProfiles) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.linkedProfiles[len(self.linkedProfiles) - 1]
+        # Replace the item to remove with the last item
+        self.linkedProfiles[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.linkedProfiles.pop()
     self.linkedProfileCount -= 1
 
 @view
@@ -336,7 +420,28 @@ def addMyCommission(_commission: address):
 def removeMyCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove my commission"
     assert self.isArtist, "Only artists can remove my commissions"
-    self._removeFromArray(self.myCommissions, _commission)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.myCommissions), bound=1000):
+        if self.myCommissions[i] == _commission:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "My commission not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.myCommissions) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.myCommissions[len(self.myCommissions) - 1]
+        # Replace the item to remove with the last item
+        self.myCommissions[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.myCommissions.pop()
     self.myCommissionCount -= 1
 
 @view
@@ -364,7 +469,28 @@ def addAdditionalMintErc1155(_erc1155: address):
 def removeAdditionalMintErc1155(_erc1155: address):
     assert msg.sender == self.owner, "Only owner can remove additional mint ERC1155"
     assert self.isArtist, "Only artists can remove additional mint ERC1155s"
-    self._removeFromArray(self.additionalMintErc1155s, _erc1155)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.additionalMintErc1155s), bound=1000):
+        if self.additionalMintErc1155s[i] == _erc1155:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Additional mint ERC1155 not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.additionalMintErc1155s) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.additionalMintErc1155s[len(self.additionalMintErc1155s) - 1]
+        # Replace the item to remove with the last item
+        self.additionalMintErc1155s[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.additionalMintErc1155s.pop()
     self.additionalMintErc1155Count -= 1
 
 @view
@@ -464,7 +590,28 @@ def addArtPiece(_art_piece: address):
 @external
 def removeArtPiece(_art_piece: address):
     assert msg.sender == self.owner, "Only owner can remove art piece"
-    self._removeFromArray(self.myArt, _art_piece)
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.myArt), bound=1000):
+        if self.myArt[i] == _art_piece:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Art piece not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.myArt) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.myArt[len(self.myArt) - 1]
+        # Replace the item to remove with the last item
+        self.myArt[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.myArt.pop()
     self.myArtCount -= 1
 
 @view
