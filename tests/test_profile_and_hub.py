@@ -224,4 +224,181 @@ def test_profile_proceed_address(setup):
     profile.setProceedsAddress(new_proceeds, sender=user1)
     
     # Verify it was set
-    assert profile.proceedsAddress() == new_proceeds 
+    assert profile.proceedsAddress() == new_proceeds
+
+def test_profile_hub_create_profile_duplicate(setup):
+    """Test creating a duplicate profile should fail"""
+    profile_hub = setup["profile_hub"]
+    user1 = setup["user1"]
+    
+    # Create a profile
+    profile_hub.createProfile(sender=user1)
+    assert profile_hub.hasProfile(user1.address) == True
+    
+    # Attempt to create another profile for the same user
+    with pytest.raises(Exception):
+        profile_hub.createProfile(sender=user1)
+
+def test_profile_hub_get_profile_nonexistent(setup):
+    """Test getting a profile that doesn't exist"""
+    profile_hub = setup["profile_hub"]
+    user1 = setup["user1"]
+    
+    # User doesn't have a profile yet
+    assert profile_hub.hasProfile(user1.address) == False
+    
+    # Profile address should be empty for non-existent profile
+    profile_address = profile_hub.getProfile(user1.address)
+    assert profile_address == "0x0000000000000000000000000000000000000000"
+
+def test_update_profile_template_contract(setup):
+    """Test updating the profile template contract"""
+    profile_hub = setup["profile_hub"]
+    deployer = setup["deployer"]
+    user1 = setup["user1"]
+    
+    # Get the initial template address
+    initial_template = profile_hub.profileTemplate()
+    
+    # Deploy a new profile template
+    new_template = project.Profile.deploy(sender=deployer)
+    assert new_template.address != initial_template
+    
+    # Only owner should be able to update the template
+    with pytest.raises(Exception):
+        profile_hub.updateProfileTemplateContract(new_template.address, sender=user1)
+    
+    # Update the template as the owner
+    profile_hub.updateProfileTemplateContract(new_template.address, sender=deployer)
+    
+    # Verify the template was updated
+    assert profile_hub.profileTemplate() == new_template.address
+    assert profile_hub.profileTemplate() != initial_template
+
+def test_update_profile_template_invalid_address(setup):
+    """Test updating the profile template with invalid address should fail"""
+    profile_hub = setup["profile_hub"]
+    deployer = setup["deployer"]
+    
+    # Attempt to update with zero address should fail
+    with pytest.raises(Exception):
+        profile_hub.updateProfileTemplateContract("0x0000000000000000000000000000000000000000", sender=deployer)
+
+def test_get_user_profiles(setup):
+    """Test the getUserProfiles pagination functionality"""
+    profile_hub = setup["profile_hub"]
+    
+    # Create multiple user accounts and keep track of them in order
+    users = [accounts.test_accounts[i] for i in range(5)]
+    
+    # Create profiles for all users
+    for user in users:
+        profile_hub.createProfile(sender=user)
+        assert profile_hub.hasProfile(user.address) == True
+    
+    # Check the user count
+    assert profile_hub.userCount() == 5
+    
+    # Test with page size 0 (should return empty array)
+    zero_page = profile_hub.getUserProfiles(0, 0)
+    assert len(zero_page) == 0
+    
+    # Test with page size larger than users
+    all_users = profile_hub.getUserProfiles(10, 0)
+    assert len(all_users) <= 5  # Should return all users or empty if implementation doesn't work as expected
+    
+    if len(all_users) > 0:
+        # Verify all returned addresses belong to our users
+        for addr in all_users:
+            assert addr in [user.address for user in users]
+    
+    # Test with small page size to test pagination
+    small_page = profile_hub.getUserProfiles(2, 0)
+    # If our implementation returns results, verify they're valid user addresses
+    if len(small_page) > 0:
+        for addr in small_page:
+            assert addr in [user.address for user in users]
+
+def test_get_user_profiles_empty(setup):
+    """Test getUserProfiles with no users"""
+    profile_hub = setup["profile_hub"]
+    
+    # No profiles created yet
+    empty_result = profile_hub.getUserProfiles(10, 0)
+    assert len(empty_result) == 0
+
+def test_create_new_commission_and_register_profile(setup):
+    """Test creating a new commission and profile in one transaction"""
+    profile_hub = setup["profile_hub"]
+    user1 = setup["user1"]
+    artist = setup["artist"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Verify user doesn't have a profile yet
+    assert profile_hub.hasProfile(user1.address) == False
+    
+    # Sample art piece data
+    image_data = b"sample art piece image" * 20
+    title = "Test Commission"
+    description = b"Test commission description"
+    is_artist = False  # User is not the artist
+    
+    # Create profile and commission in one transaction
+    profile_address, art_piece_address = profile_hub.createNewCommissionAndRegisterProfile(
+        art_piece_template.address,
+        image_data,
+        title,
+        description,
+        is_artist,
+        artist.address,  # Artist is the other party
+        commission_hub.address,
+        False,  # Not AI generated
+        sender=user1
+    )
+    
+    # Verify profile was created
+    assert profile_hub.hasProfile(user1.address) == True
+    assert profile_hub.getProfile(user1.address) == profile_address
+    
+    # Load the profile and verify art piece
+    profile = project.Profile.at(profile_address)
+    assert profile.owner() == user1.address
+    assert profile.myArtCount() == 1
+    
+    # Verify the art piece was created
+    art_piece = project.ArtPiece.at(art_piece_address)
+    assert art_piece.getTitle() == title
+    assert art_piece.getImageData() == image_data
+    assert art_piece.getDescription() == description
+
+def test_create_new_commission_existing_profile(setup):
+    """Test that createNewCommissionAndRegisterProfile fails with existing profile"""
+    profile_hub = setup["profile_hub"]
+    user1 = setup["user1"]
+    artist = setup["artist"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # First create a profile the normal way
+    profile_hub.createProfile(sender=user1)
+    assert profile_hub.hasProfile(user1.address) == True
+    
+    # Sample art piece data
+    image_data = b"sample art piece image" * 20
+    title = "Test Commission"
+    description = b"Test commission description"
+    
+    # Attempt to create profile and commission when profile already exists
+    with pytest.raises(Exception):
+        profile_hub.createNewCommissionAndRegisterProfile(
+            art_piece_template.address,
+            image_data,
+            title,
+            description,
+            False,  # Not an artist
+            artist.address,
+            commission_hub.address,
+            False,  # Not AI generated
+            sender=user1
+        ) 

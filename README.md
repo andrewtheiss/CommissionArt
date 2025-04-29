@@ -73,6 +73,23 @@ Run tests with:
 ape test
 ```
 
+For faster test execution, you can run tests in parallel using pytest-xdist (included in requirements.txt):
+
+```
+# Run tests with automatic detection of CPU cores
+ape test -n auto
+
+# Run tests with a specific number of parallel processes
+ape test -n 4
+
+# Run specific test files in parallel
+ape test tests/test_profile_array_methods.py -n auto
+```
+
+Parallel testing significantly improves test execution speed, especially for tests that involve many contract deployments and transactions.
+
+For more detailed information about testing, see [TESTING.md](TESTING.md).
+
 ## Configuration
 
 The `.env` file controls deployment parameters:
