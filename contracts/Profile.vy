@@ -77,11 +77,6 @@ def initialize(_owner: address):
 
 # Helper Functions
 
-# Add an item to a dynamic array
-@internal
-def _addToArray(_array: DynArray[address, 100000], _item: address):
-    assert _item not in _array, "Item already exists"
-    _array.append(_item)
 
 # Remove an item from a dynamic array by swapping with the last element
 @internal
@@ -236,7 +231,8 @@ def removeFromBlacklist(_address: address):
 @external
 def addCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add commission"
-    self._addToArray(self.commissions, _commission)
+    assert _commission not in self.commissions, "Commission already added"
+    self.commissions.append(_commission)
     self.commissionCount += 1
 
 @external
@@ -259,7 +255,8 @@ def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[addres
 @external
 def addUnverifiedCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add unverified commission"
-    self._addToArray(self.unverifiedCommissions, _commission)
+    assert _commission not in self.unverifiedCommissions, "Unverified commission already added"
+    self.unverifiedCommissions.append(_commission)
     self.unverifiedCommissionCount += 1
 
 @external
@@ -282,7 +279,8 @@ def getRecentUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynAr
 @external
 def addLikedProfile(_profile: address):
     assert msg.sender == self.owner, "Only owner can add liked profile"
-    self._addToArray(self.likedProfiles, _profile)
+    assert _profile not in self.likedProfiles, "Profile already liked"
+    self.likedProfiles.append(_profile)
     self.likedProfileCount += 1
 
 @external
@@ -305,7 +303,8 @@ def getRecentLikedProfiles(_page: uint256, _page_size: uint256) -> DynArray[addr
 @external
 def linkProfile(_profile: address):
     assert msg.sender == self.owner, "Only owner can add other profile"
-    self._addToArray(self.linkedProfiles, _profile)
+    assert _profile not in self.linkedProfiles, "Profile already linked"
+    self.linkedProfiles.append(_profile)
     self.linkedProfileCount += 1
 
 @external
@@ -329,7 +328,8 @@ def getRecentLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[add
 def addMyCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add my commission"
     assert self.isArtist, "Only artists can add my commissions"
-    self._addToArray(self.myCommissions, _commission)
+    assert _commission not in self.myCommissions, "Commission already added"
+    self.myCommissions.append(_commission)
     self.myCommissionCount += 1
 
 @external
@@ -356,7 +356,8 @@ def getRecentMyCommissions(_page: uint256, _page_size: uint256) -> DynArray[addr
 def addAdditionalMintErc1155(_erc1155: address):
     assert msg.sender == self.owner, "Only owner can add additional mint ERC1155"
     assert self.isArtist, "Only artists can add additional mint ERC1155s"
-    self._addToArray(self.additionalMintErc1155s, _erc1155)
+    assert _erc1155 not in self.additionalMintErc1155s, "ERC1155 already added"
+    self.additionalMintErc1155s.append(_erc1155)
     self.additionalMintErc1155Count += 1
 
 @external
@@ -439,7 +440,7 @@ def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _tit
     )
     
     # Add to my art collection
-    self._addToArray(self.myArt, art_piece_address)
+    self.myArt.append(art_piece_address)
     self.myArtCount += 1
     
     return art_piece_address
@@ -456,7 +457,8 @@ def addArtPiece(_art_piece: address):
     # Verify the profile owner is either the art piece owner or artist
     assert self.owner == art_owner or self.owner == art_artist, "Can only add art you own or created"
     
-    self._addToArray(self.myArt, _art_piece)
+    assert _art_piece not in self.myArt, "Art piece already added"
+    self.myArt.append(_art_piece)
     self.myArtCount += 1
 
 @external
@@ -470,6 +472,11 @@ def removeArtPiece(_art_piece: address):
 def getArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     return self._getArraySlice(self.myArt, _page, _page_size)
 
+@view
+@external
+def getArtPieceAtIndex(_index: uint256) -> address:
+    return self.myArt[_index]
+    
 @view
 @external
 def getRecentArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:

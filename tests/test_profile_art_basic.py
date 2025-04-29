@@ -225,4 +225,98 @@ def test_direct_profile_creation_and_art(setup):
     art_piece = project.ArtPiece.at(art_piece_address)
     assert art_piece.getTitle() == title
     assert art_piece.getOwner() == commissioner.address
-    assert art_piece.getArtist() == artist.address 
+    assert art_piece.getArtist() == artist.address
+
+def test_get_art_piece_at_index_single(setup):
+    """Test getting a single art piece by index"""
+    owner = setup["owner"]
+    artist = setup["artist"]
+    owner_profile = setup["owner_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Test data for art piece
+    image_data = b"test artwork for index" * 10
+    title = "Single Art Piece"
+    description = b"Description for single art piece"
+    
+    # Create art piece
+    tx_receipt = owner_profile.createArtPiece(
+        art_piece_template.address,
+        image_data,
+        title,
+        description,
+        False,  # Not as artist
+        artist.address,  # Artist address
+        commission_hub.address,
+        False,  # Not AI generated
+        sender=owner
+    )
+    
+    # Verify art piece was created
+    assert owner_profile.myArtCount() == 1
+    
+    # Get the art piece address using getArtPieceAtIndex
+    art_piece_address = owner_profile.getArtPieceAtIndex(0)
+    
+    # Verify it's not empty
+    assert art_piece_address != "0x0000000000000000000000000000000000000000"
+    
+    # Check art piece properties
+    art_piece = project.ArtPiece.at(art_piece_address)
+    assert art_piece.getTitle() == title
+    assert art_piece.getOwner() == owner.address
+    assert art_piece.getArtist() == artist.address
+
+def test_get_art_piece_at_index_multiple(setup):
+    """Test getting multiple art pieces by index"""
+    owner = setup["owner"]
+    artist = setup["artist"]
+    owner_profile = setup["owner_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Create 3 art pieces with different titles
+    art_titles = ["First Art Piece", "Second Art Piece", "Third Art Piece"]
+    created_addresses = []
+    
+    for i, title in enumerate(art_titles):
+        # Create art piece
+        tx_receipt = owner_profile.createArtPiece(
+            art_piece_template.address,
+            f"test artwork {i+1}".encode() * 10,
+            title,
+            f"Description for art piece {i+1}".encode(),
+            False,  # Not as artist
+            artist.address,  # Artist address
+            commission_hub.address,
+            False,  # Not AI generated
+            sender=owner
+        )
+        
+        # Add created address to our list for verification
+        art_piece_address = owner_profile.getArtPieceAtIndex(i)
+        created_addresses.append(art_piece_address)
+    
+    # Verify art pieces count
+    assert owner_profile.myArtCount() == 3
+    
+    # Get the first art piece using getArtPieceAtIndex
+    first_art_piece_address = owner_profile.getArtPieceAtIndex(0)
+    assert first_art_piece_address == created_addresses[0]
+    
+    # Verify first art piece
+    first_art_piece = project.ArtPiece.at(first_art_piece_address)
+    assert first_art_piece.getTitle() == art_titles[0]
+    
+    # Try getting index 2 (third art piece)
+    third_art_piece_address = owner_profile.getArtPieceAtIndex(2)
+    assert third_art_piece_address == created_addresses[2]
+    
+    # Verify third art piece
+    third_art_piece = project.ArtPiece.at(third_art_piece_address)
+    assert third_art_piece.getTitle() == art_titles[2]
+    
+    # Test with invalid index - should revert
+    with pytest.raises(Exception):
+        owner_profile.getArtPieceAtIndex(3)  # Index out of bounds 
