@@ -117,7 +117,7 @@ def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[add
     return result
 
 @external
-def createNewCommissionAndRegisterProfile(
+def createNewArtPieceAndRegisterProfile(
     _art_piece_template: address,
     _image_data: Bytes[45000],
     _title: String[100],

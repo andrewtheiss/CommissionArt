@@ -49,7 +49,7 @@ def test_create_new_commission_and_register_profile(setup):
     is_artist = False  # User is not the artist
     
     # Create profile and commission in one transaction
-    profile_address, art_piece_address = profile_hub.createNewCommissionAndRegisterProfile(
+    profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         image_data,
         title,
@@ -109,7 +109,7 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
     # Attempt to create profile and commission when profile already exists
     # This should fail
     with pytest.raises(Exception):
-        profile_hub.createNewCommissionAndRegisterProfile(
+        profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             image_data,
             title,
@@ -139,7 +139,7 @@ def test_artist_creates_commission_for_user(setup):
     is_artist = True  # Artist is creating the commission
     
     # Create profile and commission in one transaction
-    profile_address, art_piece_address = profile_hub.createNewCommissionAndRegisterProfile(
+    profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         image_data,
         title,

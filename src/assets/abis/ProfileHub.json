@@ -181,7 +181,7 @@
         "type": "bool"
       }
     ],
-    "name": "createNewCommissionAndRegisterProfile",
+    "name": "createNewArtPieceAndRegisterProfile",
     "outputs": [
       {
         "name": "",

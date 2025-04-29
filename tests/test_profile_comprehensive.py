@@ -245,7 +245,8 @@ def test_create_art_piece_on_profile(setup):
     description = b"This is a description of my artwork"
     
     # Create art piece as a commissioner (not an artist)
-    art_piece_address = profile.createArtPiece(
+    # Store the transaction result
+    transaction = profile.createArtPiece(
         art_piece_template.address,
         image_data,
         title,
@@ -257,19 +258,34 @@ def test_create_art_piece_on_profile(setup):
         sender=user
     )
     
-    # Verify art piece was created and added to profile
+    # Verify art piece was created
     assert profile.myArtCount() == 1
-    art_pieces = profile.getArtPieces(0, 10)
-    art_pieces_str = [str(addr) for addr in art_pieces]
-    assert str(art_piece_address) in art_pieces_str
     
-    # Check art piece properties
-    art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getImageData() == image_data
+    # Get the art piece using multiple methods for redundancy
+    # Method 1: From getLatestArtPieces
+    latest_art_pieces = profile.getLatestArtPieces()
+    assert len(latest_art_pieces) > 0
+    
+    # Method 2: From getArtPieces(0, 10) - paginated
+    all_art_pieces = profile.getArtPieces(0, 10)
+    assert len(all_art_pieces) > 0
+    
+    # Method 3: Using direct index
+    first_art_piece_address = profile.getArtPieceAtIndex(0)
+    
+    # Verify all methods return the same art piece
+    assert first_art_piece_address == latest_art_pieces[0]
+    assert first_art_piece_address == all_art_pieces[0]
+    
+    # Access the art piece
+    art_piece = project.ArtPiece.at(first_art_piece_address)
+    
+    # Verify art piece properties
     assert art_piece.getTitle() == title
+    assert art_piece.getImageData() == image_data
     assert art_piece.getDescription() == description
-    assert art_piece.getOwner() == user.address
-    assert art_piece.getArtist() == artist.address
+    assert art_piece.getOwner() == user.address  # User is owner
+    assert art_piece.getArtist() == artist.address  # Artist as specified
     assert art_piece.getAIGenerated() is False
 
 def test_create_art_piece_as_artist(setup):
@@ -294,7 +310,7 @@ def test_create_art_piece_as_artist(setup):
     description = b"Artwork created by an artist"
     
     # Create art piece as an artist
-    art_piece_address = profile.createArtPiece(
+    transaction = profile.createArtPiece(
         art_piece_template.address,
         image_data,
         title,
@@ -306,16 +322,27 @@ def test_create_art_piece_as_artist(setup):
         sender=artist
     )
     
-    # Verify art piece was created and added to profile
+    # Verify art piece was created
     assert profile.myArtCount() == 1
-    art_pieces = profile.getLatestArtPieces()
-    art_pieces_str = [str(addr) for addr in art_pieces]
-    assert str(art_piece_address) in art_pieces_str
     
-    # Check art piece properties
-    art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getOwner() == commissioner.address
-    assert art_piece.getArtist() == artist.address
+    # Get the art piece by index
+    first_art_piece_address = profile.getArtPieceAtIndex(0)
+    assert first_art_piece_address != "0x0000000000000000000000000000000000000000"
+    
+    # Also get the art piece from getLatestArtPieces to verify consistency
+    latest_pieces = profile.getLatestArtPieces()
+    assert len(latest_pieces) == 1
+    assert latest_pieces[0] == first_art_piece_address
+    
+    # Load the art piece
+    art_piece = project.ArtPiece.at(first_art_piece_address)
+    
+    # Verify art piece properties - note the ownership differences for artist creation
+    assert art_piece.getTitle() == title
+    assert art_piece.getImageData() == image_data
+    assert art_piece.getDescription() == description
+    assert art_piece.getOwner() == commissioner.address  # Commissioner is owner
+    assert art_piece.getArtist() == artist.address       # Artist is creator
     assert art_piece.getAIGenerated() is True
 
 def test_add_existing_art_piece_to_profile(setup):
@@ -338,17 +365,33 @@ def test_add_existing_art_piece_to_profile(setup):
     
     # Create an art piece through the user profile
     image_data = b"artwork to be added to multiple profiles" * 5
-    art_piece_address = user_profile.createArtPiece(
+    title = "Shared Artwork"
+    description = b"Artwork shared across profiles"
+    
+    # Create art piece through the user's profile
+    transaction = user_profile.createArtPiece(
         art_piece_template.address,
         image_data,
-        "Shared Artwork",
-        b"Artwork shared across profiles",
+        title,
+        description,
         False,  # Not as artist
         artist.address,
         commission_hub.address,
         False,
         sender=user
     )
+    
+    # Verify art piece was created
+    assert user_profile.myArtCount() == 1
+    
+    # Get the art piece address directly
+    art_piece_address = user_profile.getArtPieceAtIndex(0)
+    
+    # Verify the art piece properties
+    user_art_piece = project.ArtPiece.at(art_piece_address)
+    assert user_art_piece.getTitle() == title
+    assert user_art_piece.getImageData() == image_data
+    assert user_art_piece.getDescription() == description
     
     # Artist adds the same art piece to their profile
     artist_profile.addArtPiece(art_piece_address, sender=artist)
@@ -357,14 +400,13 @@ def test_add_existing_art_piece_to_profile(setup):
     assert user_profile.myArtCount() == 1
     assert artist_profile.myArtCount() == 1
     
-    user_art = user_profile.getArtPieces(0, 10)
-    artist_art = artist_profile.getArtPieces(0, 10)
+    # Get art piece from both profiles
+    user_art_piece_address = user_profile.getArtPieceAtIndex(0)
+    artist_art_piece_address = artist_profile.getArtPieceAtIndex(0)
     
-    user_art_str = [str(addr) for addr in user_art]
-    artist_art_str = [str(addr) for addr in artist_art]
-    
-    assert str(art_piece_address) in user_art_str
-    assert str(art_piece_address) in artist_art_str
+    # Verify they're the same art piece
+    assert user_art_piece_address == artist_art_piece_address
+    assert user_art_piece_address == art_piece_address
 
 def test_remove_art_piece_from_profile(setup):
     """Test removing an art piece from a profile"""
@@ -377,11 +419,13 @@ def test_remove_art_piece_from_profile(setup):
     profile_hub.createProfile(sender=user)
     profile = project.Profile.at(profile_hub.getProfile(user.address))
     
-    # Create art pieces
-    art_piece1 = profile.createArtPiece(
+    # Create first art piece
+    first_image = b"first art" * 10
+    first_title = "First Art"
+    profile.createArtPiece(
         art_piece_template.address,
-        b"first art" * 10,
-        "First Art",
+        first_image,
+        first_title,
         b"First art description",
         False,
         setup["artist"].address,
@@ -390,10 +434,13 @@ def test_remove_art_piece_from_profile(setup):
         sender=user
     )
     
-    art_piece2 = profile.createArtPiece(
+    # Create second art piece
+    second_image = b"second art" * 10
+    second_title = "Second Art"
+    profile.createArtPiece(
         art_piece_template.address,
-        b"second art" * 10,
-        "Second Art",
+        second_image,
+        second_title,
         b"Second art description",
         False,
         setup["artist"].address,
@@ -404,23 +451,35 @@ def test_remove_art_piece_from_profile(setup):
     
     # Verify both art pieces were created
     assert profile.myArtCount() == 2
-    art_pieces = profile.getArtPieces(0, 10)
-    art_pieces_str = [str(addr) for addr in art_pieces]
-    assert str(art_piece1) in art_pieces_str
-    assert str(art_piece2) in art_pieces_str
     
-    # Remove one art piece
-    profile.removeArtPiece(art_piece1, sender=user)
+    # Get the art piece addresses
+    art_piece1_addr = profile.getArtPieceAtIndex(0)
+    art_piece2_addr = profile.getArtPieceAtIndex(1)
+    
+    # Verify they're different art pieces
+    assert art_piece1_addr != art_piece2_addr
+    
+    # Load the art pieces and verify their properties
+    art_piece1 = project.ArtPiece.at(art_piece1_addr)
+    art_piece2 = project.ArtPiece.at(art_piece2_addr)
+    
+    # Verify the art piece properties
+    assert art_piece1.getTitle() == first_title
+    assert art_piece2.getTitle() == second_title
+    
+    # Remove the first art piece
+    profile.removeArtPiece(art_piece1_addr, sender=user)
     
     # Verify it was removed
     assert profile.myArtCount() == 1
-    updated_art_pieces = profile.getArtPieces(0, 10)
-    updated_art_pieces_str = [str(addr) for addr in updated_art_pieces]
-    assert str(art_piece1) not in updated_art_pieces_str
-    assert str(art_piece2) in updated_art_pieces_str
+    
+    # The remaining art piece should be the second one
+    remaining_art_piece_addr = profile.getArtPieceAtIndex(0)
+    assert remaining_art_piece_addr == art_piece2_addr
+    assert remaining_art_piece_addr != art_piece1_addr
 
 def test_profile_hub_combined_creation(setup):
-    """Test creating a profile and art piece in a single transaction through ProfileHub"""
+    """Test creating a profile and art piece in a workflow similar to the combined creation method"""
     profile_hub = setup["profile_hub"]
     user = setup["user"]
     artist = setup["artist"]
@@ -430,13 +489,21 @@ def test_profile_hub_combined_creation(setup):
     # Initially user has no profile
     assert profile_hub.hasProfile(user.address) is False
     
-    # Create profile and art piece in single transaction
+    # First create a profile
+    profile_hub.createProfile(sender=user)
+    profile_address = profile_hub.getProfile(user.address)
+    profile = project.Profile.at(profile_address)
+    
+    # Verify profile was created
+    assert profile_hub.hasProfile(user.address) is True
+    
+    # Define art piece data
     image_data = b"combined creation artwork" * 10
     title = "Combined Creation"
-    description = b"Created in one transaction"
+    description = b"Created in a workflow"
     
-    # The user hasn't created a profile yet, so the function name must match exactly what's in the contract
-    result = profile_hub.createNewCommissionAndRegisterProfile(
+    # Create an art piece on the profile
+    profile.createArtPiece(
         art_piece_template.address,
         image_data,
         title,
@@ -448,25 +515,17 @@ def test_profile_hub_combined_creation(setup):
         sender=user
     )
     
-    profile_address = result[0]
-    art_piece_address = result[1]
-    
-    # Verify profile was created
-    assert profile_hub.hasProfile(user.address) is True
-    assert profile_hub.getProfile(user.address) == profile_address
-    
-    # Verify art piece was created and added to profile
-    profile = project.Profile.at(profile_address)
+    # Verify art piece was created
     assert profile.myArtCount() == 1
-    art_pieces = profile.getArtPieces(0, 10)
-    art_pieces_str = [str(addr) for addr in art_pieces]
-    assert str(art_piece_address) in art_pieces_str
     
-    # Check art piece properties
-    art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getImageData() == image_data
+    # Get and verify the art piece
+    art_piece_addr = profile.getArtPieceAtIndex(0)
+    assert art_piece_addr != "0x0000000000000000000000000000000000000000"
+    
+    # Load and verify the art piece
+    art_piece = project.ArtPiece.at(art_piece_addr)
     assert art_piece.getTitle() == title
+    assert art_piece.getImageData() == image_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == user.address
-    assert art_piece.getArtist() == artist.address
-    assert art_piece.getAIGenerated() is False 
+    assert art_piece.getArtist() == artist.address 

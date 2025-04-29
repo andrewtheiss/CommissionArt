@@ -234,7 +234,7 @@ const ArtistForm: React.FC<{
           console.log("Creating profile and registering artwork in one transaction...");
           
           // Create profile and register artwork
-          const tx = await profileHub.createNewCommissionAndRegisterProfile(
+          const tx = await profileHub.createNewArtPieceAndRegisterProfile(
             artPieceTemplateAddress,
             imageData,
             titleStr,

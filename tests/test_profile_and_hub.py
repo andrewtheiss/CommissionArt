@@ -411,7 +411,7 @@ def test_create_art_piece_permission_check(setup):
         )
 
 def test_combined_profile_method_with_existing_profile(setup):
-    """Test that createNewCommissionAndRegisterProfile fails with existing profile"""
+    """Test that createNewArtPieceAndRegisterProfile fails with existing profile"""
     profile_hub = setup["profile_hub"]
     user1 = setup["user1"]
     artist = setup["artist"]
@@ -429,7 +429,7 @@ def test_combined_profile_method_with_existing_profile(setup):
     
     # Attempt to create profile and commission when profile already exists
     with pytest.raises(Exception):
-        profile_hub.createNewCommissionAndRegisterProfile(
+        profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             image_data,
             title,
@@ -462,7 +462,7 @@ def test_combined_profile_and_commission_creation(setup):
     # Mock data to test the method signature but we won't actually call it
     # since the implementation may have permission requirements
     mock_call = {
-        "function": profile_hub.createNewCommissionAndRegisterProfile,
+        "function": profile_hub.createNewArtPieceAndRegisterProfile,
         "args": [
             art_piece_template.address,
             image_data,
@@ -477,7 +477,7 @@ def test_combined_profile_and_commission_creation(setup):
     }
     
     # Instead of actually calling, we'll verify the method exists with correct signature
-    assert hasattr(profile_hub, "createNewCommissionAndRegisterProfile")
+    assert hasattr(profile_hub, "createNewArtPieceAndRegisterProfile")
     
     # Create profile the normal way for testing
     profile_hub.createProfile(sender=user1)
