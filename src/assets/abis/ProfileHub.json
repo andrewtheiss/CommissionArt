@@ -153,8 +153,8 @@
         "type": "address"
       },
       {
-        "name": "_image_data",
-        "type": "bytes"
+        "name": "_token_uri_data",
+        "type": "string"
       },
       {
         "name": "_title",
@@ -162,7 +162,7 @@
       },
       {
         "name": "_description",
-        "type": "bytes"
+        "type": "string"
       },
       {
         "name": "_is_artist",

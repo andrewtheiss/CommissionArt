@@ -55,7 +55,7 @@ const ArtDisplay: React.FC<ArtDisplayProps> = ({
   if (isLoading) {
     return (
       <div className={`art-display loading ${className}`}>
-        <div className="loading-spinner"></div>
+        <div className="art-loading-indicator"></div>
       </div>
     );
   }

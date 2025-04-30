@@ -228,7 +228,7 @@ const ArtPieceDetails: React.FC = () => {
   if (loading) {
     return (
       <div className="art-piece-details loading">
-        <div className="loading-spinner"></div>
+        <div className="art-loading-indicator"></div>
         <p>Loading art piece details...</p>
       </div>
     );

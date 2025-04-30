@@ -27,46 +27,12 @@
     "inputs": [
       {
         "name": "_image",
-        "type": "bytes"
+        "type": "string"
       }
     ],
     "name": "setProfileImage",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_index",
-        "type": "uint256"
-      }
-    ],
-    "name": "getProfileImageByIndex",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_count",
-        "type": "uint256"
-      }
-    ],
-    "name": "getRecentProfileImages",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes[]"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -601,8 +567,8 @@
         "type": "address"
       },
       {
-        "name": "_image_data",
-        "type": "bytes"
+        "name": "_token_uri_data",
+        "type": "string"
       },
       {
         "name": "_title",
@@ -610,7 +576,7 @@
       },
       {
         "name": "_description",
-        "type": "bytes"
+        "type": "string"
       },
       {
         "name": "_is_artist",
@@ -871,36 +837,7 @@
     "outputs": [
       {
         "name": "",
-        "type": "bytes"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "profileImageCount",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "uint256"
-      }
-    ],
-    "name": "profileImages",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes"
+        "type": "string"
       }
     ],
     "stateMutability": "view",

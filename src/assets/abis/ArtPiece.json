@@ -146,8 +146,8 @@
   {
     "inputs": [
       {
-        "name": "_image_data_input",
-        "type": "bytes"
+        "name": "_token_uri_data",
+        "type": "string"
       },
       {
         "name": "_title_input",
@@ -155,7 +155,7 @@
       },
       {
         "name": "_description_input",
-        "type": "bytes"
+        "type": "string"
       },
       {
         "name": "_owner_input",
@@ -345,11 +345,23 @@
   },
   {
     "inputs": [],
+    "name": "getTokenURIData",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getImageData",
     "outputs": [
       {
         "name": "",
-        "type": "bytes"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -373,7 +385,7 @@
     "outputs": [
       {
         "name": "",
-        "type": "bytes"
+        "type": "string"
       }
     ],
     "stateMutability": "view",

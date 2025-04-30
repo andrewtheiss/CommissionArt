@@ -6,7 +6,7 @@
 
 .account-container h2 {
   margin-bottom: 20px;
-  color: var(--primary-color);
+  color: var(--text-primary);
 }
 
 .account-grid {
@@ -22,11 +22,13 @@
 }
 
 .account-card {
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   padding: 24px;
   overflow: hidden;
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
 }
 
 .connect-card {
@@ -35,26 +37,28 @@
 }
 
 .error-card {
-  background-color: #ffeef0;
+  background-color: rgba(211, 47, 47, 0.1);
   border-left: 4px solid #d32f2f;
 }
 
 .error-card h3 {
-  color: #d32f2f;
+  color: #ff6b6b;
   margin-top: 0;
 }
 
 .wallet-info {
   font-family: monospace;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   padding: 8px;
   border-radius: 4px;
   margin: 16px 0;
   word-break: break-all;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
 }
 
 .connect-button, .create-profile-button {
-  background: #4a6cf7;
+  background: var(--accent-primary);
   color: white;
   border: none;
   padding: 12px 24px;
@@ -66,11 +70,12 @@
 }
 
 .connect-button:hover, .create-profile-button:hover {
-  background: #3a5ce7;
+  background: var(--accent-secondary);
 }
 
 .connect-button:disabled, .create-profile-button:disabled {
-  background: #a0a0a0;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
   cursor: not-allowed;
 }
 
@@ -79,7 +84,7 @@
   justify-content: center;
   align-items: center;
   min-height: 200px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .loading-spinner:after {
@@ -88,8 +93,8 @@
   width: 24px;
   height: 24px;
   margin-left: 10px;
-  border: 2px solid #ddd;
-  border-top: 2px solid #4a6cf7;
+  border: 2px solid var(--border-secondary);
+  border-top: 2px solid var(--accent-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -98,7 +103,7 @@
 .mini-spinner {
   display: flex;
   align-items: center;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   padding: 8px 0;
 }
@@ -109,8 +114,8 @@
   width: 16px;
   height: 16px;
   margin-left: 8px;
-  border: 2px solid #ddd;
-  border-top: 2px solid #4a6cf7;
+  border: 2px solid var(--border-secondary);
+  border-top: 2px solid var(--accent-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -121,11 +126,12 @@
 }
 
 .error-message, .error-banner {
-  color: #d32f2f;
+  color: #ff6b6b;
   margin: 16px 0;
   padding: 12px;
   background: rgba(211, 47, 47, 0.1);
   border-radius: 4px;
+  border: 1px solid rgba(211, 47, 47, 0.3);
 }
 
 .profile-header {
@@ -139,8 +145,9 @@
   height: 100px;
   border-radius: 50%;
   overflow: hidden;
-  background: #f0f0f0;
+  background: var(--bg-tertiary);
   flex-shrink: 0;
+  border: 1px solid var(--border-secondary);
 }
 
 .profile-image {
@@ -155,7 +162,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
 }
 
 .profile-image-loading .mini-spinner {
@@ -174,8 +181,8 @@
   justify-content: center;
   font-size: 32px;
   font-weight: bold;
-  color: #666;
-  background: #e0e0e0;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
 }
 
 .profile-info {
@@ -185,15 +192,18 @@
 .profile-info h3 {
   margin-top: 0;
   margin-bottom: 12px;
+  color: var(--text-primary);
 }
 
 .wallet-address, .profile-address {
   font-family: monospace;
-  background: #f5f5f5;
+  background: var(--bg-tertiary);
   padding: 8px;
   border-radius: 4px;
   margin: 8px 0;
   word-break: break-all;
+  border: 1px solid var(--border-secondary);
+  color: var(--text-secondary);
 }
 
 .artist-status {
@@ -246,7 +256,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border-primary);
 }
 
 .commission-item:last-child {
@@ -258,28 +268,28 @@
 }
 
 .view-commission-link {
-  background: #f0f0f0;
-  color: #333;
-  text-decoration: none;
-  padding: 6px 12px;
+  background: var(--accent-primary);
+  color: white;
+  padding: 4px 12px;
   border-radius: 4px;
+  text-decoration: none;
   font-size: 14px;
   transition: background 0.2s;
 }
 
 .view-commission-link:hover {
-  background: #e0e0e0;
+  background: var(--accent-secondary);
 }
 
 .no-commissions {
-  color: #666;
+  color: var(--text-tertiary);
   text-align: center;
-  padding: 24px;
+  padding: 20px;
 }
 
 /* Art Pieces Styles */
 .art-pieces-card {
-  grid-column: 1 / -1; /* Make the art pieces card span the full width */
+  grid-column: span 2;
 }
 
 .art-pieces-card h3 {
@@ -288,46 +298,46 @@
 }
 
 .count-badge {
-  margin-left: 8px;
-  background: #4a6cf7;
+  background: var(--accent-primary);
   color: white;
-  font-size: 14px;
+  font-size: 12px;
+  font-weight: normal;
   padding: 2px 8px;
   border-radius: 12px;
-  font-weight: normal;
+  margin-left: 8px;
 }
 
 .art-count {
-  margin-top: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
   margin-bottom: 16px;
-  color: #666;
-  font-size: 15px;
 }
 
 .art-pieces-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 20px;
-  margin-top: 16px;
 }
 
 .art-piece-item {
-  background: #f9f9f9;
-  border-radius: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border-primary);
 }
 
 .art-piece-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .art-piece-image-container {
   height: 180px;
   overflow: hidden;
-  background: #eee;
+  position: relative;
 }
 
 .art-piece-image {
@@ -348,19 +358,19 @@
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  color: #999;
-  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  font-weight: bold;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
 }
 
 .art-piece-info {
-  padding: 16px;
+  padding: 12px;
 }
 
 .art-piece-title {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   font-size: 16px;
-  font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -369,63 +379,64 @@
 .art-piece-address {
   font-family: monospace;
   font-size: 12px;
-  color: #666;
-  margin-bottom: 12px;
-  background: #f0f0f0;
+  color: var(--text-tertiary);
+  background: var(--bg-secondary);
   padding: 4px 8px;
   border-radius: 4px;
+  margin-bottom: 8px;
+  word-break: break-all;
 }
 
 .view-art-piece-link {
   display: block;
   text-align: center;
-  background: #4a6cf7;
+  background: var(--accent-primary);
   color: white;
-  text-decoration: none;
   padding: 8px 16px;
-  border-radius: 4px;
+  text-decoration: none;
   font-size: 14px;
   transition: background 0.2s;
 }
 
 .view-art-piece-link:hover {
-  background: #3a5ce7;
+  background: var(--accent-secondary);
 }
 
 .no-art-pieces {
-  color: #666;
+  color: var(--text-tertiary);
   text-align: center;
-  padding: 24px;
+  padding: 20px;
 }
 
 .loading-error {
-  color: #f57c00;
-  text-align: center;
-  padding: 16px;
-  background: rgba(245, 124, 0, 0.1);
+  color: #ff6b6b;
+  background: rgba(211, 47, 47, 0.1);
+  padding: 10px;
   border-radius: 4px;
-  margin: 16px 0;
+  text-align: center;
+  margin-top: 10px;
 }
 
 .view-all-link-container {
-  margin-top: 24px;
+  margin-top: 20px;
   text-align: center;
 }
 
 .view-all-link {
   display: inline-block;
-  padding: 8px 20px;
-  background: transparent;
-  border: 1px solid #4a6cf7;
-  color: #4a6cf7;
-  text-decoration: none;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 8px 24px;
   border-radius: 4px;
-  font-size: 15px;
+  text-decoration: none;
+  font-size: 14px;
   transition: all 0.2s;
+  border: 1px solid var(--border-secondary);
 }
 
 .view-all-link:hover {
-  background: rgba(74, 108, 247, 0.05);
+  background: var(--bg-secondary);
+  border-color: var(--accent-primary);
 }
 
 /* Connection Bar Styles (similar to NFTRegistration) */
@@ -433,38 +444,36 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
-  background-color: var(--background-secondary);
+  background: var(--bg-secondary);
   border-radius: 8px;
-  margin-bottom: 20px;
-  border: 1px solid var(--border-color);
+  padding: 12px 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-primary);
 }
 
 .connection-status {
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .status-icon {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  display: inline-block;
+  background: #f44336;
+  margin-right: 10px;
 }
 
 .connection-status.connected .status-icon {
-  background-color: var(--success-color, #4CAF50);
-  box-shadow: 0 0 8px var(--success-color, #4CAF50);
+  background: #4caf50;
 }
 
 .connection-status.disconnected .status-icon {
-  background-color: var(--warning-color, #f44336);
-  box-shadow: 0 0 8px var(--warning-color, #f44336);
+  background: #f44336;
 }
 
 .status-text {
-  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .connection-details {
@@ -473,48 +482,47 @@
 }
 
 .network-name {
-  font-weight: 600;
+  color: var(--accent-primary);
 }
 
 .wallet-address {
-  font-size: 0.85em;
-  opacity: 0.8;
+  font-size: 12px;
 }
 
 .connect-wallet-button {
-  padding: 8px 16px;
-  background-color: var(--primary-color);
+  background: var(--accent-primary);
   color: white;
   border: none;
+  padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  transition: background 0.2s;
+  font-size: 14px;
 }
 
 .connect-wallet-button:hover {
-  background-color: var(--primary-dark);
+  background: var(--accent-secondary);
 }
 
 .disconnect-wallet-button {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
   padding: 8px 16px;
-  background-color: transparent;
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  font-size: 14px;
 }
 
 .disconnect-wallet-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+  border-color: #f44336;
 }
 
 .connection-error-message {
+  color: #ff6b6b;
+  font-size: 14px;
   margin-top: 10px;
-  padding: 8px 12px;
-  background-color: var(--error-bg, #ffebee);
-  color: var(--error-color, #d32f2f);
-  border-radius: 4px;
-  font-size: 0.85em;
 } 
