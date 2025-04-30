@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import profileService from '../../utils/profile-service';
 import { ethers } from 'ethers';
+import ArtDisplay from '../ArtDisplay';
+import { safeRevokeUrl } from '../../utils/TokenURIDecoder';
 import './Account.css';
 
 // Address displayed format
@@ -31,7 +33,7 @@ const Account: React.FC = () => {
   const [recentArtPieces, setRecentArtPieces] = useState<string[]>([]);
   const [totalArtPieces, setTotalArtPieces] = useState<number>(0);
   const [loadingArtPieces, setLoadingArtPieces] = useState<boolean>(false);
-  const [artPieceDetails, setArtPieceDetails] = useState<{[address: string]: {title: string, imageUrl: string | null}}>({});
+  const [artPieceDetails, setArtPieceDetails] = useState<{[address: string]: {title: string, imageData: Uint8Array | null}}>({});
   
   // Profile image
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -211,10 +213,7 @@ const Account: React.FC = () => {
         URL.revokeObjectURL(profileImage);
       }
       
-      // Revoke art piece image URLs
-      Object.values(artPieceDetails).forEach(details => {
-        if (details.imageUrl) URL.revokeObjectURL(details.imageUrl);
-      });
+      // No need to revoke URLs here as the ArtDisplay component handles its own cleanup
     };
   }, [profile]);
   
@@ -265,7 +264,7 @@ const Account: React.FC = () => {
       // Load details for each art piece
       const artPieceAbi = await profileService.getArtPieceAbi();
       if (artPieceAbi) {
-        const details: {[address: string]: {title: string, imageUrl: string | null}} = {};
+        const details: {[address: string]: {title: string, imageData: Uint8Array | null}} = {};
         const provider = profileService.getProvider();
         
         if (provider) {
@@ -275,24 +274,77 @@ const Account: React.FC = () => {
             try {
               console.log("Loading details for art piece:", address);
               const artPieceContract = new ethers.Contract(address, artPieceAbi, provider);
-              const title = await artPieceContract.title();
               
-              // Get image data
-              let imageUrl = null;
+              // Check if contract methods exist before calling them
+              let title = "Untitled Artwork";
+              let imageData = null;
+              
+              // Safely try to get title
               try {
-                const imageData = await artPieceContract.imageData();
-                if (imageData && imageData.length > 0) {
-                  const blob = new Blob([imageData], { type: 'image/avif' });
-                  imageUrl = URL.createObjectURL(blob);
+                // First check if it's a function or a property
+                if (typeof artPieceContract.title === 'function') {
+                  title = await artPieceContract.title();
+                } else if (artPieceContract.title !== undefined) {
+                  // It's a property
+                  title = await artPieceContract.title;
                 }
-              } catch (err) {
-                console.error(`Error loading image for art piece ${address}:`, err);
+              } catch (titleErr) {
+                console.warn(`Could not get title for art piece ${address}:`, titleErr);
+                // Next, try tokenURI as fallback for title
+                try {
+                  const tokenURI = await artPieceContract.tokenURI(1);
+                  if (tokenURI && tokenURI.startsWith('data:application/json;base64,')) {
+                    const decodedData = decodeTokenFromUri(tokenURI);
+                    if (decodedData && decodedData.name) {
+                      title = decodedData.name;
+                    }
+                  }
+                } catch (tokenErr) {
+                  console.warn(`Could not get tokenURI for art piece ${address}:`, tokenErr);
+                }
               }
               
-              details[address] = { title, imageUrl };
+              // Safely try to get image data
+              try {
+                if (typeof artPieceContract.imageData === 'function') {
+                  imageData = await artPieceContract.imageData();
+                } else if (typeof artPieceContract.getImageData === 'function') {
+                  imageData = await artPieceContract.getImageData();
+                } else if (artPieceContract.imageData !== undefined) {
+                  imageData = await artPieceContract.imageData;
+                } else {
+                  // Try tokenURI as fallback for image data
+                  try {
+                    const tokenURI = await artPieceContract.tokenURI(1);
+                    if (tokenURI) {
+                      // Just store the tokenURI string as imageData
+                      // The ArtDisplay component will handle decoding it
+                      const encoder = new TextEncoder();
+                      imageData = encoder.encode(tokenURI);
+                    }
+                  } catch (tokenErr) {
+                    console.warn(`Could not get tokenURI for art piece ${address}:`, tokenErr);
+                  }
+                }
+                
+                if (imageData && imageData.length > 0) {
+                  console.log(`Loaded image data for ${address}, data size: ${imageData.length} bytes`);
+                  // Check if it starts with the tokenURI format
+                  try {
+                    const dataStr = new TextDecoder().decode(imageData.slice(0, 30));
+                    console.log(`Image data starts with: ${dataStr}...`);
+                  } catch (err) {
+                    console.warn(`Unable to decode image data start:`, err);
+                  }
+                }
+              } catch (imageErr) {
+                console.error(`Error loading image for art piece ${address}:`, imageErr);
+              }
+              
+              details[address] = { title, imageData };
             } catch (err) {
               console.error(`Error loading details for art piece ${address}:`, err);
-              details[address] = { title: 'Unknown Art Piece', imageUrl: null };
+              details[address] = { title: 'Unknown Art Piece', imageData: null };
             }
           }
           
@@ -305,6 +357,22 @@ const Account: React.FC = () => {
       console.error("Error loading art pieces:", err);
     } finally {
       setLoadingArtPieces(false);
+    }
+  };
+  
+  // Helper function to decode tokenURI data
+  const decodeTokenFromUri = (tokenURI: string) => {
+    try {
+      if (!tokenURI.startsWith('data:application/json;base64,')) {
+        return null;
+      }
+      
+      const base64Json = tokenURI.replace('data:application/json;base64,', '');
+      const jsonString = atob(base64Json);
+      return JSON.parse(jsonString);
+    } catch (error) {
+      console.error('Error decoding tokenURI:', error);
+      return null;
     }
   };
   
@@ -473,26 +541,31 @@ const Account: React.FC = () => {
                 <div className="art-pieces-grid">
                   {recentArtPieces.map((address, index) => {
                     if (!address) return null; // Skip empty addresses
-                    const details = artPieceDetails[address] || { title: 'Loading...', imageUrl: null };
+                    const details = artPieceDetails[address] || { title: 'Loading...', imageData: null };
                     return (
                       <div key={index} className="art-piece-item">
-                        <div className="art-piece-image-container">
-                          {details.imageUrl ? (
-                            <img src={details.imageUrl} alt={details.title} className="art-piece-image" />
-                          ) : (
+                        {details.imageData ? (
+                          <ArtDisplay
+                            imageData={details.imageData}
+                            title={details.title}
+                            contractAddress={address}
+                            className="art-piece-display"
+                          />
+                        ) : (
+                          <div className="art-piece-placeholder">
                             <div className="art-piece-image-placeholder">Art</div>
-                          )}
-                        </div>
-                        <div className="art-piece-info">
-                          <h4 className="art-piece-title">{details.title}</h4>
-                          <div className="art-piece-address">{formatAddress(address)}</div>
-                          <a 
-                            href={`#/art/${address}`} 
-                            className="view-art-piece-link"
-                          >
-                            View Details
-                          </a>
-                        </div>
+                            <div className="art-piece-info">
+                              <h4 className="art-piece-title">{details.title}</h4>
+                              <div className="art-piece-address">{formatAddress(address)}</div>
+                            </div>
+                          </div>
+                        )}
+                        <a 
+                          href={`#/art/${address}`} 
+                          className="view-art-piece-link"
+                        >
+                          View Details
+                        </a>
                       </div>
                     );
                   })}

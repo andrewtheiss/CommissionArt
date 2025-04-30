@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { compressImage, getImageOrientation, revokePreviewUrl, CompressionResult, FormatType } from '../../utils/ImageCompressorUtil';
+import { formatTokenURI, reduceTokenURISize } from '../../utils/TokenURIFormatter';
 import './NFTRegistration.css';
 import { ethers } from 'ethers';
 import contractConfig from '../../assets/contract_config.json';
@@ -93,8 +94,21 @@ const ArtistForm: React.FC<{
   const compressImageFile = async (file: File) => {
     setIsCompressing(true);
     try {
-      const result = await compressImage(file, 'image/avif');
+      // Use a target size of 43KB instead of 45KB to ensure we're safely under the 45,000 bytes limit
+      // This provides a small buffer for any potential overhead
+      const result = await compressImage(file, 'image/avif', 1000, 43);
       setCompressedResult(result);
+      
+      // Log the compressed size for debugging
+      if (result.blob) {
+        const sizeInBytes = result.blob.size;
+        console.log(`Compressed image size: ${sizeInBytes} bytes (${result.compressedSize.toFixed(2)} KB)`);
+        
+        // Warn if we're still close to the limit
+        if (sizeInBytes > 44000) {
+          console.warn('Image size is very close to the 45,000 byte limit. Consider using even smaller target size.');
+        }
+      }
     } catch (error) {
       console.error('Error compressing image:', error);
     } finally {
@@ -142,10 +156,32 @@ const ArtistForm: React.FC<{
       }
       
       // Convert the image to bytes
-      const imageData = new Uint8Array(await compressedResult.blob.arrayBuffer());
+      const imageDataArray = new Uint8Array(await compressedResult.blob.arrayBuffer());
       const titleStr = artworkTitle.trim();
       const descriptionBytes = new TextEncoder().encode(artworkDescription);
-
+      
+      // Format the tokenURI according to NFT standards
+      console.log(`Formatting tokenURI for artwork: ${titleStr}`);
+      console.log(`Original image data size: ${imageDataArray.length} bytes`);
+      
+      // Format the token URI with potential size reduction if needed
+      const tokenURIResult = reduceTokenURISize(
+        imageDataArray,
+        titleStr,
+        artworkDescription,
+        44000, // Target slightly below 45,000 byte limit
+        compressedResult.format === 'image/avif' ? 'image/avif' : 'image/jpeg' // Use the format from compression
+      );
+      
+      // Log the tokenURI details
+      console.log(`Formatted tokenURI:`);
+      console.log(`- Size: ${tokenURIResult.size} bytes`);
+      console.log(`- Reduction applied: ${tokenURIResult.reductionApplied}`);
+      console.log(`- First 100 chars: ${tokenURIResult.tokenURI.substring(0, 100)}...`);
+      
+      // Convert the tokenURI string to bytes for on-chain storage
+      const tokenURIBytes = new TextEncoder().encode(tokenURIResult.tokenURI);
+      
       // Get the commissionHub address from the config
       const commissionHubAddress = contractConfig.networks.mainnet.commissionHub.address || ethers.ZeroAddress;
 
@@ -165,10 +201,10 @@ const ArtistForm: React.FC<{
           throw new Error("ArtPiece address not configured");
         }
         
-        // Call the profile's createArtPiece function
+        // Call the profile's createArtPiece function with the tokenURI bytes instead of raw image data
         const tx = await profileContract.createArtPiece(
           artPieceAddress,
-          imageData,
+          tokenURIBytes, // Use tokenURI bytes instead of raw image data
           titleStr,
           descriptionBytes,
           true, // is artist
@@ -179,9 +215,6 @@ const ArtistForm: React.FC<{
         
         // Wait for the transaction to be mined
         const receipt = await tx.wait();
-        
-        // Note: You'll need to determine how to extract the art piece address from the receipt
-        // This depends on the event data structure from your contract
         
         setIsCompressing(false);
         alert(`Artwork registered successfully via Profile!`);
@@ -233,10 +266,10 @@ const ArtistForm: React.FC<{
           
           console.log("Creating profile and registering artwork in one transaction...");
           
-          // Create profile and register artwork
+          // Create profile and register artwork with tokenURI bytes instead of raw image data
           const tx = await profileHub.createNewArtPieceAndRegisterProfile(
             artPieceTemplateAddress,
-            imageData,
+            tokenURIBytes, // Use tokenURI bytes instead of raw image data
             titleStr,
             descriptionBytes,
             true, // is artist
@@ -281,7 +314,7 @@ const ArtistForm: React.FC<{
             artist: walletAddress,
             owner: walletAddress,
             artworkTitle: titleStr,
-            imageSize: compressedResult.compressedSize,
+            tokenURISize: tokenURIResult.size,
             imageFormat: compressedResult.format,
             dimensions: compressedResult.dimensions,
           });

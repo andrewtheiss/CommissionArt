@@ -133,14 +133,15 @@ export const compressImageWithFormat = async (
 };
 
 /**
- * Compresses an image file to get as close to 45KB as possible while staying under
+ * Compresses an image file to get as close to the target size as possible while staying under
  * Prioritizes higher quality formats (AVIF, WebP) over lower quality ones (JPEG)
+ * Default target size is 43KB to ensure staying safely under the 45,000 bytes limit
  */
 export const compressImage = async (
   file: File, 
   preferredFormat: FormatType = 'image/avif', 
   maxDimension = 1000, 
-  targetSizeKB = 45
+  targetSizeKB = 43
 ): Promise<CompressionResult> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -398,7 +399,65 @@ export const compressImage = async (
         // Create preview URL from the blob
         const previewUrl = URL.createObjectURL(bestResult.blob);
         
-        console.log(`Final result: ${formatInfo?.name || bestResult.format} at ${bestResult.size.toFixed(2)}KB (${(bestResult.closenessRatio*100).toFixed(1)}% of target)`);
+        // Check if the blob size is under 45000 bytes (contract limit)
+        if (bestResult.blob.size >= 45000) {
+          console.warn(`Final image size (${bestResult.blob.size} bytes) exceeds the 45,000 bytes contract limit.`);
+          
+          // Attempt emergency dimension reduction
+          console.log("Performing emergency dimension reduction to fit within byte limit");
+          const emergencyWidth = Math.floor(bestResult.width * 0.9);
+          const emergencyHeight = Math.floor(bestResult.height * 0.9);
+          
+          // Emergency canvas resize
+          const canvas = document.createElement('canvas');
+          canvas.width = emergencyWidth;
+          canvas.height = emergencyHeight;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, emergencyWidth, emergencyHeight);
+          
+          // Use a lower quality setting
+          const emergencyQuality = 0.7;
+          
+          // Convert to blob with lower quality
+          canvas.toBlob(
+            (reducedBlob) => {
+              if (reducedBlob && reducedBlob.size < 45000) {
+                console.log(`Emergency reduction successful: ${reducedBlob.size} bytes`);
+                const reducedPreviewUrl = URL.createObjectURL(reducedBlob);
+                
+                resolve({
+                  success: true,
+                  originalSize: file.size / 1024,
+                  compressedSize: reducedBlob.size / 1024,
+                  dimensions: { width: emergencyWidth, height: emergencyHeight },
+                  targetReached: true,
+                  format: formatInfo?.name || bestResult.format,
+                  blob: reducedBlob,
+                  preview: reducedPreviewUrl
+                });
+              } else {
+                // If emergency reduction failed, return the original result with a warning
+                console.error("Emergency reduction failed. Image may be too large for the contract.");
+                resolve({
+                  success: true,
+                  originalSize: file.size / 1024,
+                  compressedSize: bestResult.size,
+                  dimensions: { width: bestResult.width, height: bestResult.height },
+                  targetReached: false,
+                  format: formatInfo?.name || bestResult.format,
+                  blob: bestResult.blob,
+                  preview: previewUrl,
+                  error: "Image exceeds 45,000 bytes contract limit even after compression."
+                });
+              }
+            },
+            bestResult.format,
+            emergencyQuality
+          );
+          return;
+        }
+        
+        console.log(`Final result: ${formatInfo?.name || bestResult.format} at ${bestResult.size.toFixed(2)}KB (${(bestResult.closenessRatio*100).toFixed(1)}% of target), ${bestResult.blob.size} bytes`);
         
         resolve({
           success: true,

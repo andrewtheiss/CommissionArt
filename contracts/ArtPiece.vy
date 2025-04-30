@@ -61,7 +61,7 @@ INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
 TOKEN_ID: constant(uint256) = 1
 
 # ArtPiece variables
-imageData: Bytes[45000]  # Adjusted to handle up to 250 KB
+imageData: Bytes[45000]  # Adjusted to handle up to 45 KB
 title: String[100]  # Title of the artwork
 description: Bytes[200]  # Description with 200 byte limit
 owner: address

@@ -351,10 +351,22 @@ const ImageCompressor: React.FC = () => {
   };
 
   const compressImageFile = async (file: File) => {
+    setIsCompressing(true);
     try {
-      // Target exactly 45KB as specified in the requirement
-      const result = await compressImage(file, preferredFormat, 1000, 45);
+      // Use a target size of 43KB instead of 45KB to ensure we're safely under the 45,000 bytes limit
+      const result = await compressImage(file, preferredFormat, 1000, 43);
       setCompressionResult(result);
+      
+      // Log the compressed size for debugging
+      if (result.blob) {
+        const sizeInBytes = result.blob.size;
+        console.log(`Compressed image size: ${sizeInBytes} bytes (${result.compressedSize.toFixed(2)} KB)`);
+        
+        // Warn if we're still close to the limit
+        if (sizeInBytes > 44000) {
+          console.warn('Image size is very close to the 45,000 byte limit. Consider using even smaller target size.');
+        }
+      }
     } catch (error) {
       console.error('Error compressing image:', error);
       setCompressionResult({
