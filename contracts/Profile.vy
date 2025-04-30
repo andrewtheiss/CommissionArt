@@ -8,6 +8,7 @@
 
 # Owner of the profile (user address)
 deployer: public(address)  # New variable to store the deployer's address
+hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
 profileImage: public(Bytes[45000])
 profileImageCount: public(uint256)
@@ -60,6 +61,8 @@ def __init__():
 def initialize(_owner: address):
     assert self.owner == empty(address), "Already initialized"
     self.owner = _owner
+    self.hub = msg.sender  # Set the hub to be the contract that called initialize
+    self.deployer = msg.sender  # Also set deployer to be the same as hub for backward compatibility
     self.isArtist = False  # Default to non-artist
     self.allowUnverifiedCommissions = True  # Default to allowing commissions
     self.profileExpansion = empty(address)
@@ -534,7 +537,11 @@ def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _tit
     _is_artist: True if caller is the artist, False if caller is the commissioner
     _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
     """
-    assert msg.sender == self.owner, "Only profile owner can create art"
+    # Check if the caller is either:
+    # 1. The profile owner (direct user call)
+    # 2. The hub that created this profile (ProfileHub)
+    # 3. The deployer of this profile contract (system admin)
+    assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
     assert _art_piece_template != empty(address), "ArtPiece template address required"
     
     # Determine owner and artist based on caller's role

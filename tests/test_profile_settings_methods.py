@@ -50,10 +50,15 @@ def test_initialization(setup):
     artist = setup["artist"]
     artist_profile = setup["artist_profile"]
     deployer = setup["deployer"]
+    profile_hub = setup["profile_hub"]
     
     # Check owner profile initial state
     assert owner_profile.owner() == owner.address
-    assert owner_profile.deployer() == deployer.address
+    
+    # The deployer field is now set to the ProfileHub address during initialization,
+    # not the original deployer of the Profile template
+    assert owner_profile.deployer() == profile_hub.address
+    
     assert owner_profile.isArtist() is False
     assert owner_profile.allowUnverifiedCommissions() is True
     assert owner_profile.profileExpansion() == "0x" + "0" * 40
@@ -206,10 +211,14 @@ def test_set_proceeds_address(setup):
     # Initial state
     assert artist_profile.proceedsAddress() == artist.address
     
-    # Set proceeds address
+    # Set proceeds address 
     proceeds_address = "0x" + "a" * 40
     artist_profile.setProceedsAddress(proceeds_address, sender=artist)
-    assert artist_profile.proceedsAddress() == proceeds_address
+    
+    # Compare lowercase versions of addresses to avoid case-sensitivity issues
+    stored_address = artist_profile.proceedsAddress().lower()
+    expected_address = proceeds_address.lower()
+    assert stored_address == expected_address
     
     # Non-artist profile should fail
     with pytest.raises(Exception):
@@ -220,7 +229,7 @@ def test_set_proceeds_address(setup):
     
     # Now should work
     owner_profile.setProceedsAddress(proceeds_address, sender=owner)
-    assert owner_profile.proceedsAddress() == proceeds_address
+    assert owner_profile.proceedsAddress().lower() == proceeds_address.lower()
     
     # Attempt by non-owner should fail
     with pytest.raises(Exception):

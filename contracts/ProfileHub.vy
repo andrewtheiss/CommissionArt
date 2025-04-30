@@ -175,6 +175,7 @@ def createNewArtPieceAndRegisterProfile(
     
     log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
     
+    # Explicitly create and return the tuple
     return (profile, art_piece)
 
 @external

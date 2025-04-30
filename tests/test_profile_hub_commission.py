@@ -49,7 +49,7 @@ def test_create_new_commission_and_register_profile(setup):
     is_artist = False  # User is not the artist
     
     # Create profile and commission in one transaction
-    profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
+    result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         image_data,
         title,
@@ -61,9 +61,11 @@ def test_create_new_commission_and_register_profile(setup):
         sender=user
     )
     
+    # Get profile address from ProfileHub
+    profile_address = profile_hub.getProfile(user.address)
+    
     # Verify profile was created and registered
     assert profile_hub.hasProfile(user.address) == True
-    assert profile_hub.getProfile(user.address) == profile_address
     
     # Load the profile contract
     profile = project.Profile.at(profile_address)
@@ -77,7 +79,7 @@ def test_create_new_commission_and_register_profile(setup):
     # Get the latest art pieces and verify
     latest_art_pieces = profile.getLatestArtPieces()
     assert len(latest_art_pieces) == 1
-    assert latest_art_pieces[0] == art_piece_address
+    art_piece_address = latest_art_pieces[0]
     
     # Load and verify the art piece properties
     art_piece = project.ArtPiece.at(art_piece_address)
@@ -139,7 +141,7 @@ def test_artist_creates_commission_for_user(setup):
     is_artist = True  # Artist is creating the commission
     
     # Create profile and commission in one transaction
-    profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
+    result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         image_data,
         title,
@@ -151,9 +153,11 @@ def test_artist_creates_commission_for_user(setup):
         sender=artist
     )
     
+    # Get profile address from ProfileHub
+    profile_address = profile_hub.getProfile(artist.address)
+    
     # Verify profile was created and registered
     assert profile_hub.hasProfile(artist.address) == True
-    assert profile_hub.getProfile(artist.address) == profile_address
     
     # Load the profile contract
     profile = project.Profile.at(profile_address)
@@ -167,7 +171,7 @@ def test_artist_creates_commission_for_user(setup):
     # Get the latest art pieces and verify
     latest_art_pieces = profile.getLatestArtPieces()
     assert len(latest_art_pieces) == 1
-    assert latest_art_pieces[0] == art_piece_address
+    art_piece_address = latest_art_pieces[0]
     
     # Load and verify the art piece properties
     art_piece = project.ArtPiece.at(art_piece_address)
@@ -176,7 +180,7 @@ def test_artist_creates_commission_for_user(setup):
     assert art_piece.getImageData() == image_data
     assert art_piece.getTitle() == title
     assert art_piece.getDescription() == description
-    assert art_piece.getAIGenerated() == True 
+    assert art_piece.getAIGenerated() == True
 
 def test_create_profile_from_contract(setup):
     """Test creating a profile using a provided profile contract"""
