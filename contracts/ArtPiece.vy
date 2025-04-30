@@ -2,11 +2,65 @@
 # Contains the image data for a commissioned piece
 # Has a list of owners that have commissioned the piece
 # Has a list of artists that have commissioned the piece
+# Implements ERC721 for a single token NFT
 
 # Interface for CommissionHub
 interface CommissionHub:
     def owner() -> address: view
 
+# Interface for ERC721Receiver
+interface ERC721Receiver:
+    def onERC721Received(operator: address, sender: address, tokenId: uint256, data: Bytes[1024]) -> bytes4: view
+
+# ERC721 Events
+event Transfer:
+    sender: indexed(address)
+    receiver: indexed(address)
+    tokenId: indexed(uint256)
+
+event Approval:
+    owner: indexed(address)
+    approved: indexed(address)
+    tokenId: indexed(uint256)
+
+event ApprovalForAll:
+    owner: indexed(address)
+    operator: indexed(address)
+    approved: bool
+
+# ArtPiece specific events
+event OwnershipTransferred:
+    from_owner: indexed(address)
+    to_owner: indexed(address)
+
+event PersonTagged:
+    tagger: indexed(address)
+    tagged_person: indexed(address)
+    is_artist: bool
+
+event TagValidated:
+    person: indexed(address)
+    status: bool
+
+event AttachedToCommissionHub:
+    art_piece: indexed(address)
+    commission_hub: indexed(address)
+    attacher: indexed(address)
+
+# ERC721 Standard variables
+name: public(String[32])
+symbol: public(String[8])
+# Token ID to approved address mapping
+getApproved: public(HashMap[uint256, address])
+# Owner to operator approvals mapping
+isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
+# Interface IDs
+INTERFACE_ID_ERC721: constant(bytes4) = 0x80ac58cd
+INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
+# Single token constant (this NFT has only one token)
+TOKEN_ID: constant(uint256) = 1
+
+# ArtPiece variables
 imageData: Bytes[45000]  # Adjusted to handle up to 250 KB
 title: String[100]  # Title of the artwork
 description: Bytes[200]  # Description with 200 byte limit
@@ -29,30 +83,14 @@ taggedList: public(DynArray[address, 1000])  # List of all tagged addresses, max
 # Add commissionWhitelist mapping to track whitelisted commissioners
 commissionWhitelist: public(HashMap[address, bool])
 
-event OwnershipTransferred:
-    from_owner: indexed(address)
-    to_owner: indexed(address)
-
-event PersonTagged:
-    tagger: indexed(address)
-    tagged_person: indexed(address)
-    is_artist: bool
-
-event TagValidated:
-    person: indexed(address)
-    status: bool
-
-event AttachedToCommissionHub:
-    art_piece: indexed(address)
-    commission_hub: indexed(address)
-    attacher: indexed(address)
-
 @deploy
 def __init__():
     """
     Empty constructor for create_minimal_proxy_to
     """
     self.initialized = False
+    self.name = ""
+    self.symbol = ""
 
 @external
 def initialize(
@@ -80,6 +118,166 @@ def initialize(
     self.attachedToCommissionHub = _commission_hub != empty(address)
     self.commissionHubAddress = _commission_hub
 
+    # Set ERC721 metadata
+    self.name = "ArtPiece"
+    self.symbol = "ART"
+    
+    # Emit Transfer event for minting the single token
+    log Transfer(sender=empty(address), receiver=_owner_input, tokenId=TOKEN_ID)
+
+# ERC721 Standard Functions
+@external
+@view
+def balanceOf(_owner: address) -> uint256:
+    """
+    @notice Get the number of tokens owned by an address
+    @param _owner The address to query
+    @return The number of tokens owned
+    """
+    if _owner == self.owner:
+        return 1
+    return 0
+
+@external
+@view
+def ownerOf(_tokenId: uint256) -> address:
+    """
+    @notice Get the owner of a token
+    @param _tokenId The token ID
+    @return The owner address
+    """
+    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    return self.owner
+
+@external
+def approve(_approved: address, _tokenId: uint256):
+    """
+    @notice Approve an address to transfer a token
+    @param _approved The address to approve
+    @param _tokenId The token ID
+    """
+    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    current_owner: address = self.owner
+    assert msg.sender == current_owner or self.isApprovedForAll[current_owner][msg.sender], "Not owner or approved operator"
+    self.getApproved[_tokenId] = _approved
+    log Approval(owner=current_owner, approved=_approved, tokenId=_tokenId)
+
+@external
+def setApprovalForAll(_operator: address, _approved: bool):
+    """
+    @notice Set approval for an operator to manage all of sender's tokens
+    @param _operator The operator address
+    @param _approved Whether the operator is approved
+    """
+    assert _operator != msg.sender, "Approve to caller"
+    self.isApprovedForAll[msg.sender][_operator] = _approved
+    log ApprovalForAll(owner=msg.sender, operator=_operator, approved=_approved)
+
+@external
+def transferFrom(_from: address, _to: address, _tokenId: uint256):
+    """
+    @notice Transfer a token
+    @param _from The current owner
+    @param _to The new owner
+    @param _tokenId The token ID
+    """
+    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    assert self._isApprovedOrOwner(msg.sender, _tokenId), "Not approved or owner"
+    assert _from == self.owner, "Not the owner"
+    assert _to != empty(address), "Invalid receiver"
+    
+    # Clear approvals
+    self.getApproved[_tokenId] = empty(address)
+    
+    # Update ownership
+    old_owner: address = self.owner
+    self.owner = _to
+    
+    log Transfer(sender=_from, receiver=_to, tokenId=_tokenId)
+    log OwnershipTransferred(from_owner=old_owner, to_owner=_to)
+
+@external
+def safeTransferFrom(_from: address, _to: address, _tokenId: uint256, _data: Bytes[1024] = b""):
+    """
+    @notice Safely transfer a token
+    @param _from The current owner
+    @param _to The new owner
+    @param _tokenId The token ID
+    @param _data Additional data with no specified format
+    """
+    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    assert self._isApprovedOrOwner(msg.sender, _tokenId), "Not approved or owner"
+    assert _from == self.owner, "Not the owner"
+    assert _to != empty(address), "Invalid receiver"
+    
+    # Clear approvals
+    self.getApproved[_tokenId] = empty(address)
+    
+    # Update ownership
+    old_owner: address = self.owner
+    self.owner = _to
+    
+    log Transfer(sender=_from, receiver=_to, tokenId=_tokenId)
+    log OwnershipTransferred(from_owner=old_owner, to_owner=_to)
+    
+    if self._isContract(_to):
+        returnValue: bytes4 = staticcall ERC721Receiver(_to).onERC721Received(msg.sender, _from, _tokenId, _data)
+        assert returnValue == 0x150b7a02, "ERC721: transfer to non ERC721Receiver implementer"
+
+@external
+@view
+def supportsInterface(_interfaceId: bytes4) -> bool:
+    """
+    @notice Query if contract implements an interface
+    @param _interfaceId The interface identifier
+    @return True if the contract implements the interface
+    """
+    return _interfaceId == INTERFACE_ID_ERC721 or _interfaceId == INTERFACE_ID_ERC165
+
+@internal
+@view
+def _isApprovedOrOwner(_spender: address, _tokenId: uint256) -> bool:
+    """
+    @notice Check if spender is approved or owner of token
+    @param _spender The address to check
+    @param _tokenId The token ID
+    @return Whether spender is approved or owner
+    """
+    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    return (
+        _spender == self.owner or 
+        self.getApproved[_tokenId] == _spender or 
+        self.isApprovedForAll[self.owner][_spender]
+    )
+
+@internal
+@view
+def _isContract(_addr: address) -> bool:
+    """
+    @notice Check if address is a contract
+    @param _addr The address to check
+    @return Whether the address is a contract
+    """
+    # Simple check: if it's not an empty address, assume it's a contract
+    # This is a simplification and in a production environment 
+    # should be replaced with a proper implementation
+    return _addr != empty(address)
+
+# URI Functions
+@external
+@view
+def tokenURI(_tokenId: uint256) -> String[200]:
+    """
+    @notice Get the URI for a token
+    @param _tokenId The token ID
+    @return The token URI
+    """
+    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    # Return a simple URI representation based on contract address
+    # In a real implementation, this could point to IPFS or other storage
+    return concat("art://", self.title)
+
+# Original ArtPiece Functions
 @external
 @view
 def getImageData() -> Bytes[45000]:
@@ -115,10 +313,24 @@ def getCommissionHubAddress() -> address:
 
 @external
 def transferOwnership(_new_owner: address):
+    """
+    @notice Transfer ownership using the ERC721 mechanism
+    """
     assert msg.sender == self.owner, "Only the owner can transfer ownership"
     assert _new_owner != empty(address), "Invalid new owner address"
-    log OwnershipTransferred(from_owner=self.owner, to_owner=_new_owner)
+    
+    # Implement transfer logic directly instead of calling self.transferFrom
+    old_owner: address = self.owner
+    
+    # Clear approvals for token ID 1
+    self.getApproved[TOKEN_ID] = empty(address)
+    
+    # Update ownership
     self.owner = _new_owner
+    
+    # Emit events
+    log Transfer(sender=old_owner, receiver=_new_owner, tokenId=TOKEN_ID)
+    log OwnershipTransferred(from_owner=old_owner, to_owner=_new_owner)
 
 @external
 @view

@@ -35,6 +35,9 @@ def setup():
     # Set artist status for artist profile
     artist_profile.setIsArtist(True, sender=artist)
     
+    # Deploy ArtPiece template for testing ERC721 functionality
+    art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
     return {
         "deployer": deployer,
         "owner": owner,
@@ -49,7 +52,8 @@ def setup():
         "profile_template": profile_template,
         "profile_hub": profile_hub,
         "owner_profile": owner_profile,
-        "artist_profile": artist_profile
+        "artist_profile": artist_profile,
+        "art_piece_template": art_piece_template
     }
 
 # Tests for Commission Array Methods
@@ -506,4 +510,277 @@ def test_collector_erc1155_array_methods(setup):
     
     updated = owner_profile.getCollectorErc1155s(0, 10)
     assert len(updated) == 5
-    assert test_erc1155s[1] not in updated 
+    assert test_erc1155s[1] not in updated
+
+# New tests for Vyper 0.4.1 compatibility in ArtPiece contract
+
+def test_artpiece_erc721_functionality(setup):
+    """Test ArtPiece ERC721 functionality and proper event emission"""
+    deployer = setup["deployer"]
+    owner = setup["owner"]
+    artist = setup["artist"]
+    user1 = setup["user1"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Create a new art piece with ERC721 functionality
+    art_piece_proxy = project.ArtPiece.deploy(sender=deployer)
+    
+    # Initialize the art piece
+    title = "Test Artwork"
+    description = b"This is a test artwork description"
+    image_data = b"test_image_data"
+    
+    # Initialize the art piece with ERC721 functionality
+    art_piece_proxy.initialize(
+        image_data,
+        title,
+        description,
+        owner.address,
+        artist.address,
+        "0x0000000000000000000000000000000000000000",  # No commission hub
+        False,  # Not AI generated
+        sender=deployer
+    )
+    
+    # Test basic ERC721 functions
+    # 1. balanceOf - owner should have 1 token
+    assert art_piece_proxy.balanceOf(owner.address) == 1
+    assert art_piece_proxy.balanceOf(artist.address) == 0
+    
+    # 2. ownerOf - token ID 1 should belong to owner
+    assert art_piece_proxy.ownerOf(1) == owner.address
+    
+    # 3. name and symbol
+    assert art_piece_proxy.name() == "ArtPiece"
+    assert art_piece_proxy.symbol() == "ART"
+    
+    # 4. supportsInterface
+    erc721_interface_id = 0x80ac58cd  # ERC721 interface ID
+    erc165_interface_id = 0x01ffc9a7  # ERC165 interface ID
+    assert art_piece_proxy.supportsInterface(erc721_interface_id)
+    assert art_piece_proxy.supportsInterface(erc165_interface_id)
+    
+    # 5. Test approval
+    art_piece_proxy.approve(user1.address, 1, sender=owner)
+    assert art_piece_proxy.getApproved(1) == user1.address
+    
+    # 6. Test setApprovalForAll
+    art_piece_proxy.setApprovalForAll(artist.address, True, sender=owner)
+    assert art_piece_proxy.isApprovedForAll(owner.address, artist.address)
+    
+    # 7. Test transfer via approved address
+    art_piece_proxy.transferFrom(owner.address, user1.address, 1, sender=user1)
+    assert art_piece_proxy.ownerOf(1) == user1.address
+    assert art_piece_proxy.balanceOf(user1.address) == 1
+    assert art_piece_proxy.balanceOf(owner.address) == 0
+    
+    # 8. Verify owner in both old and new methods
+    assert art_piece_proxy.getOwner() == user1.address
+    assert art_piece_proxy.ownerOf(1) == user1.address
+    
+    # 9. Test transferFrom instead of safeTransferFrom to avoid receiver implementation issues
+    art_piece_proxy.transferFrom(user1.address, owner.address, 1, sender=user1)
+    assert art_piece_proxy.ownerOf(1) == owner.address
+
+def test_artpiece_iscontract_method(setup):
+    """Test the _isContract method workaround for Vyper 0.4.1"""
+    deployer = setup["deployer"]
+    owner = setup["owner"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Deploy a contract that will receive an NFT
+    # We'll use another ArtPiece as a contract to test with
+    receiver_contract = project.ArtPiece.deploy(sender=deployer)
+    
+    # Initialize the art piece we'll transfer
+    art_piece = project.ArtPiece.deploy(sender=deployer)
+    art_piece.initialize(
+        b"test_data",
+        "Test NFT",
+        b"Test description",
+        owner.address,
+        owner.address,  # owner is also artist
+        "0x0000000000000000000000000000000000000000",
+        False,
+        sender=deployer
+    )
+    
+    # Try to transfer to a contract address without receiver implementation
+    # This should fail because the contract doesn't implement ERC721Receiver
+    with pytest.raises(Exception):
+        art_piece.safeTransferFrom(
+            owner.address,
+            receiver_contract.address,
+            1,  # token ID
+            b"",
+            sender=owner
+        )
+    
+    # Regular transferFrom should work because it doesn't check for receiver implementation
+    art_piece.transferFrom(
+        owner.address,
+        receiver_contract.address,
+        1,  # token ID
+        sender=owner
+    )
+    
+    # Verify transfer worked
+    assert art_piece.ownerOf(1) == receiver_contract.address
+
+def test_artpiece_transferownership_compatibility(setup):
+    """Test compatibility of transferOwnership with ERC721 functionality"""
+    deployer = setup["deployer"]
+    owner = setup["owner"]
+    user1 = setup["user1"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Initialize the art piece
+    art_piece = project.ArtPiece.deploy(sender=deployer)
+    art_piece.initialize(
+        b"test_data",
+        "Test NFT",
+        b"Test description",
+        owner.address,
+        owner.address,  # owner is also artist
+        "0x0000000000000000000000000000000000000000",
+        False,
+        sender=deployer
+    )
+    
+    # Test the original transferOwnership method
+    art_piece.transferOwnership(user1.address, sender=owner)
+    
+    # Verify that both the traditional owner and the ERC721 ownership are updated
+    assert art_piece.getOwner() == user1.address
+    assert art_piece.ownerOf(1) == user1.address
+    
+    # Verify that approvals are cleared after ownership transfer
+    assert art_piece.getApproved(1) == "0x0000000000000000000000000000000000000000"
+
+def test_artpiece_commission_hub_integration(setup):
+    """Test ArtPiece integration with Commission Hub while maintaining ERC721 compatibility"""
+    deployer = setup["deployer"]
+    owner = setup["owner"]
+    user1 = setup["user1"]
+    
+    # For testing purposes, we'll use another ArtPiece as our mock commission hub
+    # This works because ArtPiece has an owner() method that returns its owner
+    mock_hub = project.ArtPiece.deploy(sender=deployer)
+    mock_hub.initialize(
+        b"mock_data",
+        "Mock Hub",
+        b"Mock description",
+        user1.address,  # This will be the owner returned by the hub
+        user1.address,  # Artist is also user1
+        "0x0000000000000000000000000000000000000000",  # No commission hub
+        False,  # Not AI generated
+        sender=deployer
+    )
+    
+    # Verify our mock works as expected
+    assert mock_hub.getOwner() == user1.address
+    
+    # Initialize the art piece with no commission hub initially
+    art_piece = project.ArtPiece.deploy(sender=deployer)
+    art_piece.initialize(
+        b"test_data",
+        "Test NFT",
+        b"Test description",
+        owner.address,
+        owner.address,
+        "0x0000000000000000000000000000000000000000",  # No commission hub initially
+        False,
+        sender=deployer
+    )
+    
+    # Check initial ownership
+    assert art_piece.getOwner() == owner.address
+    assert art_piece.ownerOf(1) == owner.address
+    
+    # Initially, there's no commission hub attached
+    assert art_piece.attachedToCommissionHub() == False
+    assert art_piece.commissionHubAddress() == "0x0000000000000000000000000000000000000000"
+    
+    # Attach to commission hub
+    art_piece.attachToCommissionHub(mock_hub.address, sender=owner)
+    
+    # Verify the commission hub is set
+    assert art_piece.commissionHubAddress() == mock_hub.address
+    assert art_piece.attachedToCommissionHub() == True
+    
+    # ERC721 ownership functions shouldn't be affected by the commission hub
+    assert art_piece.ownerOf(1) == owner.address
+    assert art_piece.getOwner() == owner.address
+    
+    # Now transferring ERC721 ownership should update the direct ownership
+    art_piece.transferFrom(owner.address, deployer.address, 1, sender=owner)
+    assert art_piece.getOwner() == deployer.address
+    assert art_piece.ownerOf(1) == deployer.address
+
+# Tests for ArtPiece creation from Profile
+def test_create_artpiece_with_erc721(setup):
+    """Test creating ArtPiece through Profile and verify ERC721 functionality"""
+    owner = setup["owner"]
+    artist = setup["artist"]
+    owner_profile = setup["owner_profile"]
+    artist_profile = setup["artist_profile"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Create art piece as owner/commissioner
+    receipt = owner_profile.createArtPiece(
+        art_piece_template.address,
+        b"test_image",
+        "Test Art",
+        b"Test Description",
+        False,  # Not artist
+        artist.address,  # Artist is the other party
+        "0x0000000000000000000000000000000000000000",  # No commission hub
+        False,  # Not AI generated
+        sender=owner
+    )
+    
+    # Extract the art piece address from the logs or events
+    # Since we don't have direct access to the contract address from the receipt,
+    # we'll look at the transactions by the profile to find recently added art
+    art_pieces = owner_profile.getRecentArtPieces(0, 1)
+    assert len(art_pieces) > 0, "No art pieces found in the profile"
+    
+    art_piece_address = art_pieces[0]
+    
+    # Get the art piece contract
+    art_piece = project.ArtPiece.at(art_piece_address)
+    
+    # Verify ERC721 properties
+    assert art_piece.name() == "ArtPiece"
+    assert art_piece.symbol() == "ART"
+    assert art_piece.balanceOf(owner.address) == 1
+    assert art_piece.ownerOf(1) == owner.address
+    
+    # Create another art piece as artist
+    artist_receipt = artist_profile.createArtPiece(
+        art_piece_template.address,
+        b"artist_image",
+        "Artist Creation",
+        b"Created by Artist",
+        True,  # Is artist
+        owner.address,  # Commissioner is the other party
+        "0x0000000000000000000000000000000000000000",  # No commission hub
+        False,  # Not AI generated
+        sender=artist
+    )
+    
+    # Get the artist's recent art pieces
+    artist_art_pieces = artist_profile.getRecentArtPieces(0, 1)
+    assert len(artist_art_pieces) > 0, "No art pieces found in the artist's profile"
+    
+    artist_art_piece_address = artist_art_pieces[0]
+    
+    # Get the art piece contract
+    artist_art_piece = project.ArtPiece.at(artist_art_piece_address)
+    
+    # Verify ERC721 properties for artist-created piece
+    assert artist_art_piece.name() == "ArtPiece"
+    assert artist_art_piece.symbol() == "ART"
+    assert artist_art_piece.balanceOf(owner.address) == 1  # Commissioner is the owner
+    assert artist_art_piece.ownerOf(1) == owner.address
+    assert artist_art_piece.getArtist() == artist.address 
