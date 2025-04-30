@@ -2,6 +2,8 @@
 # Contains a list of Art Pieces per a given NFT
 # Allows for verification of the commissions
 # Allows for creation of a new commission
+# These are NFT Contracts who's children are Art Pieces and also nfts  
+# The commission hub CHANGES OWNER as the L1QueryOwner updates and propegates across chains
 
 # Interface for ArtPiece contract
 interface ArtPiece:
