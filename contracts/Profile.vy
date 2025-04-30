@@ -10,9 +10,7 @@
 deployer: public(address)  # New variable to store the deployer's address
 hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
-profileImage: public(Bytes[45000])
-profileImageCount: public(uint256)
-profileImages: public(HashMap[uint256, Bytes[45000]])  # Store historical profile images
+profileImage: public(String[45000])
 
 # Commissions and counters
 commissions: public(DynArray[address, 100000])
@@ -55,7 +53,7 @@ profileExpansion: public(address)
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
-    def initialize(_image_data_input: Bytes[45000], _title_input: String[100], _description_input: Bytes[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def initialize(_token_uri_data: String[45000], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
 
 # Constructor
 @deploy
@@ -75,7 +73,6 @@ def initialize(_owner: address):
     self.artistProceedsAddress = _owner  # Default proceeds to owner's address
     
     # Initialize counters
-    self.profileImageCount = 0
     self.commissionCount = 0
     self.unverifiedCommissionCount = 0
     self.likedProfileCount = 0
@@ -154,45 +151,9 @@ def setIsArtist(_is_artist: bool):
 
 # Set profile image
 @external
-def setProfileImage(_image: Bytes[45000]):
+def setProfileImage(_image: String[45000]):
     assert msg.sender == self.owner, "Only owner can set profile image"
-    
-    # Store current image in history
-    if len(self.profileImage) > 0:
-        self.profileImages[self.profileImageCount] = self.profileImage
-        self.profileImageCount += 1
-    
-    # Update current profile image
     self.profileImage = _image
-
-# Get historical profile image
-@view
-@external
-def getProfileImageByIndex(_index: uint256) -> Bytes[45000]:
-    assert _index < self.profileImageCount, "Invalid profile image index"
-    return self.profileImages[_index]
-
-# Get recent profile images (newest first)
-@view
-@external
-def getRecentProfileImages(_count: uint256) -> DynArray[Bytes[45000], 10]:
-    result: DynArray[Bytes[45000], 10] = []
-    
-    # Cap count to maximum result size and available images
-    count: uint256 = min(_count, 10)
-    count = min(count, self.profileImageCount + 1)  # +1 for current image
-    
-    # Add current image first if it exists
-    if len(self.profileImage) > 0:
-        result.append(self.profileImage)
-        count -= 1
-    
-    # Add historical images in reverse order
-    for i: uint256 in range(0, count, bound=10):
-        idx: uint256 = self.profileImageCount - 1 - i
-        result.append(self.profileImages[idx])
-    
-    return result
 
 # Toggle allowing new commissions
 @external
@@ -537,7 +498,7 @@ def getMapCommissionToMintErc1155(_commission: address) -> address:
 ## Art Pieces
 
 @external
-def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _title: String[100], _description: Bytes[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+def createArtPiece(_art_piece_template: address, _token_uri_data: String[45000], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
     """
     Create a new art piece through this profile
     _art_piece_template: Address of the ArtPiece template contract to clone
@@ -570,7 +531,7 @@ def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _tit
     # Initialize the art piece proxy
     art_piece: ArtPiece = ArtPiece(art_piece_address)
     extcall art_piece.initialize(
-        _image_data,
+        _token_uri_data,
         _title,
         _description,
         owner_input,

@@ -65,7 +65,6 @@ def test_initialization(setup):
     assert owner_profile.artistProceedsAddress() == owner.address
     
     # Check all counts are initialized to zero
-    assert owner_profile.profileImageCount() == 0
     assert owner_profile.commissionCount() == 0
     assert owner_profile.unverifiedCommissionCount() == 0
     assert owner_profile.likedProfileCount() == 0
@@ -107,50 +106,22 @@ def test_profile_image_methods(setup):
     other_user = setup["other_user"]
     
     # Test initial state
-    assert owner_profile.profileImageCount() == 0
     assert len(owner_profile.profileImage()) == 0
     
     # Test setting profile image
-    image1 = b"test profile image 1" * 10
+    image1 = "data:application/json;base64,eyJuY41lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     owner_profile.setProfileImage(image1, sender=owner)
     assert owner_profile.profileImage() == image1
-    assert owner_profile.profileImageCount() == 0  # First image doesn't increment count
     
     # Set second image to trigger history storage
-    image2 = b"test profile image 2" * 10
+    image2 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3tpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     owner_profile.setProfileImage(image2, sender=owner)
     assert owner_profile.profileImage() == image2
-    assert owner_profile.profileImageCount() == 1
     
     # Set third image
-    image3 = b"test profile image 3" * 10
+    image3 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gRGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     owner_profile.setProfileImage(image3, sender=owner)
     assert owner_profile.profileImage() == image3
-    assert owner_profile.profileImageCount() == 2
-    
-    # Test getProfileImageByIndex
-    historical_image1 = owner_profile.getProfileImageByIndex(0)
-    assert historical_image1 == image1
-    
-    historical_image2 = owner_profile.getProfileImageByIndex(1)
-    assert historical_image2 == image2
-    
-    # Test invalid index
-    with pytest.raises(Exception):
-        owner_profile.getProfileImageByIndex(2)  # Index out of bounds
-    
-    # Test getRecentProfileImages
-    recent_images = owner_profile.getRecentProfileImages(5)
-    assert len(recent_images) == 3
-    assert recent_images[0] == image3  # Current image first
-    assert recent_images[1] == image2
-    assert recent_images[2] == image1
-    
-    # Test with smaller count
-    recent_images_2 = owner_profile.getRecentProfileImages(2)
-    assert len(recent_images_2) == 2
-    assert recent_images_2[0] == image3
-    assert recent_images_2[1] == image2
     
     # Attempt by non-owner should fail
     with pytest.raises(Exception):
@@ -310,9 +281,9 @@ def test_create_art_piece(setup):
     assert owner_profile.myArtCount() == 0
     
     # Create an art piece as commissioner
-    image_data = b"test art image data" * 10
+    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Art Piece"
-    description = b"Test description for art piece"
+    description = "Test description for art piece"
     
     # Simple test of creating art - full tests covered in test_profile_art_creation.py
     owner_profile.createArtPiece(

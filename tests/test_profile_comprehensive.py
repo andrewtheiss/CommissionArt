@@ -54,11 +54,10 @@ def test_profile_creation(setup):
     assert profile.owner() == user.address
     assert profile.isArtist() is False
     assert profile.myArtCount() == 0
-    assert profile.profileImageCount() == 0
     assert profile.allowUnverifiedCommissions() is True
 
 def test_create_and_update_artist_profile(setup):
-    """Test creating an artist profile and updating its settings"""
+    """Test creating an artist profile and updating its settings""" 
     profile_hub = setup["profile_hub"]
     artist = setup["artist"]
     other_user = setup["other_user"]
@@ -77,9 +76,9 @@ def test_create_and_update_artist_profile(setup):
     assert profile.isArtist() is True
     
     # Set profile image
-    image_data = b"artist profile image" * 10
-    profile.setProfileImage(image_data, sender=artist)
-    assert profile.profileImage() == image_data
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    profile.setProfileImage(token_uri_data, sender=artist)
+    assert profile.profileImage() == token_uri_data
     
     # Set proceeds address 
     profile.setProceedsAddress(other_user.address, sender=artist)
@@ -120,7 +119,7 @@ def test_profile_permission_restrictions(setup):
     assert "Only owner" in str(excinfo.value)
     
     with pytest.raises(Exception) as excinfo:
-        profile.setProfileImage(b"unauthorized image", sender=other_user)
+        profile.setProfileImage("data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9", sender=other_user)
     assert "Only owner" in str(excinfo.value)
     
     with pytest.raises(Exception) as excinfo:
@@ -196,35 +195,22 @@ def test_profile_image_history(setup):
     
     # Initially no profile image
     assert len(profile.profileImage()) == 0
-    assert profile.profileImageCount() == 0
     
     # Set first profile image
-    image1 = b"first profile image" * 10
+    image1 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwi3GVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     profile.setProfileImage(image1, sender=user)
     assert profile.profileImage() == image1
-    assert profile.profileImageCount() == 0  # First image doesn't increase count
     
     # Set second profile image
-    image2 = b"second profile image" * 10
+    image2 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3J5cHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     profile.setProfileImage(image2, sender=user)
     assert profile.profileImage() == image2
-    assert profile.profileImageCount() == 1
-    
-    # First image should be in history
-    assert profile.getProfileImageByIndex(0) == image1
     
     # Set third profile image
-    image3 = b"third profile image" * 10
+    image3 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZ4VzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     profile.setProfileImage(image3, sender=user)
     assert profile.profileImage() == image3
-    assert profile.profileImageCount() == 2
     
-    # Get recent profile images
-    recent_images = profile.getRecentProfileImages(3)
-    assert len(recent_images) == 3
-    assert recent_images[0] == image3  # Current image
-    assert recent_images[1] == image2  # Previous image
-    assert recent_images[2] == image1  # First image
 
 def test_create_art_piece_on_profile(setup):
     """Test creating an art piece through a profile"""
@@ -240,15 +226,15 @@ def test_create_art_piece_on_profile(setup):
     profile = project.Profile.at(profile_address)
     
     # Test data for art piece
-    image_data = b"test artwork image data" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "My First Artwork"
-    description = b"This is a description of my artwork"
+    description = "This is a description of my artwork"
     
     # Create art piece as a commissioner (not an artist)
     # Store the transaction result
     transaction = profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         False,  # Not as artist
@@ -282,7 +268,7 @@ def test_create_art_piece_on_profile(setup):
     
     # Verify art piece properties
     assert art_piece.getTitle() == title
-    assert art_piece.getImageData() == image_data
+    assert art_piece.getImageData() == token_uri_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == user.address  # User is owner
     assert art_piece.getArtist() == artist.address  # Artist as specified
@@ -305,14 +291,14 @@ def test_create_art_piece_as_artist(setup):
     profile.setIsArtist(True, sender=artist)
     
     # Test data for art piece
-    image_data = b"artist created artwork" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Artist Creation"
-    description = b"Artwork created by an artist"
+    description = "Artwork created by an artist"
     
     # Create art piece as an artist
     transaction = profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         True,  # As artist
@@ -339,7 +325,7 @@ def test_create_art_piece_as_artist(setup):
     
     # Verify art piece properties - note the ownership differences for artist creation
     assert art_piece.getTitle() == title
-    assert art_piece.getImageData() == image_data
+    assert art_piece.getImageData() == token_uri_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == commissioner.address  # Commissioner is owner
     assert art_piece.getArtist() == artist.address       # Artist is creator
@@ -364,14 +350,14 @@ def test_add_existing_art_piece_to_profile(setup):
     artist_profile.setIsArtist(True, sender=artist)
     
     # Create an art piece through the user profile
-    image_data = b"artwork to be added to multiple profiles" * 5
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Shared Artwork"
-    description = b"Artwork shared across profiles"
+    description = "Artwork shared across profiles"
     
     # Create art piece through the user's profile
     transaction = user_profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         False,  # Not as artist
@@ -390,7 +376,7 @@ def test_add_existing_art_piece_to_profile(setup):
     # Verify the art piece properties
     user_art_piece = project.ArtPiece.at(art_piece_address)
     assert user_art_piece.getTitle() == title
-    assert user_art_piece.getImageData() == image_data
+    assert user_art_piece.getImageData() == token_uri_data
     assert user_art_piece.getDescription() == description
     
     # Artist adds the same art piece to their profile
@@ -420,13 +406,13 @@ def test_remove_art_piece_from_profile(setup):
     profile = project.Profile.at(profile_hub.getProfile(user.address))
     
     # Create first art piece
-    first_image = b"first art" * 10
+    first_image = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     first_title = "First Art"
     profile.createArtPiece(
         art_piece_template.address,
         first_image,
         first_title,
-        b"First art description",
+        "First art description",
         False,
         setup["artist"].address,
         commission_hub.address,
@@ -435,13 +421,13 @@ def test_remove_art_piece_from_profile(setup):
     )
     
     # Create second art piece
-    second_image = b"second art" * 10
+    second_image = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     second_title = "Second Art"
     profile.createArtPiece(
         art_piece_template.address,
         second_image,
         second_title,
-        b"Second art description",
+        "Second art description",
         False,
         setup["artist"].address,
         commission_hub.address,
@@ -498,14 +484,14 @@ def test_profile_hub_combined_creation(setup):
     assert profile_hub.hasProfile(user.address) is True
     
     # Define art piece data
-    image_data = b"combined creation artwork" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Combined Creation"
-    description = b"Created in a workflow"
+    description = "Created in a workflow"
     
     # Create an art piece on the profile
     profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         False,  # Not as artist
@@ -525,7 +511,7 @@ def test_profile_hub_combined_creation(setup):
     # Load and verify the art piece
     art_piece = project.ArtPiece.at(art_piece_addr)
     assert art_piece.getTitle() == title
-    assert art_piece.getImageData() == image_data
+    assert art_piece.getImageData() == token_uri_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == user.address
     assert art_piece.getArtist() == artist.address 

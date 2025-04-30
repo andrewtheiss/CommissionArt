@@ -48,7 +48,6 @@ def test_profile_initialization(setup):
     assert profile.isArtist() == False
     assert profile.allowUnverifiedCommissions() == True
     assert profile.artistProceedsAddress() == user1.address
-    assert profile.profileImageCount() == 0
     assert profile.commissionCount() == 0
     assert profile.myArtCount() == 0
 
@@ -88,33 +87,23 @@ def test_profile_set_profile_image(setup):
     profile = project.Profile.at(profile_address)
     
     # Set profile image
-    image1 = b"profile image 1" * 10
+    image1 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     profile.setProfileImage(image1, sender=user1)
     
     # Check current profile image
     assert profile.profileImage() == image1
-    assert profile.profileImageCount() == 0  # No history yet
     
     # Set another profile image to create history
-    image2 = b"profile image 2" * 10
+    image2 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     profile.setProfileImage(image2, sender=user1)
     
     # Check updated profile image and history
     assert profile.profileImage() == image2
-    assert profile.profileImageCount() == 1
-    assert profile.getProfileImageByIndex(0) == image1
     
     # Set another profile image
-    image3 = b"profile image 3" * 10
+    image3 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     profile.setProfileImage(image3, sender=user1)
-    
-    # Check history methods
-    assert profile.profileImageCount() == 2
-    recent_images = profile.getRecentProfileImages(3)
-    assert len(recent_images) == 3
-    assert recent_images[0] == image3  # Current image
-    assert recent_images[1] == image2  # Previous image
-    assert recent_images[2] == image1  # First image
+
 
 def test_profile_hub_create_profile(setup):
     """Test creating a profile through the ProfileHub"""
@@ -344,15 +333,15 @@ def test_create_new_commission_and_register_profile(setup):
     profile = project.Profile.at(profile_address)
     
     # Sample art piece data
-    image_data = b"sample art piece image" * 20
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Commission"
-    description = b"Test commission description"
+    description = "Test commission description"
     is_artist = False  # User is not the artist
     
     # Create art piece directly on the profile
     profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         is_artist,
@@ -391,16 +380,16 @@ def test_create_art_piece_permission_check(setup):
     profile = project.Profile.at(profile_address)
     
     # Sample art piece data
-    image_data = b"sample art piece image" * 20
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Commission"
-    description = b"Test commission description"
+    description = "Test commission description"
     
     # Attempt to create art piece as user2 (not the profile owner)
     # This should fail with "Only profile owner can create art"
     with pytest.raises(Exception):
         profile.createArtPiece(
             art_piece_template.address,
-            image_data,
+            token_uri_data,
             title,
             description,
             False,  # Not an artist
@@ -423,15 +412,15 @@ def test_combined_profile_method_with_existing_profile(setup):
     assert profile_hub.hasProfile(user1.address) == True
     
     # Sample art piece data
-    image_data = b"sample art piece image" * 20
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Commission"
-    description = b"Test commission description"
+    description = "Test commission description"
     
     # Attempt to create profile and commission when profile already exists
     with pytest.raises(Exception):
         profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
-            image_data,
+            token_uri_data,
             title,
             description,
             False,  # Not an artist
@@ -455,9 +444,9 @@ def test_combined_profile_and_commission_creation(setup):
     
     # The deployer would need to call this method as it likely has privileged access
     # in production this would be done through a proper frontend contract with permissions
-    image_data = b"combined test image" * 20
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQ29tYmluZWQgVGVzdCIsImRlc2NyaXB0aW9uIjoiVGVzdGluZyBjb21iaW5lZCBjcmVhdGlvbiIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
     title = "Combined Test"
-    description = b"Testing combined creation"
+    description = "Testing combined creation"
     
     # Mock data to test the method signature but we won't actually call it
     # since the implementation may have permission requirements
@@ -465,7 +454,7 @@ def test_combined_profile_and_commission_creation(setup):
         "function": profile_hub.createNewArtPieceAndRegisterProfile,
         "args": [
             art_piece_template.address,
-            image_data,
+            token_uri_data,
             title,
             description,
             False,  # Not artist

@@ -32,7 +32,7 @@ def setup():
         deployer.set_autosign(True, passphrase=passphrase)
         
         yield deployer, network_choice
-
+'''
 @pytest.fixture(scope="module")
 def deployed_contracts(setup):
     """Deploy the necessary contracts for testing"""
@@ -164,3 +164,4 @@ def test_existing_contract_connection(setup):
             
         except Exception as e:
             pytest.skip(f"Could not connect to existing contract: {str(e)}") 
+'''

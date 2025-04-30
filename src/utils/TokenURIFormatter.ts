@@ -7,8 +7,8 @@
  * Formats image data and metadata into standard NFT tokenURI format
  * 
  * @param imageData - Raw image data as Uint8Array
- * @param title - Title of the artwork
- * @param description - Description of the artwork 
+ * @param title - Title of the artwork as string
+ * @param description - Description of the artwork as string
  * @param mimeType - MIME type of the image (e.g. 'image/jpeg', 'image/png', 'image/avif')
  * @returns Formatted tokenURI data as string with data:application/json;base64 prefix
  */

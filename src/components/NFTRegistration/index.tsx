@@ -15,7 +15,6 @@ const ArtistForm: React.FC<{
   setArtworkTitle: (title: string) => void;
   artworkDescription: string;
   setArtworkDescription: (desc: string) => void;
-  descriptionBytes: number;
   selectedImage: File | null;
   setSelectedImage: (file: File | null) => void;
   originalPreviewUrl: string | null;
@@ -39,7 +38,6 @@ const ArtistForm: React.FC<{
   setArtworkTitle,
   artworkDescription,
   setArtworkDescription,
-  descriptionBytes,
   selectedImage,
   setSelectedImage,
   originalPreviewUrl,
@@ -65,8 +63,7 @@ const ArtistForm: React.FC<{
 
   const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
-    const bytes = new TextEncoder().encode(text).length;
-    if (bytes <= 200) {
+    if (text.length <= 200) {
       setArtworkDescription(text);
     }
   }, [setArtworkDescription]);
@@ -158,7 +155,7 @@ const ArtistForm: React.FC<{
       // Convert the image to bytes
       const imageDataArray = new Uint8Array(await compressedResult.blob.arrayBuffer());
       const titleStr = artworkTitle.trim();
-      const descriptionBytes = new TextEncoder().encode(artworkDescription);
+      const descriptionStr = artworkDescription.trim();  // Use string directly instead of bytes
       
       // Format the tokenURI according to NFT standards
       console.log(`Formatting tokenURI for artwork: ${titleStr}`);
@@ -168,7 +165,7 @@ const ArtistForm: React.FC<{
       const tokenURIResult = reduceTokenURISize(
         imageDataArray,
         titleStr,
-        artworkDescription,
+        descriptionStr,  // Use string directly
         44000, // Target slightly below 45,000 byte limit
         compressedResult.format === 'image/avif' ? 'image/avif' : 'image/jpeg' // Use the format from compression
       );
@@ -179,8 +176,9 @@ const ArtistForm: React.FC<{
       console.log(`- Reduction applied: ${tokenURIResult.reductionApplied}`);
       console.log(`- First 100 chars: ${tokenURIResult.tokenURI.substring(0, 100)}...`);
       
-      // Convert the tokenURI string to bytes for on-chain storage
-      const tokenURIBytes = new TextEncoder().encode(tokenURIResult.tokenURI);
+      // Instead of converting to bytes, keep the tokenURI as a string
+      // This matches the new String[45000] parameter in the contract
+      const tokenURIString = tokenURIResult.tokenURI;
       
       // Get the commissionHub address from the config
       const commissionHubAddress = contractConfig.networks.mainnet.commissionHub.address || ethers.ZeroAddress;
@@ -201,12 +199,12 @@ const ArtistForm: React.FC<{
           throw new Error("ArtPiece address not configured");
         }
         
-        // Call the profile's createArtPiece function with the tokenURI bytes instead of raw image data
+        // Call the profile's createArtPiece function with the tokenURI string
         const tx = await profileContract.createArtPiece(
           artPieceAddress,
-          tokenURIBytes, // Use tokenURI bytes instead of raw image data
-          titleStr,
-          descriptionBytes,
+          tokenURIString, // Use tokenURI string instead of bytes
+          titleStr,       // Use title string
+          descriptionStr, // Use description string directly instead of bytes
           true, // is artist
           ethers.ZeroAddress, // no other party
           commissionHubAddress,
@@ -266,12 +264,12 @@ const ArtistForm: React.FC<{
           
           console.log("Creating profile and registering artwork in one transaction...");
           
-          // Create profile and register artwork with tokenURI bytes instead of raw image data
+          // Create profile and register artwork with tokenURI string
           const tx = await profileHub.createNewArtPieceAndRegisterProfile(
             artPieceTemplateAddress,
-            tokenURIBytes, // Use tokenURI bytes instead of raw image data
-            titleStr,
-            descriptionBytes,
+            tokenURIString, // Use tokenURI string instead of bytes
+            titleStr,       // Use title string
+            descriptionStr, // Use description string directly instead of bytes
             true, // is artist
             ethers.ZeroAddress, // no other party
             commissionHubAddress,
@@ -434,17 +432,15 @@ const ArtistForm: React.FC<{
             </div>
             <div className="form-group">
               <label htmlFor="artwork-description">
-                Description <span className="byte-counter">{descriptionBytes}/200 bytes</span>
+                Description <span className="byte-counter">{artworkDescription.length}/200 characters</span>
               </label>
               <textarea
                 id="artwork-description"
-                className="form-textarea"
-                placeholder="Describe your artwork..."
-                rows={4}
                 value={artworkDescription}
                 onChange={handleDescriptionChange}
-                maxLength={200}
-              ></textarea>
+                placeholder="Enter a description for your artwork"
+                className="form-control"
+              />
             </div>
             <div className="form-actions">
               <button
@@ -477,49 +473,42 @@ const ArtistForm: React.FC<{
 };
 
 const NFTRegistration: React.FC = () => {
-  const [userType, setUserType] = useState<'none' | 'artist' | 'commissioner'>('none');
+  const [userType, setUserType] = useState<'artist' | 'commissioner' | null>(null);
   const { isConnected, connectWallet, walletAddress, networkType, switchToLayer } = useBlockchain();
 
   const [artworkTitle, setArtworkTitle] = useState<string>('');
   const [artworkDescription, setArtworkDescription] = useState<string>('');
-  const [descriptionBytes, setDescriptionBytes] = useState<number>(0);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [originalPreviewUrl, setOriginalPreviewUrl] = useState<string | null>(null);
   const [compressedResult, setCompressedResult] = useState<CompressionResult | null>(null);
-  const [isCompressing, setIsCompressing] = useState(false);
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
   const [imageOrientation, setImageOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
-  const [hasProfile, setHasProfile] = useState(false);
+  const [hasProfile, setHasProfile] = useState<boolean>(false);
   const [checkingProfile, setCheckingProfile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isTrulyConnected = isConnected && !!walletAddress;
 
-  // Check if user has a profile when they connect
+  // Check for profile when wallet is connected
   useEffect(() => {
-    const checkForProfile = async () => {
-      if (isTrulyConnected) {
-        setCheckingProfile(true);
-        try {
-          const profileExists = await profileService.hasProfile();
-          setHasProfile(profileExists);
-          console.log("Profile check:", profileExists ? "User has a profile" : "User has no profile");
-        } catch (error) {
-          console.error("Error checking for profile:", error);
-          setHasProfile(false);
-        } finally {
-          setCheckingProfile(false);
-        }
-      } else {
-        setHasProfile(false);
-      }
-    };
-    
-    checkForProfile();
+    if (isTrulyConnected) {
+      checkForProfile();
+    }
   }, [isTrulyConnected, walletAddress]);
 
-  useEffect(() => {
-    const bytes = new TextEncoder().encode(artworkDescription).length;
-    setDescriptionBytes(bytes);
-  }, [artworkDescription]);
+  // Function to check if user has a profile
+  const checkForProfile = async () => {
+    setCheckingProfile(true);
+    try {
+      const profileExists = await profileService.hasProfile();
+      setHasProfile(profileExists);
+      console.log("Profile check:", profileExists ? "User has a profile" : "User has no profile");
+    } catch (error) {
+      console.error("Error checking for profile:", error);
+      setHasProfile(false);
+    } finally {
+      setCheckingProfile(false);
+    }
+  };
 
   // Updated useEffect to only revoke URLs without resetting userType
   useEffect(() => {
@@ -621,7 +610,7 @@ const NFTRegistration: React.FC = () => {
           </div>
         </div>
         <div className="form-footer">
-          <button type="button" className="form-back-button" onClick={() => setUserType('none')}>
+          <button type="button" className="form-back-button" onClick={() => setUserType(null)}>
             Back
           </button>
           <button
@@ -647,7 +636,7 @@ const NFTRegistration: React.FC = () => {
     <div className="nft-registration-container">
       <h2>Commission Art</h2>
       <ConnectionBar />
-      {userType === 'none' ? (
+      {userType === null ? (
         <div className="user-type-selection">
           <p className="selection-prompt">I'm a:</p>
           <div className="selection-buttons">
@@ -665,7 +654,6 @@ const NFTRegistration: React.FC = () => {
           setArtworkTitle={setArtworkTitle}
           artworkDescription={artworkDescription}
           setArtworkDescription={setArtworkDescription}
-          descriptionBytes={descriptionBytes}
           selectedImage={selectedImage}
           setSelectedImage={setSelectedImage}
           originalPreviewUrl={originalPreviewUrl}
@@ -683,7 +671,7 @@ const NFTRegistration: React.FC = () => {
           networkType={networkType}
           switchToLayer={switchToLayer}
           hasProfile={hasProfile}
-          onBack={() => setUserType('none')}
+          onBack={() => setUserType(null)}
         />
       ) : (
         <CommissionerForm />

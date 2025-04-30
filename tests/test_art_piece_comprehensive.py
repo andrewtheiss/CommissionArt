@@ -1,11 +1,16 @@
 import pytest
 from ape import accounts, project
 from eth_utils import to_checksum_address
+import base64
+import json
 
 # Test data
-TEST_IMAGE_DATA = b"Test image data" * 10  # Multiply to make it a bit larger
-TEST_TITLE = "Test Artwork"
-TEST_DESCRIPTION = b"This is a test description for the artwork"
+TEST_TOKEN_URI_DATA = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTndJREFBQUFCbEJNVkVYLy8vL24vNGJsQUFBQUJYUlNUbk1BUUtKZVVtUktBQUFBQWtsRVFWUUkxMkJnQUFNRE1BQUJoVUFCQUVtQ0FVQUFBQUJKUlU1RXJrSmdnZz09In0="
+# Parse base64 data to extract title and description
+base64_data = TEST_TOKEN_URI_DATA.replace("data:application/json;base64,", "")
+json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
+TEST_TITLE = json_data["name"]  # "Test Artwork"
+TEST_DESCRIPTION = json_data["description"]  # "This is a test description for the artwork"
 TEST_AI_GENERATED = False
 
 @pytest.fixture
@@ -25,7 +30,7 @@ def setup():
     
     # Initialize the contract
     art_piece.initialize(
-        TEST_IMAGE_DATA,
+        TEST_TOKEN_URI_DATA,
         TEST_TITLE,
         TEST_DESCRIPTION,
         owner.address,
@@ -55,7 +60,8 @@ def test_initialization(setup):
     assert art_piece.initialized() is True
     
     # Check basic data
-    assert art_piece.getImageData() == TEST_IMAGE_DATA
+    assert art_piece.getTokenURIData() == TEST_TOKEN_URI_DATA
+    assert art_piece.getImageData() == TEST_TOKEN_URI_DATA  # Test backwards compatibility
     assert art_piece.getTitle() == TEST_TITLE
     assert art_piece.getDescription() == TEST_DESCRIPTION
     assert art_piece.getOwner() == owner.address
@@ -75,7 +81,7 @@ def test_initialize_only_once(setup):
     # Try to initialize the contract again
     with pytest.raises(Exception) as excinfo:
         art_piece.initialize(
-            TEST_IMAGE_DATA,
+            TEST_TOKEN_URI_DATA,
             TEST_TITLE,
             TEST_DESCRIPTION,
             owner.address,
@@ -342,7 +348,8 @@ def test_all_getter_methods(setup):
     artist = setup["artist"]
     
     # Test all available getter methods
-    assert art_piece.getImageData() == TEST_IMAGE_DATA
+    assert art_piece.getTokenURIData() == TEST_TOKEN_URI_DATA
+    assert art_piece.getImageData() == TEST_TOKEN_URI_DATA  # Test backwards compatibility
     assert art_piece.getTitle() == TEST_TITLE
     assert art_piece.getDescription() == TEST_DESCRIPTION
     assert art_piece.getOwner() == owner.address

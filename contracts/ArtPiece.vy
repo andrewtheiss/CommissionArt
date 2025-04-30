@@ -61,9 +61,9 @@ INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
 TOKEN_ID: constant(uint256) = 1
 
 # ArtPiece variables
-imageData: Bytes[45000]  # Adjusted to handle up to 45 KB
+tokenURI_data: String[45000]  # Changed from imageData to tokenURI_data as String
 title: String[100]  # Title of the artwork
-description: Bytes[200]  # Description with 200 byte limit
+description: String[200]  # Description with 200 byte limit
 owner: address
 artist: address
 aiGenerated: public(bool)
@@ -94,9 +94,9 @@ def __init__():
 
 @external
 def initialize(
-    _image_data_input: Bytes[45000],
+    _token_uri_data: String[45000],  # Changed parameter type and name
     _title_input: String[100], 
-    _description_input: Bytes[200], 
+    _description_input: String[200], 
     _owner_input: address, 
     _artist_input: address, 
     _commission_hub: address, 
@@ -106,7 +106,7 @@ def initialize(
     Initialize the ArtPiece contract, can only be called once
     """
     assert not self.initialized, "Already initialized"
-    self.imageData = _image_data_input
+    self.tokenURI_data = _token_uri_data  # Updated field name
     self.title = _title_input
     self.description = _description_input
     self.owner = _owner_input
@@ -266,22 +266,27 @@ def _isContract(_addr: address) -> bool:
 # URI Functions
 @external
 @view
-def tokenURI(_tokenId: uint256) -> String[200]:
+def tokenURI(_tokenId: uint256) -> String[45000]:  # Updated return type
     """
     @notice Get the URI for a token
     @param _tokenId The token ID
     @return The token URI
     """
     assert _tokenId == TOKEN_ID, "Invalid token ID"
-    # Return a simple URI representation based on contract address
-    # In a real implementation, this could point to IPFS or other storage
-    return concat("art://", self.title)
+    # Return the stored tokenURI data
+    return self.tokenURI_data
 
-# Original ArtPiece Functions
+# Original ArtPiece Functions, with updated names
 @external
 @view
-def getImageData() -> Bytes[45000]:
-    return self.imageData
+def getTokenURIData() -> String[45000]:  # Renamed from getImageData
+    return self.tokenURI_data
+
+# Added for backwards compatibility
+@external
+@view
+def getImageData() -> String[45000]:  # Return type updated to String
+    return self.tokenURI_data
 
 @external
 @view
@@ -290,7 +295,7 @@ def getTitle() -> String[100]:
 
 @external
 @view
-def getDescription() -> Bytes[200]:
+def getDescription() -> String[200]:
     return self.description
 
 @external

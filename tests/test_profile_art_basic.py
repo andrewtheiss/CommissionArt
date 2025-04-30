@@ -2,7 +2,7 @@ import pytest
 from ape import accounts, project
 
 # Test data
-TEST_IMAGE_DATA = b"Test image data" * 10  # Multiply to make it a bit larger
+TEST_TOKEN_URI_DATA = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9"
 TEST_TITLE = "Test Artwork"
 TEST_DESCRIPTION = b"This is a test description for the artwork"
 TEST_AI_GENERATED = False
@@ -106,9 +106,9 @@ def test_create_art_piece_owner(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    image_data = b"test artwork image data" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiT3duZXIgQ29tbWlzc2lvbiIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIG93bmVyIGNvbW1pc3Npb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDhzQVVJQUFBQU9TVVJCVkFqWFk4UUJBbUlBbklFQjVnQUFBQUJKUlU1RXJrSmdnZz09In0="
     title = "Owner Commission"
-    description = b"Description for owner commission"
+    description = "Description for owner commission"
     
     # Initial art count
     initial_count = owner_profile.myArtCount()
@@ -116,7 +116,7 @@ def test_create_art_piece_owner(setup):
     # Create art piece as a commissioner (not an artist)
     tx_receipt = owner_profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         False,  # Not as artist
@@ -150,9 +150,9 @@ def test_create_art_piece_artist(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    image_data = b"artist created artwork" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQXJ0aXN0IENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJBcnR3b3JrIGNyZWF0ZWQgYnkgYW4gYXJ0aXN0IiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQjNSSlRVVUg1QW9WRnQ5djhIRUFBQUFNU1VSQlZBalhZOFFCQWxvQWtXOEIzd0FBQUFCSLVVRK9Sa0pnZ2c9PSJ9"
     title = "Artist Creation"
-    description = b"Artwork created by an artist"
+    description = "Artwork created by an artist"
     
     # Initial art count
     initial_count = artist_profile.myArtCount()
@@ -160,7 +160,7 @@ def test_create_art_piece_artist(setup):
     # Create art piece as an artist
     tx_receipt = artist_profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         True,  # As artist
@@ -207,13 +207,13 @@ def test_direct_profile_creation_and_art(setup):
     profile = project.Profile.at(profile_address)
     
     # Now create an art piece through the profile
-    image_data = b"commissioner artwork" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQ29tbWlzc2lvbmVyIENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJBcnQgY3JlYXRlZCBieSBjb21taXNzaW9uZXIiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlOTFhFQUFBQVFTVVJCVkFqWFk4UUJBbFFBbjRrQzl3QUFBQUJKUlU1RXJrSmdnZz09In0="
     title = "Commissioner Creation"
-    description = b"Art created by commissioner"
+    description = "Art created by commissioner"
     
     tx_receipt = profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         False,  # Not as artist
@@ -245,14 +245,14 @@ def test_get_art_piece_at_index_single(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    image_data = b"test artwork for index" * 10
+    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiU2luZ2xlIEFydCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIHNpbmdsZSBhcnQgcGllY2UiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlQOVFFQUFBQUxTVVJCVkFqWFk4UUJBa3dBbUlRQjVnQUFBQUJKUlU1RXJrSmdnZz09In0="
     title = "Single Art Piece"
-    description = b"Description for single art piece"
+    description = "Description for single art piece"
     
     # Create art piece
     tx_receipt = owner_profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        token_uri_data,
         title,
         description,
         False,  # Not as artist
@@ -287,15 +287,20 @@ def test_get_art_piece_at_index_multiple(setup):
     
     # Create 3 art pieces with different titles
     art_titles = ["First Art Piece", "Second Art Piece", "Third Art Piece"]
+    token_uri_data_templates = [
+        "data:application/json;base64,eyJuYW1lIjoiRmlyc3QgQXJ0IFBpZWNlIiwiZGVzY3JpcHRpb24iOiJEZXNjcmlwdGlvbiBmb3IgYXJ0IHBpZWNlIDEiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlhUDJFQUFBQU1TVVJCVkFqWFk4UUJBbGdBb0lJQjVBQUFBQUJKUlU1RXJrSmdnZz09In0=",
+        "data:application/json;base64,eyJuYW1lIjoiU2Vjb25kIEFydCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIGFydCBwaWVjZSAyIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQjNSSlRVVUg1QW9WRnQ5blFGc0FBQUFNU1VSQlZBalhZOFFCQW1BQW1vUUI2QUFBQUFCSlJVNUVya0pnZ2c9PSJ9",
+        "data:application/json;base64,eyJuYW1lIjoiVGhpcmQgQXJ0IFBpZWNlIiwiZGVzY3JpcHRpb24iOiJEZXNjcmlwdGlvbiBmb3IgYXJ0IHBpZWNlIDMiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDhTSnpNQUFBQU1TVVJCVkFqWFk4UUJBbmdBbm9jQ0FBQUFBQUJKUlU1RXJrSmdnZz09In0="
+    ]
     created_addresses = []
     
     for i, title in enumerate(art_titles):
         # Create art piece
         tx_receipt = owner_profile.createArtPiece(
             art_piece_template.address,
-            f"test artwork {i+1}".encode() * 10,
+            token_uri_data_templates[i],
             title,
-            f"Description for art piece {i+1}".encode(),
+            f"Description for art piece {i+1}",
             False,  # Not as artist
             artist.address,  # Artist address
             commission_hub.address,
@@ -328,7 +333,7 @@ def test_get_art_piece_at_index_multiple(setup):
     
     # Test with invalid index - should revert
     with pytest.raises(Exception):
-        owner_profile.getArtPieceAtIndex(3)  # Index out of bounds 
+        owner_profile.getArtPieceAtIndex(3)  # Index out of bounds
 
 def test_array_slice_functionality(setup):
     """Test the _getArraySlice functionality through liked profiles"""

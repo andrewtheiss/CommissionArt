@@ -3,7 +3,7 @@ import { DecodedTokenURI, processArtworkData, safeRevokeUrl } from '../utils/Tok
 import './ArtDisplay.css';
 
 interface ArtDisplayProps {
-  imageData: Uint8Array | string;
+  imageData: Uint8Array | string;  // Can be either binary data or string tokenURI
   title?: string;
   contractAddress?: string;
   className?: string;
@@ -31,6 +31,7 @@ const ArtDisplay: React.FC<ArtDisplayProps> = ({
     
     try {
       // Process the artwork data to get various formats
+      // No need to modify processArtworkData as it already handles both Uint8Array and string
       const { imageUrl: url, decodedTokenURI, isTokenURIFormat: isTokenURI } = processArtworkData(imageData);
       
       setImageUrl(url);

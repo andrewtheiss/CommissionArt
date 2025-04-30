@@ -17,7 +17,7 @@ const ArtPieceDetails: React.FC = () => {
     address: string;
     title: string;
     description: string;
-    imageData: Uint8Array | null;
+    tokenURIData: string | null;
     artist: string;
     owner: string;
     isTokenUri: boolean;
@@ -58,10 +58,10 @@ const ArtPieceDetails: React.FC = () => {
 
         // Initialize default values
         let title = "Untitled Artwork";
-        let description = new Uint8Array(0);
+        let description = "";
         let artist = ethers.ZeroAddress;
         let owner = ethers.ZeroAddress;
-        let imageData: Uint8Array | null = null;
+        let tokenURIData: string | null = null;
         let isTokenUri = false;
         let decodedData: DecodedTokenURI | null = null;
         let descriptionText = "";
@@ -73,6 +73,8 @@ const ArtPieceDetails: React.FC = () => {
             title = await contract.title();
           } else if (contract.title !== undefined) {
             title = await contract.title;
+          } else if (typeof contract.getTitle === 'function') {
+            title = await contract.getTitle();
           }
         } catch (titleErr) {
           console.warn(`Could not get title for art piece ${address}:`, titleErr);
@@ -88,9 +90,21 @@ const ArtPieceDetails: React.FC = () => {
             description = await contract.description;
           }
           
-          // Convert description bytes to string if we have description
-          if (description && description.length > 0) {
-            descriptionText = new TextDecoder().decode(description);
+          // Get description text, handling both string and bytes formats for backward compatibility
+          if (description) {
+            if (typeof description === 'string') {
+              // If it's already a string, use it directly
+              descriptionText = description;
+            } else if (description && typeof description === 'object' && 'length' in description) {
+              // If it's bytes or array-like, convert to string
+              try {
+                descriptionText = new TextDecoder().decode(description as unknown as Uint8Array);
+              } catch (decodeErr) {
+                console.warn(`Error decoding description: ${decodeErr}`);
+                // Fallback to string conversion
+                descriptionText = String(description);
+              }
+            }
           }
         } catch (descErr) {
           console.warn(`Could not get description for art piece ${address}:`, descErr);
@@ -125,53 +139,53 @@ const ArtPieceDetails: React.FC = () => {
           console.warn(`Could not get owner for art piece ${address}:`, ownerErr);
         }
 
-        // Try to get image data or tokenURI
+        // Try to get tokenURI data using various methods
         try {
-          if (typeof contract.imageData === 'function') {
-            imageData = await contract.imageData();
-          } else if (typeof contract.getImageData === 'function') {
-            imageData = await contract.getImageData();
-          } else if (contract.imageData !== undefined) {
-            imageData = await contract.imageData;
+          // First try the new tokenURI standard method
+          if (typeof contract.tokenURI === 'function') {
+            tokenURIData = await contract.tokenURI(1);
+          } 
+          // Then try the new direct property
+          else if (typeof contract.tokenURI_data === 'function') {
+            tokenURIData = await contract.tokenURI_data();
+          } 
+          // Then try the getter
+          else if (typeof contract.getTokenURIData === 'function') {
+            tokenURIData = await contract.getTokenURIData();
+          } 
+          // Fallback to legacy getter
+          else if (typeof contract.getImageData === 'function') {
+            tokenURIData = await contract.getImageData();
+          }
+          // Finally check if it's a direct property
+          else if (contract.tokenURI_data !== undefined) {
+            tokenURIData = await contract.tokenURI_data;
           }
           
-          if (!imageData || imageData.length === 0) {
-            // Try to get it from tokenURI if available
-            try {
-              if (typeof contract.tokenURI === 'function') {
-                const tokenURI = await contract.tokenURI(1);
-                if (tokenURI) {
-                  // Check if it's already a data URI
-                  if (tokenURI.startsWith('data:')) {
-                    const encoder = new TextEncoder();
-                    imageData = encoder.encode(tokenURI);
-                    console.log(`Got tokenURI as string, converted to bytes: ${imageData.length} bytes`);
-                  } else {
-                    // It might be a URL, try to load it
-                    console.log(`TokenURI is not a data URI: ${tokenURI}`);
-                  }
-                }
-              }
-            } catch (tokenErr) {
-              console.warn(`Could not get tokenURI for art piece ${address}:`, tokenErr);
-            }
-          }
-        } catch (imageErr) {
-          console.error(`Error loading image data for art piece ${address}:`, imageErr);
-        }
-
-        if (imageData && imageData.length > 0) {
-          console.log(`Loaded image data for ${address}, size: ${imageData.length} bytes`);
-
-          // Check if it's in tokenURI format
-          try {
-            // Convert to string to check format
-            const dataStr = new TextDecoder().decode(imageData);
-            console.log(`Image data starts with: ${dataStr.substring(0, 50)}...`);
+          if (tokenURIData) {
+            console.log(`Loaded tokenURI data for ${address}, type: ${typeof tokenURIData}`);
             
-            if (dataStr.startsWith('data:application/json;base64,')) {
+            // For backwards compatibility, convert from Bytes to String if needed
+            if (typeof tokenURIData !== 'string') {
+              try {
+                // Check if it's an array-like object with a slice method
+                if (tokenURIData && typeof tokenURIData === 'object' && 'slice' in tokenURIData) {
+                  const dataStr = new TextDecoder().decode(tokenURIData as Uint8Array);
+                  tokenURIData = dataStr;
+                } else {
+                  // Fallback to string conversion
+                  tokenURIData = String(tokenURIData);
+                }
+              } catch (convErr) {
+                console.warn(`Failed to convert binary data to string: ${convErr}`);
+              }
+            }
+
+            // Check if it's in tokenURI format
+            if (typeof tokenURIData === 'string' && tokenURIData.startsWith('data:application/json;base64,')) {
+              console.log(`TokenURI data starts with: ${tokenURIData.substring(0, 50)}...`);
               isTokenUri = true;
-              decodedData = decodeTokenURI(dataStr);
+              decodedData = decodeTokenURI(tokenURIData);
               console.log("Successfully decoded tokenURI:", decodedData ? "yes" : "no");
               
               // If we have decoded token data, use its values to fill in missing info
@@ -185,16 +199,16 @@ const ArtPieceDetails: React.FC = () => {
                 }
               }
             }
-          } catch (err) {
-            console.error("Error checking tokenURI format:", err);
           }
+        } catch (imageErr) {
+          console.error(`Error loading tokenURI data for art piece ${address}:`, imageErr);
         }
 
         setArtPiece({
           address,
           title,
           description: descriptionText,
-          imageData,
+          tokenURIData,
           artist,
           owner,
           isTokenUri,
@@ -243,9 +257,9 @@ const ArtPieceDetails: React.FC = () => {
 
       <div className="details-content">
         <div className="details-artwork">
-          {artPiece.imageData ? (
+          {artPiece.tokenURIData ? (
             <ArtDisplay
-              imageData={artPiece.imageData}
+              imageData={artPiece.tokenURIData}
               title={artPiece.title}
               className="main-artwork-display"
             />

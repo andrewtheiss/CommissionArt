@@ -71,9 +71,9 @@ def test_minimal_art_piece_creation(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    image_data = b"test artwork image data" * 10
+    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Artwork"
-    description = b"This is a test description"
+    description = "This is a test description"
     
     print("\nCreating art piece...")
     print(f"Art piece template: {art_piece_template.address}")

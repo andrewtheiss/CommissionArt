@@ -33,7 +33,7 @@ const Account: React.FC = () => {
   const [recentArtPieces, setRecentArtPieces] = useState<string[]>([]);
   const [totalArtPieces, setTotalArtPieces] = useState<number>(0);
   const [loadingArtPieces, setLoadingArtPieces] = useState<boolean>(false);
-  const [artPieceDetails, setArtPieceDetails] = useState<{[address: string]: {title: string, imageData: Uint8Array | null}}>({});
+  const [artPieceDetails, setArtPieceDetails] = useState<{[address: string]: {title: string, tokenURIData: string | null}}>({});
   
   // Profile image
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -264,7 +264,7 @@ const Account: React.FC = () => {
       // Load details for each art piece
       const artPieceAbi = await profileService.getArtPieceAbi();
       if (artPieceAbi) {
-        const details: {[address: string]: {title: string, imageData: Uint8Array | null}} = {};
+        const details: {[address: string]: {title: string, tokenURIData: string | null}} = {};
         const provider = profileService.getProvider();
         
         if (provider) {
@@ -277,7 +277,7 @@ const Account: React.FC = () => {
               
               // Check if contract methods exist before calling them
               let title = "Untitled Artwork";
-              let imageData = null;
+              let tokenURIData = null;
               
               // Safely try to get title
               try {
@@ -304,47 +304,50 @@ const Account: React.FC = () => {
                 }
               }
               
-              // Safely try to get image data
+              // Safely try to get tokenURI data
               try {
-                if (typeof artPieceContract.imageData === 'function') {
-                  imageData = await artPieceContract.imageData();
+                // Try all possible methods to get the data
+                if (typeof artPieceContract.tokenURI === 'function') {
+                  tokenURIData = await artPieceContract.tokenURI(1);
+                } else if (typeof artPieceContract.tokenURI_data === 'function') {
+                  tokenURIData = await artPieceContract.tokenURI_data();
+                } else if (typeof artPieceContract.getTokenURIData === 'function') {
+                  tokenURIData = await artPieceContract.getTokenURIData();
                 } else if (typeof artPieceContract.getImageData === 'function') {
-                  imageData = await artPieceContract.getImageData();
-                } else if (artPieceContract.imageData !== undefined) {
-                  imageData = await artPieceContract.imageData;
-                } else {
-                  // Try tokenURI as fallback for image data
-                  try {
-                    const tokenURI = await artPieceContract.tokenURI(1);
-                    if (tokenURI) {
-                      // Just store the tokenURI string as imageData
-                      // The ArtDisplay component will handle decoding it
-                      const encoder = new TextEncoder();
-                      imageData = encoder.encode(tokenURI);
-                    }
-                  } catch (tokenErr) {
-                    console.warn(`Could not get tokenURI for art piece ${address}:`, tokenErr);
-                  }
+                  // For backwards compatibility
+                  tokenURIData = await artPieceContract.getImageData();
+                } else if (artPieceContract.tokenURI_data !== undefined) {
+                  tokenURIData = await artPieceContract.tokenURI_data;
                 }
                 
-                if (imageData && imageData.length > 0) {
-                  console.log(`Loaded image data for ${address}, data size: ${imageData.length} bytes`);
+                if (tokenURIData) {
+                  console.log(`Loaded tokenURI data for ${address}, data: ${typeof tokenURIData}`);
+                  
                   // Check if it starts with the tokenURI format
-                  try {
-                    const dataStr = new TextDecoder().decode(imageData.slice(0, 30));
-                    console.log(`Image data starts with: ${dataStr}...`);
-                  } catch (err) {
-                    console.warn(`Unable to decode image data start:`, err);
+                  if (typeof tokenURIData === 'string' && tokenURIData.startsWith('data:application/json;base64,')) {
+                    console.log(`TokenURI starts with: ${tokenURIData.substring(0, 30)}...`);
+                  } else if (typeof tokenURIData !== 'string') {
+                    // It might be bytes for older contracts, try to convert
+                    try {
+                      const dataStr = (typeof tokenURIData.slice === 'function')
+                        ? new TextDecoder().decode(tokenURIData)
+                        : String(tokenURIData);
+                      
+                      console.log(`Converted tokenURI data: ${dataStr.substring(0, 30)}...`);
+                      tokenURIData = dataStr;
+                    } catch (err) {
+                      console.warn(`Unable to decode image data:`, err);
+                    }
                   }
                 }
               } catch (imageErr) {
-                console.error(`Error loading image for art piece ${address}:`, imageErr);
+                console.error(`Error loading tokenURI data for art piece ${address}:`, imageErr);
               }
               
-              details[address] = { title, imageData };
+              details[address] = { title, tokenURIData };
             } catch (err) {
               console.error(`Error loading details for art piece ${address}:`, err);
-              details[address] = { title: 'Unknown Art Piece', imageData: null };
+              details[address] = { title: 'Unknown Art Piece', tokenURIData: null };
             }
           }
           
@@ -541,12 +544,12 @@ const Account: React.FC = () => {
                 <div className="art-pieces-grid">
                   {recentArtPieces.map((address, index) => {
                     if (!address) return null; // Skip empty addresses
-                    const details = artPieceDetails[address] || { title: 'Loading...', imageData: null };
+                    const details = artPieceDetails[address] || { title: 'Loading...', tokenURIData: null };
                     return (
                       <div key={index} className="art-piece-item">
-                        {details.imageData ? (
+                        {details.tokenURIData ? (
                           <ArtDisplay
-                            imageData={details.imageData}
+                            imageData={details.tokenURIData}
                             title={details.title}
                             contractAddress={address}
                             className="art-piece-display"

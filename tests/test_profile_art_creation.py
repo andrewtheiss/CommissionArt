@@ -59,12 +59,12 @@ def test_create_single_art_piece_and_get_latest(setup):
     assert len(initial_art_pieces) == 0
     
     # Create a single art piece
-    image_data = b"art piece 1 image data" * 5
+    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     tx_receipt = user_profile.createArtPiece(
         art_piece_template.address,
         image_data,
         "Art Piece 1",
-        b"Description for Art Piece 1",
+        "Description for Art Piece 1",
         False,  # Not an artist
         artist.address,  # Artist address
         commission_hub.address,
@@ -95,12 +95,12 @@ def test_create_multiple_art_pieces_and_get_latest(setup):
     
     # Create 7 art pieces
     for i in range(7):
-        image_data = f"art piece {i+1} image data".encode() * 5
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         user_profile.createArtPiece(
             art_piece_template.address,
             image_data,
             f"Art Piece {i+1}",
-            f"Description for Art Piece {i+1}".encode(),
+            f"Description for Art Piece {i+1}",
             False,  # Not an artist
             artist.address,  # Artist address
             commission_hub.address,
@@ -150,12 +150,12 @@ def test_create_fewer_than_five_art_pieces(setup):
     
     # Create 3 art pieces
     for i in range(3):
-        image_data = f"art piece {i+1} image data".encode() * 5
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         user_profile.createArtPiece(
             art_piece_template.address,
             image_data,
             f"Art Piece {i+1}",
-            f"Description for Art Piece {i+1}".encode(),
+            f"Description for Art Piece {i+1}",
             False,  # Not an artist
             artist.address,  # Artist address
             commission_hub.address,
@@ -197,12 +197,12 @@ def test_artist_creating_art_pieces(setup):
     
     # Create 4 art pieces as an artist
     for i in range(4):
-        image_data = f"artist piece {i+1} image data".encode() * 5
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         artist_profile.createArtPiece(
             art_piece_template.address,
             image_data,
             f"Artist Piece {i+1}",
-            f"Description for Artist Piece {i+1}".encode(),
+            f"Description for Artist Piece {i+1}",
             True,  # Is artist
             user.address,  # Commissioner address
             commission_hub.address,
@@ -250,12 +250,12 @@ def test_create_art_pieces_across_profiles(setup):
     
     # Create 2 art pieces for user
     for i in range(2):
-        image_data = f"user art {i+1}".encode() * 5
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         user_profile.createArtPiece(
             art_piece_template.address,
             image_data,
             f"User Art {i+1}",
-            f"User Art Description {i+1}".encode(),
+            f"User Art Description {i+1}",
             False,  # Not artist
             artist.address,
             commission_hub.address,
@@ -266,12 +266,12 @@ def test_create_art_pieces_across_profiles(setup):
     
     # Create 2 art pieces for artist
     for i in range(2):
-        image_data = f"artist art {i+1}".encode() * 5
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         artist_profile.createArtPiece(
             art_piece_template.address,
             image_data,
             f"Artist Art {i+1}",
-            f"Artist Art Description {i+1}".encode(),
+            f"Artist Art Description {i+1}",
             True,  # Is artist
             user.address,
             commission_hub.address,

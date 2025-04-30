@@ -5,9 +5,18 @@
 # Keeps track of all Profiles on app
 
 interface Profile:
-    def initialize(_owner: address): nonpayable
     def deployer() -> address: view
-    def createArtPiece(_art_piece_template: address, _image_data: Bytes[45000], _title: String[100], _description: Bytes[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address: nonpayable
+    def initialize(_owner: address): nonpayable
+    def createArtPiece(
+        _art_piece_template: address, 
+        _token_uri_data: String[45000], 
+        _title: String[100], 
+        _description: String[200], 
+        _is_artist: bool, 
+        _other_party: address, 
+        _commission_hub: address, 
+        _ai_generated: bool
+    ) -> address: nonpayable
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
@@ -119,9 +128,9 @@ def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[add
 @external
 def createNewArtPieceAndRegisterProfile(
     _art_piece_template: address,
-    _image_data: Bytes[45000],
+    _token_uri_data: String[45000],
     _title: String[100],
-    _description: Bytes[200],
+    _description: String[200],
     _is_artist: bool,
     _other_party: address,
     _commission_hub: address,
@@ -130,7 +139,7 @@ def createNewArtPieceAndRegisterProfile(
     """
     @notice Creates a new profile for the caller if needed, then creates a new art piece
     @param _art_piece_template The address of the ArtPiece template
-    @param _image_data The image data for the art piece
+    @param _token_uri_data The tokenURI data for the art piece
     @param _title The title of the art piece
     @param _description The description of the art piece
     @param _is_artist Whether the caller is the artist
@@ -164,7 +173,7 @@ def createNewArtPieceAndRegisterProfile(
     # Create the art piece on the profile
     art_piece: address = extcall profile_instance.createArtPiece(
         _art_piece_template,
-        _image_data,
+        _token_uri_data,
         _title,
         _description,
         _is_artist,

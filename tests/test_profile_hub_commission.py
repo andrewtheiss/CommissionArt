@@ -43,9 +43,9 @@ def test_create_new_commission_and_register_profile(setup):
     assert profile_hub.hasProfile(user.address) == False
     
     # Sample art piece data
-    image_data = b"sample art piece image data" * 10
+    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "First Commission"
-    description = b"Description for first commission"
+    description = "Description for first commission"
     is_artist = False  # User is not the artist
     
     # Create profile and commission in one transaction
@@ -104,9 +104,9 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
     assert profile_hub.hasProfile(user.address) == True
     
     # Sample art piece data
-    image_data = b"sample art piece image data" * 10
+    image_data =    "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Should Fail Commission"
-    description = b"Description for failing commission"
+    description = "Description for failing commission"
     
     # Attempt to create profile and commission when profile already exists
     # This should fail
@@ -135,9 +135,9 @@ def test_artist_creates_commission_for_user(setup):
     assert profile_hub.hasProfile(artist.address) == False
     
     # Sample art piece data
-    image_data = b"artist created commission" * 10
+    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Artist Commission"
-    description = b"Commission created by artist"
+    description = "Commission created by artist"
     is_artist = True  # Artist is creating the commission
     
     # Create profile and commission in one transaction
