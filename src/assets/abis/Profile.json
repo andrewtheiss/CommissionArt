@@ -687,6 +687,23 @@
   {
     "inputs": [
       {
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getArtPieceAtIndex",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_page",
         "type": "uint256"
       },
@@ -718,8 +735,115 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "addCollectorErc1155",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "removeCollectorErc1155",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCollectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRecentCollectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getLatestCollectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "isCollectorErc1155",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "deployer",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "hub",
     "outputs": [
       {
         "name": "",
@@ -872,6 +996,35 @@
   {
     "inputs": [],
     "name": "myArtCount",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      }
+    ],
+    "name": "collectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "collectorErc1155Count",
     "outputs": [
       {
         "name": "",
