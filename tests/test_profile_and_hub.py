@@ -47,7 +47,7 @@ def test_profile_initialization(setup):
     assert profile.owner() == user1.address
     assert profile.isArtist() == False
     assert profile.allowUnverifiedCommissions() == True
-    assert profile.proceedsAddress() == user1.address
+    assert profile.artistProceedsAddress() == user1.address
     assert profile.profileImageCount() == 0
     assert profile.commissionCount() == 0
     assert profile.myArtCount() == 0
@@ -224,7 +224,7 @@ def test_profile_proceed_address(setup):
     profile.setProceedsAddress(new_proceeds, sender=user1)
     
     # Verify it was set
-    assert profile.proceedsAddress() == new_proceeds
+    assert profile.artistProceedsAddress() == new_proceeds
 
 def test_profile_hub_create_profile_duplicate(setup):
     """Test creating a duplicate profile should fail"""

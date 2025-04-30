@@ -316,43 +316,43 @@ def test_my_commissions_array_methods(setup):
         owner_profile.addMyCommission(test_commissions[0], sender=owner)
     
     with pytest.raises(Exception):
-        owner_profile.getMyCommissions(0, 10)
+        owner_profile.getArtistCommissionedWorks(0, 10)
     
     with pytest.raises(Exception):
-        owner_profile.getRecentMyCommissions(0, 10)
+        owner_profile.getRecentArtistCommissionedWorks(0, 10)
     
     # Test for artist profile
-    assert artist_profile.myCommissionCount() == 0
+    assert artist_profile.artistCommissionedWorkCount() == 0
     
     # Add my commissions
     for comm in test_commissions:
         artist_profile.addMyCommission(comm, sender=artist)
     
-    assert artist_profile.myCommissionCount() == 5
+    assert artist_profile.artistCommissionedWorkCount() == 5
     
-    # Test getMyCommissions
-    my_commissions = artist_profile.getMyCommissions(0, 10)
+    # Test getArtistCommissionedWorks
+    my_commissions = artist_profile.getArtistCommissionedWorks(0, 10)
     assert len(my_commissions) == 5
     for i, comm in enumerate(test_commissions):
         assert my_commissions[i] == comm
     
-    # Test getRecentMyCommissions
-    recent = artist_profile.getRecentMyCommissions(0, 10)
+    # Test getRecentArtistCommissionedWorks
+    recent = artist_profile.getRecentArtistCommissionedWorks(0, 10)
     assert len(recent) == 5
     for i, comm in enumerate(test_commissions):
         assert recent[4-i] == comm
     
     # Test pagination
-    page_0 = artist_profile.getMyCommissions(0, 2)
+    page_0 = artist_profile.getArtistCommissionedWorks(0, 2)
     assert len(page_0) == 2
     assert page_0[0] == test_commissions[0]
     assert page_0[1] == test_commissions[1]
     
     # Test remove my commission
     artist_profile.removeMyCommission(test_commissions[2], sender=artist)
-    assert artist_profile.myCommissionCount() == 4
+    assert artist_profile.artistCommissionedWorkCount() == 4
     
-    updated = artist_profile.getMyCommissions(0, 10)
+    updated = artist_profile.getArtistCommissionedWorks(0, 10)
     assert len(updated) == 4
     assert test_commissions[2] not in updated
 
@@ -375,13 +375,13 @@ def test_additional_mint_erc1155_array_methods(setup):
         owner_profile.getAdditionalMintErc1155s(0, 10)
     
     # Test for artist profile
-    assert artist_profile.additionalMintErc1155Count() == 0
+    assert artist_profile.artistErc1155sToSellCount() == 0
     
     # Add additional mint ERC1155s
     for erc1155 in test_erc1155s:
         artist_profile.addAdditionalMintErc1155(erc1155, sender=artist)
     
-    assert artist_profile.additionalMintErc1155Count() == 5
+    assert artist_profile.artistErc1155sToSellCount() == 5
     
     # Test getAdditionalMintErc1155s
     all_erc1155s = artist_profile.getAdditionalMintErc1155s(0, 10)
@@ -404,7 +404,7 @@ def test_additional_mint_erc1155_array_methods(setup):
     
     # Test remove additional mint ERC1155
     artist_profile.removeAdditionalMintErc1155(test_erc1155s[1], sender=artist)
-    assert artist_profile.additionalMintErc1155Count() == 4
+    assert artist_profile.artistErc1155sToSellCount() == 4
     
     updated = artist_profile.getAdditionalMintErc1155s(0, 10)
     assert len(updated) == 4
@@ -443,4 +443,67 @@ def test_commission_to_mint_erc1155_mapping(setup):
     
     # Verify it's removed
     removed = artist_profile.getMapCommissionToMintErc1155(commission)
-    assert removed == "0x" + "0" * 40  # Empty address 
+    assert removed == "0x" + "0" * 40  # Empty address
+
+# Tests for Collector ERC1155 Array Methods
+def test_collector_erc1155_array_methods(setup):
+    """Test collector ERC1155 array methods"""
+    owner = setup["owner"]
+    owner_profile = setup["owner_profile"]
+    
+    # Generate test ERC1155 addresses
+    test_erc1155s = [f"0x{'9' * 39}{i+1}" for i in range(6)]
+    
+    # Test empty state
+    assert owner_profile.collectorErc1155Count() == 0
+    assert len(owner_profile.getCollectorErc1155s(0, 10)) == 0
+    
+    # Add collector ERC1155s
+    for erc1155 in test_erc1155s:
+        owner_profile.addCollectorErc1155(erc1155, sender=owner)
+    
+    assert owner_profile.collectorErc1155Count() == 6
+    
+    # Test getCollectorErc1155s
+    all_erc1155s = owner_profile.getCollectorErc1155s(0, 10)
+    assert len(all_erc1155s) == 6
+    for i, erc1155 in enumerate(test_erc1155s):
+        assert all_erc1155s[i] == erc1155
+    
+    # Test getRecentCollectorErc1155s
+    recent = owner_profile.getRecentCollectorErc1155s(0, 10)
+    assert len(recent) == 6
+    for i, erc1155 in enumerate(test_erc1155s):
+        assert recent[5-i] == erc1155  # Most recent first
+    
+    # Test isCollectorErc1155
+    assert owner_profile.isCollectorErc1155(test_erc1155s[0])
+    assert not owner_profile.isCollectorErc1155("0x" + "f" * 40)
+    
+    # Test pagination
+    page_0 = owner_profile.getCollectorErc1155s(0, 3)
+    assert len(page_0) == 3
+    assert page_0[0] == test_erc1155s[0]
+    assert page_0[1] == test_erc1155s[1]
+    assert page_0[2] == test_erc1155s[2]
+    
+    page_1 = owner_profile.getCollectorErc1155s(1, 3)
+    assert len(page_1) == 3
+    assert page_1[0] == test_erc1155s[3]
+    assert page_1[1] == test_erc1155s[4]
+    assert page_1[2] == test_erc1155s[5]
+    
+    # Test getLatestCollectorErc1155s
+    latest = owner_profile.getLatestCollectorErc1155s()
+    assert len(latest) == 5  # Should return max 5 items
+    for i in range(5):
+        assert latest[i] == test_erc1155s[5-i]  # Most recent first
+    
+    # Test remove collector ERC1155
+    owner_profile.removeCollectorErc1155(test_erc1155s[1], sender=owner)
+    assert owner_profile.collectorErc1155Count() == 5
+    assert not owner_profile.isCollectorErc1155(test_erc1155s[1])
+    
+    updated = owner_profile.getCollectorErc1155s(0, 10)
+    assert len(updated) == 5
+    assert test_erc1155s[1] not in updated 

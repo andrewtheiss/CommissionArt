@@ -70,7 +70,7 @@ def test_create_and_update_artist_profile(setup):
     
     # Initial profile state
     assert profile.isArtist() is False
-    assert profile.proceedsAddress() == artist.address
+    assert profile.artistProceedsAddress() == artist.address
     
     # Update artist status
     profile.setIsArtist(True, sender=artist)
@@ -83,7 +83,7 @@ def test_create_and_update_artist_profile(setup):
     
     # Set proceeds address 
     profile.setProceedsAddress(other_user.address, sender=artist)
-    assert profile.proceedsAddress() == other_user.address
+    assert profile.artistProceedsAddress() == other_user.address
     
     # Disable unverified commissions
     profile.setAllowUnverifiedCommissions(False, sender=artist)

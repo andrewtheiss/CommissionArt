@@ -241,6 +241,6 @@ def checkOwner() -> address:
     Otherwise returns the stored owner.
     """
     if self.attachedToCommissionHub and self.commissionHubAddress != empty(address):
-        return CommissionHub(self.commissionHubAddress).owner()
+        return staticcall CommissionHub(self.commissionHubAddress).owner()
     return self.owner
 

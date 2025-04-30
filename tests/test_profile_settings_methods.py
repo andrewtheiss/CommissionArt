@@ -62,7 +62,7 @@ def test_initialization(setup):
     assert owner_profile.isArtist() is False
     assert owner_profile.allowUnverifiedCommissions() is True
     assert owner_profile.profileExpansion() == "0x" + "0" * 40
-    assert owner_profile.proceedsAddress() == owner.address
+    assert owner_profile.artistProceedsAddress() == owner.address
     
     # Check all counts are initialized to zero
     assert owner_profile.profileImageCount() == 0
@@ -70,14 +70,14 @@ def test_initialization(setup):
     assert owner_profile.unverifiedCommissionCount() == 0
     assert owner_profile.likedProfileCount() == 0
     assert owner_profile.linkedProfileCount() == 0
-    assert owner_profile.myCommissionCount() == 0
-    assert owner_profile.additionalMintErc1155Count() == 0
+    assert owner_profile.artistCommissionedWorkCount() == 0
+    assert owner_profile.artistErc1155sToSellCount() == 0
     assert owner_profile.myArtCount() == 0
     
     # Check artist profile
     assert artist_profile.owner() == artist.address
     assert artist_profile.isArtist() is True
-    assert artist_profile.proceedsAddress() == artist.address
+    assert artist_profile.artistProceedsAddress() == artist.address
 
 def test_set_is_artist(setup):
     """Test setting artist status"""
@@ -209,14 +209,14 @@ def test_set_proceeds_address(setup):
     other_user = setup["other_user"]
     
     # Initial state
-    assert artist_profile.proceedsAddress() == artist.address
+    assert artist_profile.artistProceedsAddress() == artist.address
     
     # Set proceeds address 
     proceeds_address = "0x" + "a" * 40
     artist_profile.setProceedsAddress(proceeds_address, sender=artist)
     
     # Compare lowercase versions of addresses to avoid case-sensitivity issues
-    stored_address = artist_profile.proceedsAddress().lower()
+    stored_address = artist_profile.artistProceedsAddress().lower()
     expected_address = proceeds_address.lower()
     assert stored_address == expected_address
     
@@ -229,7 +229,7 @@ def test_set_proceeds_address(setup):
     
     # Now should work
     owner_profile.setProceedsAddress(proceeds_address, sender=owner)
-    assert owner_profile.proceedsAddress().lower() == proceeds_address.lower()
+    assert owner_profile.artistProceedsAddress().lower() == proceeds_address.lower()
     
     # Attempt by non-owner should fail
     with pytest.raises(Exception):

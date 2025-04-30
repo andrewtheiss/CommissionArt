@@ -452,7 +452,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getMyCommissions",
+    "name": "getArtistCommissionedWorks",
     "outputs": [
       {
         "name": "",
@@ -473,7 +473,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getRecentMyCommissions",
+    "name": "getRecentArtistCommissionedWorks",
     "outputs": [
       {
         "name": "",
@@ -992,7 +992,7 @@
         "type": "uint256"
       }
     ],
-    "name": "myCommissions",
+    "name": "artistCommissionedWorks",
     "outputs": [
       {
         "name": "",
@@ -1004,7 +1004,7 @@
   },
   {
     "inputs": [],
-    "name": "myCommissionCount",
+    "name": "artistCommissionedWorkCount",
     "outputs": [
       {
         "name": "",
@@ -1021,7 +1021,7 @@
         "type": "uint256"
       }
     ],
-    "name": "additionalMintErc1155s",
+    "name": "artistErc1155sToSell",
     "outputs": [
       {
         "name": "",
@@ -1033,7 +1033,7 @@
   },
   {
     "inputs": [],
-    "name": "additionalMintErc1155Count",
+    "name": "artistErc1155sToSellCount",
     "outputs": [
       {
         "name": "",
@@ -1050,7 +1050,7 @@
         "type": "address"
       }
     ],
-    "name": "commissionToMintErc1155Map",
+    "name": "artistCommissionToErc1155Map",
     "outputs": [
       {
         "name": "",
@@ -1062,7 +1062,7 @@
   },
   {
     "inputs": [],
-    "name": "proceedsAddress",
+    "name": "artistProceedsAddress",
     "outputs": [
       {
         "name": "",

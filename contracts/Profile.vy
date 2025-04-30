@@ -21,9 +21,14 @@ unverifiedCommissions: public(DynArray[address, 10000])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
+
 # Art pieces collection
 myArt: public(DynArray[address, 100000])
 myArtCount: public(uint256)
+
+# Collector ERC1155s
+collectorErc1155s: public(DynArray[address, 100000])
+collectorErc1155Count: public(uint256)
 
 # Profile socials and counters
 likedProfiles: public(DynArray[address, 10000])
@@ -33,14 +38,15 @@ blacklist: public(HashMap[address, bool])
 linkedProfiles: public(DynArray[address, 100])  
 linkedProfileCount: public(uint256)
 
+
 # ERC1155 addresses for supporting additional or items for sale
 isArtist: public(bool)                                         # Profile is an artist
-myCommissions: public(DynArray[address, 100000])               # Commissions this artist has
-myCommissionCount: public(uint256)                             # Count of artist's commissions
-additionalMintErc1155s: public(DynArray[address, 100000])      # Additional mint ERC1155s for the artist
-additionalMintErc1155Count: public(uint256)                    # Count of additional ERC1155s
-commissionToMintErc1155Map: public(HashMap[address, address])  # Map of commission addresses to mint ERC1155 addresses
-proceedsAddress: public(address)                               # Address to receive proceeds from sales
+artistCommissionedWorks: public(DynArray[address, 100000])               # Commissions this artist has
+artistCommissionedWorkCount: public(uint256)                             # Count of artist's commissions
+artistErc1155sToSell: public(DynArray[address, 100000])      # Additional mint ERC1155s for the artist
+artistErc1155sToSellCount: public(uint256)                    # Count of additional ERC1155s
+artistCommissionToErc1155Map: public(HashMap[address, address])  # Map of commission addresses to mint ERC1155 addresses
+artistProceedsAddress: public(address)                               # Address to receive proceeds from sales
 
 # Profile expansion (for future features)
 profileExpansion: public(address)
@@ -66,7 +72,7 @@ def initialize(_owner: address):
     self.isArtist = False  # Default to non-artist
     self.allowUnverifiedCommissions = True  # Default to allowing commissions
     self.profileExpansion = empty(address)
-    self.proceedsAddress = _owner  # Default proceeds to owner's address
+    self.artistProceedsAddress = _owner  # Default proceeds to owner's address
     
     # Initialize counters
     self.profileImageCount = 0
@@ -74,9 +80,10 @@ def initialize(_owner: address):
     self.unverifiedCommissionCount = 0
     self.likedProfileCount = 0
     self.linkedProfileCount = 0
-    self.myCommissionCount = 0
-    self.additionalMintErc1155Count = 0
+    self.artistCommissionedWorkCount = 0
+    self.artistErc1155sToSellCount = 0
     self.myArtCount = 0
+    self.collectorErc1155Count = 0
 
 # Helper Functions
 
@@ -204,7 +211,7 @@ def setProfileExpansion(_address: address):
 def setProceedsAddress(_address: address):
     assert msg.sender == self.owner, "Only owner can set proceeds address"
     assert self.isArtist, "Only artists can set proceeds address"
-    self.proceedsAddress = _address
+    self.artistProceedsAddress = _address
 
 # Add address to whitelist
 @external
@@ -415,9 +422,9 @@ def getRecentLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[add
 def addMyCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add my commission"
     assert self.isArtist, "Only artists can add my commissions"
-    assert _commission not in self.myCommissions, "Commission already added"
-    self.myCommissions.append(_commission)
-    self.myCommissionCount += 1
+    assert _commission not in self.artistCommissionedWorks, "Commission already added"
+    self.artistCommissionedWorks.append(_commission)
+    self.artistCommissionedWorkCount += 1
 
 @external
 def removeMyCommission(_commission: address):
@@ -427,8 +434,8 @@ def removeMyCommission(_commission: address):
     # Find the index of the item to remove
     index: uint256 = 0
     found: bool = False
-    for i: uint256 in range(0, len(self.myCommissions), bound=1000):
-        if self.myCommissions[i] == _commission:
+    for i: uint256 in range(0, len(self.artistCommissionedWorks), bound=1000):
+        if self.artistCommissionedWorks[i] == _commission:
             index = i
             found = True
             break
@@ -437,36 +444,36 @@ def removeMyCommission(_commission: address):
     assert found, "My commission not found"
     
     # Swap with the last element and pop
-    if index < len(self.myCommissions) - 1:  # Not the last element
+    if index < len(self.artistCommissionedWorks) - 1:  # Not the last element
         # Get the last item
-        last_item: address = self.myCommissions[len(self.myCommissions) - 1]
+        last_item: address = self.artistCommissionedWorks[len(self.artistCommissionedWorks) - 1]
         # Replace the item to remove with the last item
-        self.myCommissions[index] = last_item
+        self.artistCommissionedWorks[index] = last_item
     
     # Pop the last item (now a duplicate if we did the swap)
-    self.myCommissions.pop()
-    self.myCommissionCount -= 1
+    self.artistCommissionedWorks.pop()
+    self.artistCommissionedWorkCount -= 1
 
 @view
 @external
-def getMyCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+def getArtistCommissionedWorks(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have my commissions"
-    return self._getArraySlice(self.myCommissions, _page, _page_size)
+    return self._getArraySlice(self.artistCommissionedWorks, _page, _page_size)
 
 @view
 @external
-def getRecentMyCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+def getRecentArtistCommissionedWorks(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have my commissions"
-    return self._getArraySliceReverse(self.myCommissions, self.myCommissionCount, _page, _page_size)
+    return self._getArraySliceReverse(self.artistCommissionedWorks, self.artistCommissionedWorkCount, _page, _page_size)
 
 ## Additional Mint ERC1155s (Artist-Only)
 @external
 def addAdditionalMintErc1155(_erc1155: address):
     assert msg.sender == self.owner, "Only owner can add additional mint ERC1155"
     assert self.isArtist, "Only artists can add additional mint ERC1155s"
-    assert _erc1155 not in self.additionalMintErc1155s, "ERC1155 already added"
-    self.additionalMintErc1155s.append(_erc1155)
-    self.additionalMintErc1155Count += 1
+    assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
+    self.artistErc1155sToSell.append(_erc1155)
+    self.artistErc1155sToSellCount += 1
 
 @external
 def removeAdditionalMintErc1155(_erc1155: address):
@@ -476,8 +483,8 @@ def removeAdditionalMintErc1155(_erc1155: address):
     # Find the index of the item to remove
     index: uint256 = 0
     found: bool = False
-    for i: uint256 in range(0, len(self.additionalMintErc1155s), bound=1000):
-        if self.additionalMintErc1155s[i] == _erc1155:
+    for i: uint256 in range(0, len(self.artistErc1155sToSell), bound=1000):
+        if self.artistErc1155sToSell[i] == _erc1155:
             index = i
             found = True
             break
@@ -486,46 +493,46 @@ def removeAdditionalMintErc1155(_erc1155: address):
     assert found, "Additional mint ERC1155 not found"
     
     # Swap with the last element and pop
-    if index < len(self.additionalMintErc1155s) - 1:  # Not the last element
+    if index < len(self.artistErc1155sToSell) - 1:  # Not the last element
         # Get the last item
-        last_item: address = self.additionalMintErc1155s[len(self.additionalMintErc1155s) - 1]
+        last_item: address = self.artistErc1155sToSell[len(self.artistErc1155sToSell) - 1]
         # Replace the item to remove with the last item
-        self.additionalMintErc1155s[index] = last_item
+        self.artistErc1155sToSell[index] = last_item
     
     # Pop the last item (now a duplicate if we did the swap)
-    self.additionalMintErc1155s.pop()
-    self.additionalMintErc1155Count -= 1
+    self.artistErc1155sToSell.pop()
+    self.artistErc1155sToSellCount -= 1
 
 @view
 @external
 def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have additional mint ERC1155s"
-    return self._getArraySlice(self.additionalMintErc1155s, _page, _page_size)
+    return self._getArraySlice(self.artistErc1155sToSell, _page, _page_size)
 
 @view
 @external
 def getRecentAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have additional mint ERC1155s"
-    return self._getArraySliceReverse(self.additionalMintErc1155s, self.additionalMintErc1155Count, _page, _page_size)
+    return self._getArraySliceReverse(self.artistErc1155sToSell, self.artistErc1155sToSellCount, _page, _page_size)
 
 ## Map Commission to Mint ERC1155 (Artist-Only)
 @external
 def mapCommissionToMintErc1155(_commission: address, _erc1155: address):
     assert msg.sender == self.owner, "Only owner can map commission to mint ERC1155"
     assert self.isArtist, "Only artists can map commission to mint ERC1155"
-    self.commissionToMintErc1155Map[_commission] = _erc1155
+    self.artistCommissionToErc1155Map[_commission] = _erc1155
 
 @external
 def removeMapCommissionToMintErc1155(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove map commission to mint ERC1155"
     assert self.isArtist, "Only artists can remove map commission to mint ERC1155"
-    self.commissionToMintErc1155Map[_commission] = empty(address)
+    self.artistCommissionToErc1155Map[_commission] = empty(address)
 
 @view
 @external
 def getMapCommissionToMintErc1155(_commission: address) -> address:
     assert self.isArtist, "Only artists have map commission to mint ERC1155"
-    return self.commissionToMintErc1155Map[_commission]
+    return self.artistCommissionToErc1155Map[_commission]
 
 ## Art Pieces
 
@@ -656,3 +663,77 @@ def getLatestArtPieces() -> DynArray[address, 5]:
             result.append(self.myArt[idx])
     
     return result
+
+## Collector ERC1155s
+@external
+def addCollectorErc1155(_erc1155: address):
+    assert msg.sender == self.owner, "Only owner can add collector ERC1155"
+    assert _erc1155 not in self.collectorErc1155s, "ERC1155 already added"
+    self.collectorErc1155s.append(_erc1155)
+    self.collectorErc1155Count += 1
+
+@external
+def removeCollectorErc1155(_erc1155: address):
+    assert msg.sender == self.owner, "Only owner can remove collector ERC1155"
+    
+    # Find the index of the item to remove
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
+        if self.collectorErc1155s[i] == _erc1155:
+            index = i
+            found = True
+            break
+    
+    # If not found, revert
+    assert found, "Collector ERC1155 not found"
+    
+    # Swap with the last element and pop
+    if index < len(self.collectorErc1155s) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.collectorErc1155s[len(self.collectorErc1155s) - 1]
+        # Replace the item to remove with the last item
+        self.collectorErc1155s[index] = last_item
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.collectorErc1155s.pop()
+    self.collectorErc1155Count -= 1
+
+@view
+@external
+def getCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    return self._getArraySlice(self.collectorErc1155s, _page, _page_size)
+
+@view
+@external
+def getRecentCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    return self._getArraySliceReverse(self.collectorErc1155s, self.collectorErc1155Count, _page, _page_size)
+
+@view
+@external
+def getLatestCollectorErc1155s() -> DynArray[address, 5]:
+    result: DynArray[address, 5] = []
+    
+    # If no ERC1155 tokens exist, return empty array
+    if self.collectorErc1155Count == 0:
+        return result
+    
+    # Get minimum of 5 or available ERC1155 tokens
+    items_to_return: uint256 = min(5, self.collectorErc1155Count)
+    
+    # Start from the last (most recent) item and work backwards
+    # Using safe indexing to prevent underflow
+    for i: uint256 in range(0, items_to_return, bound=5):
+        if i < self.collectorErc1155Count:  # Safety check
+            idx: uint256 = self.collectorErc1155Count - 1 - i
+            result.append(self.collectorErc1155s[idx])
+    
+    return result
+
+@view
+@external
+def isCollectorErc1155(_erc1155: address) -> bool:
+    for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
+        if self.collectorErc1155s[i] == _erc1155:
+            return True
+    return False
