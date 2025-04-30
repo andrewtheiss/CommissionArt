@@ -59,13 +59,18 @@ def test_minimal_profile_creation(setup):
     # Try to get art pieces (should be empty)
     art_pieces = profile.getArtPieces(0, 10)
     print(f"Initial art pieces: {art_pieces}")
-    
-    return profile
 
 def test_minimal_art_piece_creation(setup):
     """Test the most basic art piece creation"""
-    profile = test_minimal_profile_creation(setup)
+    # First ensure profile is created
+    test_minimal_profile_creation(setup)
+    
+    # Get the profile directly instead of using the return value
+    profile_hub = setup["profile_hub"]
     owner = setup["owner"]
+    profile_address = profile_hub.getProfile(owner.address)
+    profile = project.Profile.at(profile_address)
+    
     artist = setup["artist"] 
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
