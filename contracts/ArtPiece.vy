@@ -3,6 +3,10 @@
 # Has a list of owners that have commissioned the piece
 # Has a list of artists that have commissioned the piece
 
+# Interface for CommissionHub
+interface CommissionHub:
+    def owner() -> address: view
+
 imageData: Bytes[45000]  # Adjusted to handle up to 250 KB
 title: String[100]  # Title of the artwork
 description: Bytes[200]  # Description with 200 byte limit
@@ -10,6 +14,8 @@ owner: address
 artist: address
 aiGenerated: public(bool)
 initialized: public(bool)  # Flag to track if the contract has been initialized
+attachedToCommissionHub: public(bool)  # Flag to track if attached to a CommissionHub
+commissionHubAddress: public(address)  # Address of the CommissionHub this piece is attached to
 
 # Mapping to store tags/associations with validation status
 # address => bool (validated status)
@@ -35,6 +41,11 @@ event PersonTagged:
 event TagValidated:
     person: indexed(address)
     status: bool
+
+event AttachedToCommissionHub:
+    art_piece: indexed(address)
+    commission_hub: indexed(address)
+    attacher: indexed(address)
 
 @deploy
 def __init__():
@@ -64,6 +75,10 @@ def initialize(
     self.artist = _artist_input
     self.aiGenerated = _ai_generated
     self.initialized = True
+    
+    # Set commission hub information
+    self.attachedToCommissionHub = _commission_hub != empty(address)
+    self.commissionHubAddress = _commission_hub
 
 @external
 @view
@@ -89,6 +104,14 @@ def getOwner() -> address:
 @view
 def getArtist() -> address:
     return self.artist
+
+@external
+@view
+def getCommissionHubAddress() -> address:
+    """
+    Return the address of the commission hub this piece is attached to
+    """
+    return self.commissionHubAddress
 
 @external
 def transferOwnership(_new_owner: address):
@@ -193,4 +216,31 @@ def getAIGenerated() -> bool:
     Return whether the artwork was AI generated
     """
     return self.aiGenerated
+
+@external
+def attachToCommissionHub(_commission_hub: address):
+    """
+    Attach this ArtPiece to a CommissionHub
+    Can only be called once per ArtPiece
+    """
+    assert msg.sender == self.owner or msg.sender == self.artist, "Only owner or artist can attach to a CommissionHub"
+    assert not self.attachedToCommissionHub, "Already attached to a CommissionHub"
+    assert _commission_hub != empty(address), "Invalid CommissionHub address"
+
+    self.attachedToCommissionHub = True
+    self.commissionHubAddress = _commission_hub
+    
+    log AttachedToCommissionHub(art_piece=self, commission_hub=_commission_hub, attacher=msg.sender)
+
+@external
+@view
+def checkOwner() -> address:
+    """
+    Check the owner of this ArtPiece.
+    If attached to a CommissionHub, returns the owner from the CommissionHub.
+    Otherwise returns the stored owner.
+    """
+    if self.attachedToCommissionHub and self.commissionHubAddress != empty(address):
+        return CommissionHub(self.commissionHubAddress).owner()
+    return self.owner
 
