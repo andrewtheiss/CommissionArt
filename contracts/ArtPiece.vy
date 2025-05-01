@@ -61,7 +61,8 @@ INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
 TOKEN_ID: constant(uint256) = 1
 
 # ArtPiece variables
-tokenURI_data: String[45000]  # Changed from imageData to tokenURI_data as String
+tokenURI_data: Bytes[45000]  # Changed from imageData to tokenURI_data as String
+tokenURI_data_format: String[10]  # Format of the tokenURI_data   
 title: String[100]  # Title of the artwork
 description: String[200]  # Description with 200 byte limit
 owner: address
@@ -94,7 +95,8 @@ def __init__():
 
 @external
 def initialize(
-    _token_uri_data: String[45000],  # Changed parameter type and name
+    _token_uri_data: Bytes[45000],  # Changed parameter type and name
+    _token_uri_data_format: String[10],  # Format of the tokenURI_data
     _title_input: String[100], 
     _description_input: String[200], 
     _owner_input: address, 
@@ -107,6 +109,7 @@ def initialize(
     """
     assert not self.initialized, "Already initialized"
     self.tokenURI_data = _token_uri_data  # Updated field name
+    self.tokenURI_data_format = _token_uri_data_format  # Updated field name
     self.title = _title_input
     self.description = _description_input
     self.owner = _owner_input
@@ -264,9 +267,11 @@ def _isContract(_addr: address) -> bool:
     return _addr != empty(address)
 
 # URI Functions
+# TODO - convert to BASE64 encoded json object
+# Otuput: data:application/json;base64,
 @external
 @view
-def tokenURI(_tokenId: uint256) -> String[45000]:  # Updated return type
+def tokenURI(_tokenId: uint256) -> String[100000]:  # Updated return type
     """
     @notice Get the URI for a token
     @param _tokenId The token ID
@@ -279,13 +284,13 @@ def tokenURI(_tokenId: uint256) -> String[45000]:  # Updated return type
 # Original ArtPiece Functions, with updated names
 @external
 @view
-def getTokenURIData() -> String[45000]:  # Renamed from getImageData
+def getTokenURIData() -> Bytes[45000]:  # Renamed from getImageData
     return self.tokenURI_data
 
 # Added for backwards compatibility
 @external
 @view
-def getImageData() -> String[45000]:  # Return type updated to String
+def getImageData() -> Bytes[45000]:  # Return type updated to String
     return self.tokenURI_data
 
 @external

@@ -10,38 +10,39 @@
 deployer: public(address)  # New variable to store the deployer's address
 hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
-profileImage: public(String[45000])
+profileImage: public(Bytes[45000])
+profileImageFormat: public(String[10])
 
 # Commissions and counters
-commissions: public(DynArray[address, 100000])
+commissions: public(DynArray[address, 10**9])
 commissionCount: public(uint256)
-unverifiedCommissions: public(DynArray[address, 10000])
+unverifiedCommissions: public(DynArray[address, 10**9])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
 
 # Art pieces collection
-myArt: public(DynArray[address, 100000])
+myArt: public(DynArray[address, 10**9])
 myArtCount: public(uint256)
 
 # Collector ERC1155s
-collectorErc1155s: public(DynArray[address, 100000])
+collectorErc1155s: public(DynArray[address, 10**9])
 collectorErc1155Count: public(uint256)
 
 # Profile socials and counters
-likedProfiles: public(DynArray[address, 10000])
+likedProfiles: public(DynArray[address, 10**9])
 likedProfileCount: public(uint256)
 whitelist: public(HashMap[address, bool])
 blacklist: public(HashMap[address, bool])
-linkedProfiles: public(DynArray[address, 100])  
+linkedProfiles: public(DynArray[address, 10**5])  
 linkedProfileCount: public(uint256)
 
 
 # ERC1155 addresses for supporting additional or items for sale
 isArtist: public(bool)                                         # Profile is an artist
-artistCommissionedWorks: public(DynArray[address, 100000])               # Commissions this artist has
+artistCommissionedWorks: public(DynArray[address, 10**9])               # Commissions this artist has
 artistCommissionedWorkCount: public(uint256)                             # Count of artist's commissions
-artistErc1155sToSell: public(DynArray[address, 100000])      # Additional mint ERC1155s for the artist
+artistErc1155sToSell: public(DynArray[address, 10**9])      # Additional mint ERC1155s for the artist
 artistErc1155sToSellCount: public(uint256)                    # Count of additional ERC1155s
 artistCommissionToErc1155Map: public(HashMap[address, address])  # Map of commission addresses to mint ERC1155 addresses
 artistProceedsAddress: public(address)                               # Address to receive proceeds from sales
@@ -53,7 +54,7 @@ profileExpansion: public(address)
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
-    def initialize(_token_uri_data: String[45000], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def initialize(_token_uri_data: Bytes[45000], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
 
 # Constructor
 @deploy
@@ -151,9 +152,15 @@ def setIsArtist(_is_artist: bool):
 
 # Set profile image
 @external
-def setProfileImage(_image: String[45000]):
+def setProfileImage(_image: Bytes[45000]):
     assert msg.sender == self.owner, "Only owner can set profile image"
     self.profileImage = _image
+
+# Set profile image format
+@external
+def setProfileImageFormat(_format: String[10]):
+    assert msg.sender == self.owner, "Only owner can set profile image format"
+    self.profileImageFormat = _format
 
 # Toggle allowing new commissions
 @external
@@ -498,7 +505,7 @@ def getMapCommissionToMintErc1155(_commission: address) -> address:
 ## Art Pieces
 
 @external
-def createArtPiece(_art_piece_template: address, _token_uri_data: String[45000], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
     """
     Create a new art piece through this profile
     _art_piece_template: Address of the ArtPiece template contract to clone

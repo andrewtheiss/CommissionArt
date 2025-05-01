@@ -9,7 +9,7 @@ interface Profile:
     def initialize(_owner: address): nonpayable
     def createArtPiece(
         _art_piece_template: address, 
-        _token_uri_data: String[45000], 
+        _token_uri_data: Bytes[45000], 
         _title: String[100], 
         _description: String[200], 
         _is_artist: bool, 
@@ -128,7 +128,7 @@ def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[add
 @external
 def createNewArtPieceAndRegisterProfile(
     _art_piece_template: address,
-    _token_uri_data: String[45000],
+    _token_uri_data: Bytes[45000],
     _title: String[100],
     _description: String[200],
     _is_artist: bool,
