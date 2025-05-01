@@ -2,10 +2,20 @@
 
 This project stores Azuki NFT images as on-chain data on AnimeChain L3 using Vyper smart contracts, creating an immutable backup that links to the L1 NFT contract.
 
+## Key Features
+
+- **On-Chain Image Storage**: Store artwork data fully on-chain
+- **Profile System**: Create artist and collector profiles
+- **Streamlined Onboarding**: Create your profile and first art piece in a single transaction
+- **Commission System**: Enable artists and collectors to collaborate
+
 ## Components
 
 - **Registry.vy**: Main contract that maps Azuki IDs to their respective image contracts
 - **CommissionedArt.vy**: Contract for storing a single image's data on-chain
+- **Profile.vy**: User profile contract for artists and collectors
+- **ProfileHub.vy**: Central registry that manages user profiles
+- **ArtPiece.vy**: Contract for storing artwork and commission metadata
 - **Deployment scripts**: Scripts for deploying contracts and uploading images
 
 ## Setup
@@ -22,6 +32,31 @@ cp .env.example .env
 4. Edit `.env` and add your private key and configuration
 
 ## Using the Contracts
+
+### ProfileHub Contract
+
+The ProfileHub contract serves as the central entry point for users. Key features:
+
+- **Single-Transaction Profile & Art Creation**: New users can create a profile and upload their first art piece in a single transaction, simplifying onboarding and saving gas
+- **Profile Management**: Tracks all user profiles in the system
+- **Profile Lookup**: Easy methods to find profiles by user address
+
+```python
+# Create a profile and art piece in one transaction
+profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
+    art_piece_template.address,
+    image_data,
+    title,
+    description,
+    is_artist,
+    other_party_address,
+    commission_hub.address,
+    is_ai_generated,
+    sender=user
+)
+```
+
+For more details on this feature, see [profile_hub_guide.md](documentation/profile_hub_guide.md).
 
 ### Registry Contract
 
@@ -72,6 +107,23 @@ Run tests with:
 ```
 ape test
 ```
+
+For faster test execution, you can run tests in parallel using pytest-xdist (included in requirements.txt):
+
+```
+# Run tests with automatic detection of CPU cores
+ape test -n auto
+
+# Run tests with a specific number of parallel processes
+ape test -n 4
+
+# Run specific test files in parallel
+ape test tests/test_profile_array_methods.py -n auto
+```
+
+Parallel testing significantly improves test execution speed, especially for tests that involve many contract deployments and transactions.
+
+For more detailed information about testing, see [TESTING.md](TESTING.md).
 
 ## Configuration
 
@@ -179,3 +231,16 @@ As of commit e84f4ff you can compile the contract code and get the back end link
         i.e. https://sepolia.arbiscan.io/address/0x233be9576A524299bf9E4633c845ea28FF0868a4
     - After 10 more seconds you should see the L3 contract call.
         TODO: Eventually this will require ANOTHER cross-chain message
+
+
+# REMIXD Setup
+remixd -s <absolute-path-to-the-shared-folder> --remix-ide https://remix.ethereum.org
+remixd -s C:\Users\andre\Documents\Git\CommissionArt --remix-ide https://remix.ethereum.org
+
+
+
+Test and dev plans
+- Create test for ArtPiece creation
+- Create test for Profile creation along with Art Piece
+- Support for ERC721 as ArtPiece.  May need to have extended data use different address for URI
+- SUpport for ERC 998 if necesary for created Art Piece

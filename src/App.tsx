@@ -7,7 +7,7 @@ function App() {
   return (
     <BlockchainProvider>
       <div className="app-container">
-        <h1>Azuki On Chain</h1>
+        <h1>Commission Art</h1>
         <MainTab />
       </div>
     </BlockchainProvider>

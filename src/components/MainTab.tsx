@@ -6,6 +6,7 @@ import BridgeTestContainer from './BridgeTest';
 import ErrorBoundary from './ErrorBoundary';
 import NFTRegistration from './NFTRegistration';
 import CommissionHub from './CommissionHub';
+import Account from './Account';
 import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
@@ -82,13 +83,13 @@ const MainTab: React.FC = () => {
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
   
-  // Initialize activeTab from localStorage or default to 'viewer'
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration'>(() => {
+  // Initialize activeTab from localStorage or default to 'account'
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration' | 'account'>(() => {
     const savedTab = localStorage.getItem('active_tab');
-    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || savedTab === 'commissioned' || savedTab === 'registration') {
+    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || savedTab === 'commissioned' || savedTab === 'registration' || savedTab === 'account') {
       return savedTab;
     }
-    return 'viewer';
+    return 'account';
   });
   
   // Save activeTab to localStorage when it changes
@@ -261,6 +262,24 @@ const MainTab: React.FC = () => {
       <div className="main-container">
         <div className="tab-buttons">
           <button 
+            className={`tab-button ${activeTab === 'account' ? 'active' : ''}`}
+            onClick={() => setActiveTab('account')}
+          >
+            Account
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'commissioned' ? 'active' : ''}`}
+            onClick={() => setActiveTab('commissioned')}
+          >
+            Commissioned Art
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'registration' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registration')}
+          >
+            NFT Registration
+          </button>
+          <button 
             className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
             onClick={() => setActiveTab('viewer')}
           >
@@ -278,21 +297,28 @@ const MainTab: React.FC = () => {
           >
             Bridge Test
           </button>
-          <button 
-            className={`tab-button ${activeTab === 'commissioned' ? 'active' : ''}`}
-            onClick={() => setActiveTab('commissioned')}
-          >
-            Commissioned Art
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'registration' ? 'active' : ''}`}
-            onClick={() => setActiveTab('registration')}
-          >
-            NFT Registration
-          </button>
         </div>
 
-        {activeTab === 'viewer' ? (
+        {activeTab === 'account' ? (
+          <Account />
+        ) : activeTab === 'commissioned' ? (
+          <ErrorBoundary fallback={
+            <div className="error-message-container">
+              <h3>Error in Commission Hub Component</h3>
+              <p>There was an error loading the Commission Hub component. This might be due to:</p>
+              <ul>
+                <li>Connection issues with the Owner Registry contract</li>
+                <li>Network connectivity issues</li>
+                <li>MetaMask connection problems</li>
+              </ul>
+              <p>Please check the console for more details.</p>
+            </div>
+          }>
+            <CommissionHub />
+          </ErrorBoundary>
+        ) : activeTab === 'registration' ? (
+          <NFTRegistration />
+        ) : activeTab === 'viewer' ? (
           <>
             <div className="search-container">
               <form onSubmit={handleSubmit} className="azuki-form">
@@ -357,7 +383,7 @@ const MainTab: React.FC = () => {
           </>
         ) : activeTab === 'compressor' ? (
           <ImageCompressor />
-        ) : activeTab === 'bridge' ? (
+        ) : (
           <ErrorBoundary fallback={
             <div className="error-message-container">
               <h3>Error in Bridge Test Component</h3>
@@ -372,23 +398,6 @@ const MainTab: React.FC = () => {
           }>
             <BridgeTestContainer />
           </ErrorBoundary>
-        ) : activeTab === 'commissioned' ? (
-          <ErrorBoundary fallback={
-            <div className="error-message-container">
-              <h3>Error in Commission Hub Component</h3>
-              <p>There was an error loading the Commission Hub component. This might be due to:</p>
-              <ul>
-                <li>Connection issues with the Owner Registry contract</li>
-                <li>Network connectivity issues</li>
-                <li>MetaMask connection problems</li>
-              </ul>
-              <p>Please check the console for more details.</p>
-            </div>
-          }>
-            <CommissionHub />
-          </ErrorBoundary>
-        ) : (
-          <NFTRegistration />
         )}
       </div>
     </SafeBlockchainProvider>

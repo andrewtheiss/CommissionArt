@@ -37,6 +37,14 @@ def get_default_config():
                 "artPiece": {
                     "address": "",
                     "contract": "ArtPiece"
+                },
+                "profileTemplate": {
+                    "address": "",
+                    "contract": "Profile"
+                },
+                "profileHub": {
+                    "address": "",
+                    "contract": "ProfileHub"
                 }
             },
             "mainnet": {
@@ -59,6 +67,14 @@ def get_default_config():
                 "artPiece": {
                     "address": "",
                     "contract": "ArtPiece"
+                },
+                "profileTemplate": {
+                    "address": "",
+                    "contract": "Profile"
+                },
+                "profileHub": {
+                    "address": "",
+                    "contract": "ProfileHub"
                 }
             }
         },
@@ -92,7 +108,7 @@ def validate_config(config):
             print(f"Added missing network '{network}' to configuration")
         else:
             # Check for required layers in each network
-            required_layers = ["l1", "l2", "l3", "commissionHub", "artPiece"]
+            required_layers = ["l1", "l2", "l3", "commissionHub", "artPiece", "profileTemplate", "profileHub"]
             for layer in required_layers:
                 if layer not in config["networks"][network]:
                     config["networks"][network][layer] = default_config["networks"][network][layer]

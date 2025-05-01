@@ -17,7 +17,7 @@ ALIAS_ADDITION = "0x1111000000000000000000000000000000001111"
 ANIMECHAIN_CONFIG = {
     "name": "animechain",
     "chain_id": 69000,
-    "rpc_url": "https://rpc-animechain-39xf6m45e3.t.conduit.xyz"
+    "rpc_url": "[invalid url, do not cite]"
 }
 
 ARBITRUM_MAINNET_CONFIG = {
@@ -60,17 +60,35 @@ def get_optimized_gas_params(provider):
     latest_block = provider.get_block('latest')
     if 'baseFeePerGas' in latest_block:
         base_fee = latest_block['baseFeePerGas']
-        max_fee_per_gas = int(base_fee * 1.1)
+        # Use a higher multiplier (1.5 instead of 1.1) for a larger buffer
+        max_fee_per_gas = int(base_fee * 1.5)
+        
+        # Ensure minimum buffer of at least 1 gwei over base fee
+        min_buffer = int(1e9)  # 1 Gwei
+        if max_fee_per_gas - base_fee < min_buffer:
+            max_fee_per_gas = base_fee + min_buffer
+            
         print(f"Current base fee: {base_fee} wei")
-        print(f"Setting maxFeePerGas to: {max_fee_per_gas} wei (base fee × 1.1)")
-        max_priority_fee = int(2e9)  # 2 Gwei
+        print(f"Setting maxFeePerGas to: {max_fee_per_gas} wei (buffer: {max_fee_per_gas - base_fee} wei)")
+        
+        # Increase priority fee to 5 Gwei for faster inclusion
+        max_priority_fee = int(5e9)  # 5 Gwei
         return {
             "max_fee": max_fee_per_gas,
             "max_priority_fee": max_priority_fee
         }
     else:
         print("EIP-1559 not supported on this network, using default gas settings")
-        return {}
+        
+        # For networks without EIP-1559, provide explicit gas price with 50% buffer
+        try:
+            gas_price = provider.gas_price
+            buffered_gas_price = int(gas_price * 1.5)
+            print(f"Using gas price: {buffered_gas_price} wei (network: {gas_price} wei)")
+            return {"gas_price": buffered_gas_price}
+        except:
+            # If gas price can't be fetched, return empty dict (default settings)
+            return {}
 
 def deploy_l1_query_owner(deployer, network_type="mainnet"):
     print("\n--- L1QueryOwner Setup ---")
@@ -88,7 +106,10 @@ def deploy_l1_query_owner(deployer, network_type="mainnet"):
     print(f"Deploying new L1QueryOwner on {l1_network}...")
     
     with networks.parse_network_choice(l1_network) as provider:
-        l1_contract = deployer.deploy(project.L1QueryOwner, inbox_address, required_confirmations=1)
+        gas_params = get_optimized_gas_params(provider)
+        deploy_kwargs = {"required_confirmations": 1}
+        deploy_kwargs.update(gas_params)
+        l1_contract = deployer.deploy(project.L1QueryOwner, inbox_address, **deploy_kwargs)
         print(f"L1QueryOwner deployed at: {l1_contract.address}")
         update_contract_address(network_type, "l1", l1_contract.address, "L1QueryOwner")
         return l1_contract
@@ -107,11 +128,7 @@ def deploy_l2_relay(deployer, network_type="mainnet"):
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 1}
-        if gas_params:
-            deploy_kwargs.update({
-                "max_fee": gas_params["max_fee"],
-                "max_priority_fee": gas_params["max_priority_fee"]
-            })
+        deploy_kwargs.update(gas_params)
         l2_relay = deployer.deploy(project.L2Relay, **deploy_kwargs)
         print(f"L2Relay deployed at: {l2_relay.address}")
         update_contract_address(network_type, "l2", l2_relay.address, "L2Relay")
@@ -131,27 +148,14 @@ def deploy_art_piece_stencil(deployer, network_type="mainnet"):
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
-        if gas_params:
-            deploy_kwargs.update({
-                "max_fee": gas_params["max_fee"],
-                "max_priority_fee": gas_params["max_priority_fee"]
-            })
+        deploy_kwargs.update(gas_params)
         
-        # Deploy ArtPiece with empty parameters (stencil contract)
-        empty_image_data = b""
-        empty_title = ""
-        empty_description = b""
+        # Deploy with empty constructor
         art_piece_stencil = deployer.deploy(
-            project.ArtPiece, 
-            empty_image_data, 
-            empty_title, 
-            empty_description, 
-            deployer.address,  # Owner as deployer
-            deployer.address,  # Artist as deployer
-            deployer.address,  # Commission hub (will be updated later)
-            False,  # Not AI generated
+            project.ArtPiece,
             **deploy_kwargs
         )
+        
         print(f"ArtPiece Stencil deployed at: {art_piece_stencil.address}")
         update_contract_address(network_type, "artPiece", art_piece_stencil.address, "ArtPiece")
         return art_piece_stencil
@@ -170,11 +174,7 @@ def deploy_commission_hub_template(deployer, art_piece_stencil_address=None, net
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
-        if gas_params:
-            deploy_kwargs.update({
-                "max_fee": gas_params["max_fee"],
-                "max_priority_fee": gas_params["max_priority_fee"]
-            })
+        deploy_kwargs.update(gas_params)
         commission_hub_template = deployer.deploy(project.CommissionHub, **deploy_kwargs)
         print(f"CommissionHub Template deployed at: {commission_hub_template.address}")
         update_contract_address(network_type, "commissionHub", commission_hub_template.address, "CommissionHub")
@@ -183,13 +183,7 @@ def deploy_commission_hub_template(deployer, art_piece_stencil_address=None, net
         if art_piece_stencil_address:
             print(f"Whitelisting ArtPiece stencil ({art_piece_stencil_address}) in CommissionHub...")
             tx_kwargs = {}
-            if gas_params:
-                tx_kwargs.update({
-                    "max_fee": gas_params["max_fee"],
-                    "max_priority_fee": gas_params["max_priority_fee"]
-                })
-            
-            # Set the whitelisted ArtPiece contract
+            tx_kwargs.update(gas_params)
             tx = commission_hub_template.setWhitelistedArtPieceContract(
                 art_piece_stencil_address, 
                 sender=deployer,
@@ -213,11 +207,7 @@ def deploy_owner_registry(deployer, l2_relay_address, commission_hub_template_ad
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
-        if gas_params:
-            deploy_kwargs.update({
-                "max_fee": gas_params["max_fee"],
-                "max_priority_fee": gas_params["max_priority_fee"]
-            })
+        deploy_kwargs.update(gas_params)
         owner_registry = deployer.deploy(project.OwnerRegistry, l2_relay_address, commission_hub_template_address, **deploy_kwargs)
         print(f"OwnerRegistry deployed at: {owner_registry.address}")
         update_contract_address(network_type, "l3", owner_registry.address, "OwnerRegistry")
@@ -228,13 +218,60 @@ def update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry):
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
         gas_params = get_optimized_gas_params(provider)
         tx_kwargs = {}
-        if gas_params:
-            tx_kwargs.update({
-                "max_fee": gas_params["max_fee"],
-                "max_priority_fee": gas_params["max_priority_fee"]
-            })
+        tx_kwargs.update(gas_params)
+        print(f"Using transaction parameters: {tx_kwargs}")
         tx = l2_relay.setL3Contract(owner_registry.address, sender=deployer, **tx_kwargs)
         print("L2Relay successfully updated with L3 OwnerRegistry address")
+
+def deploy_profile_template(deployer, network_type="mainnet"):
+    print("\n--- Profile Template Setup ---")
+    
+    existing_profile_template_address = get_contract_address(network_type, "profileTemplate")
+    if existing_profile_template_address:
+        print(f"Found existing Profile template in config: {existing_profile_template_address}")
+        use_existing = input("Use existing Profile template? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.Profile.at(existing_profile_template_address)
+    
+    print("Deploying new Profile template on Animechain L3...")
+    with networks.parse_network_choice("ethereum:animechain") as provider:
+        gas_params = get_optimized_gas_params(provider)
+        deploy_kwargs = {"required_confirmations": 0}
+        deploy_kwargs.update(gas_params)
+        
+        # Deploy profile template with correct constructor
+        profile_template = deployer.deploy(project.Profile, **deploy_kwargs)
+        print(f"Profile template deployed at: {profile_template.address}")
+        
+        # Update the contract address in the configuration
+        update_contract_address(network_type, "profileTemplate", profile_template.address, "Profile")
+        print(f"Updated profileTemplate address in configuration")
+        
+        return profile_template
+
+def deploy_profile_hub(deployer, profile_template_address, network_type="mainnet"):
+    print("\n--- ProfileHub Setup ---")
+    
+    existing_profile_hub_address = get_contract_address(network_type, "profileHub")
+    if existing_profile_hub_address:
+        print(f"Found existing ProfileHub in config: {existing_profile_hub_address}")
+        use_existing = input("Use existing ProfileHub? (y/n) [y]: ").strip().lower() or "y"
+        if use_existing == "y":
+            return project.ProfileHub.at(existing_profile_hub_address)
+    
+    print("Deploying new ProfileHub on Animechain L3...")
+    with networks.parse_network_choice("ethereum:animechain") as provider:
+        gas_params = get_optimized_gas_params(provider)
+        deploy_kwargs = {"required_confirmations": 0}
+        deploy_kwargs.update(gas_params)
+        profile_hub = deployer.deploy(project.ProfileHub, profile_template_address, **deploy_kwargs)
+        print(f"ProfileHub deployed at: {profile_hub.address}")
+        
+        # Update the contract address in the configuration
+        update_contract_address(network_type, "profileHub", profile_hub.address, "ProfileHub")
+        print(f"Updated profileHub address in configuration")
+        
+        return profile_hub
 
 def main():
     network_type = "mainnet"  # Always use mainnet
@@ -247,10 +284,16 @@ def main():
     owner_registry = None
     commission_hub_template = None
     art_piece_stencil = None
+    profile_template = None
+    profile_hub = None
     
     if deploy_mode == "full":
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
+        
+        # Deploy Profile template and ProfileHub
+        profile_template = deploy_profile_template(deployer, network_type)
+        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
         
         l1_contract = deploy_l1_query_owner(deployer, network_type)
         l2_relay = deploy_l2_relay(deployer, network_type)
@@ -261,12 +304,20 @@ def main():
         owner_registry = deploy_owner_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
+            gas_params = get_optimized_gas_params(provider)
+            tx_kwargs = {}
+            tx_kwargs.update(gas_params)
             l1_chain_id = 1  # For mainnet
             # Create aliased L1 address
             l1_address_int = int(l1_contract.address, 16)
             alias_addition_int = int(ALIAS_ADDITION, 16)
             aliased_l1_address = "0x" + hex(l1_address_int + alias_addition_int)[2:].zfill(40)
-            tx = l2_relay.updateCrossChainQueryOwnerContract(aliased_l1_address, l1_chain_id, sender=deployer)
+            tx = l2_relay.updateCrossChainQueryOwnerContract(
+                aliased_l1_address,
+                l1_chain_id,
+                sender=deployer,
+                **tx_kwargs
+            )
             print(f"Aliased L1QueryOwner ({aliased_l1_address}) registered in L2Relay for chain ID {l1_chain_id}")
     
     elif deploy_mode == "l2only":
@@ -275,6 +326,10 @@ def main():
     elif deploy_mode == "l3only":
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
+        
+        # Deploy Profile template and ProfileHub
+        profile_template = deploy_profile_template(deployer, network_type)
+        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
         
         # Deploy CommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
@@ -302,6 +357,22 @@ def main():
     
     print("\n=== Deployment Complete ===")
     print("Contract addresses have been saved to the configuration file")
+    
+    # Run compile_and_extract_abis script to update ABIs
+    update_abis = input("Update ABIs now? (y/n) [y]: ").strip().lower() 
+    if update_abis == "" or update_abis == "y":
+        print("\nCompiling contracts and extracting ABIs...")
+        # Import the function here to avoid circular imports
+        import sys
+        from pathlib import Path
+        sys.path.append(str(Path(__file__).parent))
+        from compile_and_extract_abis import extract_abis_to_folder
+        try:
+            extract_abis_to_folder()
+            print("Successfully updated ABIs")
+        except Exception as e:
+            print(f"Error updating ABIs: {str(e)}")
+    
     print("Make sure to save these addresses for your application")
     print(f"\nPlease run: ape run compile_and_extract_abis\n")
 

@@ -68,7 +68,7 @@
   {
     "inputs": [
       {
-        "name": "interfaceId",
+        "name": "_interface_id",
         "type": "bytes4"
       }
     ],
@@ -85,11 +85,11 @@
   {
     "inputs": [
       {
-        "name": "to",
+        "name": "_to",
         "type": "address"
       },
       {
-        "name": "tokenId",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -101,15 +101,15 @@
   {
     "inputs": [
       {
-        "name": "from_address",
+        "name": "_from_address",
         "type": "address"
       },
       {
-        "name": "to",
+        "name": "_to",
         "type": "address"
       },
       {
-        "name": "tokenId",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -121,15 +121,15 @@
   {
     "inputs": [
       {
-        "name": "from_address",
+        "name": "_from_address",
         "type": "address"
       },
       {
-        "name": "to",
+        "name": "_to",
         "type": "address"
       },
       {
-        "name": "tokenId",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -141,19 +141,19 @@
   {
     "inputs": [
       {
-        "name": "from_address",
+        "name": "_from_address",
         "type": "address"
       },
       {
-        "name": "to",
+        "name": "_to",
         "type": "address"
       },
       {
-        "name": "tokenId",
+        "name": "_token_id",
         "type": "uint256"
       },
       {
-        "name": "data",
+        "name": "_data",
         "type": "bytes"
       }
     ],
@@ -165,11 +165,11 @@
   {
     "inputs": [
       {
-        "name": "approved",
+        "name": "_approved",
         "type": "address"
       },
       {
-        "name": "tokenId",
+        "name": "_token_id",
         "type": "uint256"
       }
     ],
@@ -181,11 +181,11 @@
   {
     "inputs": [
       {
-        "name": "operator",
+        "name": "_operator",
         "type": "address"
       },
       {
-        "name": "approved",
+        "name": "_approved",
         "type": "bool"
       }
     ],

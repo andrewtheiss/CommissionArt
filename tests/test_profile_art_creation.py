@@ -1,0 +1,319 @@
+import pytest
+from ape import accounts, project
+import time
+
+@pytest.fixture
+def setup():
+    # Get accounts for testing
+    deployer = accounts.test_accounts[0]
+    user = accounts.test_accounts[1]
+    artist = accounts.test_accounts[2]
+    
+    # Deploy Profile template
+    profile_template = project.Profile.deploy(sender=deployer)
+    
+    # Deploy ProfileHub with the template
+    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    
+    # Deploy ArtPiece template for createArtPiece tests
+    art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy CommissionHub for art piece registration
+    commission_hub = project.CommissionHub.deploy(sender=deployer)
+    
+    # Create profiles for the user and artist
+    profile_hub.createProfile(sender=user)
+    profile_hub.createProfile(sender=artist)
+    
+    user_profile_address = profile_hub.getProfile(user.address)
+    artist_profile_address = profile_hub.getProfile(artist.address)
+    
+    user_profile = project.Profile.at(user_profile_address)
+    artist_profile = project.Profile.at(artist_profile_address)
+    
+    # Set artist status for the artist profile
+    artist_profile.setIsArtist(True, sender=artist)
+    
+    return {
+        "deployer": deployer,
+        "user": user,
+        "artist": artist,
+        "profile_template": profile_template,
+        "profile_hub": profile_hub,
+        "art_piece_template": art_piece_template,
+        "commission_hub": commission_hub,
+        "user_profile": user_profile,
+        "artist_profile": artist_profile
+    }
+
+def test_create_single_art_piece_and_get_latest(setup):
+    """Test creating a single art piece and getting the latest art pieces"""
+    user = setup["user"]
+    artist = setup["artist"]
+    user_profile = setup["user_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Initial check - no art pieces yet
+    initial_art_pieces = user_profile.getLatestArtPieces()
+    assert len(initial_art_pieces) == 0
+    
+    # Create a single art piece
+    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    tx_receipt = user_profile.createArtPiece(
+        art_piece_template.address,
+        image_data,
+        "Art Piece 1",
+        "Description for Art Piece 1",
+        False,  # Not an artist
+        artist.address,  # Artist address
+        commission_hub.address,
+        False,  # Not AI generated
+        sender=user
+    )
+    
+    # Verify art piece was added to user's collection
+    assert user_profile.myArtCount() == 1
+    
+    # Get the latest art pieces
+    latest_art_pieces = user_profile.getLatestArtPieces()
+    assert len(latest_art_pieces) == 1
+    
+    # Verify the art piece properties using the address we got back
+    art_piece = project.ArtPiece.at(latest_art_pieces[0])
+    assert art_piece.getOwner() == user.address
+    assert art_piece.getArtist() == artist.address
+    assert art_piece.getImageData() == image_data
+
+def test_create_multiple_art_pieces_and_get_latest(setup):
+    """Test creating multiple art pieces and getting the latest art pieces"""
+    user = setup["user"]
+    artist = setup["artist"]
+    user_profile = setup["user_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Create 7 art pieces
+    for i in range(7):
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        user_profile.createArtPiece(
+            art_piece_template.address,
+            image_data,
+            f"Art Piece {i+1}",
+            f"Description for Art Piece {i+1}",
+            False,  # Not an artist
+            artist.address,  # Artist address
+            commission_hub.address,
+            False,  # Not AI generated
+            sender=user
+        )
+        
+        # Add a small delay to ensure art pieces have different timestamps
+        time.sleep(0.1)
+    
+    # Verify all art pieces were created
+    assert user_profile.myArtCount() == 7
+    
+    # Get the latest art pieces
+    latest_art_pieces = user_profile.getLatestArtPieces()
+    
+    # Should return at most 5 art pieces
+    assert len(latest_art_pieces) == 5
+    
+    # Verify the last art piece in the array is valid
+    # We can't verify the exact order against the tx receipt objects,
+    # but we can verify that the art pieces have the expected properties
+    last_art_piece = project.ArtPiece.at(latest_art_pieces[0])
+    assert last_art_piece.getOwner() == user.address
+    assert last_art_piece.getArtist() == artist.address
+    
+    # Get individual art pieces and check their titles to verify ordering
+    # Most recent should have higher index numbers
+    recent_pieces = []
+    for addr in latest_art_pieces:
+        art = project.ArtPiece.at(addr)
+        recent_pieces.append(art.getTitle())
+    
+    # Verify descending order (newest first)
+    for i in range(len(recent_pieces) - 1):
+        current_piece_num = int(recent_pieces[i].split()[2])
+        next_piece_num = int(recent_pieces[i+1].split()[2])
+        assert current_piece_num > next_piece_num, f"Expected {current_piece_num} > {next_piece_num}"
+
+def test_create_fewer_than_five_art_pieces(setup):
+    """Test creating fewer than 5 art pieces and getting the latest art pieces"""
+    user = setup["user"]
+    artist = setup["artist"]
+    user_profile = setup["user_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Create 3 art pieces
+    for i in range(3):
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        user_profile.createArtPiece(
+            art_piece_template.address,
+            image_data,
+            f"Art Piece {i+1}",
+            f"Description for Art Piece {i+1}",
+            False,  # Not an artist
+            artist.address,  # Artist address
+            commission_hub.address,
+            False,  # Not AI generated
+            sender=user
+        )
+        
+        # Add a small delay to ensure art pieces have different timestamps
+        time.sleep(0.1)
+    
+    # Verify art pieces were created
+    assert user_profile.myArtCount() == 3
+    
+    # Get the latest art pieces
+    latest_art_pieces = user_profile.getLatestArtPieces()
+    
+    # Should return all 3 art pieces
+    assert len(latest_art_pieces) == 3
+    
+    # Get individual art pieces and check their titles to verify ordering
+    recent_pieces = []
+    for addr in latest_art_pieces:
+        art = project.ArtPiece.at(addr)
+        recent_pieces.append(art.getTitle())
+    
+    # Verify descending order (newest first)
+    for i in range(len(recent_pieces) - 1):
+        current_piece_num = int(recent_pieces[i].split()[2])
+        next_piece_num = int(recent_pieces[i+1].split()[2])
+        assert current_piece_num > next_piece_num, f"Expected {current_piece_num} > {next_piece_num}"
+
+def test_artist_creating_art_pieces(setup):
+    """Test an artist creating art pieces and getting latest art pieces"""
+    user = setup["user"]
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Create 4 art pieces as an artist
+    for i in range(4):
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        artist_profile.createArtPiece(
+            art_piece_template.address,
+            image_data,
+            f"Artist Piece {i+1}",
+            f"Description for Artist Piece {i+1}",
+            True,  # Is artist
+            user.address,  # Commissioner address
+            commission_hub.address,
+            i % 2 == 0,  # Alternate AI generated flag
+            sender=artist
+        )
+        
+        # Add a small delay to ensure art pieces have different timestamps
+        time.sleep(0.1)
+    
+    # Verify art pieces were created
+    assert artist_profile.myArtCount() == 4
+    
+    # Get the latest art pieces
+    latest_art_pieces = artist_profile.getLatestArtPieces()
+    
+    # Should return all 4 art pieces
+    assert len(latest_art_pieces) == 4
+    
+    # Get individual art pieces and check their titles to verify ordering
+    recent_pieces = []
+    for addr in latest_art_pieces:
+        art = project.ArtPiece.at(addr)
+        recent_pieces.append(art.getTitle())
+    
+    # Verify descending order (newest first)
+    for i in range(len(recent_pieces) - 1):
+        current_piece_num = int(recent_pieces[i].split()[2])
+        next_piece_num = int(recent_pieces[i+1].split()[2])
+        assert current_piece_num > next_piece_num, f"Expected {current_piece_num} > {next_piece_num}"
+    
+    # Verify the properties of one of the art pieces
+    art_piece = project.ArtPiece.at(latest_art_pieces[0])
+    assert art_piece.getOwner() == user.address
+    assert art_piece.getArtist() == artist.address
+
+def test_create_art_pieces_across_profiles(setup):
+    """Test creating art pieces across different profiles and checking latest art pieces"""
+    user = setup["user"]
+    artist = setup["artist"]
+    user_profile = setup["user_profile"]
+    artist_profile = setup["artist_profile"]
+    art_piece_template = setup["art_piece_template"]
+    commission_hub = setup["commission_hub"]
+    
+    # Create 2 art pieces for user
+    for i in range(2):
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        user_profile.createArtPiece(
+            art_piece_template.address,
+            image_data,
+            f"User Art {i+1}",
+            f"User Art Description {i+1}",
+            False,  # Not artist
+            artist.address,
+            commission_hub.address,
+            False,
+            sender=user
+        )
+        time.sleep(0.1)
+    
+    # Create 2 art pieces for artist
+    for i in range(2):
+        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        artist_profile.createArtPiece(
+            art_piece_template.address,
+            image_data,
+            f"Artist Art {i+1}",
+            f"Artist Art Description {i+1}",
+            True,  # Is artist
+            user.address,
+            commission_hub.address,
+            True,
+            sender=artist
+        )
+        time.sleep(0.1)
+    
+    # Check counts for each profile
+    assert user_profile.myArtCount() == 2
+    assert artist_profile.myArtCount() == 2
+    
+    # Get latest art pieces for user
+    user_latest = user_profile.getLatestArtPieces()
+    assert len(user_latest) == 2
+    
+    # Get latest art pieces for artist
+    artist_latest = artist_profile.getLatestArtPieces()
+    assert len(artist_latest) == 2
+    
+    # Get titles to verify ordering
+    user_pieces = []
+    for addr in user_latest:
+        art = project.ArtPiece.at(addr)
+        user_pieces.append(art.getTitle())
+    
+    artist_pieces = []
+    for addr in artist_latest:
+        art = project.ArtPiece.at(addr)
+        artist_pieces.append(art.getTitle())
+    
+    # Verify descending order for user's pieces
+    if len(user_pieces) > 1:
+        user_current = int(user_pieces[0].split()[2])
+        user_next = int(user_pieces[1].split()[2])
+        assert user_current > user_next, f"User pieces not in order: {user_current} > {user_next}"
+    
+    # Verify descending order for artist's pieces
+    if len(artist_pieces) > 1:
+        artist_current = int(artist_pieces[0].split()[2])
+        artist_next = int(artist_pieces[1].split()[2])
+        assert artist_current > artist_next, f"Artist pieces not in order: {artist_current} > {artist_next}"
+    
+    # Verify the collections are separate
+    assert set(user_latest) != set(artist_latest) 

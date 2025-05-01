@@ -1,21 +1,25 @@
 // Import ABIs statically to make them available in the app
+import ArrayManagerABI from '../assets/abis/ArrayManager.json';
+import ArtPieceABI from '../assets/abis/ArtPiece.json';
+import CommissionHubABI from '../assets/abis/CommissionHub.json';
 import L1QueryOwnerABI from '../assets/abis/L1QueryOwner.json';
 import L2RelayABI from '../assets/abis/L2Relay.json';
-import CommissionRegistryABI from '../assets/abis/CommissionRegistry.json';
-import CommissionedArtABI from '../assets/abis/CommissionedArt.json';
-import RegistryABI from '../assets/abis/Registry.json';
-import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 import OwnerRegistryABI from '../assets/abis/OwnerRegistry.json';
+import ProfileABI from '../assets/abis/Profile.json';
+import ProfileHubABI from '../assets/abis/ProfileHub.json';
+import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 
 // Map of ABI names to their actual content
 const abiMap: { [key: string]: any } = {
+  'ArrayManager': ArrayManagerABI,
+  'ArtPiece': ArtPieceABI,
+  'CommissionHub': CommissionHubABI,
   'L1QueryOwner': L1QueryOwnerABI,
   'L2Relay': L2RelayABI,
-  'CommissionRegistry': CommissionRegistryABI,
-  'CommissionedArt': CommissionedArtABI,
-  'Registry': RegistryABI,
+  'OwnerRegistry': OwnerRegistryABI,
+  'Profile': ProfileABI,
+  'ProfileHub': ProfileHubABI,
   'SimpleERC721': SimpleERC721ABI,
-  'OwnerRegistry': OwnerRegistryABI
 };
 
 /**

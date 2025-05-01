@@ -1,4 +1,5 @@
 eth-ape>=0.6.0
 python-dotenv>=1.0.0
 eth-utils>=2.1.0
-web3>=6.0.0 
+web3>=6.0.0
+pytest-xdist>=3.5.0 
