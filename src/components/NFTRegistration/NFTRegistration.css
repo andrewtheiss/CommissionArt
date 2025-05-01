@@ -636,3 +636,110 @@ form {
   background-color: var(--accent-secondary);
   border-color: var(--accent-secondary);
 }
+
+/* Format selector styling */
+.format-selector-container {
+  margin-bottom: 24px;
+}
+
+.format-selector-container h4 {
+  color: var(--text-primary, #e0e0e0);
+  font-size: 16px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.format-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.format-option {
+  background-color: var(--bg-tertiary, #262b3d);
+  border: 1px solid var(--border-primary, #2a2f45);
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.format-option:hover {
+  border-color: var(--accent-primary, #5e72e4);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.format-option.selected {
+  border-color: var(--accent-primary, #5e72e4);
+  background-color: rgba(94, 114, 228, 0.1);
+}
+
+.format-option-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.format-selector-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radio-outer {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border-secondary, #434968);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+
+.format-option.selected .radio-outer {
+  border-color: var(--accent-primary, #5e72e4);
+}
+
+.radio-inner {
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background-color: var(--accent-primary, #5e72e4);
+  transition: all 0.2s ease;
+}
+
+.radio-inner.active {
+  width: 10px;
+  height: 10px;
+}
+
+.format-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.format-name {
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 15px;
+}
+
+.format-description {
+  color: var(--text-secondary, #b8b9bf);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+@media (min-width: 768px) {
+  .format-selector {
+    flex-direction: row;
+  }
+  
+  .format-option {
+    flex: 1;
+  }
+}

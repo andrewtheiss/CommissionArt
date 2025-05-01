@@ -32,6 +32,8 @@ const ArtistForm: React.FC<{
   networkType: string;
   switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => void;
   hasProfile: boolean;
+  preferredFormat: FormatType;
+  setPreferredFormat: (format: FormatType) => void;
   onBack: () => void;
 }> = ({
   artworkTitle,
@@ -55,6 +57,8 @@ const ArtistForm: React.FC<{
   networkType,
   switchToLayer,
   hasProfile,
+  preferredFormat,
+  setPreferredFormat,
   onBack,
 }) => {
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +97,7 @@ const ArtistForm: React.FC<{
     try {
       // Use a target size of 43KB instead of 45KB to ensure we're safely under the 45,000 bytes limit
       // This provides a small buffer for any potential overhead
-      const result = await compressImage(file, 'image/avif', 1000, 43);
+      const result = await compressImage(file, preferredFormat, 1000, 43);
       setCompressedResult(result);
       
       // Log the compressed size for debugging
@@ -160,6 +164,7 @@ const ArtistForm: React.FC<{
       // Format the tokenURI according to NFT standards
       console.log(`Formatting tokenURI for artwork: ${titleStr}`);
       console.log(`Original image data size: ${imageDataArray.length} bytes`);
+      console.log(`Using format: ${preferredFormat}`);
       
       // Format the token URI with potential size reduction if needed
       const tokenURIResult = reduceTokenURISize(
@@ -167,7 +172,7 @@ const ArtistForm: React.FC<{
         titleStr,
         descriptionStr,  // Use string directly
         44000, // Target slightly below 45,000 byte limit
-        compressedResult.format === 'image/avif' ? 'image/avif' : 'image/jpeg' // Use the format from compression
+        preferredFormat // Use the selected format
       );
       
       // Log the tokenURI details
@@ -335,6 +340,38 @@ const ArtistForm: React.FC<{
     }
   };
 
+  // Add the format selector component
+  const FormatSelector = () => (
+    <div className="format-selector-container">
+      <h4>Image Format <span className="required">*</span></h4>
+      <div className="format-selector">
+        {[
+          { type: 'image/avif', name: 'AVIF', description: 'Best compression and quality' },
+          { type: 'image/webp', name: 'WebP', description: 'Good balance of size and quality' },
+          { type: 'image/jpeg', name: 'JPEG', description: 'Best compatibility' }
+        ].map(format => (
+          <div 
+            key={format.type}
+            className={`format-option ${preferredFormat === format.type ? 'selected' : ''}`}
+            onClick={() => setPreferredFormat(format.type as FormatType)}
+          >
+            <div className="format-option-inner">
+              <div className="format-selector-radio">
+                <div className="radio-outer">
+                  <div className={`radio-inner ${preferredFormat === format.type ? 'active' : ''}`}></div>
+                </div>
+              </div>
+              <div className="format-details">
+                <span className="format-name">{format.name}</span>
+                <span className="format-description">{format.description}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="registration-form">
       <h3>Artist Registration</h3>
@@ -414,8 +451,12 @@ const ArtistForm: React.FC<{
             )}
           </div>
         )}
+        
         <form>
           <div className="form-content">
+            {/* Format selector comes right after artwork section and before title input */}
+            <FormatSelector />
+            
             <div className="form-group">
               <label htmlFor="artwork-title">
                 Artwork Title <span className="required">*</span>
@@ -443,7 +484,7 @@ const ArtistForm: React.FC<{
               />
             </div>
             <div className="form-actions">
-              <button
+              <button 
                 type="button"
                 className={`submit-button ${hasProfile ? 'profile-button' : ''}`}
                 disabled={!compressedResult || isCompressing}
@@ -487,6 +528,7 @@ const NFTRegistration: React.FC = () => {
   const [checkingProfile, setCheckingProfile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isTrulyConnected = isConnected && !!walletAddress;
+  const [preferredFormat, setPreferredFormat] = useState<FormatType>('image/avif');
 
   // Check for profile when wallet is connected
   useEffect(() => {
@@ -671,6 +713,8 @@ const NFTRegistration: React.FC = () => {
           networkType={networkType}
           switchToLayer={switchToLayer}
           hasProfile={hasProfile}
+          preferredFormat={preferredFormat}
+          setPreferredFormat={setPreferredFormat}
           onBack={() => setUserType(null)}
         />
       ) : (

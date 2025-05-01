@@ -19,6 +19,12 @@ const ImageCompressor: React.FC = () => {
     { type: 'image/jpeg', name: 'JPEG', extension: 'jpg' }
   ];
 
+  // Helper function to get format name
+  const getFormatName = (formatType: FormatType): string => {
+    const format = formatOptions.find(f => f.type === formatType);
+    return format ? format.name : 'Unknown';
+  };
+
   // Detect if file is animated GIF or WebP
   const detectAnimation = async (file: File): Promise<boolean> => {
     // Check file type first
@@ -386,39 +392,111 @@ const ImageCompressor: React.FC = () => {
   };
 
   const handleFormatChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPreferredFormat(e.target.value as FormatType);
+    const newFormat = e.target.value as FormatType;
+    setPreferredFormat(newFormat);
+    
     // Recompress with new format if a file is selected
     if (selectedFile) {
       // Don't change format for animated files
       if (!isAnimation) {
+        console.log(`Changing format to ${newFormat}`);
         setIsCompressing(true);
-        compressImageFile(selectedFile);
+        
+        // Set a small delay to ensure the UI updates before compression starts
+        setTimeout(() => {
+          compressImageFile(selectedFile);
+        }, 50);
       }
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!compressionResult?.blob || !selectedFile) return;
 
-    // Create a download link
-    const url = URL.createObjectURL(compressionResult.blob);
-    const link = document.createElement('a');
-    link.href = url;
-    
-    // Get correct extension from format
-    let extension = 'avif';
-    if (isAnimation) {
-      extension = selectedFile.type === 'image/gif' ? 'gif' : 'webp';
-    } else {
-      const formatInfo = formatOptions.find(f => f.name === compressionResult.format);
-      extension = formatInfo?.extension || 'avif';
+    try {
+      // For animations, just use the original blob
+      if (isAnimation) {
+        const url = URL.createObjectURL(compressionResult.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const extension = selectedFile.type === 'image/gif' ? 'gif' : 'webp';
+        link.download = `${selectedFile.name.split('.')[0]}_compressed.${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      
+      // For non-animated images, check if we need format conversion
+      const currentFormat = compressionResult.format.toLowerCase();
+      const targetFormatName = getFormatName(preferredFormat).toLowerCase();
+      
+      // If the format is already the preferred format, just download the compressed blob directly
+      if (currentFormat === targetFormatName) {
+        const url = URL.createObjectURL(compressionResult.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Get extension from the format
+        let extension;
+        if (preferredFormat === 'image/avif') extension = 'avif';
+        else if (preferredFormat === 'image/webp') extension = 'webp';
+        else extension = 'jpg';
+        
+        link.download = `${selectedFile.name.split('.')[0]}_compressed.${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      
+      // If we need to convert the format, recompress the image with the target format
+      setIsCompressing(true);
+      
+      try {
+        // Use the existing compressImage utility to ensure size constraints are maintained
+        const result = await compressImage(selectedFile, preferredFormat, 1000, 43);
+        
+        if (!result.blob) {
+          throw new Error('Failed to compress in new format');
+        }
+        
+        // Verify the size is within acceptable limits
+        const sizeKB = result.blob.size / 1024;
+        console.log(`Downloaded image size: ${sizeKB.toFixed(2)} KB in ${preferredFormat} format`);
+        
+        if (sizeKB > 50) {
+          console.warn(`Downloaded image exceeds target size: ${sizeKB.toFixed(2)} KB`);
+        }
+        
+        // Create download link with the new blob
+        const url = URL.createObjectURL(result.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Get extension from the format
+        let extension;
+        if (preferredFormat === 'image/avif') extension = 'avif';
+        else if (preferredFormat === 'image/webp') extension = 'webp';
+        else extension = 'jpg';
+        
+        link.download = `${selectedFile.name.split('.')[0]}_compressed.${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error compressing for download:', error);
+        alert('Failed to convert image format. Please try a different format.');
+      } finally {
+        setIsCompressing(false);
+      }
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      setIsCompressing(false);
     }
-    
-    link.download = `${selectedFile.name.split('.')[0]}_compressed.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const handleUploadClick = () => {
@@ -487,7 +565,12 @@ const ImageCompressor: React.FC = () => {
               </div>
               <div className="image-info">
                 <span>Size: {compressionResult.compressedSize.toFixed(2)} KB</span>
-                <span>Format: {compressionResult.format}</span>
+                <span>
+                  Format: {compressionResult.format}
+                  {!isAnimation && compressionResult.format !== getFormatName(preferredFormat) && (
+                    <span className="format-change-indicator"> → {getFormatName(preferredFormat)} for download</span>
+                  )}
+                </span>
                 <span>Dimensions: {compressionResult.dimensions.width}x{compressionResult.dimensions.height}</span>
                 {isAnimation && (
                   <span className="animation-indicator">Animated</span>
