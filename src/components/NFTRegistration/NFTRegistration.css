@@ -402,24 +402,21 @@
 }
 
 .compressing-indicator {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-tertiary, #262b3d);
-  border-radius: 8px;
-  color: var(--text-secondary, #b8b9bf);
-  font-size: 14px;
-  gap: 16px;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  gap: 15px;
 }
 
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid rgba(94, 114, 228, 0.2);
-  border-top-color: var(--accent-primary, #5e72e4);
+.compressing-indicator .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -923,6 +920,8 @@ form {
   width: 100%;
   height: auto;
   display: block;
+  opacity: 0.3;
+  transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
 .nft-preview-image.loading {
@@ -950,12 +949,14 @@ form {
   color: white;
   border-radius: 8px;
   gap: 12px;
+  z-index: 10;
+  pointer-events: none; /* Allow clicks to pass through */
 }
 
-.image-loading-indicator .spinner {
-  width: 30px;
-  height: 30px;
-  border-width: 3px;
+/* Force hide the loading indicator when the image is loaded */
+.nft-preview-image.loaded + .image-loading-indicator,
+.nft-preview-image.loaded ~ .image-loading-indicator {
+  display: none !important;
 }
 
 .nft-preview-image-error {
@@ -1217,4 +1218,196 @@ form {
 .image-loading-indicator .spinner {
   border: 3px solid rgba(255, 255, 255, 0.2);
   border-top-color: white;
+}
+
+/* Add optimization info styles */
+.optimization-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 12px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.optimization-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #fff;
+}
+
+.size-warning {
+  color: #ffcc00;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.size-success {
+  color: #4CAF50;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-value {
+  color: #fff;
+}
+
+.optimization-note {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  max-width: 200px;
+}
+
+.nft-preview-image-details {
+  margin-bottom: 15px;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.nft-preview-image-details h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.image-details-row {
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--text-secondary, #b8b9bf);
+}
+
+.image-details-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Fix loading indicator positioning */
+.image-loading-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  border-radius: 8px;
+  gap: 12px;
+  z-index: 10;
+  pointer-events: none; /* Allow clicks to pass through */
+}
+
+/* Force hide the loading indicator when the image is loaded */
+.nft-preview-image.loaded + .image-loading-indicator,
+.nft-preview-image.loaded ~ .image-loading-indicator {
+  display: none !important;
+}
+
+.image-loading-indicator .spinner {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+
+.debug-button {
+  margin-top: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  background-color: rgba(100, 100, 100, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: var(--text-secondary, #b8b9bf);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.debug-button:hover {
+  background-color: rgba(100, 100, 100, 0.4);
+  color: var(--text-primary, #e0e0e0);
+}
+
+.raw-data-container {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: var(--bg-primary);
+  border-radius: 4px;
+  border: 1px solid var(--border-secondary);
+}
+
+.raw-data-container h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.raw-data-content {
+  background-color: var(--bg-secondary);
+  padding: 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+/* Different colors for different data sources */
+.original-data {
+  color: #4ec5ff; /* Blue for original data */
+  border-left: 3px solid #4ec5ff;
+}
+
+.token-uri-content {
+  color: #ffcc00; /* Yellow for tokenURI */
+  border-left: 3px solid #ffcc00;
+}
+
+.extracted-image-content {
+  color: #98c379; /* Green for extracted image data */
+  border-left: 3px solid #98c379;
+}
+
+.token-uri-title, .extracted-image-title {
+  margin-top: 15px;
+  color: var(--text-primary);
+}
+
+.debug-error {
+  color: #e06c75; /* Red for errors */
+  font-size: 12px;
+  margin-top: 5px;
+  padding: 5px;
+  background-color: rgba(224, 108, 117, 0.1);
+  border-radius: 4px;
+}
+
+.raw-data-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
 }

@@ -4,7 +4,15 @@ import profileService from '../../utils/profile-service';
 import { ethers } from 'ethers';
 import ArtDisplay from '../ArtDisplay';
 import { safeRevokeUrl } from '../../utils/TokenURIDecoder';
+import ArtPieceDebugInfo from './ArtPieceDebugInfo';
 import './Account.css';
+
+// Start with debug mode off by default, user can toggle it on
+const DEBUG_MODE_KEY = 'account_debug_mode';
+const getInitialDebugMode = (): boolean => {
+  const savedMode = localStorage.getItem(DEBUG_MODE_KEY);
+  return savedMode === 'true';
+};
 
 // Address displayed format
 const formatAddress = (address: string | null) => {
@@ -44,6 +52,16 @@ const Account: React.FC = () => {
 
   // For wallet connection
   const isTrulyConnected = isConnected && !!walletAddress;
+
+  // Add debug mode toggle
+  const [debugMode, setDebugMode] = useState<boolean>(getInitialDebugMode());
+
+  // Toggle debug mode function
+  const toggleDebugMode = () => {
+    const newMode = !debugMode;
+    setDebugMode(newMode);
+    localStorage.setItem(DEBUG_MODE_KEY, String(newMode));
+  };
 
   const handleDisconnect = () => {
     if (window.ethereum && window.ethereum.removeAllListeners) {
@@ -325,7 +343,7 @@ const Account: React.FC = () => {
                   
                   // Check if it starts with the tokenURI format
                   if (typeof tokenURIData === 'string' && tokenURIData.startsWith('data:application/json;base64,')) {
-                    console.log(`TokenURI starts with: ${tokenURIData.substring(0, 30)}...`);
+                    console.log(`TokenURI starts with: ${tokenURIData.substring(0, 100)}...`);
                   } else if (typeof tokenURIData !== 'string') {
                     // It might be bytes for older contracts, try to convert
                     try {
@@ -363,20 +381,21 @@ const Account: React.FC = () => {
     }
   };
   
-  // Helper function to decode tokenURI data
+  // Decode tokenURI data - this function existed before but was inside loadArtPieces
   const decodeTokenFromUri = (tokenURI: string) => {
+    if (!tokenURI) return null;
+    
     try {
-      if (!tokenURI.startsWith('data:application/json;base64,')) {
-        return null;
+      if (tokenURI.startsWith('data:application/json;base64,')) {
+        const base64Data = tokenURI.slice('data:application/json;base64,'.length);
+        const decodedData = atob(base64Data);
+        return JSON.parse(decodedData);
       }
-      
-      const base64Json = tokenURI.replace('data:application/json;base64,', '');
-      const jsonString = atob(base64Json);
-      return JSON.parse(jsonString);
     } catch (error) {
-      console.error('Error decoding tokenURI:', error);
-      return null;
+      console.error('Error decoding token URI:', error);
     }
+    
+    return null;
   };
   
   const handleCreateProfile = async () => {
@@ -440,6 +459,19 @@ const Account: React.FC = () => {
   return (
     <div className="account-container">
       <h2>Your Account</h2>
+      
+      {/* Add debug mode toggle at the top */}
+      <div className="debug-mode-toggle-container">
+        <label className="debug-mode-toggle">
+          <input 
+            type="checkbox" 
+            checked={debugMode} 
+            onChange={toggleDebugMode} 
+          />
+          <span className="debug-mode-toggle-text">Debug Mode</span>
+        </label>
+      </div>
+      
       <ConnectionBar />
       
       {error && <div className="error-banner">{error}</div>}
@@ -548,12 +580,21 @@ const Account: React.FC = () => {
                     return (
                       <div key={index} className="art-piece-item">
                         {details.tokenURIData ? (
-                          <ArtDisplay
-                            imageData={details.tokenURIData}
-                            title={details.title}
-                            contractAddress={address}
-                            className="art-piece-display"
-                          />
+                          <>
+                            <ArtDisplay
+                              imageData={details.tokenURIData}
+                              title={details.title}
+                              contractAddress={address}
+                              className="art-piece-display"
+                            />
+                            {/* Add debug info component conditionally */}
+                            {debugMode && (
+                              <ArtPieceDebugInfo 
+                                tokenURIData={details.tokenURIData} 
+                                contractAddress={address}
+                              />
+                            )}
+                          </>
                         ) : (
                           <div className="art-piece-placeholder">
                             <div className="art-piece-image-placeholder">Art</div>
