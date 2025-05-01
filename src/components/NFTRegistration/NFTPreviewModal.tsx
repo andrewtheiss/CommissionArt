@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './NFTRegistration.css';
 
 interface NFTPreviewModalProps {
@@ -11,6 +11,7 @@ interface NFTPreviewModalProps {
   originalHash: string;
   compressedSize: number;
   onProceed?: () => void;
+  hashesMatch?: boolean;
 }
 
 const NFTPreviewModal: React.FC<NFTPreviewModalProps> = ({
@@ -22,33 +23,91 @@ const NFTPreviewModal: React.FC<NFTPreviewModalProps> = ({
   tokenURIHash,
   originalHash,
   compressedSize,
-  onProceed
+  onProceed,
+  hashesMatch
 }) => {
+  const [imageError, setImageError] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Reset state when modal is closed or opened
+  useEffect(() => {
+    if (show) {
+      setImageError(false);
+      setIsImageLoaded(false);
+      setIsProcessing(false);
+    }
+  }, [show]);
+  
+  // Return null if the modal shouldn't be shown
   if (!show) return null;
 
-  const hashesMatch = tokenURIHash === originalHash;
+  // Use directly provided hashesMatch if available, otherwise compare hashes
+  const doHashesMatch = hashesMatch !== undefined ? hashesMatch : tokenURIHash === originalHash;
+
+  // Handle proceed action with loading state
+  const handleProceed = async () => {
+    if (!onProceed || isProcessing) return;
+    
+    setIsProcessing(true);
+    try {
+      await onProceed();
+    } catch (error) {
+      console.error("Error during registration process:", error);
+      // Error is handled by the parent component
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <div className="nft-preview-modal-overlay">
       <div className="nft-preview-modal">
         <div className="nft-preview-header">
           <h3>NFT Preview</h3>
-          <button className="nft-preview-close-btn" onClick={onClose}>×</button>
+          <button 
+            className="nft-preview-close-btn" 
+            onClick={onClose}
+            disabled={isProcessing}
+          >×</button>
         </div>
         <div className="nft-preview-content">
           <div className="nft-preview-image-container">
-            {imageDataUrl ? (
+            {imageDataUrl && !imageError ? (
               <img 
                 src={imageDataUrl} 
                 alt="NFT Preview" 
-                className="nft-preview-image" 
+                className={`nft-preview-image ${isImageLoaded ? 'loaded' : 'loading'}`}
+                onLoad={() => setIsImageLoaded(true)}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5OTkiIGR5PSIuM2VtIj5JbWFnZSBMb2FkIEVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                  console.error('Image failed to load:', imageDataUrl?.substring(0, 50) + '...');
+                  setImageError(true);
+                  setIsImageLoaded(false);
                 }}
               />
             ) : (
               <div className="nft-preview-image-error">
-                Unable to preview image
+                {imageError ? 'Image failed to load' : 'No preview available'}
+                <div className="error-details">
+                  The image data may be corrupted or in an unsupported format.
+                  {imageError && imageDataUrl && (
+                    <button 
+                      className="retry-image-btn"
+                      onClick={() => {
+                        setImageError(false); 
+                        setIsImageLoaded(false);
+                      }}
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {imageDataUrl && !imageError && !isImageLoaded && (
+              <div className="image-loading-indicator">
+                <div className="spinner"></div>
+                <span>Loading image...</span>
               </div>
             )}
           </div>
@@ -59,9 +118,9 @@ const NFTPreviewModal: React.FC<NFTPreviewModalProps> = ({
             <div className="nft-preview-metadata">
               <div className="nft-preview-hash-verification">
                 <h5>Verification</h5>
-                <div className={`hash-status ${hashesMatch ? 'match' : 'mismatch'}`}>
+                <div className={`hash-status ${doHashesMatch ? 'match' : 'mismatch'}`}>
                   <span className="hash-indicator"></span>
-                  {hashesMatch ? 'Data Integrity Verified' : 'Data Integrity Warning'}
+                  {doHashesMatch ? 'Data Integrity Verified' : 'Data Integrity Warning'}
                 </div>
                 <div className="hash-details">
                   <div className="hash-row">
@@ -73,6 +132,11 @@ const NFTPreviewModal: React.FC<NFTPreviewModalProps> = ({
                     <span className="hash-value">{tokenURIHash.substring(0, 10)}...{tokenURIHash.substring(tokenURIHash.length - 6)}</span>
                   </div>
                 </div>
+                {!doHashesMatch && (
+                  <div className="hash-mismatch-warning">
+                    Data may be corrupted during tokenURI formation. Registration can continue, but image quality may be affected.
+                  </div>
+                )}
               </div>
               
               <div className="nft-preview-size">
@@ -86,12 +150,28 @@ const NFTPreviewModal: React.FC<NFTPreviewModalProps> = ({
           </div>
         </div>
         <div className="nft-preview-actions">
-          <button className="nft-preview-cancel-btn" onClick={onClose}>Cancel</button>
           <button 
-            className={`nft-preview-confirm-btn ${(!hashesMatch || compressedSize > 45) ? 'warning' : ''}`}
-            onClick={onProceed || onClose}
+            className="nft-preview-cancel-btn" 
+            onClick={onClose}
+            disabled={isProcessing}
           >
-            Proceed to Register
+            Cancel
+          </button>
+          <button 
+            className={`nft-preview-confirm-btn ${(!doHashesMatch || compressedSize > 45 || imageError) ? 'warning' : ''}`}
+            onClick={handleProceed}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <span className="button-spinner"></span>
+                Processing...
+              </>
+            ) : (
+              (!doHashesMatch || compressedSize > 45 || imageError) 
+                ? 'Proceed with Caution' 
+                : 'Proceed to Register'
+            )}
           </button>
         </div>
       </div>

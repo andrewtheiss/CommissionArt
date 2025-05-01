@@ -916,6 +916,7 @@ form {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  position: relative;
 }
 
 .nft-preview-image {
@@ -924,15 +925,87 @@ form {
   display: block;
 }
 
-.nft-preview-image-error {
-  width: 100%;
-  height: 300px;
+.nft-preview-image.loading {
+  opacity: 0.3;
+  filter: blur(2px);
+}
+
+.nft-preview-image.loaded {
+  opacity: 1;
+  filter: none;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.image-loading-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-tertiary, #6c7293);
+  background-color: rgba(0, 0, 0, 0.3);
+  color: white;
+  border-radius: 8px;
+  gap: 12px;
+}
+
+.image-loading-indicator .spinner {
+  width: 30px;
+  height: 30px;
+  border-width: 3px;
+}
+
+.nft-preview-image-error {
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary, #b8b9bf);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.error-details {
+  margin-top: 12px;
   font-size: 14px;
-  background-color: rgba(0, 0, 0, 0.1);
+  font-weight: normal;
+  color: var(--text-tertiary, #6c7293);
+  max-width: 250px;
+}
+
+.retry-image-btn {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary, #e0e0e0);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  margin-top: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.retry-image-btn:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.hash-mismatch-warning {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #f39c12;
+  background-color: rgba(243, 156, 18, 0.1);
+  padding: 8px;
+  border-radius: 4px;
+  border-left: 3px solid #f39c12;
+  line-height: 1.4;
 }
 
 .nft-preview-details {
@@ -1118,4 +1191,30 @@ form {
 
 .nft-preview-confirm-btn.warning:hover {
   background-color: #c0392b;
+}
+
+/* Processing spinner for buttons */
+.button-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.nft-preview-confirm-btn:disabled,
+.nft-preview-cancel-btn:disabled,
+.nft-preview-close-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Make the loading indicator more visible */
+.image-loading-indicator .spinner {
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: white;
 }

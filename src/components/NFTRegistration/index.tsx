@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { compressImage, getImageOrientation, revokePreviewUrl, CompressionResult, FormatType } from '../../utils/ImageCompressorUtil';
-import { formatTokenURI, reduceTokenURISize, hashString, extractImageFromTokenURI } from '../../utils/TokenURIFormatter';
+import { formatTokenURI, reduceTokenURISize, hashString, extractImageFromTokenURI, createComparisonHashes } from '../../utils/TokenURIFormatter';
 import './NFTRegistration.css';
 import { ethers } from 'ethers';
 import contractConfig from '../../assets/contract_config.json';
@@ -171,34 +171,42 @@ const ArtistForm: React.FC<{
       console.log(`- Reduction applied: ${tokenURIResult.reductionApplied}`);
       console.log(`- First 100 chars: ${tokenURIResult.tokenURI.substring(0, 100)}...`);
       
-      // Hash the original data and the tokenURI for verification
-      const originalData = JSON.stringify({
-        title: titleStr,
-        description: descriptionStr,
-        image: Array.from(imageDataArray) // Convert to regular array for JSON
-      });
+      // Use the improved hash comparison function
+      const hashResult = await createComparisonHashes(
+        {
+          title: titleStr,
+          description: descriptionStr, 
+          image: imageDataArray
+        },
+        tokenURIResult.tokenURI
+      );
       
-      const originalHash = await hashString(originalData);
-      const tokenURIHash = await hashString(tokenURIResult.tokenURI);
-      
-      console.log(`Original data hash: ${originalHash}`);
-      console.log(`TokenURI hash: ${tokenURIHash}`);
-      console.log(`Hash match: ${originalHash === tokenURIHash ? 'Yes' : 'No'}`);
+      console.log(`Hash comparison result:`, hashResult);
       
       // Extract the image data for preview
       const previewImageUrl = extractImageFromTokenURI(tokenURIResult.tokenURI);
       console.log(`Preview image extracted: ${previewImageUrl ? 'Yes' : 'No'}`);
       
+      if (!previewImageUrl) {
+        console.warn("Could not extract preview image from tokenURI. Using the original compressed image for preview.");
+        // If we can't extract the image from the tokenURI, use the original compressed image
+        // This ensures we at least show something in the preview
+        if (compressedResult.preview) {
+          console.log("Using original compressed image preview as fallback");
+        }
+      }
+      
       // Show preview modal before proceeding
       setPreviewModalData({
         show: true,
-        imageDataUrl: previewImageUrl,
+        imageDataUrl: previewImageUrl || compressedResult.preview, // Use original preview as fallback
         title: titleStr,
         description: descriptionStr,
-        tokenURIHash,
-        originalHash,
+        tokenURIHash: hashResult.tokenURIHash,
+        originalHash: hashResult.originalHash,
         compressedSize: tokenURIResult.size / 1024,
-        tokenURIString: tokenURIResult.tokenURI
+        tokenURIString: tokenURIResult.tokenURI,
+        hashesMatch: hashResult.match
       });
       
       setIsCompressing(false);
@@ -210,7 +218,7 @@ const ArtistForm: React.FC<{
     }
   };
 
-  // Add state for preview modal
+  // Update state for preview modal
   const [previewModalData, setPreviewModalData] = useState<{
     show: boolean;
     imageDataUrl: string | null;
@@ -220,6 +228,7 @@ const ArtistForm: React.FC<{
     originalHash: string;
     compressedSize: number;
     tokenURIString: string;
+    hashesMatch?: boolean;
   }>({
     show: false,
     imageDataUrl: null,
@@ -228,7 +237,8 @@ const ArtistForm: React.FC<{
     tokenURIHash: '',
     originalHash: '',
     compressedSize: 0,
-    tokenURIString: ''
+    tokenURIString: '',
+    hashesMatch: true
   });
 
   // Function to handle modal close and proceed with registration
