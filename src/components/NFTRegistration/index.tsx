@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { compressImage, getImageOrientation, revokePreviewUrl, CompressionResult, FormatType } from '../../utils/ImageCompressorUtil';
-import { formatTokenURI, reduceTokenURISize } from '../../utils/TokenURIFormatter';
+import { formatTokenURI, reduceTokenURISize, hashString, extractImageFromTokenURI } from '../../utils/TokenURIFormatter';
 import './NFTRegistration.css';
 import { ethers } from 'ethers';
 import contractConfig from '../../assets/contract_config.json';
 import abiLoader from '../../utils/abiLoader';
 import ethersService from '../../utils/ethers-service';
 import profileService from '../../utils/profile-service';
+import NFTPreviewModal from './NFTPreviewModal';
 
 // Define ArtistForm as a separate component with onBack prop
 const ArtistForm: React.FC<{
@@ -140,17 +141,6 @@ const ArtistForm: React.FC<{
       // Show loading state first
       setIsCompressing(true); // Reuse the compressing state to show loading
 
-      // First, make sure we're on the AnimeChain L3 network
-      if (networkType !== 'animechain') {
-        await switchToLayer('l3', 'mainnet');
-      }
-
-      // Get the signer for transaction
-      const signer = await ethersService.getSigner();
-      if (!signer) {
-        throw new Error("Failed to get signer");
-      }
-
       // Convert the image to bytes
       if (!compressedResult.blob) {
         throw new Error("Compressed image blob is not available");
@@ -181,9 +171,98 @@ const ArtistForm: React.FC<{
       console.log(`- Reduction applied: ${tokenURIResult.reductionApplied}`);
       console.log(`- First 100 chars: ${tokenURIResult.tokenURI.substring(0, 100)}...`);
       
-      // Instead of converting to bytes, keep the tokenURI as a string
-      // This matches the new String[45000] parameter in the contract
-      const tokenURIString = tokenURIResult.tokenURI;
+      // Hash the original data and the tokenURI for verification
+      const originalData = JSON.stringify({
+        title: titleStr,
+        description: descriptionStr,
+        image: Array.from(imageDataArray) // Convert to regular array for JSON
+      });
+      
+      const originalHash = await hashString(originalData);
+      const tokenURIHash = await hashString(tokenURIResult.tokenURI);
+      
+      console.log(`Original data hash: ${originalHash}`);
+      console.log(`TokenURI hash: ${tokenURIHash}`);
+      console.log(`Hash match: ${originalHash === tokenURIHash ? 'Yes' : 'No'}`);
+      
+      // Extract the image data for preview
+      const previewImageUrl = extractImageFromTokenURI(tokenURIResult.tokenURI);
+      console.log(`Preview image extracted: ${previewImageUrl ? 'Yes' : 'No'}`);
+      
+      // Show preview modal before proceeding
+      setPreviewModalData({
+        show: true,
+        imageDataUrl: previewImageUrl,
+        title: titleStr,
+        description: descriptionStr,
+        tokenURIHash,
+        originalHash,
+        compressedSize: tokenURIResult.size / 1024,
+        tokenURIString: tokenURIResult.tokenURI
+      });
+      
+      setIsCompressing(false);
+
+    } catch (error) {
+      setIsCompressing(false);
+      console.error("Error preparing artwork:", error);
+      alert(`Error preparing artwork: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // Add state for preview modal
+  const [previewModalData, setPreviewModalData] = useState<{
+    show: boolean;
+    imageDataUrl: string | null;
+    title: string;
+    description: string;
+    tokenURIHash: string;
+    originalHash: string;
+    compressedSize: number;
+    tokenURIString: string;
+  }>({
+    show: false,
+    imageDataUrl: null,
+    title: '',
+    description: '',
+    tokenURIHash: '',
+    originalHash: '',
+    compressedSize: 0,
+    tokenURIString: ''
+  });
+
+  // Function to handle modal close and proceed with registration
+  const handleModalClose = () => {
+    setPreviewModalData(prev => ({ ...prev, show: false }));
+  };
+
+  // Function to proceed with registration after preview
+  const proceedWithRegistration = async () => {
+    if (!isTrulyConnected) {
+      alert("Please connect your wallet to register your artwork");
+      connectWallet();
+      return;
+    }
+
+    try {
+      // Show loading state
+      setIsCompressing(true);
+
+      // First, make sure we're on the AnimeChain L3 network
+      if (networkType !== 'animechain') {
+        await switchToLayer('l3', 'mainnet');
+      }
+
+      // Get the signer for transaction
+      const signer = await ethersService.getSigner();
+      if (!signer) {
+        throw new Error("Failed to get signer");
+      }
+      
+      // Use the tokenURI string from preview modal data
+      const tokenURIString = previewModalData.tokenURIString;
+      const titleStr = previewModalData.title;
+      const descriptionStr = previewModalData.description;
       
       // Get the commissionHub address from the config
       const commissionHubAddress = contractConfig.networks.mainnet.commissionHub.address || ethers.ZeroAddress;
@@ -317,9 +396,9 @@ const ArtistForm: React.FC<{
             artist: walletAddress,
             owner: walletAddress,
             artworkTitle: titleStr,
-            tokenURISize: tokenURIResult.size,
-            imageFormat: compressedResult.format,
-            dimensions: compressedResult.dimensions,
+            tokenURISize: previewModalData.compressedSize,
+            imageFormat: compressedResult?.format || preferredFormat,
+            dimensions: compressedResult?.dimensions || { width: 0, height: 0 },
           });
           
         } catch (error) {
@@ -339,38 +418,6 @@ const ArtistForm: React.FC<{
       alert(`Error registering artwork: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-
-  // Add the format selector component
-  const FormatSelector = () => (
-    <div className="format-selector-container">
-      <h4>Image Format <span className="required">*</span></h4>
-      <div className="format-selector">
-        {[
-          { type: 'image/avif', name: 'AVIF', description: 'Best compression and quality' },
-          { type: 'image/webp', name: 'WebP', description: 'Good balance of size and quality' },
-          { type: 'image/jpeg', name: 'JPEG', description: 'Best compatibility' }
-        ].map(format => (
-          <div 
-            key={format.type}
-            className={`format-option ${preferredFormat === format.type ? 'selected' : ''}`}
-            onClick={() => setPreferredFormat(format.type as FormatType)}
-          >
-            <div className="format-option-inner">
-              <div className="format-selector-radio">
-                <div className="radio-outer">
-                  <div className={`radio-inner ${preferredFormat === format.type ? 'active' : ''}`}></div>
-                </div>
-              </div>
-              <div className="format-details">
-                <span className="format-name">{format.name}</span>
-                <span className="format-description">{format.description}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <div className="registration-form">
@@ -403,6 +450,32 @@ const ArtistForm: React.FC<{
                   <span>Size: {compressedResult.compressedSize.toFixed(2)} KB</span>
                   <span>Format: {compressedResult.format}</span>
                   <span>Dimensions: {compressedResult.dimensions.width}x{compressedResult.dimensions.height}</span>
+                  <div className="format-selector-overlay">
+                    <span className="format-label">Format:</span>
+                    <div className="format-options-overlay">
+                      {[
+                        { type: 'image/avif', name: 'AVIF (preferred)' },
+                        { type: 'image/webp', name: 'WebP' },
+                        { type: 'image/jpeg', name: 'JPEG' }
+                      ].map(format => (
+                        <div 
+                          key={format.type}
+                          className={`format-radio ${preferredFormat === format.type ? 'selected' : ''}`}
+                          onClick={() => {
+                            setPreferredFormat(format.type as FormatType);
+                            if (selectedImage) {
+                              compressImageFile(selectedImage);
+                            }
+                          }}
+                        >
+                          <div className="radio-outer-small">
+                            <div className={`radio-inner-small ${preferredFormat === format.type ? 'active' : ''}`}></div>
+                          </div>
+                          <span className="format-name-small">{format.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -445,6 +518,32 @@ const ArtistForm: React.FC<{
                     <span>Size: {compressedResult.compressedSize.toFixed(2)} KB</span>
                     <span>Format: {compressedResult.format}</span>
                     <span>Dimensions: {compressedResult.dimensions.width}x{compressedResult.dimensions.height}</span>
+                    <div className="format-selector-overlay">
+                      <span className="format-label">Format:</span>
+                      <div className="format-options-overlay">
+                        {[
+                          { type: 'image/avif', name: 'AVIF (preferred)' },
+                          { type: 'image/webp', name: 'WebP' },
+                          { type: 'image/jpeg', name: 'JPEG' }
+                        ].map(format => (
+                          <div 
+                            key={format.type}
+                            className={`format-radio ${preferredFormat === format.type ? 'selected' : ''}`}
+                            onClick={() => {
+                              setPreferredFormat(format.type as FormatType);
+                              if (selectedImage) {
+                                compressImageFile(selectedImage);
+                              }
+                            }}
+                          >
+                            <div className="radio-outer-small">
+                              <div className={`radio-inner-small ${preferredFormat === format.type ? 'active' : ''}`}></div>
+                            </div>
+                            <span className="format-name-small">{format.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -454,9 +553,6 @@ const ArtistForm: React.FC<{
         
         <form>
           <div className="form-content">
-            {/* Format selector comes right after artwork section and before title input */}
-            <FormatSelector />
-            
             <div className="form-group">
               <label htmlFor="artwork-title">
                 Artwork Title <span className="required">*</span>
@@ -508,6 +604,19 @@ const ArtistForm: React.FC<{
             </button>
           </div>
         </form>
+        
+        {/* Add the preview modal */}
+        <NFTPreviewModal
+          show={previewModalData.show}
+          onClose={handleModalClose}
+          imageDataUrl={previewModalData.imageDataUrl}
+          title={previewModalData.title}
+          description={previewModalData.description}
+          tokenURIHash={previewModalData.tokenURIHash}
+          originalHash={previewModalData.originalHash}
+          compressedSize={previewModalData.compressedSize}
+          onProceed={proceedWithRegistration}
+        />
       </div>
     </div>
   );

@@ -560,7 +560,7 @@ const ImageCompressor: React.FC = () => {
                   Change Image
                 </button>
                 <button onClick={handleDownload} className="download-button">
-                  Download
+                  Download Compressed
                 </button>
               </div>
               <div className="image-info">

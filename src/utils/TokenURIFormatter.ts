@@ -118,4 +118,46 @@ export const reduceTokenURISize = (
   
   console.log(`Size reduction successful. Final size: ${result.size} bytes`);
   return { ...result, reductionApplied: true };
+};
+
+/**
+ * Hash a string using SHA-256
+ * @param data String to hash
+ * @returns Promise that resolves to the hex hash
+ */
+export const hashString = async (data: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const dataBuffer = encoder.encode(data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+};
+
+/**
+ * Extract the image data from a tokenURI for preview purposes
+ * @param tokenURI The tokenURI string containing base64 encoded image data
+ * @returns The image data URL that can be used in an img src attribute
+ */
+export const extractImageFromTokenURI = (tokenURI: string): string | null => {
+  try {
+    // Parse the JSON data from the tokenURI
+    // First find where the data:application/json;base64, part ends
+    const base64JsonStart = tokenURI.indexOf('base64,') + 7;
+    if (base64JsonStart === 6) return null; // Not found
+    
+    // Extract and decode the base64 JSON
+    const base64Json = tokenURI.substring(base64JsonStart);
+    const jsonString = atob(base64Json);
+    const metadata = JSON.parse(jsonString);
+    
+    // Extract the image data
+    if (metadata.image) {
+      return metadata.image;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error extracting image from tokenURI:', error);
+    return null;
+  }
 }; 
