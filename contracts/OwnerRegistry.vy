@@ -1,4 +1,13 @@
 # @version 0.4.1
+
+# Copyright (c) 2025 Andrew Theiss
+# This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+# To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+# 
+# Permission is hereby granted to use, share, and modify this code for non-commercial purposes only,
+# provided that appropriate credit is given to the original author.
+# For commercial use, please contact the author for permission.
+
 # Function to handle owner verification on L3
 # This takes in messages from the L2 and updates a registry of nft/id pairs to their owner
 # This handles taking queries from other contracts on L3 and returning the owner of the NFT
