@@ -18,7 +18,7 @@
 deployer: public(address)  # New variable to store the deployer's address
 hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
-profileImage: public(Bytes[45000])
+profileImage: public(address)  # Changed from Bytes[45000] to address
 profileImageFormat: public(String[10])
 
 # Commissions and counters
@@ -96,7 +96,7 @@ def initialize(_owner: address):
 
 # Remove an item from a dynamic array by swapping with the last element
 @internal
-def _removeFromArray(_array: DynArray[address, 100000], _item: address):
+def _removeFromArray(_array: DynArray[address, 10**9], _item: address):
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(_array), bound=1000):
@@ -112,7 +112,7 @@ def _removeFromArray(_array: DynArray[address, 100000], _item: address):
 # Get a paginated slice of a dynamic array
 @internal
 @view
-def _getArraySlice(_array: DynArray[address, 100000], _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+def _getArraySlice(_array: DynArray[address, 10**9], _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     start: uint256 = _page * _page_size
     end: uint256 = start + _page_size
@@ -127,7 +127,7 @@ def _getArraySlice(_array: DynArray[address, 100000], _page: uint256, _page_size
 # Get a paginated slice in reverse order (newest first)
 @internal
 @view
-def _getArraySliceReverse(_array: DynArray[address, 100000], _total_count: uint256, _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+def _getArraySliceReverse(_array: DynArray[address, 10**9], _total_count: uint256, _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     
     # If array is empty or invalid page, return empty result
@@ -135,7 +135,7 @@ def _getArraySliceReverse(_array: DynArray[address, 100000], _total_count: uint2
         return result
     
     # Calculate the start index from the end (newest items first)
-    start: uint256 = _total_count - (_page * _page_size) - 1
+    start: uint256 = _total_count - 1 - (_page * _page_size)
     # Calculate how many items to return
     items_to_return: uint256 = min(_page_size, start + 1)
     
@@ -160,7 +160,7 @@ def setIsArtist(_is_artist: bool):
 
 # Set profile image
 @external
-def setProfileImage(_image: Bytes[45000]):
+def setProfileImage(_image: address):  # Changed parameter type from Bytes[45000] to address
     assert msg.sender == self.owner, "Only owner can set profile image"
     self.profileImage = _image
 

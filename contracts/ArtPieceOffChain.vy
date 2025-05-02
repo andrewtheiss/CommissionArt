@@ -70,8 +70,8 @@ INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
 TOKEN_ID: constant(uint256) = 1
 
 # ArtPiece variables
-tokenURI_data: Bytes[45000]  # Changed from imageData to tokenURI_data as String
-tokenURI_data_format: String[10]  # Format of the tokenURI_data   
+token_uri: public(String[200])  # Traditional NFT token URI
+tokenURI_data_format: public(String[10])  # Format of the tokenURI_data   
 title: String[100]  # Title of the artwork
 description: String[200]  # Description with 200 byte limit
 owner: address
@@ -101,11 +101,11 @@ def __init__():
     self.initialized = False
     self.name = ""
     self.symbol = ""
+    self.tokenURI_data_format = "OffChain"
 
 @external
 def initialize(
-    _token_uri_data: Bytes[45000],  # Changed parameter type and name
-    _token_uri_data_format: String[10],  # Format of the tokenURI_data
+    _token_uri: String[200],  # Now a standard token url
     _title_input: String[100], 
     _description_input: String[200], 
     _owner_input: address, 
@@ -117,8 +117,8 @@ def initialize(
     Initialize the ArtPiece contract, can only be called once
     """
     assert not self.initialized, "Already initialized"
-    self.tokenURI_data = _token_uri_data  # Updated field name
-    self.tokenURI_data_format = _token_uri_data_format  # Updated field name
+    self.token_uri = _token_uri  # Store token_uri
+    self.tokenURI_data_format = "OffChain"  # Always "OffChain" for this contract
     self.title = _title_input
     self.description = _description_input
     self.owner = _owner_input
@@ -276,33 +276,46 @@ def _isContract(_addr: address) -> bool:
     return _addr != empty(address)
 
 # URI Functions
-# TODO - convert to BASE64 encoded json object
-# Otuput: data:application/json;base64,
 @external
 @view
-def tokenURI(_tokenId: uint256) -> String[100000]:  # Updated return type
+def tokenURI(_tokenId: uint256) -> String[200]:  # Updated to use traditional token URI
     """
     @notice Get the URI for a token
     @param _tokenId The token ID
     @return The token URI
     """
     assert _tokenId == TOKEN_ID, "Invalid token ID"
+    # Return the stored token_uri
+    return self.token_uri
 
-    temp: String[100000] = ""
-    # Return the stored tokenURI data
-    return temp
-
-# Original ArtPiece Functions, with updated names
+# Original ArtPiece Functions, with updated names for compatibility
 @external
 @view
-def getTokenURIData() -> Bytes[45000]:  # Renamed from getImageData
-    return self.tokenURI_data
+def getTokenURIData() -> Bytes[45000]:  # Keep for compatibility
+    """
+    @notice Returns empty bytes for backward compatibility
+    @return Empty bytes
+    """
+    return b""
 
 # Added for backwards compatibility
 @external
 @view
-def getImageData() -> Bytes[45000]:  # Return type updated to String
-    return self.tokenURI_data
+def getImageData() -> Bytes[45000]:  # Keep for compatibility
+    """
+    @notice Returns empty bytes for backward compatibility
+    @return Empty bytes
+    """
+    return b""
+
+@external
+@view
+def getTokenURIDataFormat() -> String[10]:
+    """
+    @notice Returns the format of the token URI data, always "OffChain"
+    @return Always "OffChain"
+    """
+    return self.tokenURI_data_format
 
 @external
 @view
