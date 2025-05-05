@@ -436,24 +436,25 @@ const ArtistForm: React.FC<{
       const descriptionStr = artworkDescription.trim();
       
       // Log the original compressed image format and data
-      console.log(`Using original compressed image in format: ${compressedResult.format}`);
+      console.log(`Using compressed image in format: ${compressedResult.format}`);
       
       // Convert the image to raw byte array
       const imageDataArray = new Uint8Array(await compressedResult.blob.arrayBuffer());
       console.log(`Raw image data length: ${imageDataArray.length} bytes`);
       console.log(`First few bytes: [${Array.from(imageDataArray.slice(0, 10)).join(', ')}...]`);
       
-      // Extract the MIME type from the data URL
+      // Extract the format from the MIME type
       const mimeTypeMatch = compressedResult.preview?.match(/^data:(image\/[^;]+);base64,/);
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/avif';
-      console.log(`Detected MIME type: ${mimeType}`);
+      const formatStr = mimeType.split('/')[1]; // Extract just the format part (avif, webp, jpeg)
+      console.log(`Detected MIME type: ${mimeType}, Format: ${formatStr}`);
 
-      // Proceed directly with registration
+      // Proceed directly with registration using raw image data and format
       await proceedWithRegistration(
         titleStr,
         descriptionStr,
         imageDataArray,
-        mimeType
+        formatStr
       );
     } catch (error) {
       setIsCompressing(false);
