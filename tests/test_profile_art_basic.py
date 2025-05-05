@@ -106,7 +106,8 @@ def test_create_art_piece_owner(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiT3duZXIgQ29tbWlzc2lvbiIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIG93bmVyIGNvbW1pc3Npb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDhzQVVJQUFBQU9TVVJCVkFqWFk4UUJBbUlBbklFQjVnQUFBQUJKUlU1RXJrSmdnZz09In0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiT3duZXIgQ29tbWlzc2lvbiIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIG93bmVyIGNvbW1pc3Npb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDhzQVVJQUFBQU9TVVJCVkFqWFk4UUJBbUlBbklFQjVnQUFBQUJKUlU1RXJrSmdnZz09In0="
+    token_uri_data_format = "avif"
     title = "Owner Commission"
     description = "Description for owner commission"
     
@@ -117,6 +118,7 @@ def test_create_art_piece_owner(setup):
     tx_receipt = owner_profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        token_uri_data_format,
         title,
         description,
         False,  # Not as artist
@@ -150,7 +152,8 @@ def test_create_art_piece_artist(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQXJ0aXN0IENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJBcnR3b3JrIGNyZWF0ZWQgYnkgYW4gYXJ0aXN0IiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQjNSSlRVVUg1QW9WRnQ5djhIRUFBQUFNU1VSQlZBalhZOFFCQWxvQWtXOEIzd0FBQUFCSLVVRK9Sa0pnZ2c9PSJ9"
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQXJ0aXN0IENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJBcnR3b3JrIGNyZWF0ZWQgYnkgYW4gYXJ0aXN0IiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQjNSSlRVVUg1QW9WRnQ5djhIRUFBQUFNU1VSQlZBalhZOFFCQWxvQWtXOEIzd0FBQUFCSLVVRK9Sa0pnZ2c9PSJ9"
+    token_uri_data_format = "avif"
     title = "Artist Creation"
     description = "Artwork created by an artist"
     
@@ -161,6 +164,7 @@ def test_create_art_piece_artist(setup):
     tx_receipt = artist_profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        token_uri_data_format,
         title,
         description,
         True,  # As artist
@@ -207,13 +211,15 @@ def test_direct_profile_creation_and_art(setup):
     profile = project.Profile.at(profile_address)
     
     # Now create an art piece through the profile
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQ29tbWlzc2lvbmVyIENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJBcnQgY3JlYXRlZCBieSBjb21taXNzaW9uZXIiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlOTFhFQUFBQVFTVVJCVkFqWFk4UUJBbFFBbjRrQzl3QUFBQUJKUlU1RXJrSmdnZz09In0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQ29tbWlzc2lvbmVyIENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJBcnQgY3JlYXRlZCBieSBjb21taXNzaW9uZXIiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlOTFhFQUFBQVFTVVJCVkFqWFk4UUJBbFFBbjRrQzl3QUFBQUJKUlU1RXJrSmdnZz09In0="
+    token_uri_data_format = "avif"
     title = "Commissioner Creation"
     description = "Art created by commissioner"
     
     tx_receipt = profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        token_uri_data_format,
         title,
         description,
         False,  # Not as artist
@@ -245,7 +251,8 @@ def test_get_art_piece_at_index_single(setup):
     commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiU2luZ2xlIEFydCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIHNpbmdsZSBhcnQgcGllY2UiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlQOVFFQUFBQUxTVVJCVkFqWFk4UUJBa3dBbUlRQjVnQUFBQUJKUlU1RXJrSmdnZz09In0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiU2luZ2xlIEFydCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIHNpbmdsZSBhcnQgcGllY2UiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlQOVFFQUFBQUxTVVJCVkFqWFk4UUJBa3dBbUlRQjVnQUFBQUJKUlU1RXJrSmdnZz09In0="
+    token_uri_data_format = "avif"
     title = "Single Art Piece"
     description = "Description for single art piece"
     
@@ -253,6 +260,7 @@ def test_get_art_piece_at_index_single(setup):
     tx_receipt = owner_profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        token_uri_data_format,
         title,
         description,
         False,  # Not as artist
@@ -288,10 +296,11 @@ def test_get_art_piece_at_index_multiple(setup):
     # Create 3 art pieces with different titles
     art_titles = ["First Art Piece", "Second Art Piece", "Third Art Piece"]
     token_uri_data_templates = [
-        "data:application/json;base64,eyJuYW1lIjoiRmlyc3QgQXJ0IFBpZWNlIiwiZGVzY3JpcHRpb24iOiJEZXNjcmlwdGlvbiBmb3IgYXJ0IHBpZWNlIDEiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlhUDJFQUFBQU1TVVJCVkFqWFk4UUJBbGdBb0lJQjVBQUFBQUJKUlU1RXJrSmdnZz09In0=",
-        "data:application/json;base64,eyJuYW1lIjoiU2Vjb25kIEFydCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIGFydCBwaWVjZSAyIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQjNSSlRVVUg1QW9WRnQ5blFGc0FBQUFNU1VSQlZBalhZOFFCQW1BQW1vUUI2QUFBQUFCSlJVNUVya0pnZ2c9PSJ9",
-        "data:application/json;base64,eyJuYW1lIjoiVGhpcmQgQXJ0IFBpZWNlIiwiZGVzY3JpcHRpb24iOiJEZXNjcmlwdGlvbiBmb3IgYXJ0IHBpZWNlIDMiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDhTSnpNQUFBQU1TVVJCVkFqWFk4UUJBbmdBbm9jQ0FBQUFBQUJKUlU1RXJrSmdnZz09In0="
+        b"data:application/json;base64,eyJuYW1lIjoiRmlyc3QgQXJ0IFBpZWNlIiwiZGVzY3JpcHRpb24iOiJEZXNjcmlwdGlvbiBmb3IgYXJ0IHBpZWNlIDEiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlhUDJFQUFBQU1TVVJCVkFqWFk4UUJBbGdBb0lJQjVBQUFBQUJKUlU1RXJrSmdnZz09In0=",
+        b"data:application/json;base64,eyJuYW1lIjoiU2Vjb25kIEFydCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiRGVzY3JpcHRpb24gZm9yIGFydCBwaWVjZSAyIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQjNSSlRVVUg1QW9WRnQ5blFGc0FBQUFNU1VSQlZBalhZOFFCQW1BQW1vUUI2QUFBQUFCSlJVNUVya0pnZ2c9PSJ9",
+        b"data:application/json;base64,eyJuYW1lIjoiVGhpcmQgQXJ0IFBpZWNlIiwiZGVzY3JpcHRpb24iOiJEZXNjcmlwdGlvbiBmb3IgYXJ0IHBpZWNlIDMiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDhTSnpNQUFBQU1TVVJCVkFqWFk4UUJBbmdBbm9jQ0FBQUFBQUJKUlU1RXJrSmdnZz09In0="
     ]
+    token_uri_data_format = "avif"
     created_addresses = []
     
     for i, title in enumerate(art_titles):
@@ -299,6 +308,7 @@ def test_get_art_piece_at_index_multiple(setup):
         tx_receipt = owner_profile.createArtPiece(
             art_piece_template.address,
             token_uri_data_templates[i],
+            token_uri_data_format,
             title,
             f"Description for art piece {i+1}",
             False,  # Not as artist

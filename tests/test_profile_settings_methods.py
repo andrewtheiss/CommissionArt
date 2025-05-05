@@ -100,32 +100,32 @@ def test_set_is_artist(setup):
         owner_profile.setIsArtist(True, sender=other_user)
 
 def test_profile_image_methods(setup):
-    """Test profile image methods"""
+    """Test setting profile images"""
     owner = setup["owner"]
     owner_profile = setup["owner_profile"]
     other_user = setup["other_user"]
     
-    # Test initial state
-    assert len(owner_profile.profileImage()) == 0
+    # Test initial state - profile image should be empty address
+    assert owner_profile.profileImage() == "0x0000000000000000000000000000000000000000"
     
-    # Test setting profile image
-    image1 = "data:application/json;base64,eyJuY41lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    owner_profile.setProfileImage(image1, sender=owner)
-    assert owner_profile.profileImage() == image1
+    # Test setting profile image (using address instead of bytes)
+    profile_image1 = "0x1111111111111111111111111111111111111111"
+    owner_profile.setProfileImage(profile_image1, sender=owner)
+    assert owner_profile.profileImage() == profile_image1
     
     # Set second image to trigger history storage
-    image2 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3tpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    owner_profile.setProfileImage(image2, sender=owner)
-    assert owner_profile.profileImage() == image2
+    profile_image2 = "0x2222222222222222222222222222222222222222"
+    owner_profile.setProfileImage(profile_image2, sender=owner)
+    assert owner_profile.profileImage() == profile_image2
     
     # Set third image
-    image3 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gRGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    owner_profile.setProfileImage(image3, sender=owner)
-    assert owner_profile.profileImage() == image3
+    profile_image3 = "0x3333333333333333333333333333333333333333"
+    owner_profile.setProfileImage(profile_image3, sender=owner)
+    assert owner_profile.profileImage() == profile_image3
     
     # Attempt by non-owner should fail
     with pytest.raises(Exception):
-        owner_profile.setProfileImage(b"unauthorized image", sender=other_user)
+        owner_profile.setProfileImage("0x4444444444444444444444444444444444444444", sender=other_user)
 
 def test_set_allow_unverified_commissions(setup):
     """Test setting allow unverified commissions flag"""
@@ -281,7 +281,7 @@ def test_create_art_piece(setup):
     assert owner_profile.myArtCount() == 0
     
     # Create an art piece as commissioner
-    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Art Piece"
     description = "Test description for art piece"
     
@@ -289,6 +289,7 @@ def test_create_art_piece(setup):
     owner_profile.createArtPiece(
         art_piece_template.address,
         image_data,
+        "avif",
         title,
         description,
         False,  # Not as artist

@@ -86,24 +86,26 @@ def test_profile_set_profile_image(setup):
     profile_address = profile_hub.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
-    # Set profile image
-    image1 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(image1, sender=user1)
+    # Set profile image (using address instead of bytes)
+    profile_image_address = "0x1111111111111111111111111111111111111111"
+    profile.setProfileImage(profile_image_address, sender=user1)
     
     # Check current profile image
-    assert profile.profileImage() == image1
-    
-    # Set another profile image to create history
-    image2 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(image2, sender=user1)
-    
-    # Check updated profile image and history
-    assert profile.profileImage() == image2
+    assert profile.profileImage() == profile_image_address
     
     # Set another profile image
-    image3 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(image3, sender=user1)
-
+    profile_image_address2 = "0x2222222222222222222222222222222222222222"
+    profile.setProfileImage(profile_image_address2, sender=user1)
+    
+    # Check updated profile image
+    assert profile.profileImage() == profile_image_address2
+    
+    # Set another profile image
+    profile_image_address3 = "0x3333333333333333333333333333333333333333"
+    profile.setProfileImage(profile_image_address3, sender=user1)
+    
+    # Check updated profile image
+    assert profile.profileImage() == profile_image_address3
 
 def test_profile_hub_create_profile(setup):
     """Test creating a profile through the ProfileHub"""
@@ -317,53 +319,56 @@ def test_get_user_profiles_empty(setup):
     assert len(empty_result) == 0
 
 def test_create_new_commission_and_register_profile(setup):
-    """Test creating a new commission and profile in one transaction"""
-    profile_hub = setup["profile_hub"]
+    """Test creating a new profile and art piece in one transaction"""
     user1 = setup["user1"]
     artist = setup["artist"]
+    profile_hub = setup["profile_hub"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
-    # Verify user doesn't have a profile yet
+    # Verify user1 doesn't have a profile yet
     assert profile_hub.hasProfile(user1.address) == False
     
-    # First create a regular profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
-    profile = project.Profile.at(profile_address)
-    
     # Sample art piece data
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Commission"
-    description = "Test commission description"
-    is_artist = False  # User is not the artist
+    description = "Description for test commission"
     
-    # Create art piece directly on the profile
-    profile.createArtPiece(
+    # Create profile and commission in one transaction
+    result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
-        token_uri_data,
+        image_data,
+        "avif",
         title,
         description,
-        is_artist,
-        artist.address,  # Artist is the other party
+        False,  # Not an artist
+        artist.address,  # Artist address
         commission_hub.address,
         False,  # Not AI generated
         sender=user1
     )
     
-    # Verify the profile was created
+    # Verify profile was created
     assert profile_hub.hasProfile(user1.address) == True
+    
+    # Load the profile
+    profile_address = profile_hub.getProfile(user1.address)
+    profile = project.Profile.at(profile_address)
     
     # Verify art piece was created
     assert profile.myArtCount() == 1
     
-    # Get the art piece address from the profile
+    # Get the art piece
     art_pieces = profile.getLatestArtPieces()
-    assert len(art_pieces) > 0
+    assert len(art_pieces) == 1
     
-    # Verify the art piece exists
+    # Load and verify the art piece
     art_piece = project.ArtPiece.at(art_pieces[0])
     assert art_piece.getTitle() == title
+    assert art_piece.getTokenURIData() == image_data
+    assert art_piece.getDescription() == description
+    assert art_piece.getOwner() == user1.address
+    assert art_piece.getArtist() == artist.address
 
 def test_create_art_piece_permission_check(setup):
     """Test that only the profile owner can create art pieces"""
@@ -431,44 +436,46 @@ def test_combined_profile_method_with_existing_profile(setup):
         )
 
 def test_combined_profile_and_commission_creation(setup):
-    """Test the combined profile and commission creation method on ProfileHub"""
-    profile_hub = setup["profile_hub"]
-    deployer = setup["deployer"]
+    """Test combined profile creation with commission"""
     user1 = setup["user1"]
     artist = setup["artist"]
+    profile_hub = setup["profile_hub"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
-    # Verify the user doesn't have a profile yet
+    # Verify user1 doesn't have a profile yet
     assert profile_hub.hasProfile(user1.address) == False
     
-    # The deployer would need to call this method as it likely has privileged access
-    # in production this would be done through a proper frontend contract with permissions
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQ29tYmluZWQgVGVzdCIsImRlc2NyaXB0aW9uIjoiVGVzdGluZyBjb21iaW5lZCBjcmVhdGlvbiIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
-    title = "Combined Test"
-    description = "Testing combined creation"
+    # Sample art piece data
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    title = "Combined Creation"
+    description = "Description for combined creation"
     
-    # Mock data to test the method signature but we won't actually call it
-    # since the implementation may have permission requirements
-    mock_call = {
-        "function": profile_hub.createNewArtPieceAndRegisterProfile,
-        "args": [
-            art_piece_template.address,
-            token_uri_data,
-            title,
-            description,
-            False,  # Not artist
-            artist.address,
-            commission_hub.address,
-            False,  # Not AI generated
-        ],
-        "sender": user1
-    }
+    # Create profile and commission in one transaction
+    result = profile_hub.createNewArtPieceAndRegisterProfile(
+        art_piece_template.address,
+        image_data,
+        "avif",
+        title,
+        description,
+        False,  # Not an artist
+        artist.address,  # Artist address
+        commission_hub.address,
+        False,  # Not AI generated
+        sender=user1
+    )
     
-    # Instead of actually calling, we'll verify the method exists with correct signature
-    assert hasattr(profile_hub, "createNewArtPieceAndRegisterProfile")
-    
-    # Create profile the normal way for testing
-    profile_hub.createProfile(sender=user1)
+    # Verify the results match expectations
     profile_address = profile_hub.getProfile(user1.address)
-    assert profile_address != "0x0000000000000000000000000000000000000000" 
+    profile = project.Profile.at(profile_address)
+    assert profile.owner() == user1.address
+    
+    art_pieces = profile.getLatestArtPieces()
+    assert len(art_pieces) == 1
+    
+    art_piece = project.ArtPiece.at(art_pieces[0])
+    assert art_piece.getTitle() == title
+    assert art_piece.getTokenURIData() == image_data
+    assert art_piece.getDescription() == description
+    assert art_piece.getOwner() == user1.address
+    assert art_piece.getArtist() == artist.address 
