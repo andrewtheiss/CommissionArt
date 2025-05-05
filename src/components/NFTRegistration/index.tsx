@@ -9,7 +9,6 @@ import contractConfig from '../../assets/contract_config.json';
 import abiLoader from '../../utils/abiLoader';
 import ethersService from '../../utils/ethers-service';
 import profileService from '../../utils/profile-service';
-import NFTPreviewModal from './NFTPreviewModal';
 
 // Add interfaces for our new compression code:
 interface CompressionResult {
@@ -427,12 +426,10 @@ const ArtistForm: React.FC<{
 
     try {
       // Show loading state first
-      setIsCompressing(true); // Reuse the compressing state to show loading
+      setIsCompressing(true);
 
-      // Get the image data directly from the preview URL instead of converting to bytes
-      // This prevents any format conversion issues (AVIF to WebP)
-      if (!compressedResult.preview) {
-        throw new Error("Compressed image preview is not available");
+      if (!compressedResult.blob) {
+        throw new Error("Compressed image blob is not available");
       }
       
       const titleStr = artworkTitle.trim();
@@ -440,398 +437,57 @@ const ArtistForm: React.FC<{
       
       // Log the original compressed image format and data
       console.log(`Using original compressed image in format: ${compressedResult.format}`);
-      console.log(`Original image data URL starts with: ${compressedResult.preview.substring(0, 100)}...`);
+      
+      // Convert the image to raw byte array
+      const imageDataArray = new Uint8Array(await compressedResult.blob.arrayBuffer());
+      console.log(`Raw image data length: ${imageDataArray.length} bytes`);
+      console.log(`First few bytes: [${Array.from(imageDataArray.slice(0, 10)).join(', ')}...]`);
       
       // Extract the MIME type from the data URL
-      const mimeTypeMatch = compressedResult.preview.match(/^data:(image\/[^;]+);base64,/);
+      const mimeTypeMatch = compressedResult.preview?.match(/^data:(image\/[^;]+);base64,/);
       const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/avif';
       console.log(`Detected MIME type: ${mimeType}`);
-      
-      // Create a metadata object directly without converting to bytes first
-      const metadata = {
-        name: titleStr,
-        description: descriptionStr,
-        image: compressedResult.preview // Use the original data URL directly
-      };
-      
-      // Convert to JSON and then to base64
-      const metadataStr = JSON.stringify(metadata);
-      let base64Metadata = '';
-      try {
-        base64Metadata = btoa(metadataStr);
-      } catch (b64Error) {
-        console.error("Error encoding metadata to base64:", b64Error);
-        throw new Error("Failed to encode metadata to base64");
-      }
-      
-      // Create the tokenURI directly
-      const tokenURI = `data:application/json;base64,${base64Metadata}`;
-      const tokenURISize = new TextEncoder().encode(tokenURI).length;
-      
-      // Check character count - this is what matters for the contract limit!
-      const totalCharCount = tokenURI.length;
-      console.log(`TokenURI character count: ${totalCharCount} chars`);
 
-      // The actual limit is 45000 characters, not bytes
-      const maxCharCount = 45000; 
-      const maxSize = 44000; // Target slightly below 45,000 byte limit
-      
-      if (totalCharCount > maxCharCount) {
-        console.warn(`TokenURI size (${totalCharCount} characters) exceeds limit (${maxCharCount} characters).`);
-        console.warn("Will need to use a more aggressive reduction method.");
-        
-        // Try to create a reduced version directly by decreasing the image quality
-        try {
-          // First try to extract width and height from the original data URL
-          const imgForReduction = document.createElement('img');
-          await new Promise<void>((resolve, reject) => {
-            imgForReduction.onload = () => resolve();
-            imgForReduction.onerror = () => reject(new Error('Failed to load image for reduction'));
-            imgForReduction.src = compressedResult.preview || '';
-          });
-          
-          // Create a temporary image to draw from
-          const tempImg = document.createElement('img');
-          await new Promise<void>((resolve, reject) => {
-            tempImg.onload = () => resolve();
-            tempImg.onerror = () => reject(new Error('Failed to load image for emergency reduction'));
-            tempImg.src = compressedResult.preview || '';
-          });
-          
-          // Calculate smaller dimensions - target ~75% of original
-          const width = Math.floor(imgForReduction.width * 0.75);
-          const height = Math.floor(imgForReduction.height * 0.75);
-          
-          // Create a canvas with reduced dimensions
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(imgForReduction, 0, 0, width, height);
-          
-          // Get mime type
-          const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/avif';
-          
-          // Try a lower quality setting
-          let quality = 0.5; // Start with 50% quality
-          let reducedDataUrl;
-          let reducedTokenURI;
-          let reducedCharCount;
-          
-          do {
-            // Create data URL with current quality
-            reducedDataUrl = canvas.toDataURL(mimeType, quality);
-            
-            // Create new metadata with reduced image
-            const reducedMetadata = {
-              name: titleStr,
-              description: descriptionStr,
-              image: reducedDataUrl
-            };
-            
-            // Convert to JSON and base64
-            const reducedMetadataStr = JSON.stringify(reducedMetadata);
-            const reducedBase64Metadata = btoa(reducedMetadataStr);
-            
-            // Create tokenURI
-            reducedTokenURI = `data:application/json;base64,${reducedBase64Metadata}`;
-            reducedCharCount = reducedTokenURI.length;
-            
-            console.log(`Reduced TokenURI: ${reducedCharCount} chars with quality ${quality}`);
-            
-            // If still over limit, reduce quality more
-            if (reducedCharCount > maxCharCount) {
-              quality -= 0.1;
-              console.log(`Still over limit. Reducing quality to ${quality}`);
-            }
-            
-          } while (reducedCharCount > maxCharCount && quality > 0.2);
-          
-          // If we found a working quality level
-          if (reducedCharCount <= maxCharCount) {
-            console.log(`Found working quality level: ${quality.toFixed(2)}`);
-            console.log(`Reduced image dimensions: ${width}x${height}`);
-            console.log(`Final char count: ${reducedCharCount}`);
-            
-            const tokenURIResult = {
-              tokenURI: reducedTokenURI,
-              size: reducedTokenURI.length
-            };
-            
-            // Continue with this tokenURI
-            handleContinueWithTokenURI(tokenURIResult, titleStr, descriptionStr, mimeType);
-            return;
-          }
-        } catch (reductionError) {
-          console.error("Error with direct reduction:", reductionError);
-          console.log("Falling back to byte-based reduction method...");
-        }
-        
-        // Fall back to the regular process with imageData bytes if needed
-        if (!compressedResult.blob) {
-          throw new Error("Compressed image blob is not available for fallback");
-        }
-        
-        // Convert the image to bytes for the fallback method
-        const imageDataArray = new Uint8Array(await compressedResult.blob.arrayBuffer());
-        
-        // Format the token URI with potential size reduction if needed
-        const fallbackResult = reduceTokenURISize(
-          imageDataArray,
-          titleStr,
-          descriptionStr,
-          maxSize,
-          mimeType // Pass the correct MIME type
-        );
-        
-        console.log(`Used fallback method. Final size: ${fallbackResult.size} bytes`);
-        console.log(`Final char count: ${fallbackResult.tokenURI.length} characters`);
-        console.log(`Reduction applied: ${fallbackResult.reductionApplied}`);
-        
-        // Check character count again to be absolutely sure
-        if (fallbackResult.tokenURI.length > maxCharCount) {
-          console.error(`CRITICAL: Even after reduction, tokenURI is still ${fallbackResult.tokenURI.length} chars (max: ${maxCharCount})`);
-          
-          try {
-            // Emergency measure: truncate description and use minimum quality JPEG
-            const emergencyCanvas = document.createElement('canvas');
-            emergencyCanvas.width = Math.min(200, Math.floor(compressedResult.dimensions.width * 0.3));
-            emergencyCanvas.height = Math.min(200, Math.floor(compressedResult.dimensions.height * 0.3));
-            const emergencyCtx = emergencyCanvas.getContext('2d');
-            
-            // Create a temporary image to draw from
-            const tempImg = document.createElement('img');
-            await new Promise<void>((resolve, reject) => {
-              tempImg.onload = () => resolve();
-              tempImg.onerror = () => reject(new Error('Failed to load image for emergency reduction'));
-              tempImg.src = compressedResult.preview || '';
-            });
-            
-            emergencyCtx?.drawImage(tempImg, 0, 0, emergencyCanvas.width, emergencyCanvas.height);
-            
-            const emergencyDataUrl = emergencyCanvas.toDataURL('image/jpeg', 0.3);
-            const emergencyMetadata = {
-              name: titleStr.substring(0, 20), // Truncate title to 20 chars max
-              description: descriptionStr.substring(0, 30), // Truncate description to 30 chars max
-              image: emergencyDataUrl
-            };
-            
-            // Convert to JSON and base64
-            const emergencyMetadataStr = JSON.stringify(emergencyMetadata);
-            const emergencyBase64 = btoa(emergencyMetadataStr);
-            const emergencyTokenURI = `data:application/json;base64,${emergencyBase64}`;
-            
-            console.log(`Emergency tokenURI created with ${emergencyTokenURI.length} chars`);
-            
-            const emergencyResult = {
-              tokenURI: emergencyTokenURI,
-              size: new TextEncoder().encode(emergencyTokenURI).length
-            };
-            
-            // Use emergency tokenURI
-            handleContinueWithTokenURI(emergencyResult, titleStr, descriptionStr, 'image/jpeg');
-          } catch (emergencyError) {
-            console.error("Emergency reduction failed:", emergencyError);
-            alert("Could not reduce image size enough for blockchain storage. Please try a smaller or simpler image.");
-            setIsCompressing(false);
-            return;
-          }
-        } else {
-          // Update the tokenURI and size
-          const tokenURIResult = {
-            tokenURI: fallbackResult.tokenURI,
-            size: fallbackResult.size
-          };
-          
-          // Continue with this tokenURI
-          handleContinueWithTokenURI(tokenURIResult, titleStr, descriptionStr, mimeType);
-        }
-      } else {
-        // The direct method worked, continue with the tokenURI
-        console.log(`Direct tokenURI creation successful: ${tokenURISize} bytes, ${totalCharCount} characters`);
-        
-        const tokenURIResult = {
-          tokenURI: tokenURI,
-          size: tokenURISize
-        };
-        
-        // Continue with this tokenURI
-        handleContinueWithTokenURI(tokenURIResult, titleStr, descriptionStr, mimeType);
-      }
+      // Proceed directly with registration
+      await proceedWithRegistration(
+        titleStr,
+        descriptionStr,
+        imageDataArray,
+        mimeType
+      );
     } catch (error) {
       setIsCompressing(false);
       console.error("Error preparing artwork:", error);
       alert(`Error preparing artwork: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
-  
-  // Helper function to continue the registration process with a valid tokenURI
-  const handleContinueWithTokenURI = async (
-    tokenURIResult: { tokenURI: string, size: number },
+
+  // Function to proceed with registration
+  const proceedWithRegistration = async (
     titleStr: string,
     descriptionStr: string,
+    imageDataArray: Uint8Array,
     mimeType: string
   ) => {
-    try {
-      // Log the tokenURI details
-      console.log(`Formatted tokenURI:`);
-      console.log(`- Size: ${tokenURIResult.size} bytes`);
-      console.log(`- First 100 chars: ${tokenURIResult.tokenURI.substring(0, 100)}...`);
-      
-      // Output detailed tokenURI examination
-      console.log(`TokenURI analysis:`);
-      const base64Section = tokenURIResult.tokenURI.split(',')[1];
-      if (base64Section) {
-        console.log(`- Base64 section length: ${base64Section.length} chars`);
-        try {
-          // Try to decode and parse the JSON
-          const decodedJSON = atob(base64Section);
-          console.log(`- Decoded JSON first 100 chars: ${decodedJSON.substring(0, 100)}...`);
-          
-          try {
-            const parsedJSON = JSON.parse(decodedJSON);
-            // Log the image data if it exists
-            if (parsedJSON.image) {
-              console.log(`- Image data in tokenURI exists: ${typeof parsedJSON.image === 'string'}`);
-              console.log(`- Image data first 100 chars: ${parsedJSON.image.substring(0, 100)}...`);
-              
-              // Also check if it's a valid image data URL
-              if (parsedJSON.image.startsWith('data:image/')) {
-                console.log(`- Image appears to be a valid data URL`);
-                const imgBase64 = parsedJSON.image.split(',')[1];
-                if (imgBase64) {
-                  console.log(`- Image base64 length: ${imgBase64.length} chars (approx ${Math.round(imgBase64.length * 0.75 / 1024)} KB raw)`);
-                }
-              } else {
-                console.warn(`- Image data doesn't start with data:image/ - may be invalid`);
-              }
-            } else {
-              console.warn(`- No image field found in tokenURI JSON`);
-            }
-          } catch (jsonErr) {
-            console.error(`- Error parsing JSON from tokenURI: ${jsonErr}`);
-          }
-        } catch (b64Err) {
-          console.error(`- Error decoding base64 from tokenURI: ${b64Err}`);
-        }
-      }
-      
-      // For hash comparison, we need to create a similar structure as before
-      const imageDataArray = compressedResult?.blob ? 
-        new Uint8Array(await compressedResult.blob.arrayBuffer()) : 
-        new Uint8Array(0);
-      
-      // Use the improved hash comparison function
-      const hashResult = await createComparisonHashes(
-        {
-          title: titleStr,
-          description: descriptionStr, 
-          image: imageDataArray
-        },
-        tokenURIResult.tokenURI
-      );
-      
-      console.log(`Hash comparison result:`, hashResult);
-      
-      // Extract the image data for preview
-      const previewImageUrl = extractImageFromTokenURI(tokenURIResult.tokenURI);
-      console.log(`Preview image extracted: ${previewImageUrl ? 'Yes' : 'No'}`);
-      console.log(`Preview image URL starts with: ${previewImageUrl ? previewImageUrl.substring(0, 50) + '...' : 'None'}`);
-      
-      // Log the first part of the tokenURI to check its format
-      console.log(`TokenURI first 100 chars: ${tokenURIResult.tokenURI.substring(0, 100)}...`);
-      
-      // IMPORTANT: Always use the original compressed preview for the modal
-      // Do NOT use the extracted image from tokenURI as it may be corrupted
-      const modalImageUrl = compressedResult && compressedResult.preview ? compressedResult.preview : null;
-      console.log(`Using original compressed preview URL: ${modalImageUrl ? modalImageUrl.substring(0, 50) + '...' : 'None'}`);
-      
-      if (!modalImageUrl) {
-        console.error("No valid image URL available for modal preview. This should never happen.");
-        // Try to create a new preview URL if needed
-        if (compressedResult?.blob) {
-          const emergencyUrl = URL.createObjectURL(compressedResult.blob);
-          console.log("Created emergency preview URL from blob");
-          
-          // Show preview modal before proceeding
-          setPreviewModalData({
-            show: true,
-            imageDataUrl: emergencyUrl, // Use emergency URL
-            title: titleStr,
-            description: descriptionStr,
-            tokenURIHash: hashResult.tokenURIHash,
-            originalHash: hashResult.originalHash,
-            compressedSize: tokenURIResult.size / 1024,
-            tokenURIString: tokenURIResult.tokenURI,
-            hashesMatch: hashResult.match
-          });
-          
-          setIsCompressing(false);
-          return;
-        }
-      }
-      
-      // Show preview modal before proceeding
-      setPreviewModalData({
-        show: true,
-        imageDataUrl: modalImageUrl, // Always use direct compressed preview
-        title: titleStr,
-        description: descriptionStr,
-        tokenURIHash: hashResult.tokenURIHash,
-        originalHash: hashResult.originalHash,
-        compressedSize: tokenURIResult.size / 1024,
-        tokenURIString: tokenURIResult.tokenURI,
-        hashesMatch: hashResult.match
-      });
-      
-      setIsCompressing(false);
-    } catch (error) {
-      setIsCompressing(false);
-      console.error("Error in tokenURI handling:", error);
-      alert(`Error preparing artwork metadata: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
-  // Update state for preview modal
-  const [previewModalData, setPreviewModalData] = useState<{
-    show: boolean;
-    imageDataUrl: string | null;
-    title: string;
-    description: string;
-    tokenURIHash: string;
-    originalHash: string;
-    compressedSize: number;
-    tokenURIString: string;
-    hashesMatch?: boolean;
-  }>({
-    show: false,
-    imageDataUrl: null,
-    title: '',
-    description: '',
-    tokenURIHash: '',
-    originalHash: '',
-    compressedSize: 0,
-    tokenURIString: '',
-    hashesMatch: true
-  });
-
-  // Function to handle modal close and proceed with registration
-  const handleModalClose = () => {
-    setPreviewModalData(prev => ({ ...prev, show: false }));
-  };
-
-  // Function to proceed with registration after preview
-  const proceedWithRegistration = async () => {
     if (!isTrulyConnected) {
       alert("Please connect your wallet to register your artwork");
       connectWallet();
       return;
     }
-
+    
+    // Helper function for encoding byte arrays for debugging
+    const inspectByteArray = (data: Uint8Array): string => {
+      const hex = Array.from(data.slice(0, 50))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      const maxBytes = 50;
+      const displayLength = Math.min(data.length, maxBytes);
+      
+      return `First ${displayLength} bytes as hex: 0x${hex}${data.length > maxBytes ? '...' : ''}`;
+    };
+    
     try {
-      // Show loading state
-      setIsCompressing(true);
-
       // First, make sure we're on the AnimeChain L3 network
       if (networkType !== 'animechain') {
         await switchToLayer('l3', 'mainnet');
@@ -842,11 +498,6 @@ const ArtistForm: React.FC<{
       if (!signer) {
         throw new Error("Failed to get signer");
       }
-      
-      // Use the tokenURI string from preview modal data
-      const tokenURIString = previewModalData.tokenURIString;
-      const titleStr = previewModalData.title;
-      const descriptionStr = previewModalData.description;
       
       // Get the commissionHub address from the config
       const commissionHubAddress = contractConfig.networks.mainnet.commissionHub.address || ethers.ZeroAddress;
@@ -867,23 +518,66 @@ const ArtistForm: React.FC<{
           throw new Error("ArtPiece address not configured");
         }
         
-        // Call the profile's createArtPiece function with the tokenURI string
-        const tx = await profileContract.createArtPiece(
-          artPieceAddress,
-          tokenURIString, // Use tokenURI string instead of bytes
-          titleStr,       // Use title string
-          descriptionStr, // Use description string directly instead of bytes
-          true, // is artist
-          ethers.ZeroAddress, // no other party
-          commissionHubAddress,
-          false // not AI generated
-        );
-        
-        // Wait for the transaction to be mined
-        const receipt = await tx.wait();
-        
-        setIsCompressing(false);
-        alert(`Artwork registered successfully via Profile!`);
+        // Log byte array information
+        console.log(`Image byte array length: ${imageDataArray.length} bytes`);
+        console.log(`First few bytes: [${Array.from(imageDataArray.slice(0, 20)).join(', ')}...]`);
+        console.log(`MIME type: ${mimeType}, Format: ${mimeType.split('/')[1]}`);
+        console.log(`Title: "${titleStr}", Description: "${descriptionStr}"`);
+        console.log(`ArtPiece template address: ${artPieceAddress}`);
+        console.log(`Commission Hub address: ${commissionHubAddress}`);
+
+        // Debug: log contract address and ABI
+        console.log(`Profile contract address: ${profileContract.target}`);
+        try {
+          const fragment = profileContract.interface.getFunction('createArtPiece');
+          console.log(`Found createArtPiece fragment:`, fragment);
+        } catch (e) {
+          console.error(`Could not find createArtPiece in ABI:`, e);
+        }
+
+        try {
+          // Call the profile's createArtPiece function with the raw image data
+          console.log("Attempting to call createArtPiece...");
+
+          // Try to ensure proper serialization by converting to BytesLike
+          const bytesData = ethers.hexlify(ethers.concat([imageDataArray]));
+          console.log(`Sending as hex (via ethers.hexlify): ${bytesData.substring(0, 100)}...`);
+
+          // Check the size of the data
+          const dataSize = imageDataArray.length;
+          if (dataSize > 45000) {
+            console.warn(`Image data exceeds the contract limit of 45000 bytes. Current size: ${dataSize} bytes`);
+            throw new Error(`Image size (${dataSize} bytes) exceeds the contract limit of 45000 bytes. Please use a smaller image.`);
+          }
+
+          const tx = await profileContract.createArtPiece(
+            artPieceAddress,
+            bytesData, // Send as hex string using ethers.js utilities
+            mimeType.split('/')[1], // Just the format part (jpeg, avif, webp)
+            titleStr,      
+            descriptionStr,
+            true, // is artist
+            ethers.ZeroAddress, // no other party
+            commissionHubAddress,
+            false // not AI generated
+          );
+          
+          console.log("Transaction sent:", tx.hash);
+          
+          // Wait for the transaction to be mined
+          const receipt = await tx.wait();
+          console.log("Transaction confirmed:", receipt);
+          
+          setIsCompressing(false);
+          alert(`Artwork registered successfully via Profile!`);
+        } catch (error: any) {
+          console.error("Error in createArtPiece:", error);
+          // Try to get more detailed error information
+          if (error.reason) console.error("Error reason:", error.reason);
+          if (error.code) console.error("Error code:", error.code);
+          if (error.data) console.error("Error data:", error.data);
+          throw error;
+        }
       } else {
         // Direct ArtPiece creation flow for users without a profile
         console.log("Deploying ArtPiece contract directly...");
@@ -906,38 +600,62 @@ const ArtistForm: React.FC<{
           throw new Error("Failed to load ArtPiece ABI");
         }
         
+        // Get the ProfileHub contract
+        const profileHubAddress = contractConfig.networks.mainnet.profileHub.address;
+        const profileHubAbi = abiLoader.loadABI('ProfileHub');
+        
+        if (!profileHubAddress || !profileHubAbi) {
+          throw new Error("ProfileHub configuration not found");
+        }
+        
+        const profileHub = new ethers.Contract(profileHubAddress, profileHubAbi, signer);
+        
+        // Get the template ArtPiece address
+        const artPieceTemplateAddress = contractConfig.networks.mainnet.artPiece.address;
+        if (!artPieceTemplateAddress) {
+          throw new Error("ArtPiece template address not configured");
+        }
+        
+        console.log("Creating profile and registering artwork in one transaction...");
+        
+        // Debug: log parameters and contract details
+        console.log(`Image byte array length: ${imageDataArray.length} bytes`);
+        console.log(`First few bytes: [${Array.from(imageDataArray.slice(0, 20)).join(', ')}...]`);
+        console.log(`MIME type: ${mimeType}, Format: ${mimeType.split('/')[1]}`);
+        console.log(`Title: "${titleStr}", Description: "${descriptionStr}"`);
+        console.log(`ArtPiece template address: ${artPieceTemplateAddress}`);
+        console.log(`Commission Hub address: ${commissionHubAddress}`);
+
+        // Debug: log contract address and ABI
+        console.log(`ProfileHub contract address: ${profileHub.target}`);
         try {
-          // There are two options:
-          // 1. Create a profile and then register the artwork through the profile
-          // 2. Use a direct contract deployment 
-          
-          // For simplicity and better user experience, let's create a profile for them
-          // and register the artwork at the same time
-          
-          // Get the ProfileHub contract
-          const profileHubAddress = contractConfig.networks.mainnet.profileHub.address;
-          const profileHubAbi = abiLoader.loadABI('ProfileHub');
-          
-          if (!profileHubAddress || !profileHubAbi) {
-            throw new Error("ProfileHub configuration not found");
+          const fragment = profileHub.interface.getFunction('createNewArtPieceAndRegisterProfile');
+          console.log(`Found createNewArtPieceAndRegisterProfile fragment:`, fragment);
+        } catch (e) {
+          console.error(`Could not find createNewArtPieceAndRegisterProfile in ABI:`, e);
+        }
+
+        try {
+          // Create profile and register artwork with raw image data
+          console.log("Attempting to call createNewArtPieceAndRegisterProfile...");
+
+          // Try to ensure proper serialization by converting to BytesLike
+          const bytesData2 = ethers.hexlify(ethers.concat([imageDataArray]));
+          console.log(`Sending as hex (via ethers.hexlify): ${bytesData2.substring(0, 100)}...`);
+
+          // Check the size of the data
+          const dataSize2 = imageDataArray.length;
+          if (dataSize2 > 45000) {
+            console.warn(`Image data exceeds the contract limit of 45000 bytes. Current size: ${dataSize2} bytes`);
+            throw new Error(`Image size (${dataSize2} bytes) exceeds the contract limit of 45000 bytes. Please use a smaller image.`);
           }
-          
-          const profileHub = new ethers.Contract(profileHubAddress, profileHubAbi, signer);
-          
-          // Get the template ArtPiece address
-          const artPieceTemplateAddress = contractConfig.networks.mainnet.artPiece.address;
-          if (!artPieceTemplateAddress) {
-            throw new Error("ArtPiece template address not configured");
-          }
-          
-          console.log("Creating profile and registering artwork in one transaction...");
-          
-          // Create profile and register artwork with tokenURI string
+
           const tx = await profileHub.createNewArtPieceAndRegisterProfile(
             artPieceTemplateAddress,
-            tokenURIString, // Use tokenURI string instead of bytes
-            titleStr,       // Use title string
-            descriptionStr, // Use description string directly instead of bytes
+            bytesData2, // Send as hex string using ethers.js utilities
+            mimeType.split('/')[1], // Just the format part (jpeg, avif, webp)
+            titleStr,      
+            descriptionStr,
             true, // is artist
             ethers.ZeroAddress, // no other party
             commissionHubAddress,
@@ -980,13 +698,17 @@ const ArtistForm: React.FC<{
             artist: walletAddress,
             owner: walletAddress,
             artworkTitle: titleStr,
-            tokenURISize: previewModalData.compressedSize,
+            imageDataSize: imageDataArray.length,
             imageFormat: compressedResult?.format || preferredFormat,
             dimensions: compressedResult?.dimensions || { width: 0, height: 0 },
           });
+        } catch (error: any) {
+          console.error("Error in createNewArtPieceAndRegisterProfile:", error);
+          // Try to get more detailed error information
+          if (error.reason) console.error("Error reason:", error.reason);
+          if (error.code) console.error("Error code:", error.code);
+          if (error.data) console.error("Error data:", error.data);
           
-        } catch (error) {
-          console.error("Error deploying ArtPiece contract:", error);
           setIsCompressing(false);
           
           if (String(error).includes("execution reverted")) {
@@ -1192,21 +914,6 @@ const ArtistForm: React.FC<{
             </button>
           </div>
         </form>
-        
-        {/* Add the preview modal */}
-        <NFTPreviewModal
-          show={previewModalData.show}
-          onClose={handleModalClose}
-          imageDataUrl={previewModalData.imageDataUrl}
-          title={previewModalData.title}
-          description={previewModalData.description}
-          tokenURIHash={previewModalData.tokenURIHash}
-          originalHash={previewModalData.originalHash}
-          compressedSize={previewModalData.compressedSize}
-          onProceed={proceedWithRegistration}
-          hashesMatch={previewModalData.hashesMatch}
-          tokenURIString={previewModalData.tokenURIString}
-        />
       </div>
     </div>
   );

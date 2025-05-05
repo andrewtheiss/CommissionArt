@@ -44,22 +44,22 @@
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "0x81202ADf9A950f61FC4BF2A51184132b8c319c88",
+        "address": "0x09517E1e6eA9803f8AB5Ba608d5985D098CdBdd8",
         "contract": "CommissionHub"
       },
       "artPiece": {
-        "address": "0x12872d1Aad9377Cc25AcbBa4E4c4Db6162995C6C",
+        "address": "0x538e72fD1856F2b2B966B3103ec37Bb652232FfF",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0xD1A3BAbF5619Ccd5aE93D14d75e106Ca8eD0463A",
+        "address": "0xD1B46FB543f2A15560eD835857c7e90b43f66617",
         "contract": "Profile"
       },
       "profileHub": {
-        "address": "0x0A220c5F229fF543Dd4041F8A43aC351fbEF1C7c",
+        "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
         "contract": "ProfileHub"
       }
     }
   },
-  "lastUpdated": "2025-04-30T16:27:14.001702"
+  "lastUpdated": "2025-05-05T15:56:48.017317"
 }
