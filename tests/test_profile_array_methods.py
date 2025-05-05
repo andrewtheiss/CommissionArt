@@ -528,11 +528,13 @@ def test_artpiece_erc721_functionality(setup):
     # Initialize the art piece
     title = "Test Artwork"
     description = "This is a test artwork description"
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBhcnR3b3JrIGRlc2NyaXB0aW9uIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBhcnR3b3JrIGRlc2NyaXB0aW9uIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
+    token_uri_format = "avif"  # Set the format to avif
     
     # Initialize the art piece with ERC721 functionality
     art_piece_proxy.initialize(
         token_uri_data,
+        token_uri_format,
         title,
         description,
         owner.address,
@@ -595,7 +597,8 @@ def test_artpiece_iscontract_method(setup):
     # Initialize the art piece we'll transfer
     art_piece = project.ArtPiece.deploy(sender=deployer)
     art_piece.initialize(
-        "data:application/json;base64,eyJuYW1lIjoiVGVzdCBORlQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9",
+        b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBORlQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9",
+        "avif",  # Set the format to avif
         "Test NFT",
         "Test description",
         owner.address,
@@ -637,7 +640,8 @@ def test_artpiece_transferownership_compatibility(setup):
     # Initialize the art piece
     art_piece = project.ArtPiece.deploy(sender=deployer)
     art_piece.initialize(
-        "data:application/json;base64,eyJuYW1lIjoiVGVzdCBORlQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDT0FWSWNYb0FBQUFCM1JKVFVVSDVBb1ZGdDlNQlNVQUFBQUZKUkVGVUNKbGp4QUFBQVMwQUNZb3l3aWdBQUFBQVNVVk9SSzVDWUlJPSJ9",
+        b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBORlQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDT0FWSWNYb0FBQUFCM1JKVFVVSDVBb1ZGdDlNQlNVQUFBQUZKUkVGVUNKbGp4QUFBQVMwQUNZb3l3aWdBQUFBQVNVVk9SSzVDWUlJPSJ9",
+        "avif",  # Set the format to avif
         "Test NFT",
         "Test description",
         owner.address,
@@ -667,7 +671,8 @@ def test_artpiece_commission_hub_integration(setup):
     # This works because ArtPiece has an owner() method that returns its owner
     mock_hub = project.ArtPiece.deploy(sender=deployer)
     mock_hub.initialize(
-        "data:application/json;base64,eyJuYW1lIjoiTW9jayBIdWIiLCJkZXNjcmlwdGlvbiI6Ik1vY2sgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlMSUJnQUFBQUpTVVJCVkFpWlk4UUJBbmNBaklzQk5nQUFBQUJKUlU1RXJrSmdnZz09In0=",
+        b"data:application/json;base64,eyJuYW1lIjoiTW9jayBIdWIiLCJkZXNjcmlwdGlvbiI6Ik1vY2sgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1ZGdDlMSUJnQUFBQUpTVVJCVkFpWlk4UUJBbmNBaklzQk5nQUFBQUJKUlU1RXJrSmdnZz09In0=",
+        "avif",  # Set the format to avif
         "Mock Hub",
         "Mock description",
         user1.address,  # This will be the owner returned by the hub
@@ -683,7 +688,8 @@ def test_artpiece_commission_hub_integration(setup):
     # Initialize the art piece with no commission hub initially
     art_piece = project.ArtPiece.deploy(sender=deployer)
     art_piece.initialize(
-        "data:application/json;base64,eyJuYW1lIjoiVGVzdCBORlQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBcFVHZUF1QVd3QUFBQVBTVVJCVkFqWFk4UUJBcVFBbzRnYS93QUFBQUJKUlU1RXJrSmdnZz09In0=",
+        b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBORlQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBcFVHZUF1QVd3QUFBQVBTVVJCVkFqWFk4UUJBcVFBbzRnYS93QUFBQUJKUlU1RXJrSmdnZz09In0=",
+        "avif",  # Set the format to avif
         "Test NFT",
         "Test description",
         owner.address,
@@ -727,9 +733,13 @@ def test_create_artpiece_with_erc721(setup):
     art_piece_template = setup["art_piece_template"]
     
     # Create art piece as owner/commissioner
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgRGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9"
+    token_uri_format = "avif"  # Set the format to avif
+    
     receipt = owner_profile.createArtPiece(
         art_piece_template.address,
-        "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgRGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9",
+        token_uri_data,
+        token_uri_format,
         "Test Art",
         "Test Description",
         False,  # Not artist
@@ -759,7 +769,8 @@ def test_create_artpiece_with_erc721(setup):
     # Create another art piece as artist
     artist_receipt = artist_profile.createArtPiece(
         art_piece_template.address,
-        "data:application/json;base64,eyJuYW1lIjoiQXJ0aXN0IENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJDcmVhdGVkIGJ5IEFydGlzdCIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQ05kQ3ZEQUFBQUJYULNU0kE6eTdid0p3QUFBQWxJUkVGVUNKbGp4QUVDVGdCSzVnRGk3QUFBQUFFbEZUa1N1UW1DQyJ9",
+        b"data:application/json;base64,eyJuYW1lIjoiQXJ0aXN0IENyZWF0aW9uIiwiZGVzY3JpcHRpb24iOiJDcmVhdGVkIGJ5IEFydGlzdCIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQ05kQ3ZEQUFBQUJYULNU0kE6eTdid0p3QUFBQWxJUkVGVUNKbGp4QUVDVGdCSzVnRGk3QUFBQUFFbEZUa1N1UW1DQyJ9",
+        "avif",  # Set the format to avif
         "Artist Creation",
         "Created by Artist",
         True,  # Is artist

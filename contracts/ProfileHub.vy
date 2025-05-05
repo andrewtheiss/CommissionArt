@@ -19,6 +19,7 @@ interface Profile:
     def createArtPiece(
         _art_piece_template: address, 
         _token_uri_data: Bytes[45000], 
+        _token_uri_data_format: String[10],
         _title: String[100], 
         _description: String[200], 
         _is_artist: bool, 
@@ -138,6 +139,7 @@ def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[add
 def createNewArtPieceAndRegisterProfile(
     _art_piece_template: address,
     _token_uri_data: Bytes[45000],
+    _token_uri_data_format: String[10],
     _title: String[100],
     _description: String[200],
     _is_artist: bool,
@@ -149,6 +151,7 @@ def createNewArtPieceAndRegisterProfile(
     @notice Creates a new profile for the caller if needed, then creates a new art piece
     @param _art_piece_template The address of the ArtPiece template
     @param _token_uri_data The tokenURI data for the art piece
+    @param _token_uri_data_format Format of the token URI data (e.g., "avif", "webp", etc.)
     @param _title The title of the art piece
     @param _description The description of the art piece
     @param _is_artist Whether the caller is the artist
@@ -183,6 +186,7 @@ def createNewArtPieceAndRegisterProfile(
     art_piece: address = extcall profile_instance.createArtPiece(
         _art_piece_template,
         _token_uri_data,
+        _token_uri_data_format,
         _title,
         _description,
         _is_artist,
