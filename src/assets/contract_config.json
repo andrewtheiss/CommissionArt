@@ -22,11 +22,11 @@
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "",
+        "address": "0xCB5ba99bAECb67F8282426d2d993888975af6d8E",
         "contract": "Profile"
       },
       "profileHub": {
-        "address": "",
+        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
         "contract": "ProfileHub"
       }
     },
@@ -61,5 +61,5 @@
       }
     }
   },
-  "lastUpdated": "2025-05-05T22:53:21.973667"
+  "lastUpdated": "2025-05-06T07:26:07.761249"
 }
