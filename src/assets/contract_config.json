@@ -6,19 +6,19 @@
         "contract": "L1QueryOwner"
       },
       "l2": {
-        "address": "0x231CFCFD670877CF019BeD1a157aF4C9bfbb7bd9",
+        "address": "0x32BFa3AD2408821FA1631681F81603a84612687c",
         "contract": "L2Relay"
       },
       "l3": {
-        "address": "0x233be9576A524299bf9E4633c845ea28FF0868a4",
+        "address": "0x89244283543881Af0E005AE6B4eb713d3603974c",
         "contract": "OwnerRegistry"
       },
       "commissionHub": {
-        "address": "",
+        "address": "0x78c39bB3072b43D9B7A4B9116E7A87FbE19A69ef",
         "contract": "CommissionHub"
       },
       "artPiece": {
-        "address": "",
+        "address": "0xb663053448AC33f8e880Ee2eF877895db599A7f3",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
@@ -61,5 +61,5 @@
       }
     }
   },
-  "lastUpdated": "2025-05-05T15:56:48.017317"
+  "lastUpdated": "2025-05-05T22:53:21.973667"
 }

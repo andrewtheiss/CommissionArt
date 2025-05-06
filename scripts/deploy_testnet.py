@@ -47,7 +47,11 @@ def deploy_contracts():
             config["networks"]["prodtest"] = {
                 "l1": {"address": "", "contract": "L1QueryOwner"},
                 "l2": {"address": "", "contract": "L2Relay"},
-                "l3": {"address": "", "contract": "OwnerRegistry"}
+                "l3": {"address": "", "contract": "OwnerRegistry"},
+                "commissionHub": {"address": "", "contract": "CommissionHub"},
+                "artPiece": {"address": "", "contract": "ArtPiece"},
+                "profileTemplate": {"address": "", "contract": "Profile"},
+                "profileHub": {"address": "", "contract": "ProfileHub"}
             }
             # Save the updated config
             save_config(config)
@@ -103,6 +107,10 @@ def deploy_contracts():
     l1_existing_address = get_contract_address(config_network, "l1")
     l2_existing_address = get_contract_address(config_network, "l2")
     l3_existing_address = get_contract_address(config_network, "l3")
+    commission_hub_existing_address = get_contract_address(config_network, "commissionHub")
+    art_piece_existing_address = get_contract_address(config_network, "artPiece")
+    profile_template_existing_address = get_contract_address(config_network, "profileTemplate")
+    profile_hub_existing_address = get_contract_address(config_network, "profileHub")
     
     # For prodtest mode, if we don't have an L1 address, prompt for one
     if network_choice == "prodtest" and not l1_existing_address:
@@ -112,14 +120,14 @@ def deploy_contracts():
             # Save this to config for future use
             update_contract_address(config_network, "l1", l1_existing_address, "L1QueryOwner")
     
-    # Define separate variable for commission hub template since it doesn't have its own layer in the config
-    commission_hub_template_existing_address = None
-    
     # Track deployed contracts
     l1_contract = None
     l2_contract = None
     l3_owner_registry = None
     commission_hub_template = None
+    art_piece_stencil = None
+    profile_template = None
+    profile_hub = None
 
     # Deploy L2Relay first with 0 parameters
     with networks.parse_network_choice(l2_network) as provider:
@@ -150,11 +158,38 @@ def deploy_contracts():
                 print(f"Error deploying L2Relay: {e}")
                 sys.exit(1)
 
+    # Deploy ArtPiece stencil on L3
+    with networks.parse_network_choice(l3_network) as provider:
+        if not full_redeploy and art_piece_existing_address and input(f"Use existing ArtPiece stencil at {art_piece_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ArtPiece stencil at: {art_piece_existing_address}")
+            art_piece_stencil = project.ArtPiece.at(art_piece_existing_address)
+        else:
+            print(f"Deploying ArtPiece stencil on {l3_network}")
+            try:
+                # For L3 deployments, we may need higher gas limits
+                gas_limit = 3000000  # Higher gas limit
+                art_piece_stencil = deployer.deploy(
+                    project.ArtPiece,
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"ArtPiece stencil deployed at: {art_piece_stencil.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "artPiece", art_piece_stencil.address, "ArtPiece")
+                
+                print("=" * 50)  # Delimiter after ArtPiece stencil deployment
+                print("ArtPiece stencil deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying ArtPiece stencil: {e}")
+                sys.exit(1)
+
     # Deploy CommissionHub template on L3 (as reference for OwnerRegistry)
     with networks.parse_network_choice(l3_network) as provider:
-        if not full_redeploy and commission_hub_template_existing_address and input(f"Use existing CommissionHub template at {commission_hub_template_existing_address}? (Y/n): ").strip().lower() != 'n':
-            print(f"Using existing CommissionHub template at: {commission_hub_template_existing_address}")
-            commission_hub_template = project.CommissionHub.at(commission_hub_template_existing_address)
+        if not full_redeploy and commission_hub_existing_address and input(f"Use existing CommissionHub template at {commission_hub_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing CommissionHub template at: {commission_hub_existing_address}")
+            commission_hub_template = project.CommissionHub.at(commission_hub_existing_address)
         else:
             print(f"Deploying CommissionHub template on {l3_network} (as reference for OwnerRegistry)")
             try:
@@ -169,11 +204,76 @@ def deploy_contracts():
                 print(f"Note: This CommissionHub template is ONLY for reference in OwnerRegistry")
                 print(f"      Actual CommissionHub instances will be created through OwnerRegistry")
                 
+                # Update the frontend config
+                update_contract_address(config_network, "commissionHub", commission_hub_template.address, "CommissionHub")
+                
+                # Whitelist the ArtPiece stencil if available
+                if art_piece_stencil:
+                    print(f"Whitelisting ArtPiece stencil ({art_piece_stencil.address}) in CommissionHub...")
+                    # Explicitly set the sender as deployer to ensure permission
+                    commission_hub_template.setWhitelistedArtPieceContract(art_piece_stencil.address, sender=deployer)
+                    print(f"ArtPiece stencil whitelisted in CommissionHub")
+                
                 print("=" * 50)  # Delimiter after CommissionHub template deployment
                 print("CommissionHub template deployment completed")
                 print("=" * 50)
             except Exception as e:
                 print(f"Error deploying CommissionHub template: {e}")
+                sys.exit(1)
+
+    # Deploy Profile template on L3
+    with networks.parse_network_choice(l3_network) as provider:
+        if not full_redeploy and profile_template_existing_address and input(f"Use existing Profile template at {profile_template_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing Profile template at: {profile_template_existing_address}")
+            profile_template = project.Profile.at(profile_template_existing_address)
+        else:
+            print(f"Deploying Profile template on {l3_network}")
+            try:
+                # For L3 deployments, we may need higher gas limits
+                gas_limit = 6000000  # Much higher gas limit for Profile which is larger
+                profile_template = deployer.deploy(
+                    project.Profile,
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"Profile template deployed at: {profile_template.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "profileTemplate", profile_template.address, "Profile")
+                
+                print("=" * 50)  # Delimiter after Profile template deployment
+                print("Profile template deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying Profile template: {e}")
+                sys.exit(1)
+
+    # Deploy ProfileHub on L3
+    with networks.parse_network_choice(l3_network) as provider:
+        if not full_redeploy and profile_hub_existing_address and input(f"Use existing ProfileHub at {profile_hub_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ProfileHub at: {profile_hub_existing_address}")
+            profile_hub = project.ProfileHub.at(profile_hub_existing_address)
+        else:
+            print(f"Deploying ProfileHub on {l3_network}")
+            try:
+                # For L3 deployments, we may need higher gas limits
+                gas_limit = 6000000  # Much higher gas limit for ProfileHub which might be large
+                profile_hub = deployer.deploy(
+                    project.ProfileHub,
+                    profile_template.address,  # Profile template address
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"ProfileHub deployed at: {profile_hub.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "profileHub", profile_hub.address, "ProfileHub")
+                
+                print("=" * 50)  # Delimiter after ProfileHub deployment
+                print("ProfileHub deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying ProfileHub: {e}")
                 sys.exit(1)
 
     # Deploy or use existing OwnerRegistry on L3
@@ -353,15 +453,20 @@ def deploy_contracts():
     elif network_choice == "prodtest":
         print(f"L3 Contracts (Animechain L3):")
         print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
-        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'} (for reference only)")
+        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+        print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
+        print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
+        print(f"  - ProfileHub: {profile_hub.address if profile_hub else 'Not deployed'}")
         print("\nNOTE: These are TEST contracts deployed to PRODUCTION networks.")
         print("They can be used for testing with real chain interactions, but should not be")
         print("considered the final production deployment.")
     else:
-        print(f"L3 Contracts (Arbitrum Sepolia - temporary for testnet):")
-    
-    print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
-    print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'} (for reference only)")
+        print(f"L3 Contracts ({l3_network}):")
+        print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
+        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+        print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
+        print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
+        print(f"  - ProfileHub: {profile_hub.address if profile_hub else 'Not deployed'}")
     
     # Check if the contracts were properly linked
     if l2_contract:
@@ -386,7 +491,7 @@ def deploy_contracts():
             l2relay = l3_owner_registry.l2Relay()
             hub_template = l3_owner_registry.commissionHubTemplate()
             print(f"  - OwnerRegistry -> L2Relay: {l2relay}")
-            print(f"  - OwnerRegistry -> CommissionHub Template: {hub_template} (for reference only)")
+            print(f"  - OwnerRegistry -> CommissionHub Template: {hub_template}")
         except Exception as e:
             print(f"Could not retrieve OwnerRegistry links: {e}")
     
@@ -401,7 +506,7 @@ def deploy_contracts():
     print(f"\nMake sure to use these contract addresses in your application.\n")
     print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
-    return l1_contract, l2_contract, l3_owner_registry, commission_hub_template
+    return l1_contract, l2_contract, l3_owner_registry, commission_hub_template, art_piece_stencil, profile_template, profile_hub
 
 def main():
     try:
