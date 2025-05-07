@@ -554,7 +554,7 @@ const ArtistForm: React.FC<{
           const tx = await profileContract.createArtPiece(
             artPieceAddress,
             bytesData, // Send as hex string using ethers.js utilities
-            mimeType.split('/')[1], // Just the format part (jpeg, avif, webp)
+            mimeType, // Just the format part (jpeg, avif, webp)
             titleStr,      
             descriptionStr,
             true, // is artist
@@ -654,7 +654,7 @@ const ArtistForm: React.FC<{
           const tx = await profileHub.createNewArtPieceAndRegisterProfile(
             artPieceTemplateAddress,
             bytesData2, // Send as hex string using ethers.js utilities
-            mimeType.split('/')[1], // Just the format part (jpeg, avif, webp)
+            mimeType, // Just the format part (jpeg, avif, webp)
             titleStr,      
             descriptionStr,
             true, // is artist
