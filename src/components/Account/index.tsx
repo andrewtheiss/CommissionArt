@@ -8,6 +8,8 @@ import ArtPieceDebugInfo from './ArtPieceDebugInfo';
 import abiLoader from '../../utils/abiLoader';
 import ethersService from '../../utils/ethers-service';
 import './Account.css';
+import ProfileEnvironmentToggle from '../ProfileEnvironmentToggle';
+import '../ProfileEnvironmentToggle.css';
 
 // Start with debug mode off by default, user can toggle it on
 const DEBUG_MODE_KEY = 'account_debug_mode';
@@ -101,45 +103,88 @@ const Account: React.FC = () => {
     }
   }, []);
 
-  const ConnectionBar = () => (
-    <div className="connection-bar">
-      {!isTrulyConnected ? (
-        <>
-          <div className="connection-status disconnected">
-            <span className="status-icon"></span>
-            <span className="status-text">Wallet Not Connected</span>
-          </div>
-          <button className="connect-wallet-button" onClick={connectWallet}>
-            Connect Wallet
-          </button>
-          {isConnected && !walletAddress && (
-            <div className="connection-error-message">
-              <p>Connection detected but no wallet address available. Please try reconnecting.</p>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="connection-status connected">
-            <span className="status-icon"></span>
-            <div className="connection-details">
-              <span className="status-text">
-                Connected to: <span className="network-name">
-                  {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
-                </span>
-              </span>
-              <span className="wallet-address">
-                {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
-              </span>
-            </div>
-          </div>
-          <button className="disconnect-wallet-button" onClick={handleDisconnect}>
-            Disconnect
-          </button>
-        </>
-      )}
-    </div>
+  // Create a state to track profile layer changes
+  const [profileLayer, setProfileLayer] = useState<string>(
+    localStorage.getItem('profile-use-l2-testnet') === 'true' ? 'L2 Testnet' : 'L3 AnimeChain'
   );
+
+  // Watch for changes to the profile layer setting
+  useEffect(() => {
+    const checkProfileLayer = () => {
+      const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
+      setProfileLayer(useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain');
+    };
+
+    // Check initially
+    checkProfileLayer();
+
+    // Set up event listener for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'profile-use-l2-testnet') {
+        checkProfileLayer();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for local changes
+    const handleCustomEvent = () => checkProfileLayer();
+    window.addEventListener('profile-layer-changed', handleCustomEvent);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profile-layer-changed', handleCustomEvent);
+    };
+  }, []);
+
+  const ConnectionBar = () => {
+    // Get the profile layer preference from localStorage
+    const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
+    const profileLayer = useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain';
+    
+    return (
+      <div className="connection-bar">
+        {!isTrulyConnected ? (
+          <>
+            <div className="connection-status disconnected">
+              <span className="status-icon"></span>
+              <span className="status-text">Wallet Not Connected</span>
+            </div>
+            <button className="connect-wallet-button" onClick={connectWallet}>
+              Connect Wallet
+            </button>
+            {isConnected && !walletAddress && (
+              <div className="connection-error-message">
+                <p>Connection detected but no wallet address available. Please try reconnecting.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="connection-status connected">
+              <span className="status-icon"></span>
+              <div className="connection-details">
+                <span className="status-text">
+                  Connected to: <span className="network-name">
+                    {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
+                  </span>
+                </span>
+                <span className="profile-layer">
+                  Profile Layer: <span className="layer-name">{profileLayer}</span>
+                </span>
+                <span className="wallet-address">
+                  {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
+                </span>
+              </div>
+            </div>
+            <button className="disconnect-wallet-button" onClick={handleDisconnect}>
+              Disconnect
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
 
   // Check if user has a profile
   useEffect(() => {
@@ -186,7 +231,7 @@ const Account: React.FC = () => {
     };
     
     checkProfileStatus();
-  }, [isConnected, walletAddress, network]);
+  }, [isConnected, walletAddress, network, profileLayer]);
   
   // Load profile data after we have the profile contract
   useEffect(() => {
@@ -493,6 +538,9 @@ const Account: React.FC = () => {
           <span className="debug-mode-toggle-text">Debug Mode</span>
         </label>
       </div>
+      
+      {/* Add profile environment toggle */}
+      <ProfileEnvironmentToggle />
       
       <ConnectionBar />
       

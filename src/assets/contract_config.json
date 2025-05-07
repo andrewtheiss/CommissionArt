@@ -28,6 +28,14 @@
       "profileHub": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
         "contract": "ProfileHub"
+      },
+      "l2ProfileHub": {
+        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
+        "contract": "ProfileHub" 
+      },
+      "l3ProfileHub": {
+        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169", 
+        "contract": "ProfileHub"
       }
     },
     "mainnet": {
@@ -56,6 +64,14 @@
         "contract": "Profile"
       },
       "profileHub": {
+        "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
+        "contract": "ProfileHub"
+      },
+      "l2ProfileHub": {
+        "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
+        "contract": "ProfileHub"
+      },
+      "l3ProfileHub": {
         "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
         "contract": "ProfileHub"
       }

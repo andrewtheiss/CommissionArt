@@ -193,17 +193,37 @@ class ProfileService {
    * @returns string The ProfileHub contract address
    */
   private getProfileHubAddress(): string {
-    // Get the current network from ethersService
-    const networkType = ethersService.getNetwork().name === "Sepolia" ? "testnet" : "mainnet";
+    const network = ethersService.getNetwork();
+    // Use the toggle preference from localStorage to determine which layer to use
+    const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
     
-    // Get the address from the contract config
-    const address = contractConfig.networks[networkType].profileHub.address;
+    // Determine environment (testnet/mainnet)
+    const environment = network.name === "Sepolia" ? "testnet" : "mainnet";
     
-    if (!address) {
-      console.warn(`ProfileHub address for ${networkType} is not configured in contract_config.json`);
+    // Select the contract based on the toggle setting
+    // If useL2Testnet is true, we use the L2 testnet contract
+    // Otherwise, we use the L3 animechain contract (default behavior)
+    try {
+      let address;
+      if (useL2Testnet) {
+        // Use L2 testnet contract for profiles
+        address = contractConfig.networks[environment].l2ProfileHub.address;
+        console.log(`Using L2 testnet ProfileHub at: ${address}`);
+      } else {
+        // Use L3 animechain contract (previous default behavior)
+        address = contractConfig.networks[environment].l3ProfileHub.address;
+        console.log(`Using L3 AnimeChain ProfileHub at: ${address}`);
+      }
+    
+      if (!address) {
+        console.warn(`ProfileHub address for ${environment} is not configured in contract_config.json`);
+      }
+      
+      return address;
+    } catch (error) {
+      console.error("Error getting ProfileHub address:", error);
+      return "";
     }
-    
-    return address;
   }
 }
 

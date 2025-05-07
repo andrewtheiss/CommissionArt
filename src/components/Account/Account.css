@@ -637,4 +637,20 @@
 
 .debug-mode-toggle:hover .debug-mode-toggle-text {
   color: var(--text-primary);
+}
+
+.profile-layer {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #b8b9bf;
+}
+
+.layer-name {
+  background-color: #262b3d;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #e0e0e0;
+  margin-left: 4px;
 } 
