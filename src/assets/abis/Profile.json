@@ -27,10 +27,22 @@
     "inputs": [
       {
         "name": "_image",
-        "type": "string"
+        "type": "address"
       }
     ],
     "name": "setProfileImage",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_format",
+        "type": "string"
+      }
+    ],
+    "name": "setProfileImageFormat",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -568,6 +580,10 @@
       },
       {
         "name": "_token_uri_data",
+        "type": "bytes"
+      },
+      {
+        "name": "_token_uri_data_format",
         "type": "string"
       },
       {
@@ -645,23 +661,6 @@
       {
         "name": "",
         "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_index",
-        "type": "uint256"
-      }
-    ],
-    "name": "getArtPieceAtIndex",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -796,6 +795,23 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getArtPieceAtIndex",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "deployer",
     "outputs": [
@@ -834,6 +850,18 @@
   {
     "inputs": [],
     "name": "profileImage",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "profileImageFormat",
     "outputs": [
       {
         "name": "",

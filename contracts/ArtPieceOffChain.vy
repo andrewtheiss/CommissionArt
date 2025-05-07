@@ -70,8 +70,8 @@ INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
 TOKEN_ID: constant(uint256) = 1
 
 # ArtPiece variables
-tokenURI_data: Bytes[45000]  # Changed from imageData to tokenURI_data as String
-tokenURI_data_format: String[10]  # Format of the tokenURI_data   
+token_uri: public(String[200])  # Traditional NFT token URI
+tokenURI_data_format: public(String[10])  # Format of the tokenURI_data   
 title: String[100]  # Title of the artwork
 description: String[200]  # Description with 200 byte limit
 owner: address
@@ -80,7 +80,6 @@ aiGenerated: public(bool)
 initialized: public(bool)  # Flag to track if the contract has been initialized
 attachedToCommissionHub: public(bool)  # Flag to track if attached to a CommissionHub
 commissionHubAddress: public(address)  # Address of the CommissionHub this piece is attached to
-IS_ON_CHAIN: public(constant(bool)) = True  # Constant to indicate this art piece is on-chain
 
 # Mapping to store tags/associations with validation status
 # address => bool (validated status)
@@ -102,11 +101,11 @@ def __init__():
     self.initialized = False
     self.name = ""
     self.symbol = ""
+    self.tokenURI_data_format = "OffChain"
 
 @external
 def initialize(
-    _token_uri_data: Bytes[45000],  # Changed parameter type and name
-    _token_uri_data_format: String[10],  # Format of the tokenURI_data
+    _token_uri: String[200],  # Now a standard token url
     _title_input: String[100], 
     _description_input: String[200], 
     _owner_input: address, 
@@ -115,19 +114,11 @@ def initialize(
     _ai_generated: bool
 ):
     """
-    @notice Initialize the ArtPiece contract, can only be called once
-    @param _token_uri_data The token URI data as raw bytes (up to 45000 bytes)
-    @param _token_uri_data_format Format identifier for the token URI data (e.g., "avif", "webp", etc.)
-    @param _title_input Title of the artwork
-    @param _description_input Description of the artwork
-    @param _owner_input Address of the owner
-    @param _artist_input Address of the artist
-    @param _commission_hub Address of the commission hub (if any, empty address if none)
-    @param _ai_generated Flag indicating if the artwork was AI generated
+    Initialize the ArtPiece contract, can only be called once
     """
     assert not self.initialized, "Already initialized"
-    self.tokenURI_data = _token_uri_data  # Updated field name
-    self.tokenURI_data_format = _token_uri_data_format  # Updated field name
+    self.token_uri = _token_uri  # Store token_uri
+    self.tokenURI_data_format = "OffChain"  # Always "OffChain" for this contract
     self.title = _title_input
     self.description = _description_input
     self.owner = _owner_input
@@ -285,76 +276,65 @@ def _isContract(_addr: address) -> bool:
     return _addr != empty(address)
 
 # URI Functions
-# TODO - convert to BASE64 encoded json object
-# Otuput: data:application/json;base64,
 @external
 @view
-def tokenURI(_tokenId: uint256) -> String[100000]:  # Updated return type
+def tokenURI(_tokenId: uint256) -> String[200]:  # Updated to use traditional token URI
     """
     @notice Get the URI for a token
     @param _tokenId The token ID
     @return The token URI
     """
     assert _tokenId == TOKEN_ID, "Invalid token ID"
+    # Return the stored token_uri
+    return self.token_uri
 
-    temp: String[100000] = ""
-    # Return the stored tokenURI data
-    return temp
-
-# Original ArtPiece Functions, with updated names
+# Original ArtPiece Functions, with updated names for compatibility
 @external
 @view
-def getTokenURIData() -> Bytes[45000]:
+def getTokenURIData() -> Bytes[45000]:  # Keep for compatibility
     """
-    @notice Get the raw token URI data stored in the contract
-    @return Raw token URI data as bytes
+    @notice Returns empty bytes for backward compatibility
+    @return Empty bytes
     """
-    return self.tokenURI_data
+    return b""
 
 # Added for backwards compatibility
 @external
 @view
-def getImageData() -> Bytes[45000]:
+def getImageData() -> Bytes[45000]:  # Keep for compatibility
     """
-    @notice Get the raw image data stored in the contract (alias for getTokenURIData for backwards compatibility)
-    @return Raw token URI data as bytes
+    @notice Returns empty bytes for backward compatibility
+    @return Empty bytes
     """
-    return self.tokenURI_data
+    return b""
+
+@external
+@view
+def getTokenURIDataFormat() -> String[10]:
+    """
+    @notice Returns the format of the token URI data, always "OffChain"
+    @return Always "OffChain"
+    """
+    return self.tokenURI_data_format
 
 @external
 @view
 def getTitle() -> String[100]:
-    """
-    @notice Get the title of the artwork
-    @return The artwork title
-    """
     return self.title
 
 @external
 @view
 def getDescription() -> String[200]:
-    """
-    @notice Get the description of the artwork
-    @return The artwork description
-    """
     return self.description
 
 @external
 @view
 def getOwner() -> address:
-    """
-    @notice Get the owner of the artwork
-    @return The owner address
-    """
     return self.owner
 
 @external
 @view
 def getArtist() -> address:
-    """
-    @notice Get the artist of the artwork
-    @return The artist address
-    """
     return self.artist
 
 @external

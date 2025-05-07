@@ -1,6 +1,7 @@
 // Import ABIs statically to make them available in the app
 import ArrayManagerABI from '../assets/abis/ArrayManager.json';
 import ArtPieceABI from '../assets/abis/ArtPiece.json';
+import ArtPieceOffChainABI from '../assets/abis/ArtPieceOffChain.json';
 import CommissionHubABI from '../assets/abis/CommissionHub.json';
 import L1QueryOwnerABI from '../assets/abis/L1QueryOwner.json';
 import L2RelayABI from '../assets/abis/L2Relay.json';
@@ -13,6 +14,7 @@ import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 const abiMap: { [key: string]: any } = {
   'ArrayManager': ArrayManagerABI,
   'ArtPiece': ArtPieceABI,
+  'ArtPieceOffChain': ArtPieceOffChainABI,
   'CommissionHub': CommissionHubABI,
   'L1QueryOwner': L1QueryOwnerABI,
   'L2Relay': L2RelayABI,

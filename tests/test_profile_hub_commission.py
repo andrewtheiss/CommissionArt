@@ -43,7 +43,7 @@ def test_create_new_commission_and_register_profile(setup):
     assert profile_hub.hasProfile(user.address) == False
     
     # Sample art piece data
-    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "First Commission"
     description = "Description for first commission"
     is_artist = False  # User is not the artist
@@ -52,6 +52,7 @@ def test_create_new_commission_and_register_profile(setup):
     result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         image_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -85,7 +86,7 @@ def test_create_new_commission_and_register_profile(setup):
     art_piece = project.ArtPiece.at(art_piece_address)
     assert art_piece.getOwner() == user.address
     assert art_piece.getArtist() == artist.address
-    assert art_piece.getImageData() == image_data
+    assert art_piece.getTokenURIData() == image_data
     assert art_piece.getTitle() == title
     assert art_piece.getDescription() == description
 
@@ -104,7 +105,7 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
     assert profile_hub.hasProfile(user.address) == True
     
     # Sample art piece data
-    image_data =    "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Should Fail Commission"
     description = "Description for failing commission"
     
@@ -114,6 +115,7 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
         profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             image_data,
+            "avif",
             title,
             description,
             False,  # Not an artist
@@ -135,7 +137,7 @@ def test_artist_creates_commission_for_user(setup):
     assert profile_hub.hasProfile(artist.address) == False
     
     # Sample art piece data
-    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Artist Commission"
     description = "Commission created by artist"
     is_artist = True  # Artist is creating the commission
@@ -144,6 +146,7 @@ def test_artist_creates_commission_for_user(setup):
     result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         image_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -177,7 +180,7 @@ def test_artist_creates_commission_for_user(setup):
     art_piece = project.ArtPiece.at(art_piece_address)
     assert art_piece.getOwner() == user.address  # User owns the art
     assert art_piece.getArtist() == artist.address  # Artist created it
-    assert art_piece.getImageData() == image_data
+    assert art_piece.getTokenURIData() == image_data
     assert art_piece.getTitle() == title
     assert art_piece.getDescription() == description
     assert art_piece.getAIGenerated() == True

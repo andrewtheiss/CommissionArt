@@ -146,11 +146,7 @@
   {
     "inputs": [
       {
-        "name": "_token_uri_data",
-        "type": "bytes"
-      },
-      {
-        "name": "_token_uri_data_format",
+        "name": "_token_uri",
         "type": "string"
       },
       {
@@ -366,6 +362,18 @@
       {
         "name": "",
         "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getTokenURIDataFormat",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -648,6 +656,30 @@
   },
   {
     "inputs": [],
+    "name": "token_uri",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tokenURI_data_format",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "aiGenerated",
     "outputs": [
       {
@@ -689,18 +721,6 @@
       {
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "IS_ON_CHAIN",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
       }
     ],
     "stateMutability": "view",

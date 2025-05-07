@@ -1,3 +1,5 @@
+# @version 0.4.1
+
 import pytest
 from ape import accounts, project
 import time
@@ -59,10 +61,11 @@ def test_create_single_art_piece_and_get_latest(setup):
     assert len(initial_art_pieces) == 0
     
     # Create a single art piece
-    image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     tx_receipt = user_profile.createArtPiece(
         art_piece_template.address,
         image_data,
+        "avif",
         "Art Piece 1",
         "Description for Art Piece 1",
         False,  # Not an artist
@@ -83,7 +86,7 @@ def test_create_single_art_piece_and_get_latest(setup):
     art_piece = project.ArtPiece.at(latest_art_pieces[0])
     assert art_piece.getOwner() == user.address
     assert art_piece.getArtist() == artist.address
-    assert art_piece.getImageData() == image_data
+    assert art_piece.getTokenURIData() == image_data
 
 def test_create_multiple_art_pieces_and_get_latest(setup):
     """Test creating multiple art pieces and getting the latest art pieces"""
@@ -95,10 +98,11 @@ def test_create_multiple_art_pieces_and_get_latest(setup):
     
     # Create 7 art pieces
     for i in range(7):
-        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         user_profile.createArtPiece(
             art_piece_template.address,
             image_data,
+            "avif",
             f"Art Piece {i+1}",
             f"Description for Art Piece {i+1}",
             False,  # Not an artist
@@ -150,10 +154,11 @@ def test_create_fewer_than_five_art_pieces(setup):
     
     # Create 3 art pieces
     for i in range(3):
-        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         user_profile.createArtPiece(
             art_piece_template.address,
             image_data,
+            "avif",
             f"Art Piece {i+1}",
             f"Description for Art Piece {i+1}",
             False,  # Not an artist
@@ -197,10 +202,11 @@ def test_artist_creating_art_pieces(setup):
     
     # Create 4 art pieces as an artist
     for i in range(4):
-        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         artist_profile.createArtPiece(
             art_piece_template.address,
             image_data,
+            "avif",
             f"Artist Piece {i+1}",
             f"Description for Artist Piece {i+1}",
             True,  # Is artist
@@ -248,72 +254,73 @@ def test_create_art_pieces_across_profiles(setup):
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
-    # Create 2 art pieces for user
-    for i in range(2):
-        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    # Create art piece through the user profile (as a commissioner)
+    for i in range(3):
+        image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         user_profile.createArtPiece(
             art_piece_template.address,
             image_data,
+            "avif",
             f"User Art {i+1}",
-            f"User Art Description {i+1}",
-            False,  # Not artist
-            artist.address,
+            f"Description for User Art {i+1}",
+            False,  # Not an artist
+            artist.address,  # Artist address
             commission_hub.address,
-            False,
+            False,  # Not AI generated
             sender=user
         )
-        time.sleep(0.1)
+        time.sleep(0.1)  # Small delay
     
-    # Create 2 art pieces for artist
+    # Create art piece through the artist profile (as an artist)
     for i in range(2):
-        image_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
         artist_profile.createArtPiece(
             art_piece_template.address,
             image_data,
+            "avif",
             f"Artist Art {i+1}",
-            f"Artist Art Description {i+1}",
-            True,  # Is artist
-            user.address,
+            f"Description for Artist Art {i+1}",
+            True,  # As artist
+            user.address,  # Commissioner address
             commission_hub.address,
-            True,
+            True,  # AI generated
             sender=artist
         )
-        time.sleep(0.1)
+        time.sleep(0.1)  # Small delay
     
-    # Check counts for each profile
-    assert user_profile.myArtCount() == 2
+    # Verify art pieces were created
+    assert user_profile.myArtCount() == 3
     assert artist_profile.myArtCount() == 2
     
-    # Get latest art pieces for user
+    # Get the latest art pieces from both profiles
     user_latest = user_profile.getLatestArtPieces()
-    assert len(user_latest) == 2
-    
-    # Get latest art pieces for artist
     artist_latest = artist_profile.getLatestArtPieces()
+    
+    # Should return all art pieces from each profile
+    assert len(user_latest) == 3
     assert len(artist_latest) == 2
     
-    # Get titles to verify ordering
+    # Verify ordering for user art pieces
     user_pieces = []
     for addr in user_latest:
         art = project.ArtPiece.at(addr)
         user_pieces.append(art.getTitle())
     
+    for i in range(len(user_pieces) - 1):
+        current_piece_num = int(user_pieces[i].split()[2])
+        next_piece_num = int(user_pieces[i+1].split()[2])
+        assert current_piece_num > next_piece_num, f"Expected user piece {current_piece_num} > {next_piece_num}"
+    
+    # Verify ordering for artist art pieces
     artist_pieces = []
     for addr in artist_latest:
         art = project.ArtPiece.at(addr)
         artist_pieces.append(art.getTitle())
     
-    # Verify descending order for user's pieces
-    if len(user_pieces) > 1:
-        user_current = int(user_pieces[0].split()[2])
-        user_next = int(user_pieces[1].split()[2])
-        assert user_current > user_next, f"User pieces not in order: {user_current} > {user_next}"
-    
-    # Verify descending order for artist's pieces
-    if len(artist_pieces) > 1:
-        artist_current = int(artist_pieces[0].split()[2])
-        artist_next = int(artist_pieces[1].split()[2])
-        assert artist_current > artist_next, f"Artist pieces not in order: {artist_current} > {artist_next}"
+    for i in range(len(artist_pieces) - 1):
+        current_piece_num = int(artist_pieces[i].split()[2])
+        next_piece_num = int(artist_pieces[i+1].split()[2])
+        assert current_piece_num > next_piece_num, f"Expected artist piece {current_piece_num} > {next_piece_num}"
     
     # Verify the collections are separate
     assert set(user_latest) != set(artist_latest) 

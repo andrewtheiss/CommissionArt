@@ -5,12 +5,13 @@ import base64
 import json
 
 # Test data
-TEST_TOKEN_URI_DATA = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTndJREFBQUFCbEJNVkVYLy8vL24vNGJsQUFBQUJYUlNUbk1BUUtKZVVtUktBQUFBQWtsRVFWUUkxMkJnQUFNRE1BQUJoVUFCQUVtQ0FVQUFBQUJKUlU1RXJrSmdnZz09In0="
+TEST_TOKEN_URI_DATA = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTndJREFBQUFCbEJNVkVYLy8vL24vNGJsQUFBQUJYUlNUbk1BUUtKZVVtUktBQUFBQWtsRVFWUUkxMkJnQUFNRE1BQUJoVUFCQUVtQ0FVQUFBQUJKUlU1RXJrSmdnZz09In0="
 # Parse base64 data to extract title and description
-base64_data = TEST_TOKEN_URI_DATA.replace("data:application/json;base64,", "")
+base64_data = TEST_TOKEN_URI_DATA.split(b"data:application/json;base64,")[1]
 json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
 TEST_TITLE = json_data["name"]  # "Test Artwork"
 TEST_DESCRIPTION = json_data["description"]  # "This is a test description for the artwork"
+TEST_TOKEN_URI_DATA_FORMAT = "avif"  # Define the format for initialization
 TEST_AI_GENERATED = False
 
 @pytest.fixture
@@ -31,6 +32,7 @@ def setup():
     # Initialize the contract
     art_piece.initialize(
         TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,  # Add the format parameter
         TEST_TITLE,
         TEST_DESCRIPTION,
         owner.address,
@@ -82,6 +84,7 @@ def test_initialize_only_once(setup):
     with pytest.raises(Exception) as excinfo:
         art_piece.initialize(
             TEST_TOKEN_URI_DATA,
+            TEST_TOKEN_URI_DATA_FORMAT,  # Add the format parameter
             TEST_TITLE,
             TEST_DESCRIPTION,
             owner.address,
@@ -341,6 +344,14 @@ def test_commission_whitelist_unauthorized(setup):
     assert "Only owner or artist can set commission whitelist" in str(excinfo.value)
 
 
+def test_is_on_chain(setup):
+    """Test that the IS_ON_CHAIN constant is set to True"""
+    art_piece = setup["art_piece"]
+    
+    # Verify the IS_ON_CHAIN constant is True
+    assert art_piece.IS_ON_CHAIN() is True
+
+
 def test_all_getter_methods(setup):
     """Test all getter methods of the contract"""
     art_piece = setup["art_piece"]
@@ -358,4 +369,5 @@ def test_all_getter_methods(setup):
     
     # Test auto-generated getters for public variables
     assert art_piece.aiGenerated() == TEST_AI_GENERATED
-    assert art_piece.initialized() is True 
+    assert art_piece.initialized() is True
+    assert art_piece.IS_ON_CHAIN() is True  # Test the constant is accessible 

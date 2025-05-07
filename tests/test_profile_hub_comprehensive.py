@@ -53,9 +53,9 @@ def test_user_first_upload_creates_profile_and_art(setup):
     assert profile_hub.hasProfile(user.address) == False
     
     # Sample art piece data for first upload
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiTXkgRmlyc3QgQXJ0d29yayIsImRlc2NyaXB0aW9uIjoiVGhpcyBpcyBteSBmaXJzdCBldmVyIHVwbG9hZGVkIGFydCBwaWVjZSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiTXkgRmlyc3QgQXJ0d29yayIsImRlc2NyaXB0aW9uIjoiVGhpcyBpcyBteSBmaXJzdCBldmVyIHVwbG9hZGVkIGFydCBwaWVjZSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
     # Parse base64 data to extract title and description
-    base64_data = token_uri_data.replace("data:application/json;base64,", "")
+    base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
     json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
     title = json_data["name"]
     description = json_data["description"]
@@ -65,6 +65,7 @@ def test_user_first_upload_creates_profile_and_art(setup):
     result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -116,9 +117,9 @@ def test_commissioner_creates_profile_and_commission(setup):
     assert profile_hub.hasProfile(commissioner.address) == False
     
     # Sample commission data
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQXJ0IENvbW1pc3Npb24gUmVxdWVzdCIsImRlc2NyaXB0aW9uIjoiSSdkIGxpa2UgdG8gY29tbWlzc2lvbiBhIGZhbnRhc3kgbGFuZHNjYXBlIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDgvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQXJ0IENvbW1pc3Npb24gUmVxdWVzdCIsImRlc2NyaXB0aW9uIjoiSSdkIGxpa2UgdG8gY29tbWlzc2lvbiBhIGZhbnRhc3kgbGFuZHNjYXBlIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDgvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
     # Parse base64 data to extract title and description
-    base64_data = token_uri_data.replace("data:application/json;base64,", "")
+    base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
     json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
     title = json_data["name"]
     description = json_data["description"]
@@ -128,6 +129,7 @@ def test_commissioner_creates_profile_and_commission(setup):
     result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -178,9 +180,9 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
     assert profile_hub.hasProfile(other_artist.address) == False
     
     # Sample portfolio piece data
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiUG9ydGZvbGlvIFNob3djYXNlIFBpZWNlIiwiZGVzY3JpcHRpb24iOiJNeSBiZXN0IHdvcmsgdG8gZGVtb25zdHJhdGUgbXkgc2tpbGxzIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiUG9ydGZvbGlvIFNob3djYXNlIFBpZWNlIiwiZGVzY3JpcHRpb24iOiJNeSBiZXN0IHdvcmsgdG8gZGVtb25zdHJhdGUgbXkgc2tpbGxzIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
     # Parse base64 data for title and description
-    base64_data = token_uri_data.replace("data:application/json;base64,", "")
+    base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
     json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
     title = json_data["name"]
     description = json_data["description"]
@@ -190,6 +192,7 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
     result = profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -251,7 +254,7 @@ def test_multiple_users_create_profiles_with_art(setup):
             continue
             
         # Create art data
-        token_uri_data = f"data:application/json;base64,eyJuYW1lIjoiVGVzdCB7aX0iLCJkZXNjcmlwdGlvbiI6IkRlc2NyaXB0aW9uIGZvciB0ZXN0IHtpfSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+        token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVXNlciAxIEFydHdvcmsiLCJkZXNjcmlwdGlvbiI6IkFydHdvcmsgYnkgdXNlciAxIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
         title = titles[i]
         description = f"Description for {title}"  # Changed from byte string to regular string
         is_artist = True  # All users are artists of their own work in this test
@@ -260,6 +263,7 @@ def test_multiple_users_create_profiles_with_art(setup):
         profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
+            "avif",
             title,
             description,
             is_artist,
@@ -302,7 +306,7 @@ def test_edge_case_max_size_art(setup):
     # Create large size image data (but not at the absolute max to avoid gas issues)
     # 20,000 bytes is large enough to test the functionality
     # Use a long tokenURI format string for the test
-    large_token_uri_data = "data:application/json;base64," + "A" * 20000
+    large_token_uri_data = b"data:application/json;base64," + b"A" * 20000
     title = "Large Size Art Test"
     description = "Testing with large image size"  # Changed from byte string to regular string
     is_artist = True
@@ -311,6 +315,7 @@ def test_edge_case_max_size_art(setup):
     profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         large_token_uri_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -349,9 +354,9 @@ def test_ai_generated_art_flag(setup):
         return
     
     # Create AI art
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQUkgTWFzdGVycGllY2UiLCJkZXNjcmlwdGlvbiI6IlRoaXMgd2FzIGNyZWF0ZWQgdXNpbmcgYW4gQUkgYXJ0IGdlbmVyYXRvciIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQUkgR2VuZXJhdGVkIEFydCIsImRlc2NyaXB0aW9uIjoiVGhpcyB3YXMgY3JlYXRlZCB3aXRoIHRoZSBoZWxwIG9mIEFJIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
     # Parse base64 data for title and description
-    base64_data = token_uri_data.replace("data:application/json;base64,", "")
+    base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
     json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
     title = json_data["name"]
     description = json_data["description"]
@@ -361,6 +366,7 @@ def test_ai_generated_art_flag(setup):
     profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         is_artist,
@@ -381,15 +387,16 @@ def test_error_profile_exists_already(setup):
     
     # First, create a profile if one doesn't exist
     if not profile_hub.hasProfile(user.address):
-        token_uri_data = "data:application/json;base64,eyJuYW1lIjoiSW5pdGlhbCBBcnQiLCJkZXNjcmlwdGlvbiI6IkZpcnN0IGFydCBwaWVjZSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+        token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiSW5pdGlhbCBBcnQiLCJkZXNjcmlwdGlvbiI6IkZpcnN0IGFydCBwaWVjZSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
         # Parse base64 data for title and description
-        base64_data = token_uri_data.replace("data:application/json;base64,", "")
+        base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
         json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
         title = json_data["name"]
         description = json_data["description"]
         profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
+            "avif",
             title,
             description,
             True,
@@ -400,9 +407,9 @@ def test_error_profile_exists_already(setup):
         )
     
     # Try to create a profile and art piece when profile already exists
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiU2hvdWxkIEZhaWwiLCJkZXNjcmlwdGlvbiI6IlRoaXMgc2hvdWxkIGZhaWwgYmVjYXVzZSBwcm9maWxlIGV4aXN0cyIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiU2hvdWxkIEZhaWwiLCJkZXNjcmlwdGlvbiI6IlRoaXMgc2hvdWxkIGZhaWwgYmVjYXVzZSBwcm9maWxlIGV4aXN0cyIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
     # Parse base64 data for title and description 
-    base64_data = token_uri_data.replace("data:application/json;base64,", "")
+    base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
     json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
     title = json_data["name"]
     description = json_data["description"]
@@ -412,6 +419,7 @@ def test_error_profile_exists_already(setup):
         profile_hub.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
+            "avif",
             title,
             description,
             True,
@@ -443,14 +451,15 @@ def test_special_characters_in_title_and_description(setup):
         return
     
     # Create art data with special characters
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiU3BlY2lhbCBDaGFycyIsImRlc2NyaXB0aW9uIjoiVGVzdGluZyB3aXRoIHNwZWNpYWwgY2hhcmFjdGVycyIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
-    title = "Special Chars: !@#$%^&*()-+=[]{}|;:',.<>/?`~"
-    description = "Testing with special characters and Unicode ✅ ✨"  # Changed from byte string to regular string with unicode
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiU3BlY2lhbCBUaXRsZTogIUAjJCVeJiooKV8re318Ojw+P35gLT1bXVxcOycsLi9cIiIsImRlc2NyaXB0aW9uIjoiU3BlY2lhbCBEZXNjcmlwdGlvbjogIUAjJCVeJiooKV8re318Ojw+P35gLT1bXVxcOycsLi9cIiIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+    title = "Special Title: !@#$%^&*()_+{}|:<>?~`-=[]\\;',./\""
+    description = "Special Description: !@#$%^&*()_+{}|:<>?~`-=[]\\;',./\""
     
     # Act - create profile and art piece with special characters
     profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         True,
@@ -475,7 +484,7 @@ def test_create_profile_with_empty_description(setup):
         return
     
     # Create art data with empty description
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiRW1wdHkgRGVzY3JpcHRpb24gVGVzdCIsImRlc2NyaXB0aW9uIjoiIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGl0bGUgV2l0aCBFbXB0eSBEZXNjcmlwdGlvbiIsImRlc2NyaXB0aW9uIjoiIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
     title = "Empty Description Test"
     description = ""  # Empty description as string instead of bytes
     
@@ -483,6 +492,7 @@ def test_create_profile_with_empty_description(setup):
     profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         True,
@@ -508,9 +518,9 @@ def test_create_art_for_another_party(setup):
         return
     
     # Create art data for commission
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiQ29tbWlzc2lvbiBGb3IgT3RoZXIgUGFydHkiLCJkZXNjcmlwdGlvbiI6IlRoaXMgYXJ0IHBpZWNlIGlzIGNyZWF0ZWQgZm9yIGFub3RoZXIgdXNlciIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQXJ0IGZvciBBbm90aGVyIFBhcnR5IiwiZGVzY3JpcHRpb24iOiJBcnQgcGllY2UgZGVkaWNhdGVkIHRvIGFub3RoZXIgdXNlciIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
     # Parse base64 data for title and description
-    base64_data = token_uri_data.replace("data:application/json;base64,", "")
+    base64_data = token_uri_data.replace(b"data:application/json;base64,", b"")
     json_data = json.loads(base64.b64decode(base64_data).decode("utf-8"))
     title = json_data["name"]
     description = json_data["description"]
@@ -519,6 +529,7 @@ def test_create_art_for_another_party(setup):
     profile_hub.createNewArtPieceAndRegisterProfile(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         False,  # Not the artist

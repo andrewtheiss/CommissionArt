@@ -75,10 +75,10 @@ def test_create_and_update_artist_profile(setup):
     profile.setIsArtist(True, sender=artist)
     assert profile.isArtist() is True
     
-    # Set profile image
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(token_uri_data, sender=artist)
-    assert profile.profileImage() == token_uri_data
+    # Set profile image (using address instead of string data)
+    profile_image_address = "0x1111111111111111111111111111111111111111"
+    profile.setProfileImage(profile_image_address, sender=artist)
+    assert profile.profileImage() == profile_image_address
     
     # Set proceeds address 
     profile.setProceedsAddress(other_user.address, sender=artist)
@@ -119,7 +119,7 @@ def test_profile_permission_restrictions(setup):
     assert "Only owner" in str(excinfo.value)
     
     with pytest.raises(Exception) as excinfo:
-        profile.setProfileImage("data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9", sender=other_user)
+        profile.setProfileImage("0x1111111111111111111111111111111111111111", sender=other_user)
     assert "Only owner" in str(excinfo.value)
     
     with pytest.raises(Exception) as excinfo:
@@ -183,35 +183,6 @@ def test_profile_social_features(setup):
     assert str(other_profile_address) not in liked_profiles_str
     assert str(artist_profile_address) in liked_profiles_str
 
-def test_profile_image_history(setup):
-    """Test storing and retrieving profile image history"""
-    profile_hub = setup["profile_hub"]
-    user = setup["user"]
-    
-    # Create a profile
-    profile_hub.createProfile(sender=user)
-    profile_address = profile_hub.getProfile(user.address)
-    profile = project.Profile.at(profile_address)
-    
-    # Initially no profile image
-    assert len(profile.profileImage()) == 0
-    
-    # Set first profile image
-    image1 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwi3GVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(image1, sender=user)
-    assert profile.profileImage() == image1
-    
-    # Set second profile image
-    image2 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3J5cHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(image2, sender=user)
-    assert profile.profileImage() == image2
-    
-    # Set third profile image
-    image3 = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZ4VzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-    profile.setProfileImage(image3, sender=user)
-    assert profile.profileImage() == image3
-    
-
 def test_create_art_piece_on_profile(setup):
     """Test creating an art piece through a profile"""
     profile_hub = setup["profile_hub"]
@@ -226,7 +197,7 @@ def test_create_art_piece_on_profile(setup):
     profile = project.Profile.at(profile_address)
     
     # Test data for art piece
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "My First Artwork"
     description = "This is a description of my artwork"
     
@@ -235,6 +206,7 @@ def test_create_art_piece_on_profile(setup):
     transaction = profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         False,  # Not as artist
@@ -268,7 +240,7 @@ def test_create_art_piece_on_profile(setup):
     
     # Verify art piece properties
     assert art_piece.getTitle() == title
-    assert art_piece.getImageData() == token_uri_data
+    assert art_piece.getTokenURIData() == token_uri_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == user.address  # User is owner
     assert art_piece.getArtist() == artist.address  # Artist as specified
@@ -291,7 +263,7 @@ def test_create_art_piece_as_artist(setup):
     profile.setIsArtist(True, sender=artist)
     
     # Test data for art piece
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Artist Creation"
     description = "Artwork created by an artist"
     
@@ -299,6 +271,7 @@ def test_create_art_piece_as_artist(setup):
     transaction = profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         True,  # As artist
@@ -325,7 +298,7 @@ def test_create_art_piece_as_artist(setup):
     
     # Verify art piece properties - note the ownership differences for artist creation
     assert art_piece.getTitle() == title
-    assert art_piece.getImageData() == token_uri_data
+    assert art_piece.getTokenURIData() == token_uri_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == commissioner.address  # Commissioner is owner
     assert art_piece.getArtist() == artist.address       # Artist is creator
@@ -350,7 +323,7 @@ def test_add_existing_art_piece_to_profile(setup):
     artist_profile.setIsArtist(True, sender=artist)
     
     # Create an art piece through the user profile
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Shared Artwork"
     description = "Artwork shared across profiles"
     
@@ -358,6 +331,7 @@ def test_add_existing_art_piece_to_profile(setup):
     transaction = user_profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         False,  # Not as artist
@@ -376,7 +350,7 @@ def test_add_existing_art_piece_to_profile(setup):
     # Verify the art piece properties
     user_art_piece = project.ArtPiece.at(art_piece_address)
     assert user_art_piece.getTitle() == title
-    assert user_art_piece.getImageData() == token_uri_data
+    assert user_art_piece.getTokenURIData() == token_uri_data
     assert user_art_piece.getDescription() == description
     
     # Artist adds the same art piece to their profile
@@ -406,11 +380,12 @@ def test_remove_art_piece_from_profile(setup):
     profile = project.Profile.at(profile_hub.getProfile(user.address))
     
     # Create first art piece
-    first_image = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    first_image = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     first_title = "First Art"
     profile.createArtPiece(
         art_piece_template.address,
         first_image,
+        "avif",
         first_title,
         "First art description",
         False,
@@ -421,11 +396,12 @@ def test_remove_art_piece_from_profile(setup):
     )
     
     # Create second art piece
-    second_image = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    second_image = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     second_title = "Second Art"
     profile.createArtPiece(
         art_piece_template.address,
         second_image,
+        "avif",
         second_title,
         "Second art description",
         False,
@@ -484,7 +460,7 @@ def test_profile_hub_combined_creation(setup):
     assert profile_hub.hasProfile(user.address) is True
     
     # Define art piece data
-    token_uri_data = "data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Combined Creation"
     description = "Created in a workflow"
     
@@ -492,6 +468,7 @@ def test_profile_hub_combined_creation(setup):
     profile.createArtPiece(
         art_piece_template.address,
         token_uri_data,
+        "avif",
         title,
         description,
         False,  # Not as artist
@@ -511,7 +488,7 @@ def test_profile_hub_combined_creation(setup):
     # Load and verify the art piece
     art_piece = project.ArtPiece.at(art_piece_addr)
     assert art_piece.getTitle() == title
-    assert art_piece.getImageData() == token_uri_data
+    assert art_piece.getTokenURIData() == token_uri_data
     assert art_piece.getDescription() == description
     assert art_piece.getOwner() == user.address
     assert art_piece.getArtist() == artist.address 

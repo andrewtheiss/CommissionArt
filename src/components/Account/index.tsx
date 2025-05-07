@@ -3,9 +3,13 @@ import { useBlockchain } from '../../utils/BlockchainContext';
 import profileService from '../../utils/profile-service';
 import { ethers } from 'ethers';
 import ArtDisplay from '../ArtDisplay';
-import { safeRevokeUrl } from '../../utils/TokenURIDecoder';
+import { safeRevokeUrl, createImageDataUrl } from '../../utils/TokenURIDecoder';
 import ArtPieceDebugInfo from './ArtPieceDebugInfo';
+import abiLoader from '../../utils/abiLoader';
+import ethersService from '../../utils/ethers-service';
 import './Account.css';
+import ProfileEnvironmentToggle from '../ProfileEnvironmentToggle';
+import '../ProfileEnvironmentToggle.css';
 
 // Start with debug mode off by default, user can toggle it on
 const DEBUG_MODE_KEY = 'account_debug_mode';
@@ -41,7 +45,14 @@ const Account: React.FC = () => {
   const [recentArtPieces, setRecentArtPieces] = useState<string[]>([]);
   const [totalArtPieces, setTotalArtPieces] = useState<number>(0);
   const [loadingArtPieces, setLoadingArtPieces] = useState<boolean>(false);
-  const [artPieceDetails, setArtPieceDetails] = useState<{[address: string]: {title: string, tokenURIData: string | null}}>({});
+  const [artPieceDetails, setArtPieceDetails] = useState<{
+    [address: string]: {
+      title: string;
+      tokenURIData: string | null;
+      imageData: Uint8Array | null;
+      format: string | null;
+    }
+  }>({});
   
   // Profile image
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -92,45 +103,88 @@ const Account: React.FC = () => {
     }
   }, []);
 
-  const ConnectionBar = () => (
-    <div className="connection-bar">
-      {!isTrulyConnected ? (
-        <>
-          <div className="connection-status disconnected">
-            <span className="status-icon"></span>
-            <span className="status-text">Wallet Not Connected</span>
-          </div>
-          <button className="connect-wallet-button" onClick={connectWallet}>
-            Connect Wallet
-          </button>
-          {isConnected && !walletAddress && (
-            <div className="connection-error-message">
-              <p>Connection detected but no wallet address available. Please try reconnecting.</p>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="connection-status connected">
-            <span className="status-icon"></span>
-            <div className="connection-details">
-              <span className="status-text">
-                Connected to: <span className="network-name">
-                  {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
-                </span>
-              </span>
-              <span className="wallet-address">
-                {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
-              </span>
-            </div>
-          </div>
-          <button className="disconnect-wallet-button" onClick={handleDisconnect}>
-            Disconnect
-          </button>
-        </>
-      )}
-    </div>
+  // Create a state to track profile layer changes
+  const [profileLayer, setProfileLayer] = useState<string>(
+    localStorage.getItem('profile-use-l2-testnet') === 'true' ? 'L2 Testnet' : 'L3 AnimeChain'
   );
+
+  // Watch for changes to the profile layer setting
+  useEffect(() => {
+    const checkProfileLayer = () => {
+      const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
+      setProfileLayer(useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain');
+    };
+
+    // Check initially
+    checkProfileLayer();
+
+    // Set up event listener for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'profile-use-l2-testnet') {
+        checkProfileLayer();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Custom event for local changes
+    const handleCustomEvent = () => checkProfileLayer();
+    window.addEventListener('profile-layer-changed', handleCustomEvent);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profile-layer-changed', handleCustomEvent);
+    };
+  }, []);
+
+  const ConnectionBar = () => {
+    // Get the profile layer preference from localStorage
+    const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
+    const profileLayer = useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain';
+    
+    return (
+      <div className="connection-bar">
+        {!isTrulyConnected ? (
+          <>
+            <div className="connection-status disconnected">
+              <span className="status-icon"></span>
+              <span className="status-text">Wallet Not Connected</span>
+            </div>
+            <button className="connect-wallet-button" onClick={connectWallet}>
+              Connect Wallet
+            </button>
+            {isConnected && !walletAddress && (
+              <div className="connection-error-message">
+                <p>Connection detected but no wallet address available. Please try reconnecting.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="connection-status connected">
+              <span className="status-icon"></span>
+              <div className="connection-details">
+                <span className="status-text">
+                  Connected to: <span className="network-name">
+                    {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
+                  </span>
+                </span>
+                <span className="profile-layer">
+                  Profile Layer: <span className="layer-name">{profileLayer}</span>
+                </span>
+                <span className="wallet-address">
+                  {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
+                </span>
+              </div>
+            </div>
+            <button className="disconnect-wallet-button" onClick={handleDisconnect}>
+              Disconnect
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
 
   // Check if user has a profile
   useEffect(() => {
@@ -177,7 +231,7 @@ const Account: React.FC = () => {
     };
     
     checkProfileStatus();
-  }, [isConnected, walletAddress, network]);
+  }, [isConnected, walletAddress, network, profileLayer]);
   
   // Load profile data after we have the profile contract
   useEffect(() => {
@@ -263,119 +317,132 @@ const Account: React.FC = () => {
   };
   
   const loadArtPieces = async (profileContract: ethers.Contract) => {
+    if (!profileContract) return;
+    
     try {
       setLoadingArtPieces(true);
+      setError(null);
       
-      console.log("Loading art pieces from profile contract:", profileContract.target);
+      // Get total count
+      const artPieceCount = await profileContract.myArtCount();
+      setTotalArtPieces(Number(artPieceCount));
       
-      // Get the total count of art pieces
-      const artCount = await profileContract.myArtCount();
-      setTotalArtPieces(Number(artCount));
-      console.log("Total art pieces:", Number(artCount));
+      if (Number(artPieceCount) === 0) {
+        setLoadingArtPieces(false);
+        return;
+      }
       
-      // Instead of using paging, let's use the getLatestArtPieces method which returns the 5 most recent
-      const artPieces = await profileContract.getLatestArtPieces();
-      console.log("Latest art pieces:", artPieces);
+      // Get the most recent 5 art pieces
+      const recentPieces = await profileContract.getLatestArtPieces();
+      setRecentArtPieces(recentPieces);
       
-      setRecentArtPieces(artPieces);
+      // For each art piece, get its details
+      const artDetails: { [address: string]: { title: string; tokenURIData: string | null; imageData: Uint8Array | null; format: string | null } } = {};
       
-      // Load details for each art piece
-      const artPieceAbi = await profileService.getArtPieceAbi();
-      if (artPieceAbi) {
-        const details: {[address: string]: {title: string, tokenURIData: string | null}} = {};
-        const provider = profileService.getProvider();
+      for (const address of recentPieces) {
+        if (!address || address === ethers.ZeroAddress) continue;
         
-        if (provider) {
-          for (const address of artPieces) {
-            if (!address) continue; // Skip empty addresses
+        try {
+          // Create contract instance
+          const contract = new ethers.Contract(
+            address,
+            abiLoader.loadABI('ArtPiece'),
+            ethersService.getProvider()
+          );
+          
+          const title = await contract.getTitle();
+          let tokenURIData = null;
+          let imageData = null;
+          let format = null;
+          
+          // First try to get format if available
+          try {
+            format = await contract.tokenURI_data_format();
+            console.log(`Art piece ${address.substring(0, 6)}... format: ${format}`);
+          } catch (formatErr) {
+            console.log(`No direct format data for art piece ${address.substring(0, 6)}...`);
+            // Format will be detected later from the image data
+          }
+          
+          // Try to get tokenURIData first
+          try {
+            tokenURIData = await contract.getTokenURIData();
+            console.log(`Got tokenURIData for art piece ${address.substring(0, 6)}..., length: ${tokenURIData ? tokenURIData.length : 0} bytes`);
             
+            // Log the first few bytes to help with debugging
+            if (tokenURIData && tokenURIData.length > 0) {
+              const firstBytes = Array.from(tokenURIData.slice(0, 16))
+                .map((b: unknown) => (b as number).toString(16).padStart(2, '0'))
+                .join(' ');
+              console.log(`First bytes: ${firstBytes}`);
+            }
+          } catch (err) {
+            console.log(`No tokenURIData for art piece ${address.substring(0, 6)}...`);
+          }
+          
+          // If that fails, try legacy getImageData
+          if (!tokenURIData) {
             try {
-              console.log("Loading details for art piece:", address);
-              const artPieceContract = new ethers.Contract(address, artPieceAbi, provider);
+              imageData = await contract.getImageData();
+              console.log(`Got imageData for art piece ${address.substring(0, 6)}..., length: ${imageData ? imageData.length : 0} bytes`);
               
-              // Check if contract methods exist before calling them
-              let title = "Untitled Artwork";
-              let tokenURIData = null;
-              
-              // Safely try to get title
-              try {
-                // First check if it's a function or a property
-                if (typeof artPieceContract.title === 'function') {
-                  title = await artPieceContract.title();
-                } else if (artPieceContract.title !== undefined) {
-                  // It's a property
-                  title = await artPieceContract.title;
-                }
-              } catch (titleErr) {
-                console.warn(`Could not get title for art piece ${address}:`, titleErr);
-                // Next, try tokenURI as fallback for title
-                try {
-                  const tokenURI = await artPieceContract.tokenURI(1);
-                  if (tokenURI && tokenURI.startsWith('data:application/json;base64,')) {
-                    const decodedData = decodeTokenFromUri(tokenURI);
-                    if (decodedData && decodedData.name) {
-                      title = decodedData.name;
-                    }
-                  }
-                } catch (tokenErr) {
-                  console.warn(`Could not get tokenURI for art piece ${address}:`, tokenErr);
-                }
+              // Log the first few bytes to help with debugging
+              if (imageData && imageData.length > 0) {
+                const firstBytes = Array.from(imageData.slice(0, 16))
+                  .map((b: unknown) => (b as number).toString(16).padStart(2, '0'))
+                  .join(' ');
+                console.log(`First bytes: ${firstBytes}`);
               }
-              
-              // Safely try to get tokenURI data
-              try {
-                // Try all possible methods to get the data
-                if (typeof artPieceContract.tokenURI === 'function') {
-                  tokenURIData = await artPieceContract.tokenURI(1);
-                } else if (typeof artPieceContract.tokenURI_data === 'function') {
-                  tokenURIData = await artPieceContract.tokenURI_data();
-                } else if (typeof artPieceContract.getTokenURIData === 'function') {
-                  tokenURIData = await artPieceContract.getTokenURIData();
-                } else if (typeof artPieceContract.getImageData === 'function') {
-                  // For backwards compatibility
-                  tokenURIData = await artPieceContract.getImageData();
-                } else if (artPieceContract.tokenURI_data !== undefined) {
-                  tokenURIData = await artPieceContract.tokenURI_data;
-                }
-                
-                if (tokenURIData) {
-                  console.log(`Loaded tokenURI data for ${address}, data: ${typeof tokenURIData}`);
-                  
-                  // Check if it starts with the tokenURI format
-                  if (typeof tokenURIData === 'string' && tokenURIData.startsWith('data:application/json;base64,')) {
-                    console.log(`TokenURI starts with: ${tokenURIData.substring(0, 100)}...`);
-                  } else if (typeof tokenURIData !== 'string') {
-                    // It might be bytes for older contracts, try to convert
-                    try {
-                      const dataStr = (typeof tokenURIData.slice === 'function')
-                        ? new TextDecoder().decode(tokenURIData)
-                        : String(tokenURIData);
-                      
-                      console.log(`Converted tokenURI data: ${dataStr.substring(0, 30)}...`);
-                      tokenURIData = dataStr;
-                    } catch (err) {
-                      console.warn(`Unable to decode image data:`, err);
-                    }
-                  }
-                }
-              } catch (imageErr) {
-                console.error(`Error loading tokenURI data for art piece ${address}:`, imageErr);
-              }
-              
-              details[address] = { title, tokenURIData };
             } catch (err) {
-              console.error(`Error loading details for art piece ${address}:`, err);
-              details[address] = { title: 'Unknown Art Piece', tokenURIData: null };
+              console.error(`Error getting image data for ${address}:`, err);
             }
           }
           
-          setArtPieceDetails(details);
-        } else {
-          console.error("Provider not available");
+          // If we still don't have format, try to detect from the binary data
+          if (!format && (tokenURIData || imageData)) {
+            const dataToCheck = tokenURIData || imageData;
+            if (dataToCheck && dataToCheck.length > 0) {
+              // Check for JPEG signature: FF D8 FF
+              if (dataToCheck[0] === 0xFF && dataToCheck[1] === 0xD8 && dataToCheck[2] === 0xFF) {
+                format = 'jpeg';
+              }
+              // Check for PNG signature: 89 50 4E 47
+              else if (dataToCheck[0] === 0x89 && dataToCheck[1] === 0x50 && dataToCheck[2] === 0x4E && dataToCheck[3] === 0x47) {
+                format = 'png';
+              }
+              // Check for GIF signature: 47 49 46 38
+              else if (dataToCheck[0] === 0x47 && dataToCheck[1] === 0x49 && dataToCheck[2] === 0x46 && dataToCheck[3] === 0x38) {
+                format = 'gif';
+              }
+              // Check for WebP signature: 52 49 46 46 ... 57 45 42 50 (RIFF....WEBP)
+              else if (dataToCheck[0] === 0x52 && dataToCheck[1] === 0x49 && dataToCheck[2] === 0x46 && dataToCheck[3] === 0x46 &&
+                      dataToCheck.length >= 12 && dataToCheck[8] === 0x57 && dataToCheck[9] === 0x45 && dataToCheck[10] === 0x42 && dataToCheck[11] === 0x50) {
+                format = 'webp';
+              }
+              // Default to avif if no other format detected
+              else {
+                format = 'avif';
+              }
+              console.log(`Detected format based on magic numbers: ${format}`);
+            }
+          }
+          
+          // Store the art piece details
+          artDetails[address] = { 
+            title, 
+            tokenURIData,
+            imageData,
+            format
+          };
+        } catch (err) {
+          console.error(`Error loading art piece ${address}:`, err);
         }
       }
+      
+      setArtPieceDetails(artDetails);
     } catch (err) {
       console.error("Error loading art pieces:", err);
+      setError("Failed to load art pieces. Please try again.");
     } finally {
       setLoadingArtPieces(false);
     }
@@ -471,6 +538,9 @@ const Account: React.FC = () => {
           <span className="debug-mode-toggle-text">Debug Mode</span>
         </label>
       </div>
+      
+      {/* Add profile environment toggle */}
+      <ProfileEnvironmentToggle />
       
       <ConnectionBar />
       
@@ -586,6 +656,7 @@ const Account: React.FC = () => {
                               title={details.title}
                               contractAddress={address}
                               className="art-piece-display"
+                              showDebug={debugMode}
                             />
                             {/* Add debug info component conditionally */}
                             {debugMode && (
@@ -593,6 +664,24 @@ const Account: React.FC = () => {
                                 tokenURIData={details.tokenURIData} 
                                 contractAddress={address}
                               />
+                            )}
+                          </>
+                        ) : details.imageData ? (
+                          // Handle raw image data format
+                          <>
+                            <ArtDisplay
+                              imageData={details.imageData}
+                              title={details.title}
+                              contractAddress={address}
+                              className="art-piece-display"
+                              showDebug={debugMode}
+                            />
+                            {debugMode && (
+                              <div className="art-debug-info small">
+                                <div>Raw binary image data</div>
+                                <div>Format: {details.format || 'unknown'}</div>
+                                <div>Size: {(details.imageData.length / 1024).toFixed(2)} KB</div>
+                              </div>
                             )}
                           </>
                         ) : (

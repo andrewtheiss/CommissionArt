@@ -18,38 +18,39 @@
 deployer: public(address)  # New variable to store the deployer's address
 hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
-profileImage: public(String[45000])
+profileImage: public(address)  # Changed from Bytes[45000] to address
+profileImageFormat: public(String[10])
 
 # Commissions and counters
-commissions: public(DynArray[address, 100000])
+commissions: public(DynArray[address, 10**9])
 commissionCount: public(uint256)
-unverifiedCommissions: public(DynArray[address, 10000])
+unverifiedCommissions: public(DynArray[address, 10**9])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
 
 # Art pieces collection
-myArt: public(DynArray[address, 100000])
+myArt: public(DynArray[address, 10**9])
 myArtCount: public(uint256)
 
 # Collector ERC1155s
-collectorErc1155s: public(DynArray[address, 100000])
+collectorErc1155s: public(DynArray[address, 10**9])
 collectorErc1155Count: public(uint256)
 
 # Profile socials and counters
-likedProfiles: public(DynArray[address, 10000])
+likedProfiles: public(DynArray[address, 10**9])
 likedProfileCount: public(uint256)
 whitelist: public(HashMap[address, bool])
 blacklist: public(HashMap[address, bool])
-linkedProfiles: public(DynArray[address, 100])  
+linkedProfiles: public(DynArray[address, 10**5])  
 linkedProfileCount: public(uint256)
 
 
 # ERC1155 addresses for supporting additional or items for sale
 isArtist: public(bool)                                         # Profile is an artist
-artistCommissionedWorks: public(DynArray[address, 100000])               # Commissions this artist has
+artistCommissionedWorks: public(DynArray[address, 10**9])               # Commissions this artist has
 artistCommissionedWorkCount: public(uint256)                             # Count of artist's commissions
-artistErc1155sToSell: public(DynArray[address, 100000])      # Additional mint ERC1155s for the artist
+artistErc1155sToSell: public(DynArray[address, 10**9])      # Additional mint ERC1155s for the artist
 artistErc1155sToSellCount: public(uint256)                    # Count of additional ERC1155s
 artistCommissionToErc1155Map: public(HashMap[address, address])  # Map of commission addresses to mint ERC1155 addresses
 artistProceedsAddress: public(address)                               # Address to receive proceeds from sales
@@ -61,7 +62,7 @@ profileExpansion: public(address)
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
-    def initialize(_token_uri_data: String[45000], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
 
 # Constructor
 @deploy
@@ -95,7 +96,7 @@ def initialize(_owner: address):
 
 # Remove an item from a dynamic array by swapping with the last element
 @internal
-def _removeFromArray(_array: DynArray[address, 100000], _item: address):
+def _removeFromArray(_array: DynArray[address, 10**9], _item: address):
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(_array), bound=1000):
@@ -108,47 +109,6 @@ def _removeFromArray(_array: DynArray[address, 100000], _item: address):
     _array[index] = lastItem
     _array.pop()
 
-# Get a paginated slice of a dynamic array
-@internal
-@view
-def _getArraySlice(_array: DynArray[address, 100000], _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    start: uint256 = _page * _page_size
-    end: uint256 = start + _page_size
-    if start >= len(_array):
-        return result
-    if end > len(_array):
-        end = len(_array)
-    for i: uint256 in range(start, end, bound=100):
-        result.append(_array[i])
-    return result
-
-# Get a paginated slice in reverse order (newest first)
-@internal
-@view
-def _getArraySliceReverse(_array: DynArray[address, 100000], _total_count: uint256, _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    
-    # If array is empty or invalid page, return empty result
-    if _total_count == 0 or _page * _page_size >= _total_count:
-        return result
-    
-    # Calculate the start index from the end (newest items first)
-    start: uint256 = _total_count - (_page * _page_size) - 1
-    # Calculate how many items to return
-    items_to_return: uint256 = min(_page_size, start + 1)
-    
-    # Cap at result array maximum size
-    items_to_return = min(items_to_return, 100)
-    
-    # Add items in reverse order (newest first)
-    for i: uint256 in range(0, items_to_return, bound=100):
-        idx: uint256 = start - i
-        if idx < len(_array):  # Safety check
-            result.append(_array[idx])
-    
-    return result
-
 # Setter Functions
 
 # Set artist status
@@ -159,9 +119,15 @@ def setIsArtist(_is_artist: bool):
 
 # Set profile image
 @external
-def setProfileImage(_image: String[45000]):
+def setProfileImage(_image: address):  # Changed parameter type from Bytes[45000] to address
     assert msg.sender == self.owner, "Only owner can set profile image"
     self.profileImage = _image
+
+# Set profile image format
+@external
+def setProfileImageFormat(_format: String[10]):
+    assert msg.sender == self.owner, "Only owner can set profile image format"
+    self.profileImageFormat = _format
 
 # Toggle allowing new commissions
 @external
@@ -244,12 +210,42 @@ def removeCommission(_commission: address):
 @view
 @external
 def getCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySlice(self.commissions, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.commissions)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    # Calculate how many items to return (bounded by array length and max return size)
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    # Populate result array
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.commissions[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySliceReverse(self.commissions, self.commissionCount, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.commissions)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    # Calculate start index from the end and how many items to return
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    # Populate result array in reverse order
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.commissions[start - i])
+    
+    return result
 
 ## Unverified Commissions
 @external
@@ -289,12 +285,42 @@ def removeUnverifiedCommission(_commission: address):
 @view
 @external
 def getUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySlice(self.unverifiedCommissions, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.unverifiedCommissions)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    # Calculate how many items to return (bounded by array length and max return size)
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    # Populate result array
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.unverifiedCommissions[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySliceReverse(self.unverifiedCommissions, self.unverifiedCommissionCount, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.unverifiedCommissions)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    # Calculate start index from the end and how many items to return
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    # Populate result array in reverse order
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.unverifiedCommissions[start - i])
+    
+    return result
 
 ## Liked Profiles
 @external
@@ -334,12 +360,42 @@ def removeLikedProfile(_profile: address):
 @view
 @external
 def getLikedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySlice(self.likedProfiles, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.likedProfiles)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    # Calculate how many items to return (bounded by array length and max return size)
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    # Populate result array
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.likedProfiles[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentLikedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySliceReverse(self.likedProfiles, self.likedProfileCount, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.likedProfiles)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    # Calculate start index from the end and how many items to return
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    # Populate result array in reverse order
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.likedProfiles[start - i])
+    
+    return result
 
 ## Other Profiles
 @external
@@ -379,12 +435,38 @@ def removeLinkedProfile(_profile: address):
 @view
 @external
 def getLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySlice(self.linkedProfiles, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.linkedProfiles)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.linkedProfiles[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySliceReverse(self.linkedProfiles, self.linkedProfileCount, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.linkedProfiles)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.linkedProfiles[start - i])
+    
+    return result
 
 ## My Commissions (Artist-Only)
 @external
@@ -427,13 +509,41 @@ def removeMyCommission(_commission: address):
 @external
 def getArtistCommissionedWorks(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have my commissions"
-    return self._getArraySlice(self.artistCommissionedWorks, _page, _page_size)
+    
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.artistCommissionedWorks)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.artistCommissionedWorks[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentArtistCommissionedWorks(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have my commissions"
-    return self._getArraySliceReverse(self.artistCommissionedWorks, self.artistCommissionedWorkCount, _page, _page_size)
+    
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.artistCommissionedWorks)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.artistCommissionedWorks[start - i])
+    
+    return result
 
 ## Additional Mint ERC1155s (Artist-Only)
 @external
@@ -476,13 +586,41 @@ def removeAdditionalMintErc1155(_erc1155: address):
 @external
 def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have additional mint ERC1155s"
-    return self._getArraySlice(self.artistErc1155sToSell, _page, _page_size)
+    
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.artistErc1155sToSell)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.artistErc1155sToSell[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     assert self.isArtist, "Only artists have additional mint ERC1155s"
-    return self._getArraySliceReverse(self.artistErc1155sToSell, self.artistErc1155sToSellCount, _page, _page_size)
+    
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.artistErc1155sToSell)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.artistErc1155sToSell[start - i])
+    
+    return result
 
 ## Map Commission to Mint ERC1155 (Artist-Only)
 @external
@@ -506,10 +644,12 @@ def getMapCommissionToMintErc1155(_commission: address) -> address:
 ## Art Pieces
 
 @external
-def createArtPiece(_art_piece_template: address, _token_uri_data: String[45000], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
     """
     Create a new art piece through this profile
     _art_piece_template: Address of the ArtPiece template contract to clone
+    _token_uri_data: Raw bytes data for the token URI
+    _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
     _is_artist: True if caller is the artist, False if caller is the commissioner
     _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
     """
@@ -540,6 +680,7 @@ def createArtPiece(_art_piece_template: address, _token_uri_data: String[45000],
     art_piece: ArtPiece = ArtPiece(art_piece_address)
     extcall art_piece.initialize(
         _token_uri_data,
+        _token_uri_data_format,
         _title,
         _description,
         owner_input,
@@ -600,17 +741,38 @@ def removeArtPiece(_art_piece: address):
 @view
 @external
 def getArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySlice(self.myArt, _page, _page_size)
-
-@view
-@external
-def getArtPieceAtIndex(_index: uint256) -> address:
-    return self.myArt[_index]
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.myArt)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.myArt[start + i])
+    
+    return result
     
 @view
 @external
 def getRecentArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySliceReverse(self.myArt, self.myArtCount, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.myArt)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.myArt[start - i])
+    
+    return result
 
 @view
 @external
@@ -671,12 +833,38 @@ def removeCollectorErc1155(_erc1155: address):
 @view
 @external
 def getCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySlice(self.collectorErc1155s, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.collectorErc1155s)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.collectorErc1155s[start + i])
+    
+    return result
 
 @view
 @external
 def getRecentCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    return self._getArraySliceReverse(self.collectorErc1155s, self.collectorErc1155Count, _page, _page_size)
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.collectorErc1155s)
+    
+    # Early returns
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.collectorErc1155s[start - i])
+    
+    return result
 
 @view
 @external
@@ -706,3 +894,8 @@ def isCollectorErc1155(_erc1155: address) -> bool:
         if self.collectorErc1155s[i] == _erc1155:
             return True
     return False
+
+@view
+@external
+def getArtPieceAtIndex(_index: uint256) -> address:
+    return self.myArt[_index]

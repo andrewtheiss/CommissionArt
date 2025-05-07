@@ -154,6 +154,10 @@
       },
       {
         "name": "_token_uri_data",
+        "type": "bytes"
+      },
+      {
+        "name": "_token_uri_data_format",
         "type": "string"
       },
       {
