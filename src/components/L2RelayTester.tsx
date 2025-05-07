@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../utils/BlockchainContext';
 import contractConfigJson from '../assets/contract_config.json';
+import L3GasEstimatorWidget from './L3GasEstimatorWidget';
+import { L3GasEstimates } from '../utils/l3GasEstimator';
 
 // ABI for the L2Relay contract functions we need
 const L2RelayABI = [
@@ -42,6 +44,8 @@ const L2RelayTester: React.FC = () => {
   const [txHash, setTxHash] = useState<string>("");
   const [ethValue, setEthValue] = useState<string>("0.01"); // Default ETH value for relayToL3
   const [activeTab, setActiveTab] = useState<'receive' | 'relay'>('receive');
+  const [gasEstimates, setGasEstimates] = useState<L3GasEstimates | null>(null);
+  const [useEstimatedGas, setUseEstimatedGas] = useState<boolean>(true);
 
   // Update owner address when wallet connects
   useEffect(() => {
@@ -57,6 +61,23 @@ const L2RelayTester: React.FC = () => {
 
   const handleNetworkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNetwork(e.target.value as NetworkType);
+  };
+
+  // Handle gas estimates from L3GasEstimatorWidget
+  const handleGasEstimated = (estimates: L3GasEstimates) => {
+    setGasEstimates(estimates);
+    if (useEstimatedGas) {
+      // Update ETH value based on estimated total cost
+      const totalCostEth = ethers.formatEther(estimates.totalCost);
+      // Add 10% buffer to ensure enough gas
+      const totalWithBuffer = (parseFloat(totalCostEth) * 1.1).toString();
+      setEthValue(totalWithBuffer);
+    }
+  };
+
+  // Toggle using estimated gas
+  const toggleUseEstimatedGas = () => {
+    setUseEstimatedGas(!useEstimatedGas);
   };
 
   const handleSendReceive = async () => {
@@ -237,7 +258,7 @@ const L2RelayTester: React.FC = () => {
           type="text" 
           value={relayContractAddress} 
           onChange={(e) => setRelayContractAddress(e.target.value)}
-          placeholder="0x..."
+          placeholder={DEFAULT_NFT_CONTRACT}
         />
       </div>
       
@@ -284,15 +305,33 @@ const L2RelayTester: React.FC = () => {
       {activeTab === 'relay' && (
         <div className="form-group">
           <label>ETH Value (for gas fees):</label>
-          <input 
-            type="text" 
-            value={ethValue} 
-            onChange={(e) => setEthValue(e.target.value)}
-            placeholder="0.01"
-          />
+          <div className="input-with-checkbox">
+            <input 
+              type="text" 
+              value={ethValue} 
+              onChange={(e) => setEthValue(e.target.value)}
+              placeholder="0.01"
+            />
+            <label className="checkbox-label">
+              <input 
+                type="checkbox"
+                checked={useEstimatedGas}
+                onChange={toggleUseEstimatedGas}
+              />
+              Use estimated gas
+            </label>
+          </div>
           <small className="helper-text">Amount of ETH to send for L3 gas fees</small>
         </div>
       )}
+      
+      {/* L3 Gas Estimator Widget */}
+      <L3GasEstimatorWidget 
+        nftContract={nftContract}
+        tokenId={tokenId}
+        ownerAddress={ownerAddress}
+        onGasEstimated={handleGasEstimated}
+      />
       
       <div className="transaction-preview">
         <h3>Transaction Preview</h3>
@@ -329,6 +368,12 @@ const L2RelayTester: React.FC = () => {
             <div className="preview-row">
               <span className="preview-label">Value:</span>
               <span className="preview-value">{ethValue} ETH</span>
+            </div>
+          )}
+          {gasEstimates && activeTab === 'relay' && (
+            <div className="preview-row gas-info">
+              <span className="preview-label">Gas Info:</span>
+              <span className="preview-value">Using L3 mainnet gas estimates</span>
             </div>
           )}
         </div>
