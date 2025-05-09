@@ -14,31 +14,35 @@
 
 # State Variables
 
+# Constants for standardized pagination and unified array capacities
+PAGE_SIZE: constant(uint256) = 20
+MAX_ITEMS: constant(uint256) = 10**9  # unified max length for all item lists (adjusted if needed to original limits)
+
+
 # Owner of the profile (user address)
 deployer: public(address)  # New variable to store the deployer's address
 hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
 profileImage: public(address)  # Changed from Bytes[45000] to address
-profileImageFormat: public(String[10])
 
 # Commissions and counters
-commissions: public(DynArray[address, 10**9])
+commissions: public(DynArray[address, MAX_ITEMS])
 commissionCount: public(uint256)
-unverifiedCommissions: public(DynArray[address, 10**9])
+unverifiedCommissions: public(DynArray[address, MAX_ITEMS])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
 
 # Art pieces collection
-myArt: public(DynArray[address, 10**9])
+myArt: public(DynArray[address, MAX_ITEMS])
 myArtCount: public(uint256)
 
 # Collector ERC1155s
-collectorErc1155s: public(DynArray[address, 10**9])
+collectorErc1155s: public(DynArray[address, MAX_ITEMS])
 collectorErc1155Count: public(uint256)
 
 # Profile socials and counters
-likedProfiles: public(DynArray[address, 10**9])
+likedProfiles: public(DynArray[address, MAX_ITEMS])
 likedProfileCount: public(uint256)
 whitelist: public(HashMap[address, bool])
 blacklist: public(HashMap[address, bool])
@@ -48,9 +52,9 @@ linkedProfileCount: public(uint256)
 
 # ERC1155 addresses for supporting additional or items for sale
 isArtist: public(bool)                                         # Profile is an artist
-artistCommissionedWorks: public(DynArray[address, 10**9])               # Commissions this artist has
+artistCommissionedWorks: public(DynArray[address, MAX_ITEMS])               # Commissions this artist has
 artistCommissionedWorkCount: public(uint256)                             # Count of artist's commissions
-artistErc1155sToSell: public(DynArray[address, 10**9])      # Additional mint ERC1155s for the artist
+artistErc1155sToSell: public(DynArray[address, MAX_ITEMS])      # Additional mint ERC1155s for the artist
 artistErc1155sToSellCount: public(uint256)                    # Count of additional ERC1155s
 artistCommissionToErc1155Map: public(HashMap[address, address])  # Map of commission addresses to mint ERC1155 addresses
 artistProceedsAddress: public(address)                               # Address to receive proceeds from sales
@@ -63,6 +67,11 @@ interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
     def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+
+# Interface for ArtCommissionHub
+interface ArtCommissionHub:
+    def submitCommission(_art_piece: address): nonpayable
+    def setWhitelistedArtPieceContract(_art_piece_contract: address): nonpayable
 
 # Constructor
 @deploy
@@ -96,7 +105,7 @@ def initialize(_owner: address):
 
 # Remove an item from a dynamic array by swapping with the last element
 @internal
-def _removeFromArray(_array: DynArray[address, 10**9], _item: address):
+def _removeFromArray(_array: DynArray[address, MAX_ITEMS], _item: address):
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(_array), bound=1000):
@@ -116,18 +125,6 @@ def _removeFromArray(_array: DynArray[address, 10**9], _item: address):
 def setIsArtist(_is_artist: bool):
     assert msg.sender == self.owner, "Only owner can set artist status"
     self.isArtist = _is_artist
-
-# Set profile image
-@external
-def setProfileImage(_image: address):  # Changed parameter type from Bytes[45000] to address
-    assert msg.sender == self.owner, "Only owner can set profile image"
-    self.profileImage = _image
-
-# Set profile image format
-@external
-def setProfileImageFormat(_format: String[10]):
-    assert msg.sender == self.owner, "Only owner can set profile image format"
-    self.profileImageFormat = _format
 
 # Toggle allowing new commissions
 @external
@@ -171,6 +168,14 @@ def removeFromBlacklist(_address: address):
     assert msg.sender == self.owner, "Only owner can remove from blacklist"
     self.blacklist[_address] = False
 
+# Set profile image
+@external
+def setProfileImage(_profile_image: address):
+    assert msg.sender == self.owner, "Only owner can set profile image"
+    # check we are owner of the art piece
+    art_piece: ArtPiece = ArtPiece(_profile_image)
+    assert staticcall(art_piece.getOwner()) == self.owner or staticcall(art_piece.getArtist()) == self.owner, "Only owner can set profile image"
+    self.profileImage = _profile_image
 
 ## Commissions
 @external
@@ -641,41 +646,220 @@ def getMapCommissionToMintErc1155(_commission: address) -> address:
     assert self.isArtist, "Only artists have map commission to mint ERC1155"
     return self.artistCommissionToErc1155Map[_commission]
 
-## Art Pieces
-
-@external
-def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
-    """
-    Create a new art piece through this profile
-    _art_piece_template: Address of the ArtPiece template contract to clone
-    _token_uri_data: Raw bytes data for the token URI
-    _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
-    _is_artist: True if caller is the artist, False if caller is the commissioner
-    _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
-    """
-    # Check if the caller is either:
-    # 1. The profile owner (direct user call)
-    # 2. The hub that created this profile (ProfileHub)
-    # 3. The deployer of this profile contract (system admin)
-    assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
-    assert _art_piece_template != empty(address), "ArtPiece template address required"
+# ## Internal method to create an art piece and return its address
+# @internal
+# def _createArtPiece(
+#     _art_piece_template: address, 
+#     _token_uri_data: Bytes[45000], 
+#     _token_uri_data_format: String[10], 
+#     _title: String[100], 
+#     _description: String[200], 
+#     _is_artist: bool, 
+#     _other_party: address, 
+#     _commission_hub: address, 
+#     _ai_generated: bool
+#     ) -> address:
+#     """
+#     Internal helper to create a new art piece
+#     _art_piece_template: Address of the ArtPiece template contract to clone
+#     _token_uri_data: Raw bytes data for the token URI
+#     _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
+#     _is_artist: True if caller is the artist, False if caller is the commissioner
+#     _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
+#     """
+#     assert _art_piece_template != empty(address), "ArtPiece template address required"
     
-    # Determine owner and artist based on caller's role
+#     # Determine owner and artist based on caller's role
+#     owner_input: address = empty(address)
+#     artist_input: address = empty(address)
+    
+#     if _is_artist:
+#         # Caller is the artist
+#         artist_input = self.owner  # The profile owner is the artist
+#         owner_input = _other_party if _other_party != empty(address) else self.owner  # If no commissioner specified, owner is also artist
+#     else:
+#         # Caller is the commissioner/owner
+#         owner_input = self.owner  # The profile owner is the commissioner
+#         artist_input = _other_party if _other_party != empty(address) else self.owner  # If no artist specified, commissioner is also artist
+    
+#     # Create minimal proxy to the ArtPiece template
+#     art_piece_address: address = create_minimal_proxy_to(_art_piece_template)
+    
+#     # Initialize the art piece proxy
+#     art_piece: ArtPiece = ArtPiece(art_piece_address)
+#     extcall art_piece.initialize(
+#         _token_uri_data,
+#         _token_uri_data_format,
+#         _title,
+#         _description,
+#         owner_input,
+#         artist_input,
+#         _commission_hub,
+#         _ai_generated
+#     )
+    
+#     return art_piece_address
+
+# ## Art Pieces
+
+# @external
+# def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+#     """
+#     Create a new art piece through this profile
+#     _art_piece_template: Address of the ArtPiece template contract to clone
+#     _token_uri_data: Raw bytes data for the token URI
+#     _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
+#     _is_artist: True if caller is the artist, False if caller is the commissioner
+#     _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
+#     """
+#     # Check if the caller is either:
+#     # 1. The profile owner (direct user call)
+#     # 2. The hub that created this profile (ProfileHub)
+#     # 3. The deployer of this profile contract (system admin)
+#     assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
+    
+#     # Create the art piece using the internal helper method
+#     art_piece_address: address = self._createArtPiece(
+#         _art_piece_template,
+#         _token_uri_data,
+#         _token_uri_data_format,
+#         _title,
+#         _description,
+#         _is_artist,
+#         _other_party,
+#         _commission_hub,
+#         _ai_generated
+#     )
+    
+#     # Add to my art collection
+#     self.myArt.append(art_piece_address)
+#     self.myArtCount += 1
+    
+#     return art_piece_address
+
+# @external
+# def createProfileArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title: String[100], _description: String[200], _ai_generated: bool) -> address:
+#     """
+#     Create a new art piece that represents the profile itself
+#     _art_piece_template: Address of the ArtPiece template contract to clone
+#     _token_uri_data: Raw bytes data for the token URI
+#     _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
+#     """
+#     # Check if the caller is the profile owner
+#     assert msg.sender == self.owner, "Only profile owner can create profile art"
+    
+#     # Create the art piece with the profile owner as both artist and owner
+#     art_piece_address: address = self._createArtPiece(
+#         _art_piece_template,
+#         _token_uri_data,
+#         _token_uri_data_format,
+#         _title,
+#         _description,
+#         True,  # Profile owner is the artist
+#         self.owner,  # Profile owner is also the commissioner/owner
+#         empty(address),  # Not attached to a commission hub
+#         _ai_generated
+#     )
+    
+#     # Set as profile image
+#     self.profileImage = art_piece_address
+    
+#     # Add to my art collection
+#     self.myArt.append(art_piece_address)
+#     self.myArtCount += 1
+    
+#     return art_piece_address
+
+# @external
+# def createAndRegisterArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+#     """
+#     Create a new art piece and register it with the ArtCommissionHub
+#     _art_piece_template: Address of the ArtPiece template contract to clone
+#     _token_uri_data: Raw bytes data for the token URI
+#     _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
+#     _is_artist: True if caller is the artist, False if caller is the commissioner
+#     _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
+#     _commission_hub: Address of the ArtCommissionHub to register with
+#     """
+#     # Check if the caller is the profile owner
+#     assert msg.sender == self.owner, "Only profile owner can create and register art"
+#     assert _commission_hub != empty(address), "Commission hub address required"
+    
+#     # Create the art piece
+#     art_piece_address: address = self._createArtPiece(
+#         _art_piece_template,
+#         _token_uri_data,
+#         _token_uri_data_format,
+#         _title,
+#         _description,
+#         _is_artist,
+#         _other_party,
+#         _commission_hub,
+#         _ai_generated
+#     )
+    
+#     # Add to my art collection
+#     self.myArt.append(art_piece_address)
+#     self.myArtCount += 1
+    
+#     # Register the art piece with the commission hub
+#     commission_hub: ArtCommissionHub = ArtCommissionHub(_commission_hub)
+#     extcall commission_hub.submitCommission(art_piece_address)
+    
+#     return art_piece_address
+
+# Three types of art pieces can be created:
+# #1 - Profile Art Piece 
+# #2 - Commission Art Piece
+# #3 - Profile Art Peice
+@external
+def createArtPiece(
+    _art_piece_template: address,
+    _token_uri_data: Bytes[45000],
+    _token_uri_data_format: String[10],
+    _title: String[100],
+    _description: String[200],
+    _is_artist: bool,
+    _other_party: address,
+    _ai_generated: bool,
+    _art_commission_hub: address = empty(address),  # Register with art commission hub
+    _is_profile_art: bool = False
+) -> address:
+    """
+    Create a new art piece with optional profile art and commission registration
+    """
+    # Determine permissions
+    if _is_profile_art:
+        assert msg.sender == self.owner, "Only profile owner can create profile art"
+    if _art_commission_hub != empty(address):
+        assert msg.sender == self.owner, "Only profile owner can create profile art or register with commission hub"
+    else:
+        assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
+
+    # Adjust parameters for profile art
+    is_artist: bool = _is_artist
+    other_party: address = _other_party
+    art_commission_hub: address = _art_commission_hub
+
+    # If this art piece is your profile, flog as not commissionable
+    if _is_profile_art:
+        is_artist = True
+        other_party = self.owner
+        art_commission_hub = empty(address)
+
+    # Calculate owner_input and artist_input
     owner_input: address = empty(address)
     artist_input: address = empty(address)
-    
-    if _is_artist:
-        # Caller is the artist
-        artist_input = self.owner  # The profile owner is the artist
-        owner_input = _other_party if _other_party != empty(address) else self.owner  # If no commissioner specified, owner is also artist
+    if is_artist:
+        artist_input = self.owner
+        owner_input = other_party if other_party != empty(address) else self.owner
     else:
-        # Caller is the commissioner/owner
-        owner_input = self.owner  # The profile owner is the commissioner
-        artist_input = _other_party if _other_party != empty(address) else self.owner  # If no artist specified, commissioner is also artist
-    
+        owner_input = self.owner
+        artist_input = other_party if other_party != empty(address) else self.owner
+
     # Create minimal proxy to the ArtPiece template
     art_piece_address: address = create_minimal_proxy_to(_art_piece_template)
-    
+
     # Initialize the art piece proxy
     art_piece: ArtPiece = ArtPiece(art_piece_address)
     extcall art_piece.initialize(
@@ -685,15 +869,25 @@ def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], 
         _description,
         owner_input,
         artist_input,
-        _commission_hub,
+        art_commission_hub,
         _ai_generated
     )
-    
-    # Add to my art collection
-    self.myArt.append(art_piece_address)
-    self.myArtCount += 1
-    
+        
+    # If profile art, set as profile image
+    if _is_profile_art:
+        self.profileImage = art_piece_address
+
+    # Add to my art collection if not profile art
+    if not _is_profile_art:
+        self.myArt.append(art_piece_address)
+        self.myArtCount += 1
+
+    # If commission hub is provided, register with it
+    if art_commission_hub != empty(address):
+        _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
+
     return art_piece_address
+
 
 @external
 def addArtPiece(_art_piece: address):

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
-import CommissionHubModal from './CommissionHubModal';
+import ArtCommissionHubModal from './ArtCommissionHubModal';
 import './CommissionedArt.css';
 
 // ABI fragment for OwnerRegistry contract functions
 const OWNER_REGISTRY_ABI = [
   'function lookupRegisteredOwner(uint256, address, uint256) view returns (address)',
   'function getLastUpdated(uint256, address, uint256) view returns (uint256)',
-  'function getCommissionHubByOwner(uint256, address, uint256) view returns (address)'
+  'function getArtCommissionHubByOwner(uint256, address, uint256) view returns (address)'
 ];
 
 interface OwnerRegistryResult {
   owner: string;
   lastUpdated: string;
-  commissionHub: string;
+  artCommissionHub: string;
 }
 
 const CommissionedArt: React.FC = () => {
@@ -28,7 +28,7 @@ const CommissionedArt: React.FC = () => {
   const [result, setResult] = useState<OwnerRegistryResult | null>(null);
   const [registryAddress, setRegistryAddress] = useState<string>('0x4904FA96366e15c66C21a2aE8D4a7D605089d5Da'); // Default address from contract_config.json
   
-  // For CommissionHub modal
+  // For ArtCommissionHub modal
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [hubAddress, setHubAddress] = useState<string>('');
   const [directHubAddress, setDirectHubAddress] = useState<string>('');
@@ -101,17 +101,17 @@ const CommissionedArt: React.FC = () => {
       const lastUpdatedBN = await ownerRegistry.getLastUpdated(chainIdNum, contractAddress, tokenIdNum);
       const lastUpdated = new Date(Number(lastUpdatedBN) * 1000).toLocaleString();
       
-      const commissionHub = await ownerRegistry.getCommissionHubByOwner(chainIdNum, contractAddress, tokenIdNum);
+      const artCommissionHub = await ownerRegistry.getArtCommissionHubByOwner(chainIdNum, contractAddress, tokenIdNum);
       
       setResult({
         owner,
         lastUpdated,
-        commissionHub
+        artCommissionHub
       });
 
-      // If commissionHub exists, save it for potential modal use
-      if (commissionHub && commissionHub !== ethers.ZeroAddress) {
-        setHubAddress(commissionHub);
+      // If artCommissionHub exists, save it for potential modal use
+      if (artCommissionHub && artCommissionHub !== ethers.ZeroAddress) {
+        setHubAddress(artCommissionHub);
       }
     } else {
       setError('No owner found for the given parameters');
@@ -128,7 +128,7 @@ const CommissionedArt: React.FC = () => {
     if (directHubAddress && ethers.isAddress(directHubAddress)) {
       openHubModal(directHubAddress);
     } else {
-      setError('Please enter a valid CommissionHub address');
+      setError('Please enter a valid ArtCommissionHub address');
     }
   };
 
@@ -148,7 +148,7 @@ const CommissionedArt: React.FC = () => {
             type="text"
             value={directHubAddress}
             onChange={(e) => setDirectHubAddress(e.target.value)}
-            placeholder="Enter CommissionHub Address"
+            placeholder="Enter ArtCommissionHub Address"
             className="registry-address-input"
           />
           <button 
@@ -247,11 +247,11 @@ const CommissionedArt: React.FC = () => {
           
           <div className="result-item">
             <strong>Commission Hub:</strong> 
-            <span className="result-value">{result.commissionHub}</span>
-            {result.commissionHub && result.commissionHub !== ethers.ZeroAddress && (
+            <span className="result-value">{result.artCommissionHub}</span>
+            {result.artCommissionHub && result.artCommissionHub !== ethers.ZeroAddress && (
               <>
                 <a 
-                  href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${result.commissionHub}`} 
+                  href={`https://explorer-animechain-39xf6m45e3.t.conduit.xyz/address/${result.artCommissionHub}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="explorer-link"
@@ -260,7 +260,7 @@ const CommissionedArt: React.FC = () => {
                 </a>
                 <button 
                   className="hub-details-button"
-                  onClick={() => openHubModal(result.commissionHub)}
+                  onClick={() => openHubModal(result.artCommissionHub)}
                 >
                   View Hub Details
                 </button>
@@ -270,8 +270,8 @@ const CommissionedArt: React.FC = () => {
         </div>
       )}
 
-      {/* CommissionHub Modal */}
-      <CommissionHubModal 
+      {/* ArtCommissionHub Modal */}
+      <ArtCommissionHubModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         hubAddress={hubAddress} 

@@ -20,8 +20,8 @@ def setup():
     xtra3 = accounts.test_accounts[7]
     xtra4 = accounts.test_accounts[8]
     xtra5 = accounts.test_accounts[9]
-    # Deploy CommissionHub
-    commission_hub = project.CommissionHub.deploy(sender=deployer)
+    # Deploy ArtCommissionHub
+    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)

@@ -2,7 +2,7 @@
 import ArrayManagerABI from '../assets/abis/ArrayManager.json';
 import ArtPieceABI from '../assets/abis/ArtPiece.json';
 import ArtPieceOffChainABI from '../assets/abis/ArtPieceOffChain.json';
-import CommissionHubABI from '../assets/abis/CommissionHub.json';
+import ArtCommissionHubABI from '../assets/abis/ArtCommissionHub.json';
 import L1QueryOwnerABI from '../assets/abis/L1QueryOwner.json';
 import L2RelayABI from '../assets/abis/L2Relay.json';
 import OwnerRegistryABI from '../assets/abis/OwnerRegistry.json';
@@ -15,7 +15,7 @@ const abiMap: { [key: string]: any } = {
   'ArrayManager': ArrayManagerABI,
   'ArtPiece': ArtPieceABI,
   'ArtPieceOffChain': ArtPieceOffChainABI,
-  'CommissionHub': CommissionHubABI,
+  'ArtCommissionHub': ArtCommissionHubABI,
   'L1QueryOwner': L1QueryOwnerABI,
   'L2Relay': L2RelayABI,
   'OwnerRegistry': OwnerRegistryABI,

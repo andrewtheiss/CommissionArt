@@ -23,8 +23,8 @@ def setup():
     tagged_person = accounts.test_accounts[3]
     commissioner = accounts.test_accounts[4]
     
-    # Deploy CommissionHub
-    commission_hub = project.CommissionHub.deploy(sender=deployer)
+    # Deploy ArtCommissionHub
+    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Deploy ArtPiece contract
     art_piece = project.ArtPiece.deploy(sender=deployer)

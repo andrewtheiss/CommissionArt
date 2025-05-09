@@ -8,6 +8,9 @@
 # provided that appropriate credit is given to the original author.
 # For commercial use, please contact the author for permission.
 
+PAGE_SIZE: constant(uint256) = 20
+MAX_ITEMS: constant(uint256) = 100000
+
 my_array: DynArray[address, 100000]
 
 # Add an item to the dynamic array

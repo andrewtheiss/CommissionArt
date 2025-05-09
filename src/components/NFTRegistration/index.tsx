@@ -500,8 +500,8 @@ const ArtistForm: React.FC<{
         throw new Error("Failed to get signer");
       }
       
-      // Get the commissionHub address from the config
-      const commissionHubAddress = contractConfig.networks.mainnet.commissionHub.address || ethers.ZeroAddress;
+      // Get the artCommissionHub address from the config
+      const artCommissionHubAddress = contractConfig.networks.mainnet.artCommissionHub.address || ethers.ZeroAddress;
 
       if (hasProfile) {
         // Register artwork via profile
@@ -525,7 +525,7 @@ const ArtistForm: React.FC<{
         console.log(`MIME type: ${mimeType}, Format: ${mimeType.split('/')[1]}`);
         console.log(`Title: "${titleStr}", Description: "${descriptionStr}"`);
         console.log(`ArtPiece template address: ${artPieceAddress}`);
-        console.log(`Commission Hub address: ${commissionHubAddress}`);
+        console.log(`Commission Hub address: ${artCommissionHubAddress}`);
 
         // Debug: log contract address and ABI
         console.log(`Profile contract address: ${profileContract.target}`);
@@ -559,7 +559,7 @@ const ArtistForm: React.FC<{
             descriptionStr,
             true, // is artist
             ethers.ZeroAddress, // no other party
-            commissionHubAddress,
+            artCommissionHubAddress,
             false // not AI generated
           );
           
@@ -625,7 +625,7 @@ const ArtistForm: React.FC<{
         console.log(`MIME type: ${mimeType}, Format: ${mimeType.split('/')[1]}`);
         console.log(`Title: "${titleStr}", Description: "${descriptionStr}"`);
         console.log(`ArtPiece template address: ${artPieceTemplateAddress}`);
-        console.log(`Commission Hub address: ${commissionHubAddress}`);
+        console.log(`Commission Hub address: ${artCommissionHubAddress}`);
 
         // Debug: log contract address and ABI
         console.log(`ProfileHub contract address: ${profileHub.target}`);
@@ -659,7 +659,7 @@ const ArtistForm: React.FC<{
             descriptionStr,
             true, // is artist
             ethers.ZeroAddress, // no other party
-            commissionHubAddress,
+            artCommissionHubAddress,
             false // not AI generated
           );
           

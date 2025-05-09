@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 
-// ABI fragments for CommissionHub contract
+// ABI fragments for ArtCommissionHub contract
 const COMMISSION_HUB_ABI = [
   'function chainId() view returns (uint256)',
   'function nftContract() view returns (address)',
@@ -15,7 +15,7 @@ const COMMISSION_HUB_ABI = [
   'function gradeArt(address, uint8) nonpayable'
 ];
 
-interface CommissionHubDetails {
+interface ArtCommissionHubDetails {
   chainId: string;
   nftContract: string;
   tokenId: string;
@@ -28,15 +28,15 @@ interface VerifiedArtGrade {
   [key: string]: number | undefined;
 }
 
-interface CommissionHubModalProps {
+interface ArtCommissionHubModalProps {
   isOpen: boolean;
   onClose: () => void;
   hubAddress: string;
 }
 
-const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose, hubAddress }) => {
+const ArtCommissionHubModal: React.FC<ArtCommissionHubModalProps> = ({ isOpen, onClose, hubAddress }) => {
   const { isConnected, connectWallet } = useBlockchain();
-  const [hubDetails, setHubDetails] = useState<CommissionHubDetails | null>(null);
+  const [hubDetails, setHubDetails] = useState<ArtCommissionHubDetails | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [grades, setGrades] = useState<VerifiedArtGrade>({});
@@ -50,7 +50,7 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
 
   const fetchHubDetails = async () => {
     if (!ethers.isAddress(hubAddress)) {
-      setError('Invalid CommissionHub address');
+      setError('Invalid ArtCommissionHub address');
       return;
     }
 
@@ -67,7 +67,7 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum);
-      const commissionHub = new ethers.Contract(
+      const artCommissionHub = new ethers.Contract(
         hubAddress,
         COMMISSION_HUB_ABI,
         provider
@@ -75,12 +75,12 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
 
       // Fetch basic details
       const [chainId, nftContract, tokenId, owner, registry, artCount] = await Promise.all([
-        commissionHub.chainId(),
-        commissionHub.nftContract(),
-        commissionHub.tokenId(),
-        commissionHub.owner(),
-        commissionHub.registry(),
-        commissionHub.artCount()
+        artCommissionHub.chainId(),
+        artCommissionHub.nftContract(),
+        artCommissionHub.tokenId(),
+        artCommissionHub.owner(),
+        artCommissionHub.registry(),
+        artCommissionHub.artCount()
       ]);
 
       // Get the last 5 verified arts (or fewer if there aren't that many)
@@ -88,7 +88,7 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
       const verifiedArts: string[] = [];
 
       for (let i = 0; i < count; i++) {
-        const artAddress = await commissionHub.lastVerifiedArts(i);
+        const artAddress = await artCommissionHub.lastVerifiedArts(i);
         if (artAddress && artAddress !== ethers.ZeroAddress) {
           verifiedArts.push(artAddress);
         }
@@ -103,8 +103,8 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
         verifiedArts
       });
     } catch (err: any) {
-      console.error('Error fetching CommissionHub details:', err);
-      setError(err.message || 'An error occurred while fetching CommissionHub details');
+      console.error('Error fetching ArtCommissionHub details:', err);
+      setError(err.message || 'An error occurred while fetching ArtCommissionHub details');
     } finally {
       setLoading(false);
     }
@@ -137,13 +137,13 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
 
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const commissionHub = new ethers.Contract(
+      const artCommissionHub = new ethers.Contract(
         hubAddress,
         COMMISSION_HUB_ABI,
         signer
       );
 
-      const tx = await commissionHub.gradeArt(artAddress, grade);
+      const tx = await artCommissionHub.gradeArt(artAddress, grade);
       await tx.wait();
 
       // Reset the grade for this art after successful submission
@@ -168,10 +168,10 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <button className="modal-close-button" onClick={onClose}>×</button>
-        <h2 className="modal-title">CommissionHub Details</h2>
+        <h2 className="modal-title">ArtCommissionHub Details</h2>
         
         {loading ? (
-          <p>Loading CommissionHub details...</p>
+          <p>Loading ArtCommissionHub details...</p>
         ) : error ? (
           <div className="error-message">{error}</div>
         ) : hubDetails ? (
@@ -236,11 +236,11 @@ const CommissionHubModal: React.FC<CommissionHubModalProps> = ({ isOpen, onClose
             )}
           </>
         ) : (
-          <p>No details available. Please enter a valid CommissionHub address.</p>
+          <p>No details available. Please enter a valid ArtCommissionHub address.</p>
         )}
       </div>
     </div>
   );
 };
 
-export default CommissionHubModal; 
+export default ArtCommissionHubModal; 

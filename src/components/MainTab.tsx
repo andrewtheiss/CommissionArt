@@ -5,7 +5,7 @@ import ImageCompressor from './ImageCompressor';
 import BridgeTestContainer from './BridgeTest';
 import ErrorBoundary from './ErrorBoundary';
 import NFTRegistration from './NFTRegistration';
-import CommissionHub from './CommissionHub';
+import ArtCommissionHub from './ArtCommissionHub';
 import Account from './Account';
 import L2RelayTester from './L2RelayTester';
 import { BlockchainProvider } from '../utils/BlockchainContext';
@@ -323,7 +323,7 @@ const MainTab: React.FC = () => {
               <p>Please check the console for more details.</p>
             </div>
           }>
-            <CommissionHub />
+            <ArtCommissionHub />
           </ErrorBoundary>
         ) : activeTab === 'registration' ? (
           <NFTRegistration />

@@ -33,8 +33,8 @@ whitelistedArtPieceContract: public(address)
 
 # Track commissions
 latestVerifiedArt: public(address[300])
-verifiedArt: public(DynArray[address, 100000])
-unverifiedArt: public(DynArray[address, 100000])
+verifiedArt: public(DynArray[address, 10**9])
+unverifiedArt: public(DynArray[address, 10**9])
 countVerifiedCommissions: public(uint256)
 countUnverifiedCommissions: public(uint256)
 nextLatestVerifiedArtIndex: public(uint256)

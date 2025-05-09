@@ -704,15 +704,15 @@ def test_artpiece_commission_hub_integration(setup):
     assert art_piece.ownerOf(1) == owner.address
     
     # Initially, there's no commission hub attached
-    assert art_piece.attachedToCommissionHub() == False
-    assert art_piece.commissionHubAddress() == "0x0000000000000000000000000000000000000000"
+    assert art_piece.attachedToArtCommissionHub() == False
+    assert art_piece.artCommissionHubAddress() == "0x0000000000000000000000000000000000000000"
     
     # Attach to commission hub
-    art_piece.attachToCommissionHub(mock_hub.address, sender=owner)
+    art_piece.attachToArtCommissionHub(mock_hub.address, sender=owner)
     
     # Verify the commission hub is set
-    assert art_piece.commissionHubAddress() == mock_hub.address
-    assert art_piece.attachedToCommissionHub() == True
+    assert art_piece.artCommissionHubAddress() == mock_hub.address
+    assert art_piece.attachedToArtCommissionHub() == True
     
     # ERC721 ownership functions shouldn't be affected by the commission hub
     assert art_piece.ownerOf(1) == owner.address

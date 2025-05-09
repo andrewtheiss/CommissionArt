@@ -21,8 +21,8 @@ def setup():
     # Deploy ArtPiece template for art piece creation
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
-    # Deploy CommissionHub for art piece registration
-    commission_hub = project.CommissionHub.deploy(sender=deployer)
+    # Deploy ArtCommissionHub for art piece registration
+    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     
     return {
         "deployer": deployer,

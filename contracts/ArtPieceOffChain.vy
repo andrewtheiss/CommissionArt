@@ -13,8 +13,8 @@
 # Has a list of artists that have commissioned the piece
 # Implements ERC721 for a single token NFT
 
-# Interface for CommissionHub
-interface CommissionHub:
+# Interface for ArtCommissionHub
+interface ArtCommissionHub:
     def owner() -> address: view
 
 # Interface for ERC721Receiver
@@ -51,7 +51,7 @@ event TagValidated:
     person: indexed(address)
     status: bool
 
-event AttachedToCommissionHub:
+event AttachedToArtCommissionHub:
     art_piece: indexed(address)
     commission_hub: indexed(address)
     attacher: indexed(address)
@@ -78,8 +78,8 @@ owner: address
 artist: address
 aiGenerated: public(bool)
 initialized: public(bool)  # Flag to track if the contract has been initialized
-attachedToCommissionHub: public(bool)  # Flag to track if attached to a CommissionHub
-commissionHubAddress: public(address)  # Address of the CommissionHub this piece is attached to
+attachedToArtCommissionHub: public(bool)  # Flag to track if attached to a ArtCommissionHub
+artCommissionHubAddress: public(address)  # Address of the ArtCommissionHub this piece is attached to
 
 # Mapping to store tags/associations with validation status
 # address => bool (validated status)
@@ -127,8 +127,8 @@ def initialize(
     self.initialized = True
     
     # Set commission hub information
-    self.attachedToCommissionHub = _commission_hub != empty(address)
-    self.commissionHubAddress = _commission_hub
+    self.attachedToArtCommissionHub = _commission_hub != empty(address)
+    self.artCommissionHubAddress = _commission_hub
 
     # Set ERC721 metadata
     self.name = "ArtPiece"
@@ -339,11 +339,11 @@ def getArtist() -> address:
 
 @external
 @view
-def getCommissionHubAddress() -> address:
+def getArtCommissionHubAddress() -> address:
     """
     Return the address of the commission hub this piece is attached to
     """
-    return self.commissionHubAddress
+    return self.artCommissionHubAddress
 
 @external
 def transferOwnership(_new_owner: address):
@@ -464,29 +464,29 @@ def getAIGenerated() -> bool:
     return self.aiGenerated
 
 @external
-def attachToCommissionHub(_commission_hub: address):
+def attachToArtCommissionHub(_commission_hub: address):
     """
-    Attach this ArtPiece to a CommissionHub
+    Attach this ArtPiece to a ArtCommissionHub
     Can only be called once per ArtPiece
     """
-    assert msg.sender == self.owner or msg.sender == self.artist, "Only owner or artist can attach to a CommissionHub"
-    assert not self.attachedToCommissionHub, "Already attached to a CommissionHub"
-    assert _commission_hub != empty(address), "Invalid CommissionHub address"
+    assert msg.sender == self.owner or msg.sender == self.artist, "Only owner or artist can attach to a ArtCommissionHub"
+    assert not self.attachedToArtCommissionHub, "Already attached to a ArtCommissionHub"
+    assert _commission_hub != empty(address), "Invalid ArtCommissionHub address"
 
-    self.attachedToCommissionHub = True
-    self.commissionHubAddress = _commission_hub
+    self.attachedToArtCommissionHub = True
+    self.artCommissionHubAddress = _commission_hub
     
-    log AttachedToCommissionHub(art_piece=self, commission_hub=_commission_hub, attacher=msg.sender)
+    log AttachedToArtCommissionHub(art_piece=self, commission_hub=_commission_hub, attacher=msg.sender)
 
 @external
 @view
 def checkOwner() -> address:
     """
     Check the owner of this ArtPiece.
-    If attached to a CommissionHub, returns the owner from the CommissionHub.
+    If attached to a ArtCommissionHub, returns the owner from the ArtCommissionHub.
     Otherwise returns the stored owner.
     """
-    if self.attachedToCommissionHub and self.commissionHubAddress != empty(address):
-        return staticcall CommissionHub(self.commissionHubAddress).owner()
+    if self.attachedToArtCommissionHub and self.artCommissionHubAddress != empty(address):
+        return staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
     return self.owner
 
