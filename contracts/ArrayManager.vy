@@ -98,3 +98,20 @@ def set_at(_index: uint256, _item: address):
 @external
 def clear_array():
     self.my_array = []
+
+# Remove an item from a dynamic array by swapping with the last element
+@internal
+def _removeFromArray(_array: DynArray[address, MAX_ITEMS], _item: address):
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(_array), bound=1000):
+        if _array[i] == _item:
+            index = i
+            found = True
+            break
+    assert found, "Item not found"
+    lastItem: address = _array[len(_array) - 1]
+    _array[index] = lastItem
+    _array.pop()
+
+# Setter Functions

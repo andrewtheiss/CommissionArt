@@ -236,11 +236,3 @@ As of commit e84f4ff you can compile the contract code and get the back end link
 # REMIXD Setup
 remixd -s <absolute-path-to-the-shared-folder> --remix-ide https://remix.ethereum.org
 remixd -s C:\Users\andre\Documents\Git\CommissionArt --remix-ide https://remix.ethereum.org
-
-
-
-Test and dev plans
-- Create test for ArtPiece creation
-- Create test for Profile creation along with Art Piece
-- Support for ERC721 as ArtPiece.  May need to have extended data use different address for URI
-- SUpport for ERC 998 if necesary for created Art Piece

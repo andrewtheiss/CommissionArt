@@ -19,3 +19,10 @@ Art Pieces individual nfts.
 The the owner of the ArtPiece can be either the original Profile, of the Art Piece can be attached to the ArtCommissionHub.
 
 When a user buys and NFT, with lots of commissions, he becomes the owner of the artCommissionHubs.  NFT Migration is a entire process which will take a minute which is yet unplanned and I don't want to create the behavior for just yet.
+
+
+For Vyper Code:
+We are using at least vyper version 0.4.1
+External method signatures should be camelCase
+Instance Variables should also be camelCase
+Method Inputs should _be_underscore_delimited
