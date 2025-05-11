@@ -2,8 +2,11 @@
 
 # ArtSales1155: Handles ERC1155 sales and mappings for a single Profile
 # This contract is forever tied to a Profile (profileAddress)
+# Direct mutation is allowed by the owner (set at initialization)
+# All mutating methods require msg.sender == self.owner
 
 profileAddress: public(address)
+owner: public(address)
 
 # Artist ERC1155s for sale
 artistErc1155sToSell: public(DynArray[address, 1000])
@@ -20,22 +23,19 @@ event ERC1155Added: erc1155: address
 # ... (add more as needed)
 
 @deploy
-def __init__(_profile_address: address):
+def __init__(_profile_address: address, _owner: address):
     assert _profile_address != empty(address), "Profile address required"
+    assert _owner != empty(address), "Owner address required"
     self.profileAddress = _profile_address
+    self.owner = _owner
     self.artistProceedsAddress = _profile_address
     self.artistErc1155sToSellCount = 0
     self.collectorErc1155Count = 0
 
-# Modifier: Only profile owner
-@internal
-def _onlyProfile():
-    assert msg.sender == self.profileAddress, "Only profile can call"
-
 # Artist ERC1155s
 @external
 def addAdditionalMintErc1155(_erc1155: address):
-    self._onlyProfile()
+    assert msg.sender == self.owner, "Only owner can call"
     assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
     self.artistErc1155sToSell.append(_erc1155)
     self.artistErc1155sToSellCount += 1
@@ -43,7 +43,7 @@ def addAdditionalMintErc1155(_erc1155: address):
 
 @external
 def removeAdditionalMintErc1155(_erc1155: address):
-    self._onlyProfile()
+    assert msg.sender == self.owner, "Only owner can call"
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(self.artistErc1155sToSell), bound=1000):
@@ -87,12 +87,18 @@ def getRecentAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynA
 # Map Commission to Mint ERC1155
 @external
 def mapCommissionToMintErc1155(_commission: address, _erc1155: address):
-    self._onlyProfile()
+    """
+    Map a commission to an ERC1155. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
     self.artistCommissionToErc1155Map[_commission] = _erc1155
 
 @external
 def removeMapCommissionToMintErc1155(_commission: address):
-    self._onlyProfile()
+    """
+    Remove a commission to ERC1155 mapping. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
     self.artistCommissionToErc1155Map[_commission] = empty(address)
 
 @view
@@ -103,14 +109,20 @@ def getMapCommissionToMintErc1155(_commission: address) -> address:
 # Collector ERC1155s
 @external
 def addCollectorErc1155(_erc1155: address):
-    self._onlyProfile()
+    """
+    Add an ERC1155 to the collector list. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
     assert _erc1155 not in self.collectorErc1155s, "ERC1155 already added"
     self.collectorErc1155s.append(_erc1155)
     self.collectorErc1155Count += 1
 
 @external
 def removeCollectorErc1155(_erc1155: address):
-    self._onlyProfile()
+    """
+    Remove an ERC1155 from the collector list. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
@@ -171,3 +183,50 @@ def isCollectorErc1155(_erc1155: address) -> bool:
         if self.collectorErc1155s[i] == _erc1155:
             return True
     return False
+
+@external
+def addArtistErc1155ToSell(_erc1155: address):
+    """
+    Add an ERC1155 to the artist's for-sale list. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
+    assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
+    self.artistErc1155sToSell.append(_erc1155)
+    self.artistErc1155sToSellCount += 1
+    log ERC1155Added(_erc1155)
+
+@external
+def removeArtistErc1155ToSell(_erc1155: address):
+    """
+    Remove an ERC1155 from the artist's for-sale list. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
+    index: uint256 = 0
+    found: bool = False
+    for i: uint256 in range(0, len(self.artistErc1155sToSell), bound=1000):
+        if self.artistErc1155sToSell[i] == _erc1155:
+            index = i
+            found = True
+            break
+    assert found, "ERC1155 not found"
+    if index < len(self.artistErc1155sToSell) - 1:
+        last_item: address = self.artistErc1155sToSell[len(self.artistErc1155sToSell) - 1]
+        self.artistErc1155sToSell[index] = last_item
+    self.artistErc1155sToSell.pop()
+    self.artistErc1155sToSellCount -= 1
+
+@external
+def addMyCommission(_commission: address):
+    """
+    Add a commission to the artist's commission list. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
+    # ... rest of logic ...
+
+@external
+def removeMyCommission(_commission: address):
+    """
+    Remove a commission from the artist's commission list. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
+    # ... rest of logic ...

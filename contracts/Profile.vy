@@ -32,6 +32,8 @@ unverifiedCommissions: public(DynArray[address, MAX_ITEMS])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
+# Add commissionRole mapping to track role at time of commission upload
+commissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
 
 # Art pieces collection
 myArt: public(DynArray[address, MAX_ITEMS])
@@ -52,6 +54,9 @@ profileExpansion: public(address)
 # ArtSales1155 link (forever tied after set)
 artSales1155: public(address)
 
+# Artist status for this profile
+isArtist: public(bool)
+
 # Interface for ArtPiece contract
 interface ArtPiece:
     def getOwner() -> address: view
@@ -63,7 +68,7 @@ interface ArtCommissionHub:
     def submitCommission(_art_piece: address): nonpayable
     def setWhitelistedArtPieceContract(_art_piece_contract: address): nonpayable
 
-# Interface for ArtSales155
+# Interface for ArtSales1155 (expanded)
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
 
@@ -81,6 +86,7 @@ def initialize(_owner: address):
     self.deployer = msg.sender  # Also set deployer to be the same as hub for backward compatibility
     self.allowUnverifiedCommissions = True  # Default to allowing commissions
     self.profileExpansion = empty(address)
+    self.isArtist = False  # Default to non-artist
     
     # Initialize counters
     self.commissionCount = 0
@@ -134,17 +140,40 @@ def setProfileImage(_profile_image: address):
     self.profileImage = _profile_image
 
 ## Commissions
+#
+# addCommission
+# -------------
+# Adds a commission to this profile.
+# Use case:
+# - If the profile is an artist, this is a piece of work they created for someone else (they are the artist).
+# - If the profile is a non-artist (commissioner/curator), this is a piece of work they commissioned from an artist (they are the client).
+# - The contract records the user's role at the time of upload in commissionRole.
+# Example:
+# - Alice (artist) uploads a new commission she did for Bob: Alice calls addCommission(commissionAddress).
+# - Bob (commissioner) uploads a commission he received from Alice: Bob calls addCommission(commissionAddress).
+#
 @external
 def addCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add commission"
     assert _commission not in self.commissions, "Commission already added"
     self.commissions.append(_commission)
     self.commissionCount += 1
+    # Use isArtist at upload time
+    self.commissionRole[_commission] = self.isArtist
 
+#
+# removeCommission
+# ----------------
+# Removes a commission from this profile's list.
+# Use case:
+# - If a commission is no longer relevant, or was added in error, it can be removed.
+# - This also removes the recorded role for that commission.
+# Example:
+# - Alice accidentally adds the wrong commission: removeCommission(commissionAddress).
+#
 @external
 def removeCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove commission"
-    
     # Find the index of the item to remove
     index: uint256 = 0
     found: bool = False
@@ -153,39 +182,36 @@ def removeCommission(_commission: address):
             index = i
             found = True
             break
-    
-    # If not found, revert
     assert found, "Commission not found"
-    
     # Swap with the last element and pop
-    if index < len(self.commissions) - 1:  # Not the last element
-        # Get the last item
+    if index < len(self.commissions) - 1:
         last_item: address = self.commissions[len(self.commissions) - 1]
-        # Replace the item to remove with the last item
         self.commissions[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
     self.commissions.pop()
     self.commissionCount -= 1
+    self.commissionRole[_commission] = False  # Clear role (optional, for clarity)
 
+#
+# getCommissions
+# ---------------
+# Returns a paginated list of commissions (verified or unverified) for this profile.
+# Use case:
+# - Used by the frontend to display all commissions associated with this profile, either as artist or commissioner.
+# - The frontend can also query commissionRole to determine the user's role at the time of upload for each commission.
+# Example:
+# - Alice wants to see all her commissions (as artist or as commissioner): getCommissions(page, pageSize).
+#
 @view
 @external
 def getCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     arr_len: uint256 = len(self.commissions)
-    
-    # Early returns for empty array or out-of-bounds page
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
-    
     start: uint256 = _page * _page_size
-    # Calculate how many items to return (bounded by array length and max return size)
     items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    # Populate result array
     for i: uint256 in range(0, items, bound=100):
         result.append(self.commissions[start + i])
-    
     return result
 
 @view
@@ -209,6 +235,17 @@ def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[addres
     return result
 
 ## Unverified Commissions
+#
+# addUnverifiedCommission / removeUnverifiedCommission
+# ----------------------------------------------------
+# Adds or removes a commission from the unverified list.
+# Use case:
+# - When a commission is first uploaded, it may be unverified (pending approval by the other party).
+# - Either party can move a commission to or from the unverified list as part of the verification flow.
+# Example:
+# - Alice uploads a commission for Bob, but Bob hasn't approved it yet: addUnverifiedCommission(commissionAddress).
+# - Once Bob approves, removeUnverifiedCommission(commissionAddress) and move to verified.
+#
 @external
 def addUnverifiedCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add unverified commission"
@@ -219,7 +256,6 @@ def addUnverifiedCommission(_commission: address):
 @external
 def removeUnverifiedCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove unverified commission"
-    
     # Find the index of the item to remove
     index: uint256 = 0
     found: bool = False
@@ -228,39 +264,33 @@ def removeUnverifiedCommission(_commission: address):
             index = i
             found = True
             break
-    
-    # If not found, revert
     assert found, "Unverified commission not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.unverifiedCommissions) - 1:  # Not the last element
-        # Get the last item
+    if index < len(self.unverifiedCommissions) - 1:
         last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
-        # Replace the item to remove with the last item
         self.unverifiedCommissions[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
     self.unverifiedCommissions.pop()
     self.unverifiedCommissionCount -= 1
 
+#
+# getUnverifiedCommissions
+# -------------------------
+# Returns a paginated list of unverified commissions for this profile.
+# Use case:
+# - Used by the frontend to display all unverified commissions associated with this profile.
+# Example:
+# - Alice wants to see all her unverified commissions: getUnverifiedCommissions(page, pageSize).
+#
 @view
 @external
 def getUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     arr_len: uint256 = len(self.unverifiedCommissions)
-    
-    # Early returns for empty array or out-of-bounds page
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
-    
     start: uint256 = _page * _page_size
-    # Calculate how many items to return (bounded by array length and max return size)
     items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    # Populate result array
     for i: uint256 in range(0, items, bound=100):
         result.append(self.unverifiedCommissions[start + i])
-    
     return result
 
 @view
@@ -641,3 +671,13 @@ def getLatestArtPieces() -> DynArray[address, 5]:
 @external
 def getArtPieceAtIndex(_index: uint256) -> address:
     return self.myArt[_index]
+
+@external
+def setIsArtist(_is_artist: bool):
+    """
+    Set the artist status for this profile. Only the profile owner can call this.
+    Use case: Allows a user to toggle their profile between artist and non-artist.
+    Example: Alice wants to become an artist: setIsArtist(True).
+    """
+    assert msg.sender == self.owner, "Only owner can set artist status"
+    self.isArtist = _is_artist
