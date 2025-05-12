@@ -230,3 +230,20 @@ def removeMyCommission(_commission: address):
     """
     assert msg.sender == self.owner, "Only owner can call"
     # ... rest of logic ...
+
+@external
+def setArtistProceedsAddress(_proceeds_address: address):
+    """
+    Set the proceeds address for this artist's sales. Only the owner can call.
+    """
+    assert msg.sender == self.owner, "Only owner can set proceeds address"
+    assert _proceeds_address != empty(address), "Invalid proceeds address"
+    self.artistProceedsAddress = _proceeds_address
+
+@view
+@external
+def getArtistProceedsAddress() -> address:
+    """
+    Get the current proceeds address for this artist's sales.
+    """
+    return self.artistProceedsAddress

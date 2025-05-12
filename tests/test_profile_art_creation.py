@@ -70,8 +70,9 @@ def test_create_single_art_piece_and_get_latest(setup):
         "Description for Art Piece 1",
         False,  # Not an artist
         artist.address,  # Artist address
-        commission_hub.address,
         False,  # Not AI generated
+        commission_hub.address,
+        False,  # Not profile art
         sender=user
     )
     
@@ -107,8 +108,9 @@ def test_create_multiple_art_pieces_and_get_latest(setup):
             f"Description for Art Piece {i+1}",
             False,  # Not an artist
             artist.address,  # Artist address
-            commission_hub.address,
             False,  # Not AI generated
+            commission_hub.address,
+            False,  # Not profile art
             sender=user
         )
         
@@ -163,8 +165,9 @@ def test_create_fewer_than_five_art_pieces(setup):
             f"Description for Art Piece {i+1}",
             False,  # Not an artist
             artist.address,  # Artist address
-            commission_hub.address,
             False,  # Not AI generated
+            commission_hub.address,
+            False,  # Not profile art
             sender=user
         )
         
@@ -211,8 +214,9 @@ def test_artist_creating_art_pieces(setup):
             f"Description for Artist Piece {i+1}",
             True,  # Is artist
             user.address,  # Commissioner address
-            commission_hub.address,
             i % 2 == 0,  # Alternate AI generated flag
+            commission_hub.address,
+            False,  # Not profile art
             sender=artist
         )
         
@@ -265,8 +269,9 @@ def test_create_art_pieces_across_profiles(setup):
             f"Description for User Art {i+1}",
             False,  # Not an artist
             artist.address,  # Artist address
-            commission_hub.address,
             False,  # Not AI generated
+            commission_hub.address,
+            False,  # Not profile art
             sender=user
         )
         time.sleep(0.1)  # Small delay
@@ -282,8 +287,9 @@ def test_create_art_pieces_across_profiles(setup):
             f"Description for Artist Art {i+1}",
             True,  # As artist
             user.address,  # Commissioner address
-            commission_hub.address,
             True,  # AI generated
+            commission_hub.address,
+            False,  # Not profile art
             sender=artist
         )
         time.sleep(0.1)  # Small delay
