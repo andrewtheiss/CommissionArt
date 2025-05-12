@@ -207,26 +207,28 @@ def test_safeTransferFrom_to_receiver(setup):
     art_piece = setup["art_piece"]
     owner = setup["owner"]
     erc721_receiver = setup["erc721_receiver"]
-    
-    # Skip if no receiver contract deployed
-    if erc721_receiver is None:
-        pytest.skip("ERC721Receiver contract not available")
+    deployer = setup["deployer"]  # Use deployer as fallback receiver if needed
     
     # First verify if the piece is attached to a commission hub
     is_attached = art_piece.everAttachedToHub()
     
+    # Use deployer as a fallback receiver if ERC721Receiver contract is not available
+    receiver_address = deployer.address
+    if erc721_receiver is not None:
+        receiver_address = erc721_receiver.address
+    
     if is_attached:
-        # If ever attached, transfers should be blocked
+        # If ever attached, transfers should be blocked regardless of the receiver
         with pytest.raises(Exception) as excinfo:
-            art_piece.safeTransferFrom(owner.address, erc721_receiver.address, TOKEN_ID, sender=owner)
+            art_piece.safeTransferFrom(owner.address, receiver_address, TOKEN_ID, sender=owner)
         assert "Transfers disabled for hub-attached art pieces" in str(excinfo.value)
     else:
         # If never attached, direct owner should be able to transfer
-        art_piece.safeTransferFrom(owner.address, erc721_receiver.address, TOKEN_ID, sender=owner)
+        art_piece.safeTransferFrom(owner.address, receiver_address, TOKEN_ID, sender=owner)
         
         # Check new owner
-        assert art_piece.ownerOf(TOKEN_ID) == erc721_receiver.address
-        assert art_piece.getOwner() == erc721_receiver.address
+        assert art_piece.ownerOf(TOKEN_ID) == receiver_address
+        assert art_piece.getOwner() == receiver_address
 
 def test_supportsInterface(setup):
     """Test supportsInterface method"""

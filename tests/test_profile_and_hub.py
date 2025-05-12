@@ -352,11 +352,13 @@ def test_get_user_profiles(setup):
     
     # Create multiple user accounts and keep track of them in order
     users = [accounts.test_accounts[i] for i in range(5)]
+    profile_addresses = []
     
     # Create profiles for all users
     for user in users:
         profile_hub.createProfile(sender=user)
         assert profile_hub.hasProfile(user.address) == True
+        profile_addresses.append(profile_hub.getProfile(user.address))
     
     # Check the user count
     assert profile_hub.userProfileCount() == 5
@@ -370,16 +372,16 @@ def test_get_user_profiles(setup):
     assert len(all_users) <= 5  # Should return all users or empty if implementation doesn't work as expected
     
     if len(all_users) > 0:
-        # Verify all returned addresses belong to our users
+        # Verify all returned addresses are profile addresses
         for addr in all_users:
-            assert addr in [user.address for user in users]
+            assert addr in profile_addresses
     
     # Test with small page size to test pagination
     small_page = profile_hub.getUserProfiles(2, 0)
-    # If our implementation returns results, verify they're valid user addresses
+    # If our implementation returns results, verify they're valid profile addresses
     if len(small_page) > 0:
         for addr in small_page:
-            assert addr in [user.address for user in users]
+            assert addr in profile_addresses
 
 def test_get_user_profiles_empty(setup):
     """Test getUserProfiles with no users"""

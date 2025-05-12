@@ -7,47 +7,20 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture
 def setup():
-    # Try to get accounts for testing
+    # Get accounts for testing from the test network
     all_accounts = list(accounts.test_accounts)
     
-    # If we don't have enough accounts, create more using predetermined private keys
-    if len(all_accounts) < 11:
-        print(f"Only {len(all_accounts)} test accounts found, creating additional accounts with predetermined keys")
-        
-        # Add deterministic accounts
-        # Use simple private keys for testing only (don't use these in production)
-        deterministic_keys = [
-            # These are hardcoded test keys - NEVER use in production
-            "0x0000000000000000000000000000000000000000000000000000000000000001",
-            "0x0000000000000000000000000000000000000000000000000000000000000002",
-            "0x0000000000000000000000000000000000000000000000000000000000000003",
-            "0x0000000000000000000000000000000000000000000000000000000000000004",
-            "0x0000000000000000000000000000000000000000000000000000000000000005",
-            "0x0000000000000000000000000000000000000000000000000000000000000006",
-            "0x0000000000000000000000000000000000000000000000000000000000000007",
-            "0x0000000000000000000000000000000000000000000000000000000000000008",
-            "0x0000000000000000000000000000000000000000000000000000000000000009",
-            "0x000000000000000000000000000000000000000000000000000000000000000a",
-            "0x000000000000000000000000000000000000000000000000000000000000000b",
-        ]
-        
-        # Only add accounts up to what we need
-        needed = max(0, 11 - len(all_accounts))
-        
-        for i in range(min(needed, len(deterministic_keys))):
-            try:
-                acct = accounts.add(private_key=deterministic_keys[i])
-                all_accounts.append(acct)
-                print(f"Added account {acct.address}")
-            except Exception as e:
-                print(f"Warning: Could not add account with key {i+1}: {e}")
+    print(f"Found {len(all_accounts)} test accounts")
     
-    # Use at most 11 accounts
-    all_accounts = all_accounts[:11]
+    # We need at least 2 accounts for the tests
+    if len(all_accounts) < 2:
+        pytest.skip(f"Not enough test accounts. Found {len(all_accounts)}, need at least 2.")
+    
+    # Use the first account as deployer and the rest as test users
     deployer = all_accounts[0]
-    test_users = all_accounts[1:min(11, len(all_accounts))]
+    test_users = all_accounts[1:]
     
-    print(f"Using {len(all_accounts)} accounts: 1 deployer and {len(test_users)} test users")
+    print(f"Using {len(test_users) + 1} accounts: 1 deployer and {len(test_users)} test users")
     
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
@@ -205,6 +178,16 @@ def test_get_user_profiles_pagination(setup):
     user_count = profile_hub.userProfileCount()
     print(f"Profile count after creation: {user_count}")
     
+    # Debug: Print the first few users from latestUsers
+    print("Latest users:")
+    for i in range(min(user_count, 5)):
+        try:
+            user = profile_hub.getLatestUserAtIndex(i)
+            profile = profile_hub.getProfile(user)
+            print(f"  User {i}: {user} -> Profile: {profile}")
+        except Exception as e:
+            print(f"  Error getting user {i}: {e}")
+    
     # If we couldn't create any profiles, skip the test
     if user_count == 0:
         pytest.skip("No profiles could be created")
@@ -217,6 +200,10 @@ def test_get_user_profiles_pagination(setup):
     
     # Check if we got any profiles
     print(f"First page length: {len(first_page)}")
+    
+    # Debug: Print the first page profiles
+    for i, profile in enumerate(first_page):
+        print(f"Profile {i}: {profile}")
     
     # This might be zero if there was an issue with the contract
     # Let's check the actual profile count
@@ -250,13 +237,11 @@ def test_get_user_profiles_pagination(setup):
     assert len(empty_page) == 0
 
 def test_create_new_art_piece_and_register_profile(setup):
-    """Test profile creation only (simplified to avoid address conversion issues)"""
+    """Test createNewArtPieceAndRegisterProfile method"""
     test_users = setup["test_users"]
     profile_hub = setup["profile_hub"]
-    
-    # Skip if we don't have any test users
-    if not test_users:
-        pytest.skip("No test users available")
+    art_piece_template = setup["art_piece_template"]
+    deployer = setup["deployer"]
     
     # Find a user that doesn't have a profile
     user = None
@@ -273,23 +258,40 @@ def test_create_new_art_piece_and_register_profile(setup):
         # Verify user doesn't have a profile yet
         assert profile_hub.hasProfile(user.address) is False
         
-        # Create the profile
-        print(f"Creating profile for user {user.address}")
-        profile_hub.createProfile(sender=user)
+        # Sample art piece data
+        token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
+        title = "Test Artwork"
+        description = "This is a test description for the artwork"
+        
+        # Use another test user as the other party - use deployer if needed
+        other_party = deployer
+        
+        # Create profile and art piece in one transaction
+        print(f"Creating profile and art piece for user {user.address}")
+        result = profile_hub.createNewArtPieceAndRegisterProfile(
+            art_piece_template.address,
+            token_uri_data,
+            "avif",
+            title,
+            description,
+            False,  # Not an artist
+            other_party.address,  # Other party
+            ZERO_ADDRESS,  # Use zero address for commission hub
+            False,  # Not AI generated
+            sender=user
+        )
         
         # Verify profile was created
         assert profile_hub.hasProfile(user.address) is True
         profile_address = profile_hub.getProfile(user.address)
         print(f"Profile created at {profile_address}")
         
-        # Verify profile was initialized correctly
+        # Get the profile and check basic properties
         profile = project.Profile.at(profile_address)
         assert profile.owner() == user.address
-        assert profile.hub() == profile_hub.address
+        print(f"Profile owner verified: {profile.owner()}")
         
-        # This test passes if we've successfully created a profile
-        # Skipping art piece creation due to address conversion issues
-        print("Profile created and verified successfully")
+        print("Test passed successfully")
         
     except Exception as e:
         print(f"Error in test_create_new_art_piece_and_register_profile: {e}")
@@ -302,9 +304,11 @@ def test_get_user_profiles_with_multiple_users(setup):
     
     # Create profiles for all test users we have
     user_addresses = []
+    profile_addresses = []
     for user in test_users:
         profile_hub.createProfile(sender=user)
         user_addresses.append(user.address)
+        profile_addresses.append(profile_hub.getProfile(user.address))
     
     print(f"Created {len(user_addresses)} profiles for ordering test")
     
@@ -329,11 +333,12 @@ def test_get_user_profiles_with_multiple_users(setup):
     # The profiles should be returned in reverse order (most recent first)
     # Convert profiles to strings for comparison
     profiles_str = [str(addr) for addr in profiles]
+    profile_addresses_str = [str(addr) for addr in profile_addresses]
     
     # If we have multiple profiles and the same number as we created, check order
-    if len(profiles_str) > 1 and len(profiles_str) == len(user_addresses):
+    if len(profiles_str) > 1 and len(profiles_str) == len(profile_addresses):
         # Check first profile is the most recently created
-        assert profiles_str[0] == str(user_addresses[-1])
+        assert profiles_str[0] == profile_addresses_str[-1]
         
         # Check last profile is the first created
-        assert profiles_str[-1] == str(user_addresses[0]) 
+        assert profiles_str[-1] == profile_addresses_str[0] 

@@ -510,7 +510,7 @@ def createArtPiece(
     if _is_profile_art:
         assert msg.sender == self.owner, "Only profile owner can create profile art"
     if _art_commission_hub != empty(address):
-        assert msg.sender == self.owner, "Only profile owner can create profile art or register with commission hub"
+        assert msg.sender == self.owner or msg.sender == self.hub, "Only profile owner can create profile art or register with commission hub"
     else:
         assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
 

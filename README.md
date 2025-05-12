@@ -236,3 +236,9 @@ As of commit e84f4ff you can compile the contract code and get the back end link
 # REMIXD Setup
 remixd -s <absolute-path-to-the-shared-folder> --remix-ide https://remix.ethereum.org
 remixd -s C:\Users\andre\Documents\Git\CommissionArt --remix-ide https://remix.ethereum.org
+
+
+# Testing
+Testing requires more accounts so we need to use foundary:
+ape test --network ethereum:local
+ape test .  --network ethereum:local -n 10

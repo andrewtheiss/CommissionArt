@@ -24,8 +24,8 @@ interface Profile:
         _description: String[200], 
         _is_artist: bool, 
         _other_party: address, 
-        _commission_hub: address, 
-        _ai_generated: bool
+        _ai_generated: bool,
+        _commission_hub: address
     ) -> address: nonpayable
 
 owner: public(address)
@@ -102,10 +102,10 @@ def updateProfileTemplateContract(_new_template: address):
     
     log ProfileTemplateUpdated(previous_template=self.profileTemplate, new_template=_new_template)
     self.profileTemplate = _new_template
-
+    
 @view
 @external
-def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[address, 100]:
+def getUserProfiles(_page_size: uint256, _page_number: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     
     # Get total number of users
@@ -113,25 +113,25 @@ def getUserProfiles( _page_size: uint256, _page_number: uint256) -> DynArray[add
     if total_users == 0:
         return result
     
-    # Cap at the most recent 1000 users
-    effective_users: uint256 = min(total_users, 1000)
-
-    # Calculate start index (from end, in reverse)
-    start_idx: uint256 = effective_users - (_page_number * _page_size)
-    if start_idx >= effective_users:
+    # Check if the requested page is beyond the total number of users
+    if _page_size * _page_number >= total_users:
         return result
     
-    # Calculate number of items to return, capped by page size and remaining users
-    items_to_return: uint256 = min(_page_size, start_idx)
+    # Calculate start index from the end (most recent users)
+    start_idx: uint256 = total_users - 1 - (_page_number * _page_size)
+    
+    # Calculate how many items to return
+    items_to_return: uint256 = min(_page_size, start_idx + 1)
     items_to_return = min(items_to_return, 100)  # Cap at DynArray size
     
-    if items_to_return == 0:
-        return result
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(0, items_to_return, bound=100):
-        idx: uint256 = start_idx - i - 1
-        result.append(self.latestUsers[idx])
+    # Populate result array with profile addresses in reverse order
+    for i: uint256 in range(100):
+        if i >= items_to_return:
+            break
+        user_idx: uint256 = start_idx - i
+        user_address: address = self.latestUsers[user_idx]
+        profile_address: address = self.accountToProfile[user_address]
+        result.append(profile_address)
     
     return result
 
@@ -191,8 +191,8 @@ def createNewArtPieceAndRegisterProfile(
         _description,
         _is_artist,
         _other_party,
-        _commission_hub,
-        _ai_generated
+        _ai_generated,
+        _commission_hub
     )
     
     log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
@@ -232,3 +232,14 @@ def createProfileFromContract(_profile_contract: address) -> address:
     log ProfileCreated(user=msg.sender, profile=profile)
     
     return profile
+
+@view
+@external
+def getLatestUserAtIndex(_index: uint256) -> address:
+    """
+    @notice Debug function to get a user address at a specific index from the latestUsers array
+    @param _index The index to get the user address from
+    @return The user address at the specified index
+    """
+    assert _index < len(self.latestUsers), "Index out of bounds"
+    return self.latestUsers[_index]

@@ -208,16 +208,101 @@ def test_check_owner_follows_hub_owner(setup):
     # Verify initial checkOwner follows hub owner
     assert art_piece.checkOwner() == deployer.address
     
-    # Transfer hub ownership
-    try:
-        commission_hub.transferOwnership(owner.address, sender=deployer)
+    # First, initialize the hub if not already initialized
+    # We need to set the registry to deployer so we can update ownership
+    if not commission_hub.isInitialized():
+        # Mock values for initialization
+        chain_id = 1  # Ethereum mainnet
+        nft_contract = "0x1234567890123456789012345678901234567890"
+        token_id = 123
         
-        # Check if ownership transfer worked
-        hub_owner = commission_hub.owner()
-        if hub_owner == owner.address:
-            # checkOwner should now return the new hub owner
-            assert art_piece.checkOwner() == owner.address
-    except Exception as e:
-        # If hub doesn't support transferOwnership, skip this test
-        print(f"Note: Hub ownership transfer test skipped: {e}")
-        pytest.skip("Commission hub may not support transferOwnership") 
+        # Initialize the hub
+        commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+    
+    # Get current values from the hub
+    chain_id = commission_hub.chainId()
+    nft_contract = commission_hub.nftContract()
+    token_id = commission_hub.tokenId()
+    registry = commission_hub.registry()
+    
+    # Make sure the registry is set to deployer so we can update ownership
+    if registry != deployer.address:
+        # We can't update the registry after initialization, so we need to skip this test
+        pytest.skip("Registry is not set to deployer, can't update ownership")
+    
+    # Update registration to change owner (using updateRegistration instead of transferOwnership)
+    commission_hub.updateRegistration(chain_id, nft_contract, token_id, owner.address, sender=deployer)
+    
+    # Verify owner was updated
+    assert commission_hub.owner() == owner.address
+    
+    # checkOwner should now return the new hub owner
+    assert art_piece.checkOwner() == owner.address
+
+def test_update_registration(setup):
+    """Test updateRegistration method for changing hub ownership"""
+    art_piece = setup["art_piece"]
+    commission_hub = setup["commission_hub"]
+    owner = setup["owner"]
+    deployer = setup["deployer"]  # Current hub owner
+    
+    # We need to initialize the hub with registry set to deployer for this test
+    # Mock values for initialization
+    chain_id = 1  # Ethereum mainnet
+    nft_contract = "0x1234567890123456789012345678901234567890"
+    token_id = 123
+    
+    # Initialize the hub with deployer as registry
+    # This will override any previous initialization
+    commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+    
+    # Verify initialization worked
+    assert commission_hub.isInitialized() is True
+    assert commission_hub.chainId() == chain_id
+    assert commission_hub.nftContract() == nft_contract
+    assert commission_hub.tokenId() == token_id
+    assert commission_hub.registry() == deployer.address
+    
+    # Verify initial owner
+    assert commission_hub.owner() == deployer.address
+    
+    # Update registration to change owner (call from registry address which is deployer)
+    commission_hub.updateRegistration(chain_id, nft_contract, token_id, owner.address, sender=deployer)
+    
+    # Verify owner was updated
+    assert commission_hub.owner() == owner.address
+    
+    # Test with mismatched chain ID (should fail)
+    with pytest.raises(Exception) as excinfo:
+        commission_hub.updateRegistration(chain_id + 1, nft_contract, token_id, deployer.address, sender=deployer)
+    assert "Chain ID mismatch" in str(excinfo.value)
+    
+    # Test with mismatched NFT contract (should fail)
+    with pytest.raises(Exception) as excinfo:
+        commission_hub.updateRegistration(chain_id, "0x0000000000000000000000000000000000000001", token_id, deployer.address, sender=deployer)
+    assert "NFT contract mismatch" in str(excinfo.value)
+    
+    # Test with mismatched token ID (should fail)
+    with pytest.raises(Exception) as excinfo:
+        commission_hub.updateRegistration(chain_id, nft_contract, token_id + 1, deployer.address, sender=deployer)
+    assert "Token ID mismatch" in str(excinfo.value)
+    
+    # Test with unauthorized sender (should fail)
+    with pytest.raises(Exception) as excinfo:
+        commission_hub.updateRegistration(chain_id, nft_contract, token_id, deployer.address, sender=owner)
+    assert "Only registry can update owner" in str(excinfo.value)
+    
+    # Verify owner is still the same after failed attempts
+    assert commission_hub.owner() == owner.address
+    
+    # Test that art piece owner check reflects the hub owner
+    # First make sure the art piece is attached to the hub
+    if not art_piece.attachedToArtCommissionHub():
+        try:
+            art_piece.attachToArtCommissionHub(commission_hub.address, sender=owner)
+        except Exception as e:
+            print(f"Note: Could not attach art piece to hub: {e}")
+    
+    # If the art piece is attached to the hub, check that its owner is the hub owner
+    if art_piece.attachedToArtCommissionHub() and art_piece.getArtCommissionHubAddress() == commission_hub.address:
+        assert art_piece.checkOwner() == owner.address 
