@@ -69,10 +69,12 @@ interface ProfileHub:
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
+    def getArtCommissionHubAddress() -> address: view
     def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
 
 # Interface for ArtCommissionHub
 interface ArtCommissionHub:
+    def owner() -> address: view
     def submitCommission(_art_piece: address): nonpayable
     def setWhitelistedArtPieceContract(_art_piece_contract: address): nonpayable
 
@@ -152,28 +154,88 @@ def setProfileImage(_profile_image: address):
 #
 # addCommission
 # -------------
-# Adds a commission to this profile.
+# Adds a commission to this profile, either to verified or unverified list based on sender status.
 # Use case:
 # - If the profile is an artist, this is a piece of work they created for someone else (they are the artist).
 # - If the profile is a non-artist (commissioner/curator), this is a piece of work they commissioned from an artist (they are the client).
 # - The contract records the user's role at the time of upload in commissionRole.
 # Example:
-# - Alice (artist) uploads a new commission she did for Bob: Alice calls addCommission(commissionAddress).
-# - Bob (commissioner) uploads a commission he received from Alice: Bob calls addCommission(commissionAddress).
+# - Alice (artist) uploads a new commission she did for Bob: Alice calls Bob.addCommission(commissionArtPieceAddress).
+#    - If Alice is whitelisted, the commission is added to the verified list.
+#    - If Alice is not whitelisted, the commission is added to the unverified list.
+# - Bob (commissioner) uploads a commission he received from Alice: Bob calls Bob.addCommission(commissionAddress).
+# - Charlie (stranger) uploads a commission he did for Bob: Charlie calls Bob.addCommission(commissionAddress);
+#      - If Charlie is whitelisted, the commission is added to the verified list.
+#      - If Charlie is not whitelisted, the commission is added to the unverified list.
+#      - If Charlie is blacklisted, the commission is not added.
 #
 @external
-def addCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can add commission"
-    assert _commission not in self.commissions, "Commission already added"
-    self.commissions.append(_commission)
-    self.commissionCount += 1
-    # Use isArtist at upload time
-    self.commissionRole[_commission] = self.isArtist
+def addCommission(_commission_art_piece: address):
+    """
+    @notice Adds a commission to this profile, either to verified or unverified list based on sender status.
+    @dev Access control:
+         - self.owner: The owner of the profile can add commissions to their own profile
+         - self.hub: The ProfileHub contract can add commissions on behalf of users
+         - Any other user: Can add commissions based on whitelist/blacklist status
+    @param _commission_art_piece The address of the commission art piece
+    """
+    # Get the art piece details to check permissions
+    art_piece: ArtPiece = ArtPiece(_commission_art_piece)
+    art_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    
+    # Check if sender is the owner of this profile
+    is_profile_owner: bool = msg.sender == self.owner
+    
+    # Check if sender is the hub
+    is_hub: bool = msg.sender == self.hub
+    
+    # Check if sender is the artist or owner of the art piece
+    is_art_creator: bool = msg.sender == art_artist or msg.sender == art_owner
+    
+    # Verify the sender has permission to add this commission
+    assert is_profile_owner or is_hub or is_art_creator, "No permission to add commission"
+    
+    # If blacklisted, reject the commission
+    if self.blacklist[msg.sender] and not is_profile_owner:
+        assert False, "Sender is blacklisted"
+    
+    # Initialize add_to_verified flag
+    add_to_verified: bool = False
+    
+    # Determine if this should be added to verified or unverified list
+    # When called from the ProfileHub, we need to check if the art creator is whitelisted
+    if is_profile_owner:
+        # Profile owner can always add to verified list
+        add_to_verified = True
+    elif is_hub:
+        # If hub is calling, check if the art creator is whitelisted
+        # Since the hub is calling on behalf of the art creator
+        add_to_verified = self.whitelist[art_artist] or self.whitelist[art_owner]
+    else:
+        # Direct call from another user, check if they're whitelisted
+        add_to_verified = self.whitelist[msg.sender]
+    
+    if add_to_verified:
+        # Add to verified list
+        assert _commission_art_piece not in self.commissions, "Commission already added"
+        self.commissions.append(_commission_art_piece)
+        self.commissionCount += 1
+        # Record the role at upload time
+        self.commissionRole[_commission_art_piece] = self.isArtist
+    else:
+        # Add to unverified list
+        assert self.allowUnverifiedCommissions, "Unverified commissions are not allowed"
+        assert _commission_art_piece not in self.unverifiedCommissions, "Unverified commission already added"
+        self.unverifiedCommissions.append(_commission_art_piece)
+        self.unverifiedCommissionCount += 1
+        # Record the role at upload time
+        self.commissionRole[_commission_art_piece] = self.isArtist
 
 #
 # removeCommission
 # ----------------
-# Removes a commission from this profile's list.
+# Removes a commission from this profile's verified or unverified commissions list
 # Use case:
 # - If a commission is no longer relevant, or was added in error, it can be removed.
 # - This also removes the recorded role for that commission.
@@ -182,23 +244,88 @@ def addCommission(_commission: address):
 #
 @external
 def removeCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can remove commission"
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
+    """
+    @notice Removes a commission from this profile's verified or unverified commissions list
+    @dev Access control:
+         - self.owner: The owner of the profile can remove their own commissions
+         - self.hub: The ProfileHub contract can remove commissions on behalf of users
+         - Art piece artist: Can remove unverified commissions they created
+         - ArtCommissionHub owner: Can remove commissions from the hub
+    @param _commission The address of the commission to remove
+    """
+    # Get the art piece details to check permissions
+    art_piece: ArtPiece = ArtPiece(_commission)
+    art_artist: address = staticcall art_piece.getArtist()
+    commission_hub: address = staticcall art_piece.getArtCommissionHubAddress()
+    
+    # Check if sender is the owner of this profile
+    is_profile_owner: bool = msg.sender == self.owner
+    
+    # Check if sender is the hub
+    is_hub: bool = msg.sender == self.hub
+    
+    # Check if sender is the artist of the art piece
+    is_art_artist: bool = msg.sender == art_artist
+    
+    # Check if sender is the owner of the commission hub
+    is_commission_hub_owner: bool = False
+    if commission_hub != empty(address):
+        commission_hub_interface: ArtCommissionHub = ArtCommissionHub(commission_hub)
+        hub_owner: address = staticcall commission_hub_interface.owner()
+        is_commission_hub_owner = (hub_owner == msg.sender)
+    
+    # First check if the commission is in the verified list
+    found_verified: bool = False
+    verified_index: uint256 = 0
+    
     for i: uint256 in range(0, len(self.commissions), bound=1000):
-        if self.commissions[i] == _commission:
-            index = i
-            found = True
+        if i >= len(self.commissions):
             break
-    assert found, "Commission not found"
-    # Swap with the last element and pop
-    if index < len(self.commissions) - 1:
-        last_item: address = self.commissions[len(self.commissions) - 1]
-        self.commissions[index] = last_item
-    self.commissions.pop()
-    self.commissionCount -= 1
-    self.commissionRole[_commission] = False  # Clear role (optional, for clarity)
+        if self.commissions[i] == _commission:
+            verified_index = i
+            found_verified = True
+            break
+    
+    # Then check if it's in the unverified list
+    found_unverified: bool = False
+    unverified_index: uint256 = 0
+    
+    for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
+        if i >= len(self.unverifiedCommissions):
+            break
+        if self.unverifiedCommissions[i] == _commission:
+            unverified_index = i
+            found_unverified = True
+            break
+    
+    # Verify permissions based on which list the commission is in
+    if found_verified:
+        # For verified commissions, only profile owner, hub, or commission hub owner can remove
+        assert is_profile_owner or is_hub or is_commission_hub_owner, "No permission to remove verified commission"
+        
+        # Remove from verified list
+        if verified_index < len(self.commissions) - 1:
+            last_item: address = self.commissions[len(self.commissions) - 1]
+            self.commissions[verified_index] = last_item
+        self.commissions.pop()
+        self.commissionCount -= 1
+        
+    elif found_unverified:
+        # For unverified commissions, profile owner, hub, art artist, or commission hub owner can remove
+        assert is_profile_owner or is_hub or is_art_artist or is_commission_hub_owner, "No permission to remove unverified commission"
+        
+        # Remove from unverified list
+        if unverified_index < len(self.unverifiedCommissions) - 1:
+            last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
+            self.unverifiedCommissions[unverified_index] = last_item
+        self.unverifiedCommissions.pop()
+        self.unverifiedCommissionCount -= 1
+        
+    else:
+        assert False, "Commission not found"
+    
+    # Clear role data (optional)
+    self.commissionRole[_commission] = False
 
 #
 # getCommissions
@@ -245,42 +372,6 @@ def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[addres
 
 ## Unverified Commissions
 #
-# addUnverifiedCommission / removeUnverifiedCommission
-# ----------------------------------------------------
-# Adds or removes a commission from the unverified list.
-# Use case:
-# - When a commission is first uploaded, it may be unverified (pending approval by the other party).
-# - Either party can move a commission to or from the unverified list as part of the verification flow.
-# Example:
-# - Alice uploads a commission for Bob, but Bob hasn't approved it yet: addUnverifiedCommission(commissionAddress).
-# - Once Bob approves, removeUnverifiedCommission(commissionAddress) and move to verified.
-#
-@external
-def addUnverifiedCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can add unverified commission"
-    assert _commission not in self.unverifiedCommissions, "Unverified commission already added"
-    self.unverifiedCommissions.append(_commission)
-    self.unverifiedCommissionCount += 1
-
-@external
-def removeUnverifiedCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can remove unverified commission"
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
-        if self.unverifiedCommissions[i] == _commission:
-            index = i
-            found = True
-            break
-    assert found, "Unverified commission not found"
-    if index < len(self.unverifiedCommissions) - 1:
-        last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
-        self.unverifiedCommissions[index] = last_item
-    self.unverifiedCommissions.pop()
-    self.unverifiedCommissionCount -= 1
-
-#
 # getUnverifiedCommissions
 # -------------------------
 # Returns a paginated list of unverified commissions for this profile.
@@ -321,6 +412,12 @@ def getRecentUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynAr
         result.append(self.unverifiedCommissions[start - i])
     
     return result
+
+@external
+def clearUnverifiedCommissions():
+    assert msg.sender == self.owner, "Only owner can clear unverified commissions"
+    self.unverifiedCommissions = []
+    self.unverifiedCommissionCount = 0
 
 ## Liked Profiles
 @external

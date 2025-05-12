@@ -1,0 +1,169 @@
+import pytest
+from ape import accounts, project
+import time
+
+# Define constant for zero address
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+@pytest.fixture
+def setup():
+    # Get accounts for testing
+    deployer = accounts.test_accounts[0]
+    user = accounts.test_accounts[1]
+    
+    # Deploy Profile template
+    profile_template = project.Profile.deploy(sender=deployer)
+    
+    # Deploy ProfileHub with the template
+    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    
+    # Deploy OwnerRegistry
+    owner_registry = project.OwnerRegistry.deploy(sender=deployer)
+    
+    # Set OwnerRegistry in ProfileHub
+    profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
+    
+    # Create a profile for the user
+    profile_hub.createProfile(sender=user)
+    user_profile_address = profile_hub.getProfile(user.address)
+    user_profile = project.Profile.at(user_profile_address)
+    
+    # Deploy multiple commission hubs for testing pagination
+    commission_hubs = []
+    for i in range(25):  # Create 25 commission hubs
+        commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
+        commission_hubs.append(commission_hub)
+        
+        # Register the hub with the owner registry
+        owner_registry.registerCommissionHub(commission_hub.address, user.address, sender=deployer)
+    
+    return {
+        "deployer": deployer,
+        "user": user,
+        "profile_hub": profile_hub,
+        "owner_registry": owner_registry,
+        "user_profile": user_profile,
+        "commission_hubs": commission_hubs
+    }
+
+def test_get_commission_hubs_for_owner_different_page_sizes(setup):
+    """
+    Test retrieving commission hubs with different page sizes
+    """
+    # Arrange
+    user = setup["user"]
+    owner_registry = setup["owner_registry"]
+    commission_hubs = setup["commission_hubs"]
+    
+    # Test page size 5
+    page_size = 5
+    total_pages = (len(commission_hubs) + page_size - 1) // page_size  # Ceiling division
+    
+    all_hubs = []
+    for page in range(total_pages):
+        hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+        all_hubs.extend(hubs)
+        
+        # Verify correct number of hubs returned
+        expected_count = min(page_size, len(commission_hubs) - page * page_size)
+        assert len(hubs) == expected_count
+    
+    # Verify we got all hubs
+    assert len(all_hubs) == len(commission_hubs)
+    for hub in commission_hubs:
+        assert hub.address in all_hubs
+    
+    # Test page size 10
+    page_size = 10
+    total_pages = (len(commission_hubs) + page_size - 1) // page_size
+    
+    all_hubs = []
+    for page in range(total_pages):
+        hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+        all_hubs.extend(hubs)
+        
+        # Verify correct number of hubs returned
+        expected_count = min(page_size, len(commission_hubs) - page * page_size)
+        assert len(hubs) == expected_count
+    
+    # Verify we got all hubs
+    assert len(all_hubs) == len(commission_hubs)
+    for hub in commission_hubs:
+        assert hub.address in all_hubs
+    
+    # Test page size 20
+    page_size = 20
+    total_pages = (len(commission_hubs) + page_size - 1) // page_size
+    
+    all_hubs = []
+    for page in range(total_pages):
+        hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+        all_hubs.extend(hubs)
+        
+        # Verify correct number of hubs returned
+        expected_count = min(page_size, len(commission_hubs) - page * page_size)
+        assert len(hubs) == expected_count
+    
+    # Verify we got all hubs
+    assert len(all_hubs) == len(commission_hubs)
+    for hub in commission_hubs:
+        assert hub.address in all_hubs
+    
+    # Test page size 100 (larger than total)
+    page_size = 100
+    hubs = owner_registry.getCommissionHubsForOwner(user.address, 0, page_size)
+    
+    # Verify all hubs returned in a single page
+    assert len(hubs) == len(commission_hubs)
+    for hub in commission_hubs:
+        assert hub.address in hubs
+
+def test_get_commission_hubs_for_owner_empty_pages(setup):
+    """
+    Test retrieving commission hubs with page numbers beyond available data
+    """
+    # Arrange
+    user = setup["user"]
+    owner_registry = setup["owner_registry"]
+    
+    # Test requesting a page beyond available data
+    page_size = 10
+    page = 100  # Far beyond available data
+    
+    hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+    
+    # Verify empty array returned
+    assert len(hubs) == 0
+
+def test_get_commission_hubs_for_owner_count(setup):
+    """
+    Test getCommissionHubCountForOwner returns the correct count
+    """
+    # Arrange
+    user = setup["user"]
+    owner_registry = setup["owner_registry"]
+    commission_hubs = setup["commission_hubs"]
+    
+    # Get the count
+    hub_count = owner_registry.getCommissionHubCountForOwner(user.address)
+    
+    # Verify correct count
+    assert hub_count == len(commission_hubs)
+
+def test_get_commission_hubs_for_nonexistent_owner(setup):
+    """
+    Test retrieving commission hubs for a user with no hubs
+    """
+    # Arrange
+    deployer = setup["deployer"]  # Use deployer as a user with no hubs
+    owner_registry = setup["owner_registry"]
+    
+    # Get hubs for user with no hubs
+    hubs = owner_registry.getCommissionHubsForOwner(deployer.address, 0, 10)
+    
+    # Verify empty array returned
+    assert len(hubs) == 0
+    
+    # Verify count is 0
+    hub_count = owner_registry.getCommissionHubCountForOwner(deployer.address)
+    assert hub_count == 0 

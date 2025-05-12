@@ -28,6 +28,10 @@ interface Profile:
         _commission_hub: address
     ) -> address: nonpayable
     def addCommissionHub(_hub: address): nonpayable
+    def blacklist(_address: address) -> bool: view
+    def whitelist(_address: address) -> bool: view
+    def allowUnverifiedCommissions() -> bool: view
+    def addCommission(_commission: address): nonpayable
 
 interface OwnerRegistry:
     def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
@@ -57,6 +61,12 @@ event ArtPieceCreated:
     profile: indexed(address)
     art_piece: indexed(address)
     user: indexed(address)
+
+event ArtPieceCreatedForParty:
+    creator: indexed(address)
+    other_party: indexed(address)
+    art_piece: indexed(address)
+    is_artist: bool
 
 event OwnerRegistrySet:
     registry: indexed(address)
@@ -327,3 +337,123 @@ def getLatestUserAtIndex(_index: uint256) -> address:
     """
     assert _index < len(self.latestUsers), "Index out of bounds"
     return self.latestUsers[_index]
+
+@external
+def createArtPieceForParty(
+    _art_piece_template: address,
+    _token_uri_data: Bytes[45000],
+    _token_uri_data_format: String[10],
+    _title: String[100],
+    _description: String[200],
+    _is_artist: bool,
+    _other_party: address,
+    _commission_hub: address,
+    _ai_generated: bool
+) -> (address, address, address, address):
+    """
+    @notice Creates a new art piece linked to another party, creating profile for them if needed
+    @dev This method automatically handles profile creation for the other party if they don't have one
+    @dev Based on the _is_artist parameter, it determines how to handle the relationship:
+         - If caller is artist (_is_artist=True), the art goes to the other party's unverified commissions
+         - If caller is commissioner (_is_artist=False), the art goes to the other party's unverified commissions
+    @dev The art piece is also added to the caller's myArt collection
+    
+    @param _art_piece_template The address of the ArtPiece template
+    @param _token_uri_data The tokenURI data for the art piece
+    @param _token_uri_data_format Format of the token URI data (e.g., "avif", "webp", etc.)
+    @param _title The title of the art piece
+    @param _description The description of the art piece
+    @param _is_artist Whether the caller is the artist
+    @param _other_party The address of the other party (artist or commissioner)
+    @param _commission_hub The commission hub address
+    @param _ai_generated Whether the art is AI generated
+    @return Tuple of (caller_profile, other_party_profile, art_piece, commission_hub)
+    """
+    # Check if the other party is a valid address
+    assert _other_party != empty(address), "Other party address cannot be empty"
+    assert _other_party != msg.sender, "Cannot create art piece for yourself"
+    
+    # Check if the caller has a profile, create one if not
+    caller_profile: address = self.accountToProfile[msg.sender]
+    if caller_profile == empty(address):
+        # Create a new profile for the caller
+        caller_profile = create_minimal_proxy_to(self.profileTemplate)
+        caller_profile_instance: Profile = Profile(caller_profile)
+        
+        # Initialize the profile with the caller as the owner
+        extcall caller_profile_instance.initialize(msg.sender)
+        
+        # Update our records
+        if (self.userProfileCount < 1000):
+            self.latestUsers.append(msg.sender)
+        else:
+            self.latestUsers.pop()
+            self.latestUsers.append(msg.sender)
+
+        self.accountToProfile[msg.sender] = caller_profile
+        self.userProfileCount += 1
+        
+        # Link any existing commission hubs from the OwnerRegistry
+        self._linkExistingHubs(msg.sender, caller_profile)
+        
+        log ProfileCreated(user=msg.sender, profile=caller_profile)
+    
+    # Check if the other party has a profile, create one if not
+    other_profile: address = self.accountToProfile[_other_party]
+    if other_profile == empty(address):
+        # Create a new profile for the other party
+        other_profile = create_minimal_proxy_to(self.profileTemplate)
+        other_profile_instance: Profile = Profile(other_profile)
+        
+        # Initialize the profile with the other party as the owner
+        extcall other_profile_instance.initialize(_other_party)
+        
+        # Update our records
+        if (self.userProfileCount < 1000):
+            self.latestUsers.append(_other_party)
+        else:
+            self.latestUsers.pop()
+            self.latestUsers.append(_other_party)
+
+        self.accountToProfile[_other_party] = other_profile
+        self.userProfileCount += 1
+        
+        # Link any existing commission hubs from the OwnerRegistry
+        self._linkExistingHubs(_other_party, other_profile)
+        
+        log ProfileCreated(user=_other_party, profile=other_profile)
+    
+    # Get the profile instances
+    caller_profile_instance: Profile = Profile(caller_profile)
+    other_profile_instance: Profile = Profile(other_profile)
+    
+    # Create the art piece on the caller's profile
+    art_piece: address = extcall caller_profile_instance.createArtPiece(
+        _art_piece_template,
+        _token_uri_data,
+        _token_uri_data_format,
+        _title,
+        _description,
+        _is_artist,
+        _other_party,
+        _ai_generated,
+        _commission_hub
+    )
+    
+    log ArtPieceCreated(profile=caller_profile, art_piece=art_piece, user=msg.sender)
+    log ArtPieceCreatedForParty(creator=msg.sender, other_party=_other_party, art_piece=art_piece, is_artist=_is_artist)
+    
+    # Check if the other party has blacklisted the caller
+    if staticcall other_profile_instance.blacklist(msg.sender):
+        # Just return without adding to unverified commissions
+        # This silently fails to add to unverified commissions, but the art piece is still created
+        return (caller_profile, other_profile, art_piece, _commission_hub)
+    
+    # Check if unverified commissions are allowed
+    allow_unverified: bool = staticcall other_profile_instance.allowUnverifiedCommissions()
+    
+    # Add to the other party's commissions if allowed
+    if allow_unverified:
+        extcall other_profile_instance.addCommission(art_piece)
+    
+    return (caller_profile, other_profile, art_piece, _commission_hub)
