@@ -11,11 +11,18 @@ Profiles can be either a commissioner, an artist, or both.  When an Art Piece is
 
 Later, Art which is uploaded can be modified to be sent to an Artists 'unverified' works (if you are a commissioner) and if you are a artist, you can send them to Commissioner profiles 'unverifiedArt' where each party will have the option to verify the works and send them to verified.  
 
-Art can be linked to an NFT collection at which point they are linked into a CommissionHub.  Once linked, their owner will always be looked up as the owner of the commissionHub.  On parent chains, the NFT owner can transfer hands.  When the owner is transferred, the owner can propegate down from the L1QueryOwner contract to the L2Relay to the OwnerRegistry.  There, the ownerREgistry will update the owner of the CommissionHub (and essentially all underlying art attached to it) 
+Art can be linked to an NFT collection at which point they are linked into a ArtCommissionHub.  Once linked, their owner will always be looked up as the owner of the artCommissionHub.  On parent chains, the NFT owner can transfer hands.  When the owner is transferred, the owner can propegate down from the L1QueryOwner contract to the L2Relay to the OwnerRegistry.  There, the ownerREgistry will update the owner of the ArtCommissionHub (and essentially all underlying art attached to it) 
 
-A CommissionHub is a hub for any amount of Art Pieces.  It will be an extension of ERC6551 so that the NFT Art Pieces will update their owner as the commission hub updates owner.  When ANY Art Piece is added, a few checks are done and the ArtPiece is added to EITHER verified or unverified pieces:
+A ArtCommissionHub is a hub for any amount of Art Pieces.  It will be an extension of ERC6551 so that the NFT Art Pieces will update their owner as the commission hub updates owner.  When ANY Art Piece is added, a few checks are done and the ArtPiece is added to EITHER verified or unverified pieces:
 
 Art Pieces individual nfts.
-The the owner of the ArtPiece can be either the original Profile, of the Art Piece can be attached to the CommissionHub.
+The the owner of the ArtPiece can be either the original Profile, of the Art Piece can be attached to the ArtCommissionHub.
 
-When a user buys and NFT, with lots of commissions, he becomes the owner of the commissionHubs.  NFT Migration is a entire process which will take a minute which is yet unplanned and I don't want to create the behavior for just yet.
+When a user buys and NFT, with lots of commissions, he becomes the owner of the artCommissionHubs.  NFT Migration is a entire process which will take a minute which is yet unplanned and I don't want to create the behavior for just yet.
+
+
+For Vyper Code:
+We are using at least vyper version 0.4.1
+External method signatures should be camelCase
+Instance Variables should also be camelCase
+Method Inputs should _be_underscore_delimited

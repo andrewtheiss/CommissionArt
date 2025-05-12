@@ -238,9 +238,7 @@ remixd -s <absolute-path-to-the-shared-folder> --remix-ide https://remix.ethereu
 remixd -s C:\Users\andre\Documents\Git\CommissionArt --remix-ide https://remix.ethereum.org
 
 
-
-Test and dev plans
-- Create test for ArtPiece creation
-- Create test for Profile creation along with Art Piece
-- Support for ERC721 as ArtPiece.  May need to have extended data use different address for URI
-- SUpport for ERC 998 if necesary for created Art Piece
+# Testing
+Testing requires more accounts so we need to use foundary:
+ape test --network ethereum:local
+ape test .  --network ethereum:local -n 10

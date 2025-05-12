@@ -140,7 +140,7 @@
         "type": "address"
       }
     ],
-    "name": "AttachedToCommissionHub",
+    "name": "AttachedToArtCommissionHub",
     "type": "event"
   },
   {
@@ -421,7 +421,7 @@
   },
   {
     "inputs": [],
-    "name": "getCommissionHubAddress",
+    "name": "getArtCommissionHubAddress",
     "outputs": [
       {
         "name": "",
@@ -567,7 +567,7 @@
         "type": "address"
       }
     ],
-    "name": "attachToCommissionHub",
+    "name": "attachToArtCommissionHub",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -672,7 +672,7 @@
   },
   {
     "inputs": [],
-    "name": "attachedToCommissionHub",
+    "name": "attachedToArtCommissionHub",
     "outputs": [
       {
         "name": "",
@@ -684,7 +684,7 @@
   },
   {
     "inputs": [],
-    "name": "commissionHubAddress",
+    "name": "artCommissionHubAddress",
     "outputs": [
       {
         "name": "",

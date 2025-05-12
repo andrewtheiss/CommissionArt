@@ -161,27 +161,27 @@ def deploy_art_piece_stencil(deployer, network_type="mainnet"):
         return art_piece_stencil
 
 def deploy_commission_hub_template(deployer, art_piece_stencil_address=None, network_type="mainnet"):
-    print("\n--- CommissionHub Template Setup ---")
+    print("\n--- ArtCommissionHub Template Setup ---")
     
-    existing_hub_address = get_contract_address(network_type, "commissionHub")
+    existing_hub_address = get_contract_address(network_type, "artCommissionHub")
     if existing_hub_address:
-        print(f"Found existing CommissionHub template in config: {existing_hub_address}")
-        use_existing = input("Use existing CommissionHub template? (y/n) [y]: ").strip().lower() or "y"
+        print(f"Found existing ArtCommissionHub template in config: {existing_hub_address}")
+        use_existing = input("Use existing ArtCommissionHub template? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.CommissionHub.at(existing_hub_address)
+            return project.ArtCommissionHub.at(existing_hub_address)
     
-    print("Deploying new CommissionHub Template on Animechain L3...")
+    print("Deploying new ArtCommissionHub Template on Animechain L3...")
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
         deploy_kwargs.update(gas_params)
-        commission_hub_template = deployer.deploy(project.CommissionHub, **deploy_kwargs)
-        print(f"CommissionHub Template deployed at: {commission_hub_template.address}")
-        update_contract_address(network_type, "commissionHub", commission_hub_template.address, "CommissionHub")
+        commission_hub_template = deployer.deploy(project.ArtCommissionHub, **deploy_kwargs)
+        print(f"ArtCommissionHub Template deployed at: {commission_hub_template.address}")
+        update_contract_address(network_type, "artCommissionHub", commission_hub_template.address, "ArtCommissionHub")
         
         # Whitelist the ArtPiece stencil if provided
         if art_piece_stencil_address:
-            print(f"Whitelisting ArtPiece stencil ({art_piece_stencil_address}) in CommissionHub...")
+            print(f"Whitelisting ArtPiece stencil ({art_piece_stencil_address}) in ArtCommissionHub...")
             tx_kwargs = {}
             tx_kwargs.update(gas_params)
             tx = commission_hub_template.setWhitelistedArtPieceContract(
@@ -189,7 +189,7 @@ def deploy_commission_hub_template(deployer, art_piece_stencil_address=None, net
                 sender=deployer,
                 **tx_kwargs
             )
-            print(f"ArtPiece stencil whitelisted in CommissionHub")
+            print(f"ArtPiece stencil whitelisted in ArtCommissionHub")
             
         return commission_hub_template
 
@@ -298,7 +298,7 @@ def main():
         l1_contract = deploy_l1_query_owner(deployer, network_type)
         l2_relay = deploy_l2_relay(deployer, network_type)
         
-        # Deploy CommissionHub and whitelist the ArtPiece contract
+        # Deploy ArtCommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
         
         owner_registry = deploy_owner_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
@@ -331,7 +331,7 @@ def main():
         profile_template = deploy_profile_template(deployer, network_type)
         profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
         
-        # Deploy CommissionHub and whitelist the ArtPiece contract
+        # Deploy ArtCommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
         
         l2_address = get_contract_address(network_type, "l2")
@@ -341,9 +341,9 @@ def main():
                 l2_address = input("Enter L2 relay address: ").strip()
         else:
             l2_address = input("Enter L2 relay address: ").strip()
-        ch_address = commission_hub_template.address if commission_hub_template else get_contract_address(network_type, "commissionHub")
+        ch_address = commission_hub_template.address if commission_hub_template else get_contract_address(network_type, "artCommissionHub")
         if not ch_address:
-            ch_address = input("Enter CommissionHub template address: ").strip()
+            ch_address = input("Enter ArtCommissionHub template address: ").strip()
         owner_registry = deploy_owner_registry(deployer, l2_address, ch_address, network_type)
     
     if deploy_mode != "full" and input("Update L2Relay with L3 OwnerRegistry address? (y/n): ").strip().lower() == 'y':

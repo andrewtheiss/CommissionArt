@@ -337,3 +337,272 @@ h2 {
 .status-container a:hover {
   text-decoration: underline;
 }
+
+/* L2RelayTester styles */
+.relay-tester-container {
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid var(--border-primary);
+  width: 100%;
+  max-width: 800px;
+}
+
+.relay-tester-container h2 {
+  color: var(--accent-primary);
+  margin-top: 0;
+  border-bottom: 1px solid var(--border-primary);
+  padding-bottom: 10px;
+}
+
+.relay-tester-container p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-secondary);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.form-group input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.helper-text {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Network toggle styles */
+.network-toggle {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.radio-label input[type="radio"] {
+  margin-right: 8px;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+  width: auto;
+}
+
+/* Transaction preview styles */
+.transaction-preview {
+  margin: 20px 0;
+  padding: 15px;
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border-secondary);
+}
+
+.transaction-preview h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: var(--text-primary);
+  font-size: 16px;
+  border-bottom: 1px solid var(--border-secondary);
+  padding-bottom: 8px;
+}
+
+.preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  font-family: monospace;
+}
+
+.preview-label {
+  color: var(--text-tertiary);
+  font-weight: bold;
+  width: 120px;
+}
+
+.preview-value {
+  color: var(--text-primary);
+  word-break: break-all;
+  text-align: right;
+  flex: 1;
+}
+
+/* L3 Gas Estimator styles */
+.l3-gas-estimator {
+  background-color: var(--bg-tertiary);
+  border-radius: 6px;
+  padding: 15px;
+  margin: 15px 0;
+  border: 1px solid var(--border-secondary);
+}
+
+.estimator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.estimator-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.refresh-button {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.refresh-button:hover {
+  background-color: var(--accent-secondary);
+  color: white;
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.gas-estimates {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.estimate-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border-primary);
+  font-family: monospace;
+  font-size: 14px;
+}
+
+.estimate-row:last-child {
+  border-bottom: none;
+}
+
+.estimate-label {
+  color: var(--text-tertiary);
+}
+
+.estimate-value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.estimate-row.total {
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid var(--border-secondary);
+  font-weight: bold;
+}
+
+.estimate-row.total .estimate-label {
+  color: var(--text-primary);
+}
+
+.estimate-row.total .estimate-value {
+  color: var(--accent-primary);
+}
+
+.last-updated {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  text-align: right;
+  font-style: italic;
+}
+
+.error-message {
+  color: #e74c3c;
+  font-size: 14px;
+  margin: 10px 0;
+  padding: 5px;
+  background-color: rgba(231, 76, 60, 0.1);
+  border-radius: 4px;
+}
+
+.input-with-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: 0;
+  font-weight: normal;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-right: 5px;
+  width: auto;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
+.preview-row.gas-info {
+  background-color: rgba(94, 114, 228, 0.1);
+  padding: 5px 8px;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+.preview-row.gas-info .preview-value {
+  color: var(--accent-primary);
+}

@@ -48,7 +48,7 @@ def deploy_contracts():
                 "l1": {"address": "", "contract": "L1QueryOwner"},
                 "l2": {"address": "", "contract": "L2Relay"},
                 "l3": {"address": "", "contract": "OwnerRegistry"},
-                "commissionHub": {"address": "", "contract": "CommissionHub"},
+                "artCommissionHub": {"address": "", "contract": "ArtCommissionHub"},
                 "artPiece": {"address": "", "contract": "ArtPiece"},
                 "profileTemplate": {"address": "", "contract": "Profile"},
                 "profileHub": {"address": "", "contract": "ProfileHub"}
@@ -107,7 +107,7 @@ def deploy_contracts():
     l1_existing_address = get_contract_address(config_network, "l1")
     l2_existing_address = get_contract_address(config_network, "l2")
     l3_existing_address = get_contract_address(config_network, "l3")
-    commission_hub_existing_address = get_contract_address(config_network, "commissionHub")
+    commission_hub_existing_address = get_contract_address(config_network, "artCommissionHub")
     art_piece_existing_address = get_contract_address(config_network, "artPiece")
     profile_template_existing_address = get_contract_address(config_network, "profileTemplate")
     profile_hub_existing_address = get_contract_address(config_network, "profileHub")
@@ -185,40 +185,40 @@ def deploy_contracts():
                 print(f"Error deploying ArtPiece stencil: {e}")
                 sys.exit(1)
 
-    # Deploy CommissionHub template on L3 (as reference for OwnerRegistry)
+    # Deploy ArtCommissionHub template on L3 (as reference for OwnerRegistry)
     with networks.parse_network_choice(l3_network) as provider:
-        if not full_redeploy and commission_hub_existing_address and input(f"Use existing CommissionHub template at {commission_hub_existing_address}? (Y/n): ").strip().lower() != 'n':
-            print(f"Using existing CommissionHub template at: {commission_hub_existing_address}")
-            commission_hub_template = project.CommissionHub.at(commission_hub_existing_address)
+        if not full_redeploy and commission_hub_existing_address and input(f"Use existing ArtCommissionHub template at {commission_hub_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ArtCommissionHub template at: {commission_hub_existing_address}")
+            commission_hub_template = project.ArtCommissionHub.at(commission_hub_existing_address)
         else:
-            print(f"Deploying CommissionHub template on {l3_network} (as reference for OwnerRegistry)")
+            print(f"Deploying ArtCommissionHub template on {l3_network} (as reference for OwnerRegistry)")
             try:
                 # For Arbitrum deployments, we may need higher gas limits
                 gas_limit = 3000000  # Higher gas limit
                 commission_hub_template = deployer.deploy(
-                    project.CommissionHub, 
+                    project.ArtCommissionHub, 
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
-                print(f"CommissionHub template deployed at: {commission_hub_template.address}")
-                print(f"Note: This CommissionHub template is ONLY for reference in OwnerRegistry")
-                print(f"      Actual CommissionHub instances will be created through OwnerRegistry")
+                print(f"ArtCommissionHub template deployed at: {commission_hub_template.address}")
+                print(f"Note: This ArtCommissionHub template is ONLY for reference in OwnerRegistry")
+                print(f"      Actual ArtCommissionHub instances will be created through OwnerRegistry")
                 
                 # Update the frontend config
-                update_contract_address(config_network, "commissionHub", commission_hub_template.address, "CommissionHub")
+                update_contract_address(config_network, "artCommissionHub", commission_hub_template.address, "ArtCommissionHub")
                 
                 # Whitelist the ArtPiece stencil if available
                 if art_piece_stencil:
-                    print(f"Whitelisting ArtPiece stencil ({art_piece_stencil.address}) in CommissionHub...")
+                    print(f"Whitelisting ArtPiece stencil ({art_piece_stencil.address}) in ArtCommissionHub...")
                     # Explicitly set the sender as deployer to ensure permission
                     commission_hub_template.setWhitelistedArtPieceContract(art_piece_stencil.address, sender=deployer)
-                    print(f"ArtPiece stencil whitelisted in CommissionHub")
+                    print(f"ArtPiece stencil whitelisted in ArtCommissionHub")
                 
-                print("=" * 50)  # Delimiter after CommissionHub template deployment
-                print("CommissionHub template deployment completed")
+                print("=" * 50)  # Delimiter after ArtCommissionHub template deployment
+                print("ArtCommissionHub template deployment completed")
                 print("=" * 50)
             except Exception as e:
-                print(f"Error deploying CommissionHub template: {e}")
+                print(f"Error deploying ArtCommissionHub template: {e}")
                 sys.exit(1)
 
     # Deploy Profile template on L3
@@ -292,7 +292,7 @@ def deploy_contracts():
                 l3_owner_registry = deployer.deploy(
                     project.OwnerRegistry,
                     l2_contract.address,  # L2Relay address
-                    commission_hub_template.address,  # CommissionHub template address
+                    commission_hub_template.address,  # ArtCommissionHub template address
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
@@ -453,7 +453,7 @@ def deploy_contracts():
     elif network_choice == "prodtest":
         print(f"L3 Contracts (Animechain L3):")
         print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
-        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+        print(f"  - ArtCommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
         print(f"  - ProfileHub: {profile_hub.address if profile_hub else 'Not deployed'}")
@@ -463,7 +463,7 @@ def deploy_contracts():
     else:
         print(f"L3 Contracts ({l3_network}):")
         print(f"  - OwnerRegistry: {l3_owner_registry.address if l3_owner_registry else 'Not deployed'}")
-        print(f"  - CommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
+        print(f"  - ArtCommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
         print(f"  - ProfileHub: {profile_hub.address if profile_hub else 'Not deployed'}")
@@ -489,9 +489,9 @@ def deploy_contracts():
     if l3_owner_registry:
         try:
             l2relay = l3_owner_registry.l2Relay()
-            hub_template = l3_owner_registry.commissionHubTemplate()
+            hub_template = l3_owner_registry.artCommissionHubTemplate()
             print(f"  - OwnerRegistry -> L2Relay: {l2relay}")
-            print(f"  - OwnerRegistry -> CommissionHub Template: {hub_template}")
+            print(f"  - OwnerRegistry -> ArtCommissionHub Template: {hub_template}")
         except Exception as e:
             print(f"Could not retrieve OwnerRegistry links: {e}")
     

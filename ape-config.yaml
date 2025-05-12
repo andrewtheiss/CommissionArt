@@ -6,6 +6,7 @@ plugins:
   - name: vyper
   - name: alchemy
   - name: arbitrum
+  - name: foundry
 
 compiler:
   vyper:
@@ -45,6 +46,7 @@ networks:
       ecosystem: ethereum
       default_provider: node
 
-  test:
-    mnemonic: candy maple cake sugar pudding cream honey rich smooth crumble sweet treat
-    number_of_accounts: 5
+test:
+  mnemonic: test test test test test test test test test test test junk
+  number_of_accounts: 15
+  balance: 100_000 ETH

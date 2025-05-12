@@ -14,31 +14,33 @@
 
 # State Variables
 
+# Constants for standardized pagination and unified array capacities
+PAGE_SIZE: constant(uint256) = 20
+MAX_ITEMS: constant(uint256) = 10**9  # unified max length for all item lists (adjusted if needed to original limits)
+
+
 # Owner of the profile (user address)
 deployer: public(address)  # New variable to store the deployer's address
 hub: public(address)  # Address of the hub that created this profile
 owner: public(address)
 profileImage: public(address)  # Changed from Bytes[45000] to address
-profileImageFormat: public(String[10])
 
 # Commissions and counters
-commissions: public(DynArray[address, 10**9])
+commissions: public(DynArray[address, MAX_ITEMS])
 commissionCount: public(uint256)
-unverifiedCommissions: public(DynArray[address, 10**9])
+unverifiedCommissions: public(DynArray[address, MAX_ITEMS])
 unverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
+# Add commissionRole mapping to track role at time of commission upload
+commissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
 
 # Art pieces collection
-myArt: public(DynArray[address, 10**9])
+myArt: public(DynArray[address, MAX_ITEMS])
 myArtCount: public(uint256)
 
-# Collector ERC1155s
-collectorErc1155s: public(DynArray[address, 10**9])
-collectorErc1155Count: public(uint256)
-
 # Profile socials and counters
-likedProfiles: public(DynArray[address, 10**9])
+likedProfiles: public(DynArray[address, MAX_ITEMS])
 likedProfileCount: public(uint256)
 whitelist: public(HashMap[address, bool])
 blacklist: public(HashMap[address, bool])
@@ -46,23 +48,29 @@ linkedProfiles: public(DynArray[address, 10**5])
 linkedProfileCount: public(uint256)
 
 
-# ERC1155 addresses for supporting additional or items for sale
-isArtist: public(bool)                                         # Profile is an artist
-artistCommissionedWorks: public(DynArray[address, 10**9])               # Commissions this artist has
-artistCommissionedWorkCount: public(uint256)                             # Count of artist's commissions
-artistErc1155sToSell: public(DynArray[address, 10**9])      # Additional mint ERC1155s for the artist
-artistErc1155sToSellCount: public(uint256)                    # Count of additional ERC1155s
-artistCommissionToErc1155Map: public(HashMap[address, address])  # Map of commission addresses to mint ERC1155 addresses
-artistProceedsAddress: public(address)                               # Address to receive proceeds from sales
-
 # Profile expansion (for future features)
 profileExpansion: public(address)
+
+# ArtSales1155 link (forever tied after set)
+artSales1155: public(address)
+
+# Artist status for this profile
+isArtist: public(bool)
 
 # Interface for ArtPiece contract
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
     def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+
+# Interface for ArtCommissionHub
+interface ArtCommissionHub:
+    def submitCommission(_art_piece: address): nonpayable
+    def setWhitelistedArtPieceContract(_art_piece_contract: address): nonpayable
+
+# Interface for ArtSales1155 (expanded)
+interface ArtSales1155:
+    def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
 
 # Constructor
 @deploy
@@ -76,58 +84,16 @@ def initialize(_owner: address):
     self.owner = _owner
     self.hub = msg.sender  # Set the hub to be the contract that called initialize
     self.deployer = msg.sender  # Also set deployer to be the same as hub for backward compatibility
-    self.isArtist = False  # Default to non-artist
     self.allowUnverifiedCommissions = True  # Default to allowing commissions
     self.profileExpansion = empty(address)
-    self.artistProceedsAddress = _owner  # Default proceeds to owner's address
+    self.isArtist = False  # Default to non-artist
     
     # Initialize counters
     self.commissionCount = 0
     self.unverifiedCommissionCount = 0
     self.likedProfileCount = 0
     self.linkedProfileCount = 0
-    self.artistCommissionedWorkCount = 0
-    self.artistErc1155sToSellCount = 0
     self.myArtCount = 0
-    self.collectorErc1155Count = 0
-
-# Helper Functions
-
-
-# Remove an item from a dynamic array by swapping with the last element
-@internal
-def _removeFromArray(_array: DynArray[address, 10**9], _item: address):
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(_array), bound=1000):
-        if _array[i] == _item:
-            index = i
-            found = True
-            break
-    assert found, "Item not found"
-    lastItem: address = _array[len(_array) - 1]
-    _array[index] = lastItem
-    _array.pop()
-
-# Setter Functions
-
-# Set artist status
-@external
-def setIsArtist(_is_artist: bool):
-    assert msg.sender == self.owner, "Only owner can set artist status"
-    self.isArtist = _is_artist
-
-# Set profile image
-@external
-def setProfileImage(_image: address):  # Changed parameter type from Bytes[45000] to address
-    assert msg.sender == self.owner, "Only owner can set profile image"
-    self.profileImage = _image
-
-# Set profile image format
-@external
-def setProfileImageFormat(_format: String[10]):
-    assert msg.sender == self.owner, "Only owner can set profile image format"
-    self.profileImageFormat = _format
 
 # Toggle allowing new commissions
 @external
@@ -140,13 +106,6 @@ def setAllowUnverifiedCommissions(_allow: bool):
 def setProfileExpansion(_address: address):
     assert msg.sender == self.owner, "Only owner can set profile expansion"
     self.profileExpansion = _address
-
-# Set proceeds address (artist-only)
-@external
-def setProceedsAddress(_address: address):
-    assert msg.sender == self.owner, "Only owner can set proceeds address"
-    assert self.isArtist, "Only artists can set proceeds address"
-    self.artistProceedsAddress = _address
 
 # Add address to whitelist
 @external
@@ -171,19 +130,50 @@ def removeFromBlacklist(_address: address):
     assert msg.sender == self.owner, "Only owner can remove from blacklist"
     self.blacklist[_address] = False
 
+# Set profile image
+@external
+def setProfileImage(_profile_image: address):
+    assert msg.sender == self.owner, "Only owner can set profile image"
+    # check we are owner of the art piece
+    art_piece: ArtPiece = ArtPiece(_profile_image)
+    assert staticcall(art_piece.getOwner()) == self.owner or staticcall(art_piece.getArtist()) == self.owner, "Only owner can set profile image"
+    self.profileImage = _profile_image
 
 ## Commissions
+#
+# addCommission
+# -------------
+# Adds a commission to this profile.
+# Use case:
+# - If the profile is an artist, this is a piece of work they created for someone else (they are the artist).
+# - If the profile is a non-artist (commissioner/curator), this is a piece of work they commissioned from an artist (they are the client).
+# - The contract records the user's role at the time of upload in commissionRole.
+# Example:
+# - Alice (artist) uploads a new commission she did for Bob: Alice calls addCommission(commissionAddress).
+# - Bob (commissioner) uploads a commission he received from Alice: Bob calls addCommission(commissionAddress).
+#
 @external
 def addCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add commission"
     assert _commission not in self.commissions, "Commission already added"
     self.commissions.append(_commission)
     self.commissionCount += 1
+    # Use isArtist at upload time
+    self.commissionRole[_commission] = self.isArtist
 
+#
+# removeCommission
+# ----------------
+# Removes a commission from this profile's list.
+# Use case:
+# - If a commission is no longer relevant, or was added in error, it can be removed.
+# - This also removes the recorded role for that commission.
+# Example:
+# - Alice accidentally adds the wrong commission: removeCommission(commissionAddress).
+#
 @external
 def removeCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove commission"
-    
     # Find the index of the item to remove
     index: uint256 = 0
     found: bool = False
@@ -192,39 +182,36 @@ def removeCommission(_commission: address):
             index = i
             found = True
             break
-    
-    # If not found, revert
     assert found, "Commission not found"
-    
     # Swap with the last element and pop
-    if index < len(self.commissions) - 1:  # Not the last element
-        # Get the last item
+    if index < len(self.commissions) - 1:
         last_item: address = self.commissions[len(self.commissions) - 1]
-        # Replace the item to remove with the last item
         self.commissions[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
     self.commissions.pop()
     self.commissionCount -= 1
+    self.commissionRole[_commission] = False  # Clear role (optional, for clarity)
 
+#
+# getCommissions
+# ---------------
+# Returns a paginated list of commissions (verified or unverified) for this profile.
+# Use case:
+# - Used by the frontend to display all commissions associated with this profile, either as artist or commissioner.
+# - The frontend can also query commissionRole to determine the user's role at the time of upload for each commission.
+# Example:
+# - Alice wants to see all her commissions (as artist or as commissioner): getCommissions(page, pageSize).
+#
 @view
 @external
 def getCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     arr_len: uint256 = len(self.commissions)
-    
-    # Early returns for empty array or out-of-bounds page
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
-    
     start: uint256 = _page * _page_size
-    # Calculate how many items to return (bounded by array length and max return size)
     items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    # Populate result array
     for i: uint256 in range(0, items, bound=100):
         result.append(self.commissions[start + i])
-    
     return result
 
 @view
@@ -248,6 +235,17 @@ def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[addres
     return result
 
 ## Unverified Commissions
+#
+# addUnverifiedCommission / removeUnverifiedCommission
+# ----------------------------------------------------
+# Adds or removes a commission from the unverified list.
+# Use case:
+# - When a commission is first uploaded, it may be unverified (pending approval by the other party).
+# - Either party can move a commission to or from the unverified list as part of the verification flow.
+# Example:
+# - Alice uploads a commission for Bob, but Bob hasn't approved it yet: addUnverifiedCommission(commissionAddress).
+# - Once Bob approves, removeUnverifiedCommission(commissionAddress) and move to verified.
+#
 @external
 def addUnverifiedCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can add unverified commission"
@@ -258,7 +256,6 @@ def addUnverifiedCommission(_commission: address):
 @external
 def removeUnverifiedCommission(_commission: address):
     assert msg.sender == self.owner, "Only owner can remove unverified commission"
-    
     # Find the index of the item to remove
     index: uint256 = 0
     found: bool = False
@@ -267,39 +264,33 @@ def removeUnverifiedCommission(_commission: address):
             index = i
             found = True
             break
-    
-    # If not found, revert
     assert found, "Unverified commission not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.unverifiedCommissions) - 1:  # Not the last element
-        # Get the last item
+    if index < len(self.unverifiedCommissions) - 1:
         last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
-        # Replace the item to remove with the last item
         self.unverifiedCommissions[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
     self.unverifiedCommissions.pop()
     self.unverifiedCommissionCount -= 1
 
+#
+# getUnverifiedCommissions
+# -------------------------
+# Returns a paginated list of unverified commissions for this profile.
+# Use case:
+# - Used by the frontend to display all unverified commissions associated with this profile.
+# Example:
+# - Alice wants to see all her unverified commissions: getUnverifiedCommissions(page, pageSize).
+#
 @view
 @external
 def getUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     arr_len: uint256 = len(self.unverifiedCommissions)
-    
-    # Early returns for empty array or out-of-bounds page
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
-    
     start: uint256 = _page * _page_size
-    # Calculate how many items to return (bounded by array length and max return size)
     items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    # Populate result array
     for i: uint256 in range(0, items, bound=100):
         result.append(self.unverifiedCommissions[start + i])
-    
     return result
 
 @view
@@ -468,214 +459,85 @@ def getRecentLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[add
     
     return result
 
-## My Commissions (Artist-Only)
+# Set ArtSales1155 address (can only be set once)
 @external
-def addMyCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can add my commission"
-    assert self.isArtist, "Only artists can add my commissions"
-    assert _commission not in self.artistCommissionedWorks, "Commission already added"
-    self.artistCommissionedWorks.append(_commission)
-    self.artistCommissionedWorkCount += 1
+def setArtSales1155(_sales: address):
+    assert msg.sender == self.owner, "Only owner can set sales contract"
+    assert self.artSales1155 == empty(address), "Sales contract already set"
+    assert _sales != empty(address), "Invalid sales contract address"
+    self.artSales1155 = _sales
 
-@external
-def removeMyCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can remove my commission"
-    assert self.isArtist, "Only artists can remove my commissions"
-    
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.artistCommissionedWorks), bound=1000):
-        if self.artistCommissionedWorks[i] == _commission:
-            index = i
-            found = True
-            break
-    
-    # If not found, revert
-    assert found, "My commission not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.artistCommissionedWorks) - 1:  # Not the last element
-        # Get the last item
-        last_item: address = self.artistCommissionedWorks[len(self.artistCommissionedWorks) - 1]
-        # Replace the item to remove with the last item
-        self.artistCommissionedWorks[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
-    self.artistCommissionedWorks.pop()
-    self.artistCommissionedWorkCount -= 1
-
+#
+# getProfileErc1155sForSale
+# ------------------------
+# This function allows the profile to retrieve a paginated list of ERC1155 contract addresses that are available for additional minting (for sale or distribution) by this profile's associated ArtSales1155 contract.
+#
+# How it works:
+# - Checks that the artSales1155 address is set (i.e., the sales contract is linked to this profile).
+# - Uses a staticcall to the ArtSales1155 contract's getAdditionalMintErc1155s method, passing the requested page and page size.
+# - Returns up to 100 ERC1155 addresses from the sales contract, for the given page.
+#
+# Use case example:
+# Suppose a frontend wants to display all ERC1155 tokens that an artist (profile) has put up for sale or additional minting. The frontend can call this method with _page=0 and _page_size=20 to get the first 20 tokens, then increment _page to paginate through the rest.
+#
 @view
 @external
-def getArtistCommissionedWorks(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    assert self.isArtist, "Only artists have my commissions"
-    
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.artistCommissionedWorks)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.artistCommissionedWorks[start + i])
-    
-    return result
+def getProfileErc1155sForSale(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    assert self.artSales1155 != empty(address), "Sales contract not set"
+    return staticcall ArtSales1155(self.artSales1155).getAdditionalMintErc1155s(_page, _page_size)
 
-@view
+# Three types of art pieces can be created:
+# #1 - Profile Art Piece 
+# #2 - Commission Art Piece
+# #3 - Profile Art Peice
 @external
-def getRecentArtistCommissionedWorks(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    assert self.isArtist, "Only artists have my commissions"
-    
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.artistCommissionedWorks)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.artistCommissionedWorks[start - i])
-    
-    return result
-
-## Additional Mint ERC1155s (Artist-Only)
-@external
-def addAdditionalMintErc1155(_erc1155: address):
-    assert msg.sender == self.owner, "Only owner can add additional mint ERC1155"
-    assert self.isArtist, "Only artists can add additional mint ERC1155s"
-    assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
-    self.artistErc1155sToSell.append(_erc1155)
-    self.artistErc1155sToSellCount += 1
-
-@external
-def removeAdditionalMintErc1155(_erc1155: address):
-    assert msg.sender == self.owner, "Only owner can remove additional mint ERC1155"
-    assert self.isArtist, "Only artists can remove additional mint ERC1155s"
-    
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.artistErc1155sToSell), bound=1000):
-        if self.artistErc1155sToSell[i] == _erc1155:
-            index = i
-            found = True
-            break
-    
-    # If not found, revert
-    assert found, "Additional mint ERC1155 not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.artistErc1155sToSell) - 1:  # Not the last element
-        # Get the last item
-        last_item: address = self.artistErc1155sToSell[len(self.artistErc1155sToSell) - 1]
-        # Replace the item to remove with the last item
-        self.artistErc1155sToSell[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
-    self.artistErc1155sToSell.pop()
-    self.artistErc1155sToSellCount -= 1
-
-@view
-@external
-def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    assert self.isArtist, "Only artists have additional mint ERC1155s"
-    
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.artistErc1155sToSell)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.artistErc1155sToSell[start + i])
-    
-    return result
-
-@view
-@external
-def getRecentAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    assert self.isArtist, "Only artists have additional mint ERC1155s"
-    
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.artistErc1155sToSell)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.artistErc1155sToSell[start - i])
-    
-    return result
-
-## Map Commission to Mint ERC1155 (Artist-Only)
-@external
-def mapCommissionToMintErc1155(_commission: address, _erc1155: address):
-    assert msg.sender == self.owner, "Only owner can map commission to mint ERC1155"
-    assert self.isArtist, "Only artists can map commission to mint ERC1155"
-    self.artistCommissionToErc1155Map[_commission] = _erc1155
-
-@external
-def removeMapCommissionToMintErc1155(_commission: address):
-    assert msg.sender == self.owner, "Only owner can remove map commission to mint ERC1155"
-    assert self.isArtist, "Only artists can remove map commission to mint ERC1155"
-    self.artistCommissionToErc1155Map[_commission] = empty(address)
-
-@view
-@external
-def getMapCommissionToMintErc1155(_commission: address) -> address:
-    assert self.isArtist, "Only artists have map commission to mint ERC1155"
-    return self.artistCommissionToErc1155Map[_commission]
-
-## Art Pieces
-
-@external
-def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title: String[100], _description: String[200], _is_artist: bool, _other_party: address, _commission_hub: address, _ai_generated: bool) -> address:
+def createArtPiece(
+    _art_piece_template: address,
+    _token_uri_data: Bytes[45000],
+    _token_uri_data_format: String[10],
+    _title: String[100],
+    _description: String[200],
+    _is_artist: bool,
+    _other_party: address,
+    _ai_generated: bool,
+    _art_commission_hub: address = empty(address),  # Register with art commission hub
+    _is_profile_art: bool = False
+) -> address:
     """
-    Create a new art piece through this profile
-    _art_piece_template: Address of the ArtPiece template contract to clone
-    _token_uri_data: Raw bytes data for the token URI
-    _token_uri_data_format: Format of the token URI data (e.g., "avif", "webp", etc.)
-    _is_artist: True if caller is the artist, False if caller is the commissioner
-    _other_party: Address of the other party (artist if caller is commissioner, commissioner if caller is artist)
+    Create a new art piece with optional profile art and commission registration
     """
-    # Check if the caller is either:
-    # 1. The profile owner (direct user call)
-    # 2. The hub that created this profile (ProfileHub)
-    # 3. The deployer of this profile contract (system admin)
-    assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
-    assert _art_piece_template != empty(address), "ArtPiece template address required"
-    
-    # Determine owner and artist based on caller's role
+    # Determine permissions
+    if _is_profile_art:
+        assert msg.sender == self.owner, "Only profile owner can create profile art"
+    if _art_commission_hub != empty(address):
+        assert msg.sender == self.owner or msg.sender == self.hub, "Only profile owner can create profile art or register with commission hub"
+    else:
+        assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
+
+    # Adjust parameters for profile art
+    is_artist: bool = _is_artist
+    other_party: address = _other_party
+    art_commission_hub: address = _art_commission_hub
+
+    # If this art piece is your profile, flog as not commissionable
+    if _is_profile_art:
+        is_artist = True
+        other_party = self.owner
+        art_commission_hub = empty(address)
+
+    # Calculate owner_input and artist_input
     owner_input: address = empty(address)
     artist_input: address = empty(address)
-    
-    if _is_artist:
-        # Caller is the artist
-        artist_input = self.owner  # The profile owner is the artist
-        owner_input = _other_party if _other_party != empty(address) else self.owner  # If no commissioner specified, owner is also artist
+    if is_artist:
+        artist_input = self.owner
+        owner_input = other_party if other_party != empty(address) else self.owner
     else:
-        # Caller is the commissioner/owner
-        owner_input = self.owner  # The profile owner is the commissioner
-        artist_input = _other_party if _other_party != empty(address) else self.owner  # If no artist specified, commissioner is also artist
-    
+        owner_input = self.owner
+        artist_input = other_party if other_party != empty(address) else self.owner
+
     # Create minimal proxy to the ArtPiece template
     art_piece_address: address = create_minimal_proxy_to(_art_piece_template)
-    
+
     # Initialize the art piece proxy
     art_piece: ArtPiece = ArtPiece(art_piece_address)
     extcall art_piece.initialize(
@@ -685,15 +547,25 @@ def createArtPiece(_art_piece_template: address, _token_uri_data: Bytes[45000], 
         _description,
         owner_input,
         artist_input,
-        _commission_hub,
+        art_commission_hub,
         _ai_generated
     )
-    
-    # Add to my art collection
-    self.myArt.append(art_piece_address)
-    self.myArtCount += 1
-    
+        
+    # If profile art, set as profile image
+    if _is_profile_art:
+        self.profileImage = art_piece_address
+
+    # Add to my art collection if not profile art
+    if not _is_profile_art:
+        self.myArt.append(art_piece_address)
+        self.myArtCount += 1
+
+    # If commission hub is provided, register with it
+    if art_commission_hub != empty(address):
+        _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
+
     return art_piece_address
+
 
 @external
 def addArtPiece(_art_piece: address):
@@ -795,107 +667,17 @@ def getLatestArtPieces() -> DynArray[address, 5]:
     
     return result
 
-## Collector ERC1155s
-@external
-def addCollectorErc1155(_erc1155: address):
-    assert msg.sender == self.owner, "Only owner can add collector ERC1155"
-    assert _erc1155 not in self.collectorErc1155s, "ERC1155 already added"
-    self.collectorErc1155s.append(_erc1155)
-    self.collectorErc1155Count += 1
-
-@external
-def removeCollectorErc1155(_erc1155: address):
-    assert msg.sender == self.owner, "Only owner can remove collector ERC1155"
-    
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
-        if self.collectorErc1155s[i] == _erc1155:
-            index = i
-            found = True
-            break
-    
-    # If not found, revert
-    assert found, "Collector ERC1155 not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.collectorErc1155s) - 1:  # Not the last element
-        # Get the last item
-        last_item: address = self.collectorErc1155s[len(self.collectorErc1155s) - 1]
-        # Replace the item to remove with the last item
-        self.collectorErc1155s[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
-    self.collectorErc1155s.pop()
-    self.collectorErc1155Count -= 1
-
-@view
-@external
-def getCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.collectorErc1155s)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.collectorErc1155s[start + i])
-    
-    return result
-
-@view
-@external
-def getRecentCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.collectorErc1155s)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.collectorErc1155s[start - i])
-    
-    return result
-
-@view
-@external
-def getLatestCollectorErc1155s() -> DynArray[address, 5]:
-    result: DynArray[address, 5] = []
-    
-    # If no ERC1155 tokens exist, return empty array
-    if self.collectorErc1155Count == 0:
-        return result
-    
-    # Get minimum of 5 or available ERC1155 tokens
-    items_to_return: uint256 = min(5, self.collectorErc1155Count)
-    
-    # Start from the last (most recent) item and work backwards
-    # Using safe indexing to prevent underflow
-    for i: uint256 in range(0, items_to_return, bound=5):
-        if i < self.collectorErc1155Count:  # Safety check
-            idx: uint256 = self.collectorErc1155Count - 1 - i
-            result.append(self.collectorErc1155s[idx])
-    
-    return result
-
-@view
-@external
-def isCollectorErc1155(_erc1155: address) -> bool:
-    for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
-        if self.collectorErc1155s[i] == _erc1155:
-            return True
-    return False
-
 @view
 @external
 def getArtPieceAtIndex(_index: uint256) -> address:
     return self.myArt[_index]
+
+@external
+def setIsArtist(_is_artist: bool):
+    """
+    Set the artist status for this profile. Only the profile owner can call this.
+    Use case: Allows a user to toggle their profile between artist and non-artist.
+    Example: Alice wants to become an artist: setIsArtist(True).
+    """
+    assert msg.sender == self.owner, "Only owner can set artist status"
+    self.isArtist = _is_artist

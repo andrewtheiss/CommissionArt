@@ -13,9 +13,9 @@
         "address": "0x89244283543881Af0E005AE6B4eb713d3603974c",
         "contract": "OwnerRegistry"
       },
-      "commissionHub": {
+      "artCommissionHub": {
         "address": "0x78c39bB3072b43D9B7A4B9116E7A87FbE19A69ef",
-        "contract": "CommissionHub"
+        "contract": "ArtCommissionHub"
       },
       "artPiece": {
         "address": "0xb663053448AC33f8e880Ee2eF877895db599A7f3",
@@ -51,9 +51,9 @@
         "address": "0x51C11796198289c3e3e3AD6e11B137e94ed2e793",
         "contract": "OwnerRegistry"
       },
-      "commissionHub": {
+      "artCommissionHub": {
         "address": "0x09517E1e6eA9803f8AB5Ba608d5985D098CdBdd8",
-        "contract": "CommissionHub"
+        "contract": "ArtCommissionHub"
       },
       "artPiece": {
         "address": "0x538e72fD1856F2b2B966B3103ec37Bb652232FfF",

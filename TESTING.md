@@ -60,6 +60,9 @@ ape test tests/test_profile_array_methods.py::test_commission_array_methods
 
 # Run tests matching a specific pattern
 ape test -k "commission"
+
+# Run tests with extra accounts:
+ape test .  --network ethereum:local -n 10
 ```
 
 ## Test Coverage

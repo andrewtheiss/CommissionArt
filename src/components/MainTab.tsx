@@ -5,8 +5,9 @@ import ImageCompressor from './ImageCompressor';
 import BridgeTestContainer from './BridgeTest';
 import ErrorBoundary from './ErrorBoundary';
 import NFTRegistration from './NFTRegistration';
-import CommissionHub from './CommissionHub';
+import ArtCommissionHub from './ArtCommissionHub';
 import Account from './Account';
+import L2RelayTester from './L2RelayTester';
 import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
@@ -84,9 +85,11 @@ const MainTab: React.FC = () => {
   const [isImageLoading, setIsImageLoading] = useState(false);
   
   // Initialize activeTab from localStorage or default to 'account'
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration' | 'account'>(() => {
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration' | 'account' | 'l2relay'>(() => {
     const savedTab = localStorage.getItem('active_tab');
-    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || savedTab === 'commissioned' || savedTab === 'registration' || savedTab === 'account') {
+    if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || 
+        savedTab === 'commissioned' || savedTab === 'registration' || savedTab === 'account' || 
+        savedTab === 'l2relay') {
       return savedTab;
     }
     return 'account';
@@ -280,6 +283,12 @@ const MainTab: React.FC = () => {
             NFT Registration
           </button>
           <button 
+            className={`tab-button ${activeTab === 'l2relay' ? 'active' : ''}`}
+            onClick={() => setActiveTab('l2relay')}
+          >
+            L2 Relay Test
+          </button>
+          <button 
             className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
             onClick={() => setActiveTab('viewer')}
           >
@@ -314,10 +323,24 @@ const MainTab: React.FC = () => {
               <p>Please check the console for more details.</p>
             </div>
           }>
-            <CommissionHub />
+            <ArtCommissionHub />
           </ErrorBoundary>
         ) : activeTab === 'registration' ? (
           <NFTRegistration />
+        ) : activeTab === 'l2relay' ? (
+          <ErrorBoundary fallback={
+            <div className="error-message-container">
+              <h3>Error in L2 Relay Tester Component</h3>
+              <p>There was an error loading the L2 Relay Tester component. This might be due to:</p>
+              <ul>
+                <li>Network connectivity issues</li>
+                <li>MetaMask connection problems</li>
+              </ul>
+              <p>Please check the console for more details.</p>
+            </div>
+          }>
+            <L2RelayTester />
+          </ErrorBoundary>
         ) : activeTab === 'viewer' ? (
           <>
             <div className="search-container">

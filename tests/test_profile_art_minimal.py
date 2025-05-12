@@ -8,9 +8,9 @@ def setup():
     artist = accounts.test_accounts[1]
     owner = accounts.test_accounts[2]
     
-    # Deploy CommissionHub
-    commission_hub = project.CommissionHub.deploy(sender=deployer)
-    print(f"Deployed CommissionHub at {commission_hub.address}")
+    # Deploy ArtCommissionHub
+    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
+    print(f"Deployed ArtCommissionHub at {commission_hub.address}")
     
     # Deploy ArtPiece template
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -95,8 +95,9 @@ def test_minimal_art_piece_creation(setup):
         description,
         False,  # Not as artist
         artist.address,
-        commission_hub.address,
         False,  # Not AI generated
+        commission_hub.address,
+        False,  # Not profile art
         sender=owner
     )
     

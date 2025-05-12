@@ -10,9 +10,9 @@ interface L3LookupQuery {
   tokenId: string;
   isSubmitting: boolean;
   result: string;
-  commissionHub: string;
+  artCommissionHub: string;
   lastUpdated: string;
-  queryType: 'owner' | 'commissionHub' | 'lastUpdated' | 'l2relay' | 'commissionHubTemplate' | 'contractOwner';
+  queryType: 'owner' | 'artCommissionHub' | 'lastUpdated' | 'l2relay' | 'artCommissionHubTemplate' | 'contractOwner';
 }
 
 // Interface for contract configuration
@@ -59,7 +59,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     tokenId: environment === 'testnet' ? '1' : '',
     isSubmitting: false,
     result: '',
-    commissionHub: '',
+    artCommissionHub: '',
     lastUpdated: '',
     queryType: 'owner'
   });
@@ -67,7 +67,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   // State for registry info (public variables)
   const [registryInfo, setRegistryInfo] = useState({
     l2relay: '',
-    commissionHubTemplate: '',
+    artCommissionHubTemplate: '',
     contractOwner: '',
     contractAddress: environment === 'testnet' 
       ? contractConfig.addresses.l3?.testnet || ''
@@ -229,7 +229,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       
       // Query public variables - use try/catch for each to handle potential errors
       let l2relay = ethers.ZeroAddress;
-      let commissionHubTemplate = ethers.ZeroAddress;
+      let artCommissionHubTemplate = ethers.ZeroAddress;
       let contractOwner = ethers.ZeroAddress;
       
       try {
@@ -239,9 +239,9 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       }
       
       try {
-        commissionHubTemplate = await contract.commissionHubTemplate();
+        artCommissionHubTemplate = await contract.artCommissionHubTemplate();
       } catch (error) {
-        handleContractError(error, 'commissionHubTemplate()');
+        handleContractError(error, 'artCommissionHubTemplate()');
       }
       
       try {
@@ -253,7 +253,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       // Update state
       setRegistryInfo({
         l2relay,
-        commissionHubTemplate,
+        artCommissionHubTemplate,
         contractOwner,
         contractAddress: l3Address
       });
@@ -261,7 +261,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       // Autopopulate the L2Relay form with current value
       setNewL2RelayAddress(l2relay);
       
-      setBridgeStatus(`OwnerRegistry Info:\nAddress: ${l3Address}\nL2 Relay: ${l2relay}\nCommission Hub Template: ${commissionHubTemplate}\nOwner: ${contractOwner}`);
+      setBridgeStatus(`OwnerRegistry Info:\nAddress: ${l3Address}\nL2 Relay: ${l2relay}\nCommission Hub Template: ${artCommissionHubTemplate}\nOwner: ${contractOwner}`);
       
     } catch (error) {
       console.error('Error loading contract info:', error);
@@ -301,7 +301,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         ...prev,
         isSubmitting: true,
         result: '',
-        commissionHub: '',
+        artCommissionHub: '',
         lastUpdated: ''
       }));
       
@@ -336,11 +336,11 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       const { contractAddress, tokenId, queryType } = l3LookupQuery;
       
       let result = '';
-      let commissionHub = '';
+      let artCommissionHub = '';
       let lastUpdated = '';
       
       // Handle token-specific queries
-      if (['owner', 'commissionHub', 'lastUpdated'].includes(queryType)) {
+      if (['owner', 'artCommissionHub', 'lastUpdated'].includes(queryType)) {
         // Check that contract address is valid
         if (!ethers.isAddress(contractAddress)) {
           throw new Error('Invalid NFT contract address');
@@ -362,20 +362,20 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           
           // If we get an owner, query other info too
           if (result && result !== ethers.ZeroAddress) {
-            commissionHub = await contract.getCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
+            artCommissionHub = await contract.getArtCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
             const lastUpdatedTimestamp = await contract.getLastUpdated(chainId, contractAddress, tokenIdBN);
             lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
           }
-        } else if (queryType === 'commissionHub') {
+        } else if (queryType === 'artCommissionHub') {
           setBridgeStatus(prev => `${prev}\nQuerying commission hub for NFT contract ${contractAddress} and token ID ${tokenId}...`);
           // Convert tokenId to BigNumber
           const tokenIdBN = ethers.toBigInt(tokenId);
           // Use chain ID 1 by default (for Ethereum)
           const chainId = 1n;
-          commissionHub = await contract.getCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
+          artCommissionHub = await contract.getArtCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
           
           // If we get a commission hub, query other info too
-          if (commissionHub && commissionHub !== ethers.ZeroAddress) {
+          if (artCommissionHub && artCommissionHub !== ethers.ZeroAddress) {
             result = await contract.lookupRegisteredOwner(chainId, contractAddress, tokenIdBN);
             const lastUpdatedTimestamp = await contract.getLastUpdated(chainId, contractAddress, tokenIdBN);
             lastUpdated = formatTimestamp(Number(lastUpdatedTimestamp));
@@ -392,12 +392,12 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           // Also get the owner and commission hub
           result = await contract.lookupRegisteredOwner(chainId, contractAddress, tokenIdBN);
           if (result && result !== ethers.ZeroAddress) {
-            commissionHub = await contract.getCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
+            artCommissionHub = await contract.getArtCommissionHubByOwner(chainId, contractAddress, tokenIdBN);
           }
         }
       }
       // Handle contract-level queries (will be shown separately in the registry info section)
-      else if (['l2relay', 'commissionHubTemplate', 'contractOwner'].includes(queryType)) {
+      else if (['l2relay', 'artCommissionHubTemplate', 'contractOwner'].includes(queryType)) {
         // These queries don't need NFT contract or token ID
         if (queryType === 'l2relay') {
           setBridgeStatus(prev => `${prev}\nQuerying L2 relay address...`);
@@ -407,12 +407,12 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
             handleContractError(error, 'l2Relay()');
             throw error;
           }
-        } else if (queryType === 'commissionHubTemplate') {
+        } else if (queryType === 'artCommissionHubTemplate') {
           setBridgeStatus(prev => `${prev}\nQuerying commission hub template address...`);
           try {
-            result = await contract.commissionHubTemplate();
+            result = await contract.artCommissionHubTemplate();
           } catch (error) {
-            handleContractError(error, 'commissionHubTemplate()');
+            handleContractError(error, 'artCommissionHubTemplate()');
             throw error;
           }
         } else if (queryType === 'contractOwner') {
@@ -434,14 +434,14 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         ...prev,
         isSubmitting: false,
         result: result === ethers.ZeroAddress ? 'Not set / Zero Address' : result,
-        commissionHub: commissionHub === ethers.ZeroAddress ? '' : commissionHub,
+        artCommissionHub: artCommissionHub === ethers.ZeroAddress ? '' : artCommissionHub,
         lastUpdated: lastUpdated
       }));
       
       // Update bridge status
-      if (['owner', 'commissionHub', 'lastUpdated'].includes(queryType)) {
+      if (['owner', 'artCommissionHub', 'lastUpdated'].includes(queryType)) {
         setBridgeStatus(prev => 
-          `${prev}\n\nQuery Result:\nNFT Contract: ${contractAddress}\nToken ID: ${tokenId}\nOwner: ${result === ethers.ZeroAddress ? 'Not registered' : result}\nCommission Hub: ${commissionHub === ethers.ZeroAddress ? 'Not created' : commissionHub}\nLast Updated: ${lastUpdated}`
+          `${prev}\n\nQuery Result:\nNFT Contract: ${contractAddress}\nToken ID: ${tokenId}\nOwner: ${result === ethers.ZeroAddress ? 'Not registered' : result}\nCommission Hub: ${artCommissionHub === ethers.ZeroAddress ? 'Not created' : artCommissionHub}\nLast Updated: ${lastUpdated}`
         );
       } else {
         setBridgeStatus(prev => 
@@ -783,7 +783,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           </div>
           <div className="info-item">
             <span className="info-label">Commission Hub Template:</span>
-            <span className="info-value">{registryInfo.commissionHubTemplate || 'Not loaded'}</span>
+            <span className="info-value">{registryInfo.artCommissionHubTemplate || 'Not loaded'}</span>
           </div>
           <div className="info-item">
             <span className="info-label">Contract Owner:</span>
@@ -924,15 +924,15 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
               onChange={(e) => handleL3LookupChange('queryType', e.target.value as any)}
             >
               <option value="owner">Owner Lookup</option>
-              <option value="commissionHub">Commission Hub</option>
+              <option value="artCommissionHub">Commission Hub</option>
               <option value="lastUpdated">Last Updated</option>
               <option value="l2relay">L2 Relay Address</option>
-              <option value="commissionHubTemplate">Commission Hub Template</option>
+              <option value="artCommissionHubTemplate">Commission Hub Template</option>
               <option value="contractOwner">Contract Owner</option>
             </select>
           </div>
           
-          {['owner', 'commissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
+          {['owner', 'artCommissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
             <>
               <div className="input-group">
                 <label htmlFor="nft-contract-address">NFT Contract Address</label>
@@ -975,7 +975,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           <div className="l3-lookup-result">
             <h4>Query Result:</h4>
             <div className="result-info">
-              {['owner', 'commissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
+              {['owner', 'artCommissionHub', 'lastUpdated'].includes(l3LookupQuery.queryType) && (
                 <>
                   <p>
                     <strong>NFT Contract:</strong> 
@@ -988,20 +988,20 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
                 </>
               )}
               
-              {(['owner', 'l2relay', 'commissionHubTemplate', 'contractOwner'].includes(l3LookupQuery.queryType) || l3LookupQuery.result) && (
+              {(['owner', 'l2relay', 'artCommissionHubTemplate', 'contractOwner'].includes(l3LookupQuery.queryType) || l3LookupQuery.result) && (
                 <p>
                   <strong>{l3LookupQuery.queryType === 'owner' ? 'Owner:' : 
                     l3LookupQuery.queryType === 'l2relay' ? 'L2 Relay:' :
-                    l3LookupQuery.queryType === 'commissionHubTemplate' ? 'Commission Hub Template:' :
+                    l3LookupQuery.queryType === 'artCommissionHubTemplate' ? 'Commission Hub Template:' :
                     l3LookupQuery.queryType === 'contractOwner' ? 'Contract Owner:' : 'Result:'}</strong> 
                   <span className="result-address">{l3LookupQuery.result}</span>
                 </p>
               )}
               
-              {(l3LookupQuery.queryType === 'commissionHub' || l3LookupQuery.commissionHub) && (
+              {(l3LookupQuery.queryType === 'artCommissionHub' || l3LookupQuery.artCommissionHub) && (
                 <p>
                   <strong>Commission Hub:</strong> 
-                  <span className="result-address">{l3LookupQuery.commissionHub || 'Not created'}</span>
+                  <span className="result-address">{l3LookupQuery.artCommissionHub || 'Not created'}</span>
                 </p>
               )}
               
