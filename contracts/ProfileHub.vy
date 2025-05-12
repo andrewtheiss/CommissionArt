@@ -31,7 +31,7 @@ interface Profile:
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
 accountToProfile: public(HashMap[address, address])  # Maps user address to profile contract
-userCount: public(uint256)  # Number of registered users
+userProfileCount: public(uint256)  # Total number of registered user profiles
 latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
 
 # Events
@@ -59,7 +59,7 @@ def __init__(_profile_template: address):
     template_deployer: address = staticcall Profile(_profile_template).deployer()
     assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
-    self.userCount = 0
+    self.userProfileCount = 0
 
 @external
 def createProfile():
@@ -74,14 +74,14 @@ def createProfile():
     
     # Update our records
     # TODO - actuall save the latest 10 even if we max out
-    if (self.userCount < 1000):
+    if (self.userProfileCount < 1000):
         self.latestUsers.append(msg.sender)
     else:
         self.latestUsers.pop()
         self.latestUsers.append(msg.sender)
 
     self.accountToProfile[msg.sender] = profile
-    self.userCount += 1
+    self.userProfileCount += 1
     
     log ProfileCreated(user=msg.sender, profile=profile)
 
@@ -171,14 +171,14 @@ def createNewArtPieceAndRegisterProfile(
     extcall profile_instance.initialize(msg.sender)
     
     # Update profile records
-    if (self.userCount < 1000):
+    if (self.userProfileCount < 1000):
         self.latestUsers.append(msg.sender)
     else:
         self.latestUsers.pop()
         self.latestUsers.append(msg.sender)
 
     self.accountToProfile[msg.sender] = profile
-    self.userCount += 1
+    self.userProfileCount += 1
     
     log ProfileCreated(user=msg.sender, profile=profile)
     
@@ -220,14 +220,14 @@ def createProfileFromContract(_profile_contract: address) -> address:
     
     # Update our records
     # TODO - actuall save the latest 10 even if we max out
-    if (self.userCount < 1000):
+    if (self.userProfileCount < 1000):
         self.latestUsers.append(msg.sender)
     else:
         self.latestUsers.pop()
         self.latestUsers.append(msg.sender)
 
     self.accountToProfile[msg.sender] = profile
-    self.userCount += 1
+    self.userProfileCount += 1
     
     log ProfileCreated(user=msg.sender, profile=profile)
     

@@ -359,7 +359,7 @@ def test_get_user_profiles(setup):
         assert profile_hub.hasProfile(user.address) == True
     
     # Check the user count
-    assert profile_hub.userCount() == 5
+    assert profile_hub.userProfileCount() == 5
     
     # Test with page size 0 (should return empty array)
     zero_page = profile_hub.getUserProfiles(0, 0)

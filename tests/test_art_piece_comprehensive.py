@@ -4,6 +4,9 @@ from eth_utils import to_checksum_address
 import base64
 import json
 
+# Define zero address constant
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 # Test data
 TEST_TOKEN_URI_DATA = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTndJREFBQUFCbEJNVkVYLy8vL24vNGJsQUFBQUJYUlNUbk1BUUtKZVVtUktBQUFBQWtsRVFWUUkxMkJnQUFNRE1BQUJoVUFCQUVtQ0FVQUFBQUJKUlU1RXJrSmdnZz09In0="
 # Parse base64 data to extract title and description
@@ -29,15 +32,15 @@ def setup():
     # Deploy ArtPiece contract
     art_piece = project.ArtPiece.deploy(sender=deployer)
     
-    # Initialize the contract
+    # Initialize the contract with empty address for commission_hub (no hub attachment)
     art_piece.initialize(
         TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,  # Add the format parameter
+        TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
         owner.address,
         artist.address,
-        commission_hub.address,
+        ZERO_ADDRESS,  # Set to ZERO_ADDRESS instead of empty(address)
         TEST_AI_GENERATED,
         sender=deployer
     )
@@ -122,7 +125,7 @@ def test_transfer_ownership_only_by_owner(setup):
         art_piece.transferOwnership(deployer.address, sender=artist)
     
     # Verify the error message
-    assert "Only the owner can transfer ownership" in str(excinfo.value)
+    assert "Only direct owner can transfer ownership" in str(excinfo.value)
 
 
 def test_transfer_ownership_not_to_zero_address(setup):
