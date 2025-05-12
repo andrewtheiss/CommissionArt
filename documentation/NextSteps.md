@@ -48,3 +48,16 @@ Emphasizes its role as the central registry for profiles.
 
 ArtPiece → ArtWork
 Simplifies and clarifies that it represents individual art pieces.
+
+
+1. it should automatically unlink the hub as the hub links to the new owner's profile.
+2. if the profile doesnt exist, i need to create the profile.  anyone can create a profile for anyone, but the profile account address remains the owner of that profile.  the profile will always be registered to the profile hub on creation.  also yes create the profile.
+3. A group commission is actually a single commission done without a NFT-based ArtCommissionHub but a more generic ArtCommissionHub.  in reality a group commission is a single artist making an ArtPiece.  that artPiece has a bunch of tagged individuals.
+There also is the need for a ArtCommissionHub which is owned by a 3rd party wallet , multisig, single account and chainId and not specifically attached to an NFT collection.  This needs to be addressed.
+4. Yes, every time an ArtCommissionHub is created, it needs to be Registered.
+
+5.  Also from a user and website standpoint, i need it so that you can see the latest commissions from your most recent NFT-associated ArtCommissionHub, so that when you buy a NFT, and update the owner in the owner registry and associated art CommissionHub, you can immediately query for the latest ArtCommissionHub which is attached to that Profile (and then grab the underlying art pieces)
+
+Also I need to handle designing a page which is going to be most beneficial for users where every time the artist or user refreshes, it can grab a new block of art from across multiple ArtCommissionHubs.  This may be something like ->  Get Random 5 ArtCommissionHubs registered to me, grab 5-50 art pieces from each of those hubs (there are likely fewer than 5 for almost all hubs, so 5-50 is a very aggressive number), then grab the artPieces for each of those  
+
+Also i need a way to see latest commissions both confirmed and unverified so that the homepage can show new art all the time.  
