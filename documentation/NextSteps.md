@@ -498,64 +498,24 @@ what is the order I should do this in?
 ChatGPT said:
 Here’s a clear step-by-step implementation roadmap to logically and safely roll out these changes:
 
-🛠️ Step 1: Extend the OwnerRegistry Contract
-Goal: Allow automatic linking/unlinking of ArtCommissionHubs with Profiles upon ownership transfers.
+FAILED tests/test_minimal_array.py::test_minimal_commission_array - ape.exceptions.ContractLogicError: Transaction failed.
+FAILED tests/test_profile_array_methods.py::test_commission_array_methods - ape.exceptions.ContractLogicError: Transaction failed.
+FAILED tests/test_profile_array_methods.py::test_my_commissions_array_methods - ape.exceptions.ContractLogicError: Transaction failed.
+FAILED tests/test_profile_array_methods.py::test_unverified_commission_array_methods - ape.exceptions.ApeAttributeError: 'Profile' has no attribute 'addUnverifiedCommission'.
+ERROR tests/test_owner_registry_pagination.py::test_get_commission_hubs_for_owner_empty_pages - ape.exceptions.ArgumentsLengthError: The number of the given arguments (0) do not match what is defined in the ABI:
+ERROR tests/test_owner_registry_pagination.py::test_get_commission_hubs_for_owner_count - ape.exceptions.ArgumentsLengthError: The number of the given arguments (0) do not match what is defined in the ABI:
+ERROR tests/test_owner_registry_pagination.py::test_get_commission_hubs_for_owner_different_page_sizes - ape.exceptions.ArgumentsLengthError: The number of the given arguments (0) do not match what is defined in the ABI:
+ERROR tests/test_owner_registry_pagination_extended.py::test_get_commission_hubs_with_page_size_100 - KeyError: "Provider 'test' does not support impersonating accounts:\nNo account with address '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'."
+ERROR tests/test_owner_registry_pagination_extended.py::test_get_commission_hubs_with_page_size_10 - KeyError: "Provider 'test' does not support impersonating accounts:\nNo account with address '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'."
+ERROR tests/test_owner_registry_pagination_extended.py::test_get_commission_hub_count - KeyError: "Provider 'test' does not support impersonating accounts:\nNo account with address '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'."
+ERROR tests/test_owner_registry_pagination_extended.py::test_get_commission_hubs_empty_page - KeyError: "Provider 'test' does not support impersonating accounts:\nNo account with address '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'."
+ERROR tests/test_owner_registry_pagination_extended.py::test_get_commission_hubs_with_page_size_20 - KeyError: "Provider 'test' does not support impersonating accounts:\nNo account with address '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6'."
+ERROR tests/test_owner_registry_pagination.py::test_get_commission_hubs_for_nonexistent_owner - ape.exceptions.ArgumentsLengthError: The number of the given arguments (0) do not match what is defined in the ABI:
+ERROR tests/test_owner_registry_pagination_extended.py::test_get_commission_hubs_with_page_size_5 - KeyError: "Provider 'test' does not support impersonating accounts:\nNo account with address '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'."
+==================================================================================================== 4 failed, 168 passed, 10 errors in 67.68s (0:01:07) ==================================================================================================== 
+PS C:\Users\andre\Documents\Git\CommissionArt> ape test .  --network ethereum:local -n 16
 
-Implement owner tracking:
 
-Add mapping: ownerToCommissionHubs[address] → DynArray[address, 10^6].
-
-Implement functions to add/remove hubs to/from this mapping.
-
-Enhance _registerNFTOwner:
-
-On ownership change, remove the hub from the old owner's mapping and profile.
-
-Add the hub to the new owner's mapping and profile (if profile exists).
-
-Create and test events:
-
-Emit events for linking/unlinking hubs (HubLinkedToOwner, HubUnlinkedFromOwner).
-
-✅ Outcome: Ownership updates automatically reflect in profiles.
-🛠️ Step 2: Update Profile and ProfileHub Contracts
-Goal: Support hub management directly on the user profile.
-
-Add to Profile:
-
-commissionHubs: DynArray[address, 10^5]
-
-commissionHubCount: uint256
-
-Methods:
-
-addCommissionHub(hub: address)
-
-removeCommissionHub(hub: address)
-
-Appropriate access control (only callable by OwnerRegistry or ProfileHub).
-
-Extend ProfileHub:
-
-Logic to auto-link any owned hubs upon profile creation.
-
-✅ Outcome: Profiles have accurate, up-to-date hub lists.
-🛠️ Step 3: Single-Transaction Creation Flows
-Goal: Streamline profile/art creation, including handling new party profiles.
-
-Enhance ProfileHub:
-
-createArtForOtherParty(...)
-
-Auto-create profile for other party if not existing.
-
-Mint new ArtPiece linked to the commission hub.
-
-Tag other party (artist or commissioner).
-
-Testing:
-
-Verify atomic creation of profiles/art pieces.
 
 ✅ Outcome: One-step profile and art creation experience.
 🛠️ Step 4: Generic (Non-NFT) CommissionHub Support
