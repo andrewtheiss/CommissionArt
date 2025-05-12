@@ -39,7 +39,7 @@ def addAdditionalMintErc1155(_erc1155: address):
     assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
     self.artistErc1155sToSell.append(_erc1155)
     self.artistErc1155sToSellCount += 1
-    log ERC1155Added(_erc1155)
+    log ERC1155Added(erc1155=_erc1155)
 
 @external
 def removeAdditionalMintErc1155(_erc1155: address):
@@ -193,7 +193,7 @@ def addArtistErc1155ToSell(_erc1155: address):
     assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
     self.artistErc1155sToSell.append(_erc1155)
     self.artistErc1155sToSellCount += 1
-    log ERC1155Added(_erc1155)
+    log ERC1155Added(erc1155=_erc1155)
 
 @external
 def removeArtistErc1155ToSell(_erc1155: address):

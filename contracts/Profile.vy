@@ -35,6 +35,10 @@ allowUnverifiedCommissions: public(bool)
 # Add commissionRole mapping to track role at time of commission upload
 commissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
 
+# Commission hubs owned by this profile
+commissionHubs: public(DynArray[address, 10**5])
+commissionHubCount: public(uint256)
+
 # Art pieces collection
 myArt: public(DynArray[address, MAX_ITEMS])
 myArtCount: public(uint256)
@@ -56,6 +60,10 @@ artSales1155: public(address)
 
 # Artist status for this profile
 isArtist: public(bool)
+
+# Interface for ProfileHub
+interface ProfileHub:
+    def ownerRegistry() -> address: view
 
 # Interface for ArtPiece contract
 interface ArtPiece:
@@ -94,6 +102,7 @@ def initialize(_owner: address):
     self.likedProfileCount = 0
     self.linkedProfileCount = 0
     self.myArtCount = 0
+    self.commissionHubCount = 0
 
 # Toggle allowing new commissions
 @external
@@ -681,3 +690,138 @@ def setIsArtist(_is_artist: bool):
     """
     assert msg.sender == self.owner, "Only owner can set artist status"
     self.isArtist = _is_artist
+
+## Commission Hubs
+#
+# addCommissionHub
+# ----------------
+# Adds a commission hub to this profile.
+# Use case:
+# - When a user becomes the owner of an ArtCommissionHub (either via NFT ownership or generic hub creation),
+#   the hub is added to their profile for tracking.
+# - Only the hub or owner registry can add hubs to ensure proper ownership tracking.
+# Example:
+# - When Alice buys an NFT, the OwnerRegistry calls addCommissionHub to link the hub to Alice's profile.
+#
+@external
+def addCommissionHub(_hub: address):
+    # Allow the hub (ProfileHub), owner registry, or original deployer to add commission hubs
+    # Check if we have an owner registry first
+    registry_address: address = empty(address)
+    if self.hub != empty(address):
+        # Try to get the owner registry from the profile hub
+        profile_hub_interface: ProfileHub = ProfileHub(self.hub)
+        registry_address = staticcall profile_hub_interface.ownerRegistry()
+    
+    assert msg.sender == self.hub or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can add commission hub"
+    
+    # Check if hub is already in the list
+    hubs_len: uint256 = len(self.commissionHubs)
+    for i: uint256 in range(10**6):  # Use a large fixed bound
+        if i >= hubs_len:
+            break
+        if self.commissionHubs[i] == _hub:
+            return  # Hub already exists, nothing to do
+    
+    # Add the hub to the list
+    self.commissionHubs.append(_hub)
+    self.commissionHubCount += 1
+
+#
+# removeCommissionHub
+# -------------------
+# Removes a commission hub from this profile's list.
+# Use case:
+# - When a user transfers ownership of an NFT, the associated hub is removed from their profile.
+# - Only the hub or owner registry can remove hubs to ensure proper ownership tracking.
+# Example:
+# - When Alice sells her NFT to Bob, the OwnerRegistry calls removeCommissionHub to unlink the hub from Alice's profile.
+#
+@external
+def removeCommissionHub(_hub: address):
+    # Allow the hub (ProfileHub), owner registry, or original deployer to remove commission hubs
+    # Check if we have an owner registry first
+    registry_address: address = empty(address)
+    if self.hub != empty(address):
+        # Try to get the owner registry from the profile hub
+        profile_hub_interface: ProfileHub = ProfileHub(self.hub)
+        registry_address = staticcall profile_hub_interface.ownerRegistry()
+    
+    assert msg.sender == self.hub or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can remove commission hub"
+    
+    # Find the index of the hub to remove
+    index: uint256 = 0
+    found: bool = False
+    hubs_len: uint256 = len(self.commissionHubs)
+    for i: uint256 in range(10**6):  # Use a large fixed bound
+        if i >= hubs_len:
+            break
+        if self.commissionHubs[i] == _hub:
+            index = i
+            found = True
+            break
+    
+    # If hub found, remove it using swap and pop
+    if found:
+        # If not the last element, swap with the last element
+        if index < len(self.commissionHubs) - 1:
+            last_hub: address = self.commissionHubs[len(self.commissionHubs) - 1]
+            self.commissionHubs[index] = last_hub
+        # Remove the last element
+        self.commissionHubs.pop()
+        self.commissionHubCount -= 1
+
+#
+# getCommissionHubs
+# ----------------
+# Returns a paginated list of commission hubs for this profile.
+# Use case:
+# - Used by the frontend to display all commission hubs associated with this profile.
+# Example:
+# - Alice wants to see all her commission hubs: getCommissionHubs(page, pageSize).
+#
+@view
+@external
+def getCommissionHubs(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.commissionHubs)
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    for i: uint256 in range(100):  # Fixed upper bound
+        if i >= items:
+            break
+        result.append(self.commissionHubs[start + i])
+    return result
+
+#
+# getRecentCommissionHubs
+# ----------------------
+# Returns a paginated list of commission hubs for this profile, starting from the most recent.
+# Use case:
+# - Used by the frontend to display the most recent commission hubs associated with this profile.
+# Example:
+# - Alice wants to see her most recent commission hubs: getRecentCommissionHubs(page, pageSize).
+#
+@view
+@external
+def getRecentCommissionHubs(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = len(self.commissionHubs)
+    
+    # Early returns for empty array or out-of-bounds page
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    
+    # Calculate start index from the end and how many items to return
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    
+    # Populate result array in reverse order
+    for i: uint256 in range(100):  # Fixed upper bound
+        if i >= items:
+            break
+        result.append(self.commissionHubs[start - i])
+    
+    return result

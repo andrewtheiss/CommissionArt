@@ -27,12 +27,18 @@ interface Profile:
         _ai_generated: bool,
         _commission_hub: address
     ) -> address: nonpayable
+    def addCommissionHub(_hub: address): nonpayable
+
+interface OwnerRegistry:
+    def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
+    def getCommissionHubCountForOwner(_owner: address) -> uint256: view
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
 accountToProfile: public(HashMap[address, address])  # Maps user address to profile contract
 userProfileCount: public(uint256)  # Total number of registered user profiles
 latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
+ownerRegistry: public(address)  # Address of the OwnerRegistry contract
 
 # Events
 event ProfileCreated:
@@ -52,6 +58,9 @@ event ArtPieceCreated:
     art_piece: indexed(address)
     user: indexed(address)
 
+event OwnerRegistrySet:
+    registry: indexed(address)
+
 @deploy
 def __init__(_profile_template: address):
     self.owner = msg.sender
@@ -60,6 +69,64 @@ def __init__(_profile_template: address):
     assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
     self.userProfileCount = 0
+    self.ownerRegistry = empty(address)
+
+# Internal function to link existing commission hubs to a profile
+@internal
+def _linkExistingHubs(_user: address, _profile: address):
+    """
+    @notice Links all commission hubs a user already owns to their newly created profile
+    @dev This function handles the important edge case where:
+         1. A user buys an NFT, creating a commission hub in OwnerRegistry
+         2. Later, the user creates a profile
+         3. We need to automatically link their existing hubs to their new profile
+    
+    @dev Without this function, users who owned NFTs before creating a profile would:
+         - Not see their commission hubs in their profile
+         - Need to manually link their hubs or wait for ownership transfers
+    
+    @dev This function is called internally during all profile creation flows:
+         - createProfile
+         - createNewArtPieceAndRegisterProfile
+         - createProfileFromContract
+    
+    @dev It queries the OwnerRegistry for all hubs owned by the user and adds them
+         to the user's profile in batches to handle gas limits efficiently
+    
+    @param _user The address of the user whose hubs should be linked
+    @param _profile The address of the user's newly created profile
+    """
+    # If owner registry is not set, skip this step
+    if self.ownerRegistry == empty(address):
+        return
+    
+    registry: OwnerRegistry = OwnerRegistry(self.ownerRegistry)
+    hub_count: uint256 = staticcall registry.getCommissionHubCountForOwner(_user)
+    
+    # If user has no hubs, nothing to do
+    if hub_count == 0:
+        return
+    
+    # Get all hubs in batches of 100 (maximum return size)
+    profile_instance: Profile = Profile(_profile)
+    page: uint256 = 0
+    page_size: uint256 = 100
+    
+    # Process all hubs in batches (max 100 pages = 10,000 hubs should be enough)
+    max_pages: uint256 = (hub_count + page_size - 1) // page_size  # Ceiling division
+    max_pages = min(max_pages, 100)  # Limit to 100 pages maximum
+    
+    for p: uint256 in range(100):  # Fixed bound as required by Vyper 0.4.1
+        if p >= max_pages:
+            break
+            
+        hubs: DynArray[address, 100] = staticcall registry.getCommissionHubsForOwner(_user, p, page_size)
+        
+        # Add each hub to the profile
+        for i: uint256 in range(100):  # Fixed bound as required by Vyper 0.4.1
+            if i >= len(hubs):
+                break
+            extcall profile_instance.addCommissionHub(hubs[i])
 
 @external
 def createProfile():
@@ -83,6 +150,9 @@ def createProfile():
     self.accountToProfile[msg.sender] = profile
     self.userProfileCount += 1
     
+    # Link any existing commission hubs from the OwnerRegistry
+    self._linkExistingHubs(msg.sender, profile)
+    
     log ProfileCreated(user=msg.sender, profile=profile)
 
 @view
@@ -102,6 +172,14 @@ def updateProfileTemplateContract(_new_template: address):
     
     log ProfileTemplateUpdated(previous_template=self.profileTemplate, new_template=_new_template)
     self.profileTemplate = _new_template
+
+@external
+def setOwnerRegistry(_registry: address):
+    # Allow the owner or the owner registry itself to set this relationship
+    # This modification enables bidirectional connection setup from either side
+    assert msg.sender == self.owner or msg.sender == _registry, "Only owner or registry can set owner registry"
+    self.ownerRegistry = _registry
+    log OwnerRegistrySet(registry=_registry)
     
 @view
 @external
@@ -180,6 +258,9 @@ def createNewArtPieceAndRegisterProfile(
     self.accountToProfile[msg.sender] = profile
     self.userProfileCount += 1
     
+    # Link any existing commission hubs from the OwnerRegistry
+    self._linkExistingHubs(msg.sender, profile)
+    
     log ProfileCreated(user=msg.sender, profile=profile)
     
     # Create the art piece on the profile
@@ -228,6 +309,9 @@ def createProfileFromContract(_profile_contract: address) -> address:
 
     self.accountToProfile[msg.sender] = profile
     self.userProfileCount += 1
+    
+    # Link any existing commission hubs from the OwnerRegistry
+    self._linkExistingHubs(msg.sender, profile)
     
     log ProfileCreated(user=msg.sender, profile=profile)
     
