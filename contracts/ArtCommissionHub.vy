@@ -324,8 +324,8 @@ def getVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[addre
 
 @view
 @external
-def getUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 1]:
-    result: DynArray[address, 1] = []
+def getUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    result: DynArray[address, 50] = []
     
     # Early return if no unverified art or start index is out of bounds
     if self.countUnverifiedCommissions == 0 or _start_idx >= self.countUnverifiedCommissions:
@@ -333,10 +333,191 @@ def getUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[add
     
     # Calculate end index, capped by array size and max return size
     end_idx: uint256 = min(_start_idx + _count, self.countUnverifiedCommissions)
-    max_items: uint256 = min(end_idx - _start_idx, 1)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
     
     # Populate result array
-    for i: uint256 in range(0, max_items, bound=1):
+    for i: uint256 in range(0, max_items, bound=50):
         result.append(self.unverifiedArt[_start_idx + i])
     
     return result
+
+# Enhanced batch loading functions for efficient frontend queries
+
+@view
+@external
+def getBatchVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a batch of verified art pieces with improved capacity
+    @dev Allows retrieving up to 50 art pieces at once for efficient frontend loading
+    @param _start_idx The starting index in the verified art array
+    @param _count The number of art pieces to retrieve
+    @return Array of art piece addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no verified art or start index is out of bounds
+    if self.countVerifiedCommissions == 0 or _start_idx >= self.countVerifiedCommissions:
+        return result
+    
+    # Calculate end index, capped by array size and max return size
+    end_idx: uint256 = min(_start_idx + _count, self.countVerifiedCommissions)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
+    
+    # Populate result array
+    for i: uint256 in range(0, max_items, bound=50):
+        result.append(self.verifiedArt[_start_idx + i])
+    
+    return result
+
+@view
+@external
+def getBatchUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a batch of unverified art pieces with improved capacity
+    @dev Allows retrieving up to 50 art pieces at once for efficient frontend loading
+    @param _start_idx The starting index in the unverified art array
+    @param _count The number of art pieces to retrieve
+    @return Array of art piece addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no unverified art or start index is out of bounds
+    if self.countUnverifiedCommissions == 0 or _start_idx >= self.countUnverifiedCommissions:
+        return result
+    
+    # Calculate end index, capped by array size and max return size
+    end_idx: uint256 = min(_start_idx + _count, self.countUnverifiedCommissions)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
+    
+    # Populate result array
+    for i: uint256 in range(0, max_items, bound=50):
+        result.append(self.unverifiedArt[_start_idx + i])
+    
+    return result
+
+@view
+@external
+def getRecentVerifiedArtPieces(_count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns the most recent verified art pieces
+    @dev Returns art pieces from the end of the array (most recently added)
+    @param _count The number of recent art pieces to retrieve
+    @return Array of recent art piece addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no verified art
+    if self.countVerifiedCommissions == 0:
+        return result
+    
+    # Calculate how many items to return, capped by array size and max return size
+    count: uint256 = min(min(_count, self.countVerifiedCommissions), 50)
+    
+    # Start from the end of the array (most recent)
+    start_idx: uint256 = self.countVerifiedCommissions - count
+    
+    # Populate result array
+    for i: uint256 in range(0, count, bound=50):
+        result.append(self.verifiedArt[start_idx + i])
+    
+    return result
+
+@view
+@external
+def getRecentUnverifiedArtPieces(_count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns the most recent unverified art pieces
+    @dev Returns art pieces from the end of the array (most recently added)
+    @param _count The number of recent art pieces to retrieve
+    @return Array of recent art piece addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no unverified art
+    if self.countUnverifiedCommissions == 0:
+        return result
+    
+    # Calculate how many items to return, capped by array size and max return size
+    count: uint256 = min(min(_count, self.countUnverifiedCommissions), 50)
+    
+    # Start from the end of the array (most recent)
+    start_idx: uint256 = self.countUnverifiedCommissions - count
+    
+    # Populate result array
+    for i: uint256 in range(0, count, bound=50):
+        result.append(self.unverifiedArt[start_idx + i])
+    
+    return result
+
+@view
+@external
+def getVerifiedArtPiecesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of verified art pieces using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the verified art array
+    @param _count The number of art pieces to return (capped at 50)
+    @return A list of verified art piece addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no verified art or offset is out of bounds
+    if self.countVerifiedCommissions == 0 or _offset >= self.countVerifiedCommissions:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = self.countVerifiedCommissions - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.verifiedArt[_offset + i])
+    
+    return result
+
+@view
+@external
+def getUnverifiedArtPiecesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of unverified art pieces using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the unverified art array
+    @param _count The number of art pieces to return (capped at 50)
+    @return A list of unverified art piece addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no unverified art or offset is out of bounds
+    if self.countUnverifiedCommissions == 0 or _offset >= self.countUnverifiedCommissions:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = self.countUnverifiedCommissions - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.unverifiedArt[_offset + i])
+    
+    return result
+
+@view
+@external
+def getArtPieceByIndex(_verified: bool, _index: uint256) -> address:
+    """
+    @notice Returns an art piece at a specific index
+    @dev Allows direct access to art pieces by index
+    @param _verified Whether to access verified or unverified art
+    @param _index The index of the art piece to retrieve
+    @return The address of the art piece at the specified index
+    """
+    if _verified:
+        assert _index < self.countVerifiedCommissions, "Index out of bounds"
+        return self.verifiedArt[_index]
+    else:
+        assert _index < self.countUnverifiedCommissions, "Index out of bounds"
+        return self.unverifiedArt[_index]

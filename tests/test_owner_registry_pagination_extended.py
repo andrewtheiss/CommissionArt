@@ -236,4 +236,56 @@ def test_get_commission_hubs_for_user_with_no_hubs(setup_empty_user):
     
     # Verify count is 0
     hub_count = owner_registry.getCommissionHubCountForOwner(user_with_no_hubs.address)
-    assert hub_count == 0 
+    assert hub_count == 0
+
+def test_get_commission_hubs_by_offset(setup):
+    """
+    Test retrieving commission hubs using the offset-based pagination
+    """
+    # Arrange
+    user = setup["user"]
+    owner_registry = setup["owner_registry"]
+    commission_hubs = setup["commission_hubs"]
+    
+    # Test different offsets and counts
+    test_cases = [
+        {"offset": 0, "count": 10},  # First 10 items
+        {"offset": 10, "count": 15},  # Middle section
+        {"offset": 40, "count": 20},  # End section (should return only 10 items)
+        {"offset": 0, "count": 50},   # All items (should cap at 50)
+        {"offset": 0, "count": 100},  # More than available (should cap at 50)
+        {"offset": 50, "count": 10},  # Beyond available (should return empty)
+    ]
+    
+    for case in test_cases:
+        offset = case["offset"]
+        count = case["count"]
+        
+        # Get hubs using offset-based pagination
+        hubs = owner_registry.getCommissionHubsForOwnerByOffset(user.address, offset, count)
+        
+        # Calculate expected count
+        expected_count = min(count, max(0, len(commission_hubs) - offset))
+        expected_count = min(expected_count, 50)  # Cap at 50 as per function limit
+        
+        # Verify correct number of hubs returned
+        assert len(hubs) == expected_count
+        
+        # Verify correct hubs returned in correct order
+        for i in range(len(hubs)):
+            if offset + i < len(commission_hubs):
+                assert hubs[i] == commission_hubs[offset + i]
+
+def test_get_commission_hubs_by_offset_empty_user(setup_empty_user):
+    """
+    Test retrieving commission hubs using offset-based pagination for a user with no hubs
+    """
+    # Arrange
+    user_with_no_hubs = setup_empty_user["user_with_no_hubs"]
+    owner_registry = setup_empty_user["owner_registry"]
+    
+    # Get hubs using offset-based pagination
+    hubs = owner_registry.getCommissionHubsForOwnerByOffset(user_with_no_hubs.address, 0, 10)
+    
+    # Verify empty array returned
+    assert len(hubs) == 0 

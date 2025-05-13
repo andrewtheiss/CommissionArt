@@ -395,11 +395,116 @@ def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint2
     
     return result
 
+# Get commission hubs for an owner with offset-based pagination
+@view
+@external
+def getCommissionHubsForOwnerByOffset(_owner: address, _offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of commission hubs owned by a specific address using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _owner The address whose commission hubs to query
+    @param _offset The starting index in the commission hubs array
+    @param _count The number of hubs to return (capped at 50)
+    @return A list of commission hub addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    total_hubs: uint256 = len(self.ownerToCommissionHubs[_owner])
+    if total_hubs == 0 or _offset >= total_hubs:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = total_hubs - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.ownerToCommissionHubs[_owner][_offset + i])
+    
+    return result
+
 # Get the total number of commission hubs for an owner
 @view
 @external
 def getCommissionHubCountForOwner(_owner: address) -> uint256:
     return len(self.ownerToCommissionHubs[_owner])
+
+# Get random commission hubs for an owner
+@view
+@external
+def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a set of random commission hubs owned by a specific address
+    @dev Uses the provided seed combined with block timestamp for randomness
+    @param _owner The address whose commission hubs to query
+    @param _count The number of random hubs to return (capped at 50)
+    @param _seed A seed value to influence the randomness
+    @return A list of random commission hub addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    total_hubs: uint256 = len(self.ownerToCommissionHubs[_owner])
+    if total_hubs == 0:
+        return result
+    
+    # Cap the count at 50 or the total number of hubs, whichever is smaller
+    count: uint256 = min(min(_count, total_hubs), 50)
+    
+    # If we need all or most hubs, just return them sequentially
+    if count * 4 >= total_hubs * 3:  # If we need 75% or more of the hubs
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            if i < total_hubs:
+                result.append(self.ownerToCommissionHubs[_owner][i])
+        return result
+    
+    # Use a simple pseudo-random approach for selecting a subset
+    random_seed: uint256 = block.timestamp + _seed
+    
+    # Since we can't use a HashMap in memory, we'll use a different approach
+    # We'll use the result array to track what we've already added
+    for i: uint256 in range(50):  # Fixed bound as required by Vyper
+        if i >= count:
+            break
+            
+        # Generate a random index
+        random_index: uint256 = (random_seed + i * 13) % total_hubs
+        hub_address: address = self.ownerToCommissionHubs[_owner][random_index]
+        
+        # Check if this hub is already in our result
+        already_added: bool = False
+        for j: uint256 in range(50):
+            if j >= i:  # Only check up to our current position in the result array
+                break
+            if result[j] == hub_address:
+                already_added = True
+                break
+        
+        # If not already added, add it
+        if not already_added:
+            result.append(hub_address)
+        else:
+            # If already added, find the next unused one sequentially
+            for k: uint256 in range(total_hubs, bound=1000):
+                next_hub: address = self.ownerToCommissionHubs[_owner][k]
+                
+                # Check if this hub is already in our result
+                already_in_result: bool = False
+                for m: uint256 in range(50):
+                    if m >= i:  # Only check up to our current position
+                        break
+                    if result[m] == next_hub:
+                        already_in_result = True
+                        break
+                
+                if not already_in_result:
+                    result.append(next_hub)
+                    break
+    
+    return result
 
 event L2RelaySet:
     l2Relay: address

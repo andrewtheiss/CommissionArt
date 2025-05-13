@@ -922,3 +922,293 @@ def getRecentCommissionHubs(_page: uint256, _page_size: uint256) -> DynArray[add
         result.append(self.commissionHubs[start - i])
     
     return result
+
+# Enhanced batch loading functions for efficient frontend queries
+
+@view
+@external
+def getBatchArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a batch of art pieces with improved capacity
+    @dev Allows retrieving up to 50 art pieces at once for efficient frontend loading
+    @param _start_idx The starting index in the art array
+    @param _count The number of art pieces to retrieve
+    @return Array of art piece addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no art pieces or start index is out of bounds
+    if self.myArtCount == 0 or _start_idx >= self.myArtCount:
+        return result
+    
+    # Calculate end index, capped by array size and max return size
+    end_idx: uint256 = min(_start_idx + _count, self.myArtCount)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
+    
+    # Populate result array
+    for i: uint256 in range(0, max_items, bound=50):
+        result.append(self.myArt[_start_idx + i])
+    
+    return result
+
+@view
+@external
+def getBatchCommissions(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a batch of verified commissions with improved capacity
+    @dev Allows retrieving up to 50 commissions at once for efficient frontend loading
+    @param _start_idx The starting index in the commissions array
+    @param _count The number of commissions to retrieve
+    @return Array of commission addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no commissions or start index is out of bounds
+    if self.commissionCount == 0 or _start_idx >= self.commissionCount:
+        return result
+    
+    # Calculate end index, capped by array size and max return size
+    end_idx: uint256 = min(_start_idx + _count, self.commissionCount)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
+    
+    # Populate result array
+    for i: uint256 in range(0, max_items, bound=50):
+        result.append(self.commissions[_start_idx + i])
+    
+    return result
+
+@view
+@external
+def getBatchUnverifiedCommissions(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a batch of unverified commissions with improved capacity
+    @dev Allows retrieving up to 50 unverified commissions at once for efficient frontend loading
+    @param _start_idx The starting index in the unverified commissions array
+    @param _count The number of unverified commissions to retrieve
+    @return Array of unverified commission addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no unverified commissions or start index is out of bounds
+    if self.unverifiedCommissionCount == 0 or _start_idx >= self.unverifiedCommissionCount:
+        return result
+    
+    # Calculate end index, capped by array size and max return size
+    end_idx: uint256 = min(_start_idx + _count, self.unverifiedCommissionCount)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
+    
+    # Populate result array
+    for i: uint256 in range(0, max_items, bound=50):
+        result.append(self.unverifiedCommissions[_start_idx + i])
+    
+    return result
+
+@view
+@external
+def getBatchCommissionHubs(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a batch of commission hubs with improved capacity
+    @dev Allows retrieving up to 50 commission hubs at once for efficient frontend loading
+    @param _start_idx The starting index in the commission hubs array
+    @param _count The number of commission hubs to retrieve
+    @return Array of commission hub addresses, up to 50
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no commission hubs or start index is out of bounds
+    if self.commissionHubCount == 0 or _start_idx >= self.commissionHubCount:
+        return result
+    
+    # Calculate end index, capped by array size and max return size
+    end_idx: uint256 = min(_start_idx + _count, self.commissionHubCount)
+    max_items: uint256 = min(end_idx - _start_idx, 50)
+    
+    # Populate result array
+    for i: uint256 in range(0, max_items, bound=50):
+        result.append(self.commissionHubs[_start_idx + i])
+    
+    return result
+
+@view
+@external
+def getRandomArtPieces(_count: uint256, _seed: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a set of random art pieces from this profile
+    @dev Uses the provided seed combined with block timestamp for randomness
+    @param _count The number of random art pieces to return (capped at 50)
+    @param _seed A seed value to influence the randomness
+    @return A list of random art piece addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no art pieces
+    if self.myArtCount == 0:
+        return result
+    
+    # Cap the count at 50 or the total number of art pieces, whichever is smaller
+    count: uint256 = min(min(_count, self.myArtCount), 50)
+    
+    # If we need all or most art pieces, just return them sequentially
+    if count * 4 >= self.myArtCount * 3:  # If we need 75% or more
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            if i < self.myArtCount:
+                result.append(self.myArt[i])
+        return result
+    
+    # Use a simple pseudo-random approach
+    random_seed: uint256 = block.timestamp + _seed
+    
+    # Track which art pieces we've already added
+    for i: uint256 in range(50):  # Fixed bound as required by Vyper
+        if i >= count:
+            break
+        
+        # Generate a random index
+        random_index: uint256 = (random_seed + i * 13) % self.myArtCount
+        art_address: address = self.myArt[random_index]
+        
+        # Check if this art piece is already in our result
+        already_added: bool = False
+        for j: uint256 in range(50):
+            if j >= i:  # Only check up to our current position in the result array
+                break
+            if result[j] == art_address:
+                already_added = True
+                break
+        
+        # If not already added, add it
+        if not already_added:
+            result.append(art_address)
+        else:
+            # If already added, find the next unused one sequentially
+            for k: uint256 in range(self.myArtCount, bound=1000):
+                next_art: address = self.myArt[k]
+                
+                # Check if this art piece is already in our result
+                already_in_result: bool = False
+                for m: uint256 in range(50):
+                    if m >= i:  # Only check up to our current position
+                        break
+                    if result[m] == next_art:
+                        already_in_result = True
+                        break
+                
+                if not already_in_result:
+                    result.append(next_art)
+                    break
+    
+    return result
+
+@view
+@external
+def getArtPiecesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of art pieces using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the art pieces array
+    @param _count The number of art pieces to return (capped at 50)
+    @return A list of art piece addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no art pieces or offset is out of bounds
+    if self.myArtCount == 0 or _offset >= self.myArtCount:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = self.myArtCount - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.myArt[_offset + i])
+    
+    return result
+
+@view
+@external
+def getCommissionsByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of verified commissions using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the commissions array
+    @param _count The number of commissions to return (capped at 50)
+    @return A list of commission addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no commissions or offset is out of bounds
+    if self.commissionCount == 0 or _offset >= self.commissionCount:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = self.commissionCount - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.commissions[_offset + i])
+    
+    return result
+
+@view
+@external
+def getUnverifiedCommissionsByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of unverified commissions using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the unverified commissions array
+    @param _count The number of unverified commissions to return (capped at 50)
+    @return A list of unverified commission addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no unverified commissions or offset is out of bounds
+    if self.unverifiedCommissionCount == 0 or _offset >= self.unverifiedCommissionCount:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = self.unverifiedCommissionCount - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.unverifiedCommissions[_offset + i])
+    
+    return result
+
+@view
+@external
+def getCommissionHubsByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of commission hubs using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the commission hubs array
+    @param _count The number of commission hubs to return (capped at 50)
+    @return A list of commission hub addresses
+    """
+    result: DynArray[address, 50] = []
+    
+    # Early return if no commission hubs or offset is out of bounds
+    if self.commissionHubCount == 0 or _offset >= self.commissionHubCount:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = self.commissionHubCount - _offset
+    count: uint256 = min(min(_count, available_items), 50)
+    
+    # Populate result array
+    for i: uint256 in range(50):
+        if i >= count:
+            break
+        result.append(self.commissionHubs[_offset + i])
+    
+    return result

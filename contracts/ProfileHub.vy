@@ -496,3 +496,163 @@ def createArtPieceForParty(
         extcall other_profile_instance.addCommission(art_piece)
     
     return (caller_profile, other_profile, art_piece, _commission_hub)
+
+@view
+@external
+def getRandomProfiles(_count: uint256, _seed: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns a set of random user profiles for discovery
+    @dev Uses the provided seed combined with block timestamp for randomness
+    @param _count The number of random profiles to return (capped at 20)
+    @param _seed A seed value to influence the randomness
+    @return A list of random profile addresses
+    """
+    result: DynArray[address, 20] = []
+    
+    # Early return if no profiles
+    if self.userProfileCount == 0:
+        return result
+    
+    # Get the latest users array length
+    latest_users_len: uint256 = len(self.latestUsers)
+    if latest_users_len == 0:
+        return result
+    
+    # Cap the count at 20 or the total number of users, whichever is smaller
+    count: uint256 = min(min(_count, latest_users_len), 20)
+    
+    # Use a simple pseudo-random approach
+    random_seed: uint256 = block.timestamp + _seed
+    
+    # Track indices we've already used with a simple array search
+    for i: uint256 in range(20):  # Fixed bound as required by Vyper
+        if i >= count:
+            break
+        
+        # Generate a random index
+        random_index: uint256 = (random_seed + i * 17) % latest_users_len
+        user_address: address = self.latestUsers[random_index]
+        
+        # Check if this profile is already in our result
+        already_added: bool = False
+        for j: uint256 in range(20):
+            if j >= i:  # Only check up to our current position in the result array
+                break
+            if result[j] == user_address:
+                already_added = True
+                break
+        
+        # If not already added, add it and its profile
+        if not already_added:
+            profile_address: address = self.accountToProfile[user_address]
+            if profile_address != empty(address):
+                result.append(profile_address)
+    
+    return result
+
+@view
+@external
+def getProfilesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns a paginated list of profiles using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the users array
+    @param _count The number of profiles to return (capped at 20)
+    @return A list of profile addresses
+    """
+    result: DynArray[address, 20] = []
+    
+    # Get the latest users array length
+    latest_users_len: uint256 = len(self.latestUsers)
+    if latest_users_len == 0 or _offset >= latest_users_len:
+        return result
+    
+    # Calculate how many items to return
+    available_items: uint256 = latest_users_len - _offset
+    count: uint256 = min(min(_count, available_items), 20)
+    
+    # Populate result array
+    for i: uint256 in range(20):
+        if i >= count:
+            break
+        user_address: address = self.latestUsers[_offset + i]
+        profile_address: address = self.accountToProfile[user_address]
+        if profile_address != empty(address):
+            result.append(profile_address)
+    
+    return result
+
+@view
+@external
+def getLatestProfiles(_count: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns the most recently created profiles
+    @dev Returns profiles from the end of the latestUsers array (most recently added)
+    @param _count The number of recent profiles to retrieve
+    @return Array of recent profile addresses, up to 20
+    """
+    result: DynArray[address, 20] = []
+    
+    # Get the latest users array length
+    latest_users_len: uint256 = len(self.latestUsers)
+    if latest_users_len == 0:
+        return result
+    
+    # Calculate how many items to return, capped by array size and max return size
+    count: uint256 = min(min(_count, latest_users_len), 20)
+    
+    # Start from the end of the array (most recent)
+    for i: uint256 in range(20):
+        if i >= count:
+            break
+        
+        # Get user from the end of the array (most recent first)
+        idx: uint256 = latest_users_len - 1 - i
+        user_address: address = self.latestUsers[idx]
+        
+        # Get the profile address
+        profile_address: address = self.accountToProfile[user_address]
+        if profile_address != empty(address):
+            result.append(profile_address)
+    
+    return result
+
+@view
+@external
+def getLatestProfilesPaginated(_page: uint256, _page_size: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns a paginated list of the most recently created profiles
+    @dev Provides efficient pagination for frontend queries
+    @param _page The page number (0-indexed)
+    @param _page_size The number of profiles per page
+    @return Array of profile addresses, up to 20 per page
+    """
+    result: DynArray[address, 20] = []
+    
+    # Get the latest users array length
+    latest_users_len: uint256 = len(self.latestUsers)
+    if latest_users_len == 0 or _page * _page_size >= latest_users_len:
+        return result
+    
+    # Calculate start index from the end of the array
+    start_idx: uint256 = latest_users_len - 1 - (_page * _page_size)
+    
+    # Calculate how many items to return, capped by array size and max return size
+    count: uint256 = min(min(_page_size, start_idx + 1), 20)
+    
+    # Populate result array in reverse order (newest first)
+    for i: uint256 in range(20):
+        if i >= count:
+            break
+        
+        # Check bounds to prevent underflow
+        if start_idx >= i:
+            idx: uint256 = start_idx - i
+            user_address: address = self.latestUsers[idx]
+            
+            # Get the profile address
+            profile_address: address = self.accountToProfile[user_address]
+            if profile_address != empty(address):
+                result.append(profile_address)
+    
+    return result
