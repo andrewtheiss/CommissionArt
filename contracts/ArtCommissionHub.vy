@@ -27,6 +27,7 @@ isInitialized: public(bool)
 imageDataContracts: public(HashMap[uint256, address])
 l1Contract: public(address)  # Address of the NFT contract on L1
 isOwnershipRescinded: public(bool)  # Flag to track if ownership has been rescinded
+is_generic: public(bool)  # Flag to indicate if this is a generic hub not tied to an NFT
 
 # Track allowed ArtPiece contracts
 whitelistedArtPieceContract: public(address)
@@ -52,6 +53,12 @@ event Initialized:
     nft_contract: indexed(address)
     token_id: indexed(uint256)
     registry: address
+
+event GenericInitialized:
+    chain_id: indexed(uint256)
+    owner: indexed(address)
+    registry: address
+    is_generic: bool
 
 event OwnershipUpdated:
     chain_id: indexed(uint256)
@@ -86,6 +93,7 @@ def __init__():
     self.countUnverifiedCommissions = 0
     self.nextLatestVerifiedArtIndex = 0
     self.whitelistedArtPieceContract = empty(address)
+    self.is_generic = False
 
 @external
 def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _registry: address):
@@ -95,12 +103,49 @@ def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _
     self.nftContract = _nft_contract
     self.tokenId = _token_id
     self.registry = _registry
+    self.is_generic = False
     log Initialized(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, registry=_registry)
+
+@external
+def initializeGeneric(_chain_id: uint256, _owner: address, _registry: address, _is_generic: bool):
+    """
+    @notice Initialize a generic commission hub not tied to an NFT
+    @dev This is used for multisigs, DAOs, or individual wallets that don't own NFTs
+    @param _chain_id The chain ID where this hub is deployed
+    @param _owner The address that will own this commission hub
+    @param _registry The address of the OwnerRegistry contract
+    @param _is_generic Flag to indicate this is a generic hub
+    """
+    assert not self.isInitialized, "Already initialized"
+    assert _owner != empty(address), "Owner cannot be empty"
+    assert _registry != empty(address), "Registry cannot be empty"
+    assert _is_generic, "Must be initialized as generic"
+    
+    self.isInitialized = True
+    self.chainId = _chain_id
+    self.owner = _owner
+    self.registry = _registry
+    self.is_generic = True
+    
+    # For generic hubs, we don't set nftContract or tokenId
+    self.nftContract = empty(address)
+    self.tokenId = 0
+    
+    log GenericInitialized(chain_id=_chain_id, owner=_owner, registry=_registry, is_generic=_is_generic)
 
 @external
 def updateRegistration(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
     assert self.isInitialized, "Not initialized"
     assert msg.sender == self.registry, "Only registry can update owner"
+    
+    # For generic hubs, we only check chain ID
+    if self.is_generic:
+        assert self.chainId == _chain_id, "Chain ID mismatch"
+        self.owner = _owner
+        log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
+        return
+    
+    # For NFT-based hubs, we check all parameters
     assert self.chainId == _chain_id, "Chain ID mismatch"
     assert self.nftContract == _nft_contract, "NFT contract mismatch"
     assert self.tokenId == _token_id, "Token ID mismatch"

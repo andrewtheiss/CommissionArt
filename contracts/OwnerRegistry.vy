@@ -25,17 +25,23 @@ lastUpdated: public(HashMap[uint256, HashMap[address, HashMap[uint256, uint256]]
 # Mapping to track commission hubs owned by each address
 ownerToCommissionHubs: public(HashMap[address, DynArray[address, 10**6]])  # owner -> list of commission hubs
 
+# Track which commission hubs are generic (not tied to NFTs)
+isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
+
 # Profile Hub address
 profileHub: public(address)
 
 interface ArtCommissionHub:
     def initialize(chain_id: uint256, nft_contract: address, token_id: uint256, registry: address): nonpayable
     def updateRegistration(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address): nonpayable
+    def initializeGeneric(chain_id: uint256, owner: address, registry: address, is_generic: bool): nonpayable
 
 interface ProfileHub:
     def hasProfile(_user: address) -> bool: view
     def getProfile(_user: address) -> address: view
+    def createProfile(_user: address) -> address: nonpayable
     def setOwnerRegistry(_registry: address): nonpayable
+    def createProfileFor(_user: address) -> address: nonpayable
 
 interface Profile:
     def addCommissionHub(_hub: address): nonpayable
@@ -55,6 +61,12 @@ event ArtCommissionHubCreated:
     nft_contract: indexed(address)
     token_id: indexed(uint256)
     commission_hub: indexed(address)
+    is_generic: bool
+
+event GenericCommissionHubCreated:
+    chain_id: uint256
+    owner: indexed(address)
+    commission_hub: indexed(address)
 
 event HubLinkedToOwner:
     owner: indexed(address)
@@ -64,12 +76,39 @@ event HubUnlinkedFromOwner:
     owner: indexed(address)
     hub: indexed(address)
 
+event ProfileCreated:
+    owner: indexed(address)
+    profile: indexed(address)
+
 @deploy
 def __init__(_initial_l2relay: address, _initial_commission_hub_template: address):
     self.l2Relay = _initial_l2relay
     self.artCommissionHubTemplate = _initial_commission_hub_template
     self.owner = msg.sender
     self.profileHub = empty(address)
+
+# Internal function to ensure a user has a profile
+@internal
+def _ensureProfile(_user: address) -> address:
+    """
+    @notice Ensures that a user has a profile, creating one if needed
+    @dev This function will check if a profile exists and create one if not
+    @param _user The address of the user to check/create a profile for
+    @return The address of the user's profile
+    """
+    if self.profileHub == empty(address):
+        return empty(address)  # Profile hub not set, can't create profiles
+    
+    profile_hub: ProfileHub = ProfileHub(self.profileHub)
+    
+    # Check if user already has a profile
+    if staticcall profile_hub.hasProfile(_user):
+        return staticcall profile_hub.getProfile(_user)
+    
+    # Create a new profile for the user using the createProfileFor function
+    profile_address: address = extcall profile_hub.createProfileFor(_user)
+    
+    return profile_address
 
 # Internal function to add a hub to an owner's list
 @internal
@@ -88,11 +127,11 @@ def _addHubToOwner(_owner: address, _hub: address):
     # Emit event for tracking
     log HubLinkedToOwner(owner=_owner, hub=_hub)
     
-    # If the owner has a profile, add the hub to their profile
+    # Ensure the owner has a profile and link the hub to it, but only if profile hub is set
     if self.profileHub != empty(address):
-        profile_hub: ProfileHub = ProfileHub(self.profileHub)
-        if staticcall profile_hub.hasProfile(_owner):
-            profile_address: address = staticcall profile_hub.getProfile(_owner)
+        # This will create a profile if one doesn't exist
+        profile_address: address = self._ensureProfile(_owner)
+        if profile_address != empty(address):
             profile: Profile = Profile(profile_address)
             extcall profile.addCommissionHub(_hub)
 
@@ -146,7 +185,8 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
         extcall commission_hub_instance.initialize(_chain_id, _nft_contract, _token_id, self)
         self.artCommissionHubs[_chain_id][_nft_contract][_token_id] = commission_hub
-        log ArtCommissionHubCreated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, commission_hub=commission_hub)
+        self.isGenericHub[commission_hub] = False
+        log ArtCommissionHubCreated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, commission_hub=commission_hub, is_generic=False)
         
         # Add the hub to the new owner's list
         if _owner != empty(address):
@@ -185,6 +225,85 @@ def registerNFTOwnerFromParentChain(_chain_id: uint256, _nft_contract: address, 
     # Only allow registration from L2Relay
     assert msg.sender == self.l2Relay, "Only L2Relay can register NFT owners"
     self._registerNFTOwner(_chain_id, _nft_contract, _token_id, _owner, msg.sender)
+
+# Create a generic commission hub for non-NFT owners like multisigs, DAOs, or individual wallets
+@external
+def createGenericCommissionHub(_chain_id: uint256, _owner: address) -> address:
+    """
+    @notice Creates a generic commission hub for non-NFT owners
+    @dev This allows multisigs, DAOs, or individual wallets to have commission hubs
+         without requiring them to own an NFT
+    @param _chain_id The chain ID where the hub will be registered
+    @param _owner The address that will own this commission hub
+    @return The address of the newly created commission hub
+    """
+    # Ensure the owner address is valid
+    assert _owner != empty(address), "Owner cannot be empty"
+    
+    # Create a profile for the owner if the profile hub is set and the owner doesn't have a profile yet
+    if self.profileHub != empty(address):
+        profile_hub: ProfileHub = ProfileHub(self.profileHub)
+        if not staticcall profile_hub.hasProfile(_owner):
+            # Create a profile for the owner using createProfileFor
+            profile_address: address = extcall profile_hub.createProfileFor(_owner)
+            # Log profile creation
+            log ProfileCreated(owner=_owner, profile=profile_address)
+    
+    # Create a new commission hub
+    commission_hub: address = create_minimal_proxy_to(self.artCommissionHubTemplate)
+    commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
+    
+    # Initialize the generic hub
+    extcall commission_hub_instance.initializeGeneric(_chain_id, _owner, self, True)
+    
+    # Mark this hub as generic
+    self.isGenericHub[commission_hub] = True
+    
+    # Add the hub to the owner's list
+    self._addHubToOwner(_owner, commission_hub)
+    
+    # Emit event for tracking
+    log GenericCommissionHubCreated(chain_id=_chain_id, owner=_owner, commission_hub=commission_hub)
+    
+    return commission_hub
+
+# Check if a commission hub is generic
+@view
+@external
+def isGeneric(_commission_hub: address) -> bool:
+    """
+    @notice Checks if a commission hub is generic (not tied to an NFT)
+    @param _commission_hub The address of the commission hub to check
+    @return True if the hub is generic, False otherwise
+    """
+    return self.isGenericHub[_commission_hub]
+
+# Link existing commission hubs to the owner's profile
+@external
+def linkHubsToProfile(_owner: address):
+    """
+    @notice Links all commission hubs owned by an address to their profile
+    @dev This can be used to sync hubs with a newly created profile
+         or to repair links if they become out of sync
+    @param _owner The address whose hubs should be linked to their profile
+    """
+    # Ensure profile hub is set
+    assert self.profileHub != empty(address), "Profile hub not set"
+    
+    # Ensure the owner has a profile (creates one if needed)
+    profile_address: address = self._ensureProfile(_owner)
+    if profile_address == empty(address):
+        return
+    
+    profile: Profile = Profile(profile_address)
+    
+    # Link all hubs to the profile
+    hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
+    for i:uint256 in range(10**6):
+        if i >= hubs_len:
+            break
+        hub: address = self.ownerToCommissionHubs[_owner][i]
+        extcall profile.addCommissionHub(hub)
 
 #Called by other contracts on L3 to query the owner of an NFT
 @view

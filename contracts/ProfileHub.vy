@@ -165,6 +165,45 @@ def createProfile():
     
     log ProfileCreated(user=msg.sender, profile=profile)
 
+@external
+def createProfileFor(_user: address) -> address:
+    """
+    @notice Creates a new profile for a specific user, only callable by the OwnerRegistry
+    @dev This enables automatic profile creation when a user gets a commission hub
+         but doesn't have a profile yet
+    @param _user The address of the user to create a profile for
+    @return The address of the newly created profile
+    """
+    # Only allow the OwnerRegistry to call this function
+    assert msg.sender == self.ownerRegistry, "Only OwnerRegistry can call this function"
+    
+    # Ensure the user doesn't already have a profile
+    assert self.accountToProfile[_user] == empty(address), "Profile already exists"
+    
+    # Create a new profile contract for the user
+    profile: address = create_minimal_proxy_to(self.profileTemplate)
+    profile_instance: Profile = Profile(profile)
+    
+    # Initialize the profile with the specified user as the owner
+    extcall profile_instance.initialize(_user)
+    
+    # Update our records
+    if (self.userProfileCount < 1000):
+        self.latestUsers.append(_user)
+    else:
+        self.latestUsers.pop()
+        self.latestUsers.append(_user)
+
+    self.accountToProfile[_user] = profile
+    self.userProfileCount += 1
+    
+    # Link any existing commission hubs from the OwnerRegistry
+    self._linkExistingHubs(_user, profile)
+    
+    log ProfileCreated(user=_user, profile=profile)
+    
+    return profile
+
 @view
 @external
 def getProfile(_user: address) -> address:

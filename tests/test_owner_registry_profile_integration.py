@@ -59,8 +59,11 @@ def test_register_nft_owner_with_no_profile(setup):
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     
+    # Verify user1 doesn't have a profile yet
+    assert profile_hub.hasProfile(user1.address) is False
+    
     # Register NFT ownership for user1 who doesn't have a profile yet
-    owner_registry.registerNFTOwnerFromParentChain(
+    tx = owner_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
@@ -77,21 +80,18 @@ def test_register_nft_owner_with_no_profile(setup):
     hubs = owner_registry.getCommissionHubsForOwner(user1.address, 0, 100)
     assert hubs[0] == commission_hub
     
-    # Verify user1 doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) is False
-    
-    # Now create a profile for user1
-    profile_hub.createProfile(sender=user1)
-    
-    # Verify user1 now has a profile
+    # Verify a profile was automatically created for user1
     assert profile_hub.hasProfile(user1.address) is True
     user1_profile = profile_hub.getProfile(user1.address)
     
     # Verify the commission hub was automatically linked to the profile
     profile = project.Profile.at(user1_profile)
     assert profile.commissionHubCount() == 1
-    hubs = profile.getCommissionHubs(0, 100)
-    assert hubs[0] == commission_hub
+    profile_hubs = profile.getCommissionHubs(0, 100)
+    assert profile_hubs[0] == commission_hub
+    
+    # Verify the profile owner is set correctly
+    assert profile.owner() == user1.address
 
 def test_register_nft_owner_with_existing_profile(setup):
     """Test registering an NFT owner who already has a profile"""
