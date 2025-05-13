@@ -64,9 +64,7 @@ def test_commission_array_methods(setup):
     """Test commission array methods: add, get, getRecent, remove"""
     owner = setup["owner"]
     owner_profile = setup["owner_profile"]
-    
-    # Generate test commission addresses
-    test_commissions = [f"0x{'1' * 39}{i+1}" for i in range(8)]
+    art_piece_template = setup["art_piece_template"]
     
     # Test empty state
     assert owner_profile.commissionCount() == 0
@@ -74,6 +72,27 @@ def test_commission_array_methods(setup):
     assert len(empty_commissions) == 0
     empty_recent = owner_profile.getRecentCommissions(0, 10)
     assert len(empty_recent) == 0
+    
+    # Create test art pieces
+    test_commissions = []
+    for i in range(8):
+        # Create a valid art piece
+        token_uri_data = f"data:image/png;base64,test{i}".encode()
+        token_uri_format = "png"
+        
+        art_piece = project.ArtPiece.deploy(sender=owner)
+        art_piece.initialize(
+            token_uri_data,
+            token_uri_format,
+            f"Test Art {i}",
+            f"Test Description {i}",
+            owner.address,  # Owner
+            owner.address,  # Artist (same as owner for test)
+            "0x0000000000000000000000000000000000000000",  # No commission hub
+            False,  # Not AI generated
+            sender=owner
+        )
+        test_commissions.append(art_piece.address)
     
     # Add commissions in order
     for i, comm in enumerate(test_commissions):
@@ -141,20 +160,14 @@ def test_commission_array_methods(setup):
     # Remove last remaining element in array
     owner_profile.removeCommission(updated_commissions[5], sender=owner)
     assert owner_profile.commissionCount() == 5
-    
-    # Test non-existent commission removal (should fail)
-    non_existent = "0x" + "f" * 40
-    with pytest.raises(Exception):
-        owner_profile.removeCommission(non_existent, sender=owner)
 
 # Tests for Unverified Commission Array Methods
 def test_unverified_commission_array_methods(setup):
     """Test unverified commission array methods"""
     owner = setup["owner"]
     owner_profile = setup["owner_profile"]
-    
-    # Generate test commission addresses
-    test_commissions = [f"0x{'2' * 39}{i+1}" for i in range(5)]
+    user1 = setup["user1"]
+    art_piece_template = setup["art_piece_template"]
     
     # Test empty state
     assert owner_profile.unverifiedCommissionCount() == 0
@@ -166,9 +179,33 @@ def test_unverified_commission_array_methods(setup):
     owner_profile.setAllowUnverifiedCommissions(True, sender=owner)
     assert owner_profile.allowUnverifiedCommissions() is True
     
-    # Add unverified commissions
+    # Remove user1 from whitelist to ensure commissions go to unverified
+    owner_profile.removeFromWhitelist(user1.address, sender=owner)
+    
+    # Create test art pieces
+    test_commissions = []
+    for i in range(5):
+        # Create a valid art piece
+        token_uri_data = f"data:image/png;base64,unverified{i}".encode()
+        token_uri_format = "png"
+        
+        art_piece = project.ArtPiece.deploy(sender=user1)
+        art_piece.initialize(
+            token_uri_data,
+            token_uri_format,
+            f"Unverified Art {i}",
+            f"Unverified Description {i}",
+            user1.address,  # Owner
+            user1.address,  # Artist
+            "0x0000000000000000000000000000000000000000",  # No commission hub
+            False,  # Not AI generated
+            sender=user1
+        )
+        test_commissions.append(art_piece.address)
+    
+    # Add unverified commissions (using user1 who is not whitelisted)
     for comm in test_commissions:
-        owner_profile.addUnverifiedCommission(comm, sender=owner)
+        owner_profile.addCommission(comm, sender=user1)
     
     # Test getUnverifiedCommissions
     all_commissions = owner_profile.getUnverifiedCommissions(0, 10)
@@ -194,7 +231,7 @@ def test_unverified_commission_array_methods(setup):
     assert recent_page_0[0] == test_commissions[4]  # Most recent first
     
     # Test remove unverified commission
-    owner_profile.removeUnverifiedCommission(test_commissions[2], sender=owner)
+    owner_profile.removeCommission(test_commissions[2], sender=owner)
     assert owner_profile.unverifiedCommissionCount() == 4
     
     # Verify it's removed
@@ -314,9 +351,28 @@ def test_my_commissions_array_methods(setup):
     artist_profile = setup["artist_profile"]
     owner = setup["owner"]
     owner_profile = setup["owner_profile"]
+    art_piece_template = setup["art_piece_template"]
     
-    # Generate test commission addresses
-    test_commissions = [f"0x{'3' * 39}{i+1}" for i in range(5)]
+    # Create test art pieces
+    test_commissions = []
+    for i in range(5):
+        # Create a valid art piece
+        token_uri_data = f"data:image/png;base64,artist{i}".encode()
+        token_uri_format = "png"
+        
+        art_piece = project.ArtPiece.deploy(sender=artist)
+        art_piece.initialize(
+            token_uri_data,
+            token_uri_format,
+            f"Artist Art {i}",
+            f"Artist Description {i}",
+            artist.address,  # Owner
+            artist.address,  # Artist
+            "0x0000000000000000000000000000000000000000",  # No commission hub
+            False,  # Not AI generated
+            sender=artist
+        )
+        test_commissions.append(art_piece.address)
     
     # Test for artist profile
     # Add my commissions

@@ -1,13 +1,14 @@
 import pytest
 from ape import accounts, project
 import time
+from eth_utils import to_checksum_address
 
 # Define constant for zero address
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture
 def setup():
-    # Get accounts for testing
+    # Get accounts for testing - use test_accounts which are available in the test environment
     deployer = accounts.test_accounts[0]
     user = accounts.test_accounts[1]
     
@@ -21,11 +22,17 @@ def setup():
     l2_relay = project.L2Relay.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy OwnerRegistry
+    # Deploy OwnerRegistry with the required parameters
     owner_registry = project.OwnerRegistry.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
     
     # Set OwnerRegistry in ProfileHub
     profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
+    
+    # Set ProfileHub in OwnerRegistry
+    owner_registry.setProfileHub(profile_hub.address, sender=deployer)
+    
+    # Set L2Relay to the deployer for testing purposes
+    owner_registry.setL2Relay(deployer.address, sender=deployer)
     
     # Create a profile for the user
     profile_hub.createProfile(sender=user)
@@ -36,14 +43,13 @@ def setup():
     # Using a larger number of hubs (50) to better test different page sizes
     commission_hubs = []
     for i in range(50):  # Create 50 commission hubs
-        # Simulate NFT contract and token ID
-        nft_contract = f"0x{'1' * 39}{i+1:x}"
+        # Use a valid address for NFT contract
+        nft_contract = deployer.address
         token_id = i + 1
         
         # Register the NFT with the owner registry
-        # We need to use the public method registerNFTOwnerFromParentChain
-        # And we need to call it from the L2Relay address
-        owner_registry.registerNFTOwnerFromParentChain(1, nft_contract, token_id, user.address, sender=l2_relay)
+        # Now the deployer is authorized as L2Relay
+        owner_registry.registerNFTOwnerFromParentChain(1, nft_contract, token_id, user.address, sender=deployer)
         
         # Get the commission hub address
         commission_hub_address = owner_registry.getArtCommissionHubByOwner(1, nft_contract, token_id)
@@ -55,8 +61,7 @@ def setup():
         "profile_hub": profile_hub,
         "owner_registry": owner_registry,
         "user_profile": user_profile,
-        "commission_hubs": commission_hubs,
-        "l2_relay": l2_relay
+        "commission_hubs": commission_hubs
     }
 
 def test_get_commission_hubs_with_page_size_5(setup):
@@ -190,11 +195,12 @@ def test_get_commission_hub_count(setup):
     # Verify correct count
     assert hub_count == len(commission_hubs)
 
-def test_get_commission_hubs_for_user_with_no_hubs():
+@pytest.fixture
+def setup_empty_user():
     """
-    Test retrieving commission hubs for a user with no hubs
+    Setup for testing a user with no hubs
     """
-    # Arrange
+    # Get accounts for testing
     deployer = accounts.test_accounts[0]
     user_with_no_hubs = accounts.test_accounts[2]
     
@@ -204,6 +210,23 @@ def test_get_commission_hubs_for_user_with_no_hubs():
     l2_relay = project.L2Relay.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     owner_registry = project.OwnerRegistry.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
+    
+    # Set L2Relay to the deployer for testing purposes
+    owner_registry.setL2Relay(deployer.address, sender=deployer)
+    
+    return {
+        "deployer": deployer,
+        "user_with_no_hubs": user_with_no_hubs,
+        "owner_registry": owner_registry
+    }
+
+def test_get_commission_hubs_for_user_with_no_hubs(setup_empty_user):
+    """
+    Test retrieving commission hubs for a user with no hubs
+    """
+    # Arrange
+    user_with_no_hubs = setup_empty_user["user_with_no_hubs"]
+    owner_registry = setup_empty_user["owner_registry"]
     
     # Get hubs for user with no hubs
     hubs = owner_registry.getCommissionHubsForOwner(user_with_no_hubs.address, 0, 10)

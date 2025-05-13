@@ -1,6 +1,7 @@
 import pytest
 from ape import accounts, project
 import time
+from eth_utils import to_checksum_address
 
 # Define constant for zero address
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -17,11 +18,18 @@ def setup():
     # Deploy ProfileHub with the template
     profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
     
-    # Deploy OwnerRegistry
-    owner_registry = project.OwnerRegistry.deploy(sender=deployer)
+    # Deploy L2Relay and ArtCommissionHub template for OwnerRegistry
+    l2_relay = project.L2Relay.deploy(sender=deployer)
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+    
+    # Deploy OwnerRegistry with the required parameters
+    owner_registry = project.OwnerRegistry.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
     
     # Set OwnerRegistry in ProfileHub
     profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
+    
+    # Set L2Relay to the deployer for testing purposes
+    owner_registry.setL2Relay(deployer.address, sender=deployer)
     
     # Create a profile for the user
     profile_hub.createProfile(sender=user)
@@ -31,11 +39,16 @@ def setup():
     # Deploy multiple commission hubs for testing pagination
     commission_hubs = []
     for i in range(25):  # Create 25 commission hubs
-        commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
-        commission_hubs.append(commission_hub)
+        # Use a different NFT contract address for each - use deployer's address with different indices
+        nft_contract = deployer.address  # Use a valid address that already exists
+        token_id = i + 1
         
-        # Register the hub with the owner registry
-        owner_registry.registerCommissionHub(commission_hub.address, user.address, sender=deployer)
+        # Register NFT ownership - now the deployer is authorized as L2Relay
+        owner_registry.registerNFTOwnerFromParentChain(1, nft_contract, token_id, user.address, sender=deployer)
+        
+        # Get the created commission hub address
+        commission_hub_address = owner_registry.getArtCommissionHubByOwner(1, nft_contract, token_id)
+        commission_hubs.append(commission_hub_address)
     
     return {
         "deployer": deployer,
@@ -71,7 +84,7 @@ def test_get_commission_hubs_for_owner_different_page_sizes(setup):
     # Verify we got all hubs
     assert len(all_hubs) == len(commission_hubs)
     for hub in commission_hubs:
-        assert hub.address in all_hubs
+        assert hub in all_hubs
     
     # Test page size 10
     page_size = 10
@@ -89,7 +102,7 @@ def test_get_commission_hubs_for_owner_different_page_sizes(setup):
     # Verify we got all hubs
     assert len(all_hubs) == len(commission_hubs)
     for hub in commission_hubs:
-        assert hub.address in all_hubs
+        assert hub in all_hubs
     
     # Test page size 20
     page_size = 20
@@ -107,7 +120,7 @@ def test_get_commission_hubs_for_owner_different_page_sizes(setup):
     # Verify we got all hubs
     assert len(all_hubs) == len(commission_hubs)
     for hub in commission_hubs:
-        assert hub.address in all_hubs
+        assert hub in all_hubs
     
     # Test page size 100 (larger than total)
     page_size = 100
@@ -116,7 +129,7 @@ def test_get_commission_hubs_for_owner_different_page_sizes(setup):
     # Verify all hubs returned in a single page
     assert len(hubs) == len(commission_hubs)
     for hub in commission_hubs:
-        assert hub.address in hubs
+        assert hub in hubs
 
 def test_get_commission_hubs_for_owner_empty_pages(setup):
     """
@@ -158,12 +171,13 @@ def test_get_commission_hubs_for_nonexistent_owner(setup):
     deployer = setup["deployer"]  # Use deployer as a user with no hubs
     owner_registry = setup["owner_registry"]
     
-    # Get hubs for user with no hubs
-    hubs = owner_registry.getCommissionHubsForOwner(deployer.address, 0, 10)
+    # Get hubs for user with no hubs - use a different account that has no hubs
+    no_hub_user = accounts.test_accounts[2]
+    hubs = owner_registry.getCommissionHubsForOwner(no_hub_user.address, 0, 10)
     
     # Verify empty array returned
     assert len(hubs) == 0
     
     # Verify count is 0
-    hub_count = owner_registry.getCommissionHubCountForOwner(deployer.address)
+    hub_count = owner_registry.getCommissionHubCountForOwner(no_hub_user.address)
     assert hub_count == 0 
