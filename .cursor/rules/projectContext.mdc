@@ -5,7 +5,7 @@ alwaysApply: true
 ---
 This code is designed to allow both Artists and Commissioners to come to this site and upload content (ArtPieces).  Once uploaded, it remains in the user's Profile.
 
-For profiles, each Profile is created via the ProfileHub and Profiles are all created with a single owner who's account remains owner of that Profile forever.  
+For profiles, each Profile is created via the ProfileFactoryAndRegistry and Profiles are all created with a single owner who's account remains owner of that Profile forever.  
 
 Profiles can be either a commissioner, an artist, or both.  When an Art Piece is created, it is added to MyArt of the Profile who created it.  ArtPieces are always created by Profiles.  
 

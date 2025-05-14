@@ -20,8 +20,8 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Deploy ArtPiece template for createArtPiece tests
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -30,11 +30,11 @@ def setup():
     commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Create profiles for blacklister and whitelister for testing permissions
-    profile_hub.createProfile(sender=blacklister)
-    profile_hub.createProfile(sender=whitelister)
+    profile_factory_and_regsitry.createProfile(sender=blacklister)
+    profile_factory_and_regsitry.createProfile(sender=whitelister)
     
-    blacklister_profile = project.Profile.at(profile_hub.getProfile(blacklister.address))
-    whitelister_profile = project.Profile.at(profile_hub.getProfile(whitelister.address))
+    blacklister_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(blacklister.address))
+    whitelister_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(whitelister.address))
     
     return {
         "deployer": deployer,
@@ -46,7 +46,7 @@ def setup():
         "blacklister_profile": blacklister_profile,
         "whitelister_profile": whitelister_profile,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template,
         "commission_hub": commission_hub
     }
@@ -63,13 +63,13 @@ def test_artist_creates_art_for_new_commissioner(setup):
     # Arrange
     artist = setup["artist"]
     commissioner = setup["commissioner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Verify neither user has a profile yet
-    assert profile_hub.hasProfile(artist.address) == False
-    assert profile_hub.hasProfile(commissioner.address) == False
+    assert profile_factory_and_regsitry.hasProfile(artist.address) == False
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) == False
     
     # Sample art piece data
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQXJ0IENvbW1pc3Npb24iLCJkZXNjcmlwdGlvbiI6IkFydCBjcmVhdGVkIGZvciBjb21taXNzaW9uZXIiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -78,7 +78,7 @@ def test_artist_creates_art_for_new_commissioner(setup):
     is_artist = True  # Artist is creating the art
     
     # Act - Create art piece for commissioner
-    profile_hub.createArtPieceForParty(
+    profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -92,12 +92,12 @@ def test_artist_creates_art_for_new_commissioner(setup):
     )
     
     # Assert - Verify profiles were created
-    assert profile_hub.hasProfile(artist.address) == True
-    assert profile_hub.hasProfile(commissioner.address) == True
+    assert profile_factory_and_regsitry.hasProfile(artist.address) == True
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) == True
     
     # Get profile addresses
-    artist_profile_address = profile_hub.getProfile(artist.address)
-    commissioner_profile_address = profile_hub.getProfile(commissioner.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    commissioner_profile_address = profile_factory_and_regsitry.getProfile(commissioner.address)
     
     # Load the profile contracts
     artist_profile = project.Profile.at(artist_profile_address)
@@ -140,15 +140,15 @@ def test_commissioner_creates_art_for_existing_artist(setup):
     # Arrange
     artist = setup["artist"]
     commissioner = setup["commissioner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     
     # Create a profile for the artist first
-    profile_hub.createProfile(sender=artist)
-    assert profile_hub.hasProfile(artist.address) == True
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    assert profile_factory_and_regsitry.hasProfile(artist.address) == True
     
     # Verify commissioner doesn't have a profile yet
-    assert profile_hub.hasProfile(commissioner.address) == False
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) == False
     
     # Sample art piece data
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQ29tbWlzc2lvbiBSZXF1ZXN0IiwiZGVzY3JpcHRpb24iOiJDb21taXNzaW9uZXIgcmVxdWVzdGluZyBhcnQiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -157,7 +157,7 @@ def test_commissioner_creates_art_for_existing_artist(setup):
     is_artist = False  # Commissioner is not the artist
     
     # Act - Create art piece for artist
-    result = profile_hub.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -171,11 +171,11 @@ def test_commissioner_creates_art_for_existing_artist(setup):
     )
     
     # Assert - Verify commissioner profile was created
-    assert profile_hub.hasProfile(commissioner.address) == True
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) == True
     
     # Get profile addresses
-    artist_profile_address = profile_hub.getProfile(artist.address)
-    commissioner_profile_address = profile_hub.getProfile(commissioner.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    commissioner_profile_address = profile_factory_and_regsitry.getProfile(commissioner.address)
     
     # Load the profile contracts
     artist_profile = project.Profile.at(artist_profile_address)
@@ -209,7 +209,7 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
     # Arrange
     blacklister = setup["blacklister"]
     new_user = setup["new_user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     blacklister_profile = setup["blacklister_profile"]
     
@@ -223,7 +223,7 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
     is_artist = True
     
     # Act - Create art piece for blacklister
-    result = profile_hub.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -237,10 +237,10 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
     )
     
     # Assert - Verify new_user profile was created
-    assert profile_hub.hasProfile(new_user.address) == True
+    assert profile_factory_and_regsitry.hasProfile(new_user.address) == True
     
     # Get profile addresses
-    new_user_profile_address = profile_hub.getProfile(new_user.address)
+    new_user_profile_address = profile_factory_and_regsitry.getProfile(new_user.address)
     
     # Load the profile contracts
     new_user_profile = project.Profile.at(new_user_profile_address)
@@ -270,7 +270,7 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     # Arrange
     whitelister = setup["whitelister"]
     new_user = setup["new_user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     whitelister_profile = setup["whitelister_profile"]
     
@@ -287,7 +287,7 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     is_artist = True
     
     # Act - Create art piece for whitelister
-    result = profile_hub.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -301,10 +301,10 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     )
     
     # Assert - Verify new_user profile was created
-    assert profile_hub.hasProfile(new_user.address) == True
+    assert profile_factory_and_regsitry.hasProfile(new_user.address) == True
     
     # Get profile addresses
-    new_user_profile_address = profile_hub.getProfile(new_user.address)
+    new_user_profile_address = profile_factory_and_regsitry.getProfile(new_user.address)
     
     # Load the profile contracts
     new_user_profile = project.Profile.at(new_user_profile_address)
@@ -347,16 +347,16 @@ def test_unverified_commissions_disabled(setup):
     # Arrange
     artist = setup["artist"]
     commissioner = setup["commissioner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     
     # Create profiles for both users
-    profile_hub.createProfile(sender=artist)
-    profile_hub.createProfile(sender=commissioner)
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_factory_and_regsitry.createProfile(sender=commissioner)
     
     # Get profile addresses
-    artist_profile_address = profile_hub.getProfile(artist.address)
-    commissioner_profile_address = profile_hub.getProfile(commissioner.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    commissioner_profile_address = profile_factory_and_regsitry.getProfile(commissioner.address)
     
     # Load the profile contracts
     artist_profile = project.Profile.at(artist_profile_address)
@@ -372,7 +372,7 @@ def test_unverified_commissions_disabled(setup):
     is_artist = False  # Commissioner is not the artist
     
     # Act - Create art piece for artist
-    result = profile_hub.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -410,7 +410,7 @@ def test_ai_generated_flag_set_correctly(setup):
     # Arrange
     artist = setup["artist"]
     commissioner = setup["commissioner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     
     # Sample art piece data
@@ -420,7 +420,7 @@ def test_ai_generated_flag_set_correctly(setup):
     is_artist = True
     
     # Act - Create AI generated art piece
-    profile_hub.createArtPieceForParty(
+    profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -434,7 +434,7 @@ def test_ai_generated_flag_set_correctly(setup):
     )
     
     # Get the profile addresses
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     
     # Load the artist profile
     artist_profile = project.Profile.at(artist_profile_address)
@@ -456,7 +456,7 @@ def test_cannot_create_art_for_self(setup):
     """
     # Arrange
     artist = setup["artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     
     # Sample art piece data
@@ -467,7 +467,7 @@ def test_cannot_create_art_for_self(setup):
     
     # Act & Assert - Attempt to create art for self should fail
     with pytest.raises(Exception):
-        profile_hub.createArtPieceForParty(
+        profile_factory_and_regsitry.createArtPieceForParty(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -487,7 +487,7 @@ def test_events_emitted_correctly(setup):
     # Arrange
     artist = setup["artist"]
     commissioner = setup["commissioner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     
     # Sample art piece data
@@ -497,7 +497,7 @@ def test_events_emitted_correctly(setup):
     is_artist = True
     
     # Act - Create art piece and capture events
-    tx = profile_hub.createArtPieceForParty(
+    tx = profile_factory_and_regsitry.createArtPieceForParty(
         art_piece_template.address,
         token_uri_data,
         "avif",

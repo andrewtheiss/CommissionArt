@@ -15,8 +15,8 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Deploy ArtPiece template for createArtPiece tests
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -30,20 +30,20 @@ def setup():
         "user2": user2,
         "artist": artist,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template,
         "commission_hub": commission_hub
     }
 
 def test_profile_initialization(setup):
     """Test profile initialization and getter methods"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     deployer = setup["deployer"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Deploy and link ArtSales1155
@@ -64,12 +64,12 @@ def test_profile_initialization(setup):
 
 def test_profile_set_artist_status(setup):
     """Test setting artist status"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Initially not an artist
@@ -89,14 +89,14 @@ def test_profile_set_artist_status(setup):
 
 def test_profile_set_profile_image(setup):
     """Test setting and retrieving profile images"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Create an art piece first (required for setting as profile image)
@@ -173,23 +173,23 @@ def test_profile_set_profile_image(setup):
         print(f"Note: Profile image test issue: {e}")
         # Test passes even if the image setting fails - we're just interested in the operation
 
-def test_profile_hub_create_profile(setup):
-    """Test creating a profile through the ProfileHub"""
-    profile_hub = setup["profile_hub"]
+def test_profile_factory_and_regsitry_create_profile(setup):
+    """Test creating a profile through the ProfileFactoryAndRegistry"""
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     user2 = setup["user2"]
     
     # User doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) == False
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == False
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
+    profile_factory_and_regsitry.createProfile(sender=user1)
     
     # User should now have a profile
-    assert profile_hub.hasProfile(user1.address) == True
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == True
     
     # Get the profile address
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     assert profile_address != "0x0000000000000000000000000000000000000000"
     
     # Load the profile contract
@@ -199,21 +199,21 @@ def test_profile_hub_create_profile(setup):
     assert profile.owner() == user1.address
     
     # Create another profile for a different user
-    profile_hub.createProfile(sender=user2)
-    assert profile_hub.hasProfile(user2.address) == True
+    profile_factory_and_regsitry.createProfile(sender=user2)
+    assert profile_factory_and_regsitry.hasProfile(user2.address) == True
     
     # Note: Skip the latestUsers test as this functionality seems to be failing
     # Users are getting registered but not tracked properly in latestUsers
 
 def test_profile_whitelist_blacklist(setup):
     """Test whitelist and blacklist functionality"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     user2 = setup["user2"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Add to whitelist
@@ -234,12 +234,12 @@ def test_profile_whitelist_blacklist(setup):
 
 def test_get_latest_art_pieces_empty(setup):
     """Test getLatestArtPieces with empty array"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     
     # Create profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Test with empty array
@@ -248,12 +248,12 @@ def test_get_latest_art_pieces_empty(setup):
 
 def test_profile_expansion(setup):
     """Test setting profile expansion address"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Set profile expansion
@@ -265,13 +265,13 @@ def test_profile_expansion(setup):
 
 def test_profile_proceed_address(setup):
     """Test setting proceeds address (requires artist)"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     deployer = setup["deployer"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Deploy and link ArtSales1155
@@ -288,39 +288,39 @@ def test_profile_proceed_address(setup):
     # Verify it was set
     assert art_sales.artistProceedsAddress() == new_proceeds
 
-def test_profile_hub_create_profile_duplicate(setup):
+def test_profile_factory_and_regsitry_create_profile_duplicate(setup):
     """Test creating a duplicate profile should fail"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     
     # Create a profile
-    profile_hub.createProfile(sender=user1)
-    assert profile_hub.hasProfile(user1.address) == True
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == True
     
     # Attempt to create another profile for the same user
     with pytest.raises(Exception):
-        profile_hub.createProfile(sender=user1)
+        profile_factory_and_regsitry.createProfile(sender=user1)
 
-def test_profile_hub_get_profile_nonexistent(setup):
+def test_profile_factory_and_regsitry_get_profile_nonexistent(setup):
     """Test getting a profile that doesn't exist"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     
     # User doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) == False
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == False
     
     # Profile address should be empty for non-existent profile
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     assert profile_address == "0x0000000000000000000000000000000000000000"
 
 def test_update_profile_template_contract(setup):
     """Test updating the profile template contract"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     
     # Get the initial template address
-    initial_template = profile_hub.profileTemplate()
+    initial_template = profile_factory_and_regsitry.profileTemplate()
     
     # Deploy a new profile template
     new_template = project.Profile.deploy(sender=deployer)
@@ -328,27 +328,27 @@ def test_update_profile_template_contract(setup):
     
     # Only owner should be able to update the template
     with pytest.raises(Exception):
-        profile_hub.updateProfileTemplateContract(new_template.address, sender=user1)
+        profile_factory_and_regsitry.updateProfileTemplateContract(new_template.address, sender=user1)
     
     # Update the template as the owner
-    profile_hub.updateProfileTemplateContract(new_template.address, sender=deployer)
+    profile_factory_and_regsitry.updateProfileTemplateContract(new_template.address, sender=deployer)
     
     # Verify the template was updated
-    assert profile_hub.profileTemplate() == new_template.address
-    assert profile_hub.profileTemplate() != initial_template
+    assert profile_factory_and_regsitry.profileTemplate() == new_template.address
+    assert profile_factory_and_regsitry.profileTemplate() != initial_template
 
 def test_update_profile_template_invalid_address(setup):
     """Test updating the profile template with invalid address should fail"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     
     # Attempt to update with zero address should fail
     with pytest.raises(Exception):
-        profile_hub.updateProfileTemplateContract("0x0000000000000000000000000000000000000000", sender=deployer)
+        profile_factory_and_regsitry.updateProfileTemplateContract("0x0000000000000000000000000000000000000000", sender=deployer)
 
 def test_get_user_profiles(setup):
     """Test the getUserProfiles pagination functionality"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
     # Create multiple user accounts and keep track of them in order
     users = [accounts.test_accounts[i] for i in range(5)]
@@ -356,19 +356,19 @@ def test_get_user_profiles(setup):
     
     # Create profiles for all users
     for user in users:
-        profile_hub.createProfile(sender=user)
-        assert profile_hub.hasProfile(user.address) == True
-        profile_addresses.append(profile_hub.getProfile(user.address))
+        profile_factory_and_regsitry.createProfile(sender=user)
+        assert profile_factory_and_regsitry.hasProfile(user.address) == True
+        profile_addresses.append(profile_factory_and_regsitry.getProfile(user.address))
     
     # Check the user count
-    assert profile_hub.userProfileCount() == 5
+    assert profile_factory_and_regsitry.userProfileCount() == 5
     
     # Test with page size 0 (should return empty array)
-    zero_page = profile_hub.getUserProfiles(0, 0)
+    zero_page = profile_factory_and_regsitry.getUserProfiles(0, 0)
     assert len(zero_page) == 0
     
     # Test with page size larger than users
-    all_users = profile_hub.getUserProfiles(10, 0)
+    all_users = profile_factory_and_regsitry.getUserProfiles(10, 0)
     assert len(all_users) <= 5  # Should return all users or empty if implementation doesn't work as expected
     
     if len(all_users) > 0:
@@ -377,7 +377,7 @@ def test_get_user_profiles(setup):
             assert addr in profile_addresses
     
     # Test with small page size to test pagination
-    small_page = profile_hub.getUserProfiles(2, 0)
+    small_page = profile_factory_and_regsitry.getUserProfiles(2, 0)
     # If our implementation returns results, verify they're valid profile addresses
     if len(small_page) > 0:
         for addr in small_page:
@@ -385,22 +385,22 @@ def test_get_user_profiles(setup):
 
 def test_get_user_profiles_empty(setup):
     """Test getUserProfiles with no users"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
     # No profiles created yet
-    empty_result = profile_hub.getUserProfiles(10, 0)
+    empty_result = profile_factory_and_regsitry.getUserProfiles(10, 0)
     assert len(empty_result) == 0
 
 def test_create_new_commission_and_register_profile(setup):
     """Test creating a new profile and art piece in one transaction"""
     user1 = setup["user1"]
     artist = setup["artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Verify user1 doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) == False
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == False
     
     # Sample art piece data
     image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -409,7 +409,7 @@ def test_create_new_commission_and_register_profile(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             image_data,
             "avif",
@@ -423,10 +423,10 @@ def test_create_new_commission_and_register_profile(setup):
         )
         
         # Verify profile was created
-        assert profile_hub.hasProfile(user1.address) == True
+        assert profile_factory_and_regsitry.hasProfile(user1.address) == True
         
         # Load the profile
-        profile_address = profile_hub.getProfile(user1.address)
+        profile_address = profile_factory_and_regsitry.getProfile(user1.address)
         profile = project.Profile.at(profile_address)
         
         # Verify art piece was created
@@ -449,7 +449,7 @@ def test_create_new_commission_and_register_profile(setup):
 
 def test_create_art_piece_permission_check(setup):
     """Test that only the profile owner can create art pieces"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     user2 = setup["user2"]
     artist = setup["artist"]
@@ -457,8 +457,8 @@ def test_create_art_piece_permission_check(setup):
     commission_hub = setup["commission_hub"]
     
     # Create a profile for user1
-    profile_hub.createProfile(sender=user1)
-    profile_address = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(profile_address)
     
     # Sample art piece data
@@ -485,15 +485,15 @@ def test_create_art_piece_permission_check(setup):
 
 def test_combined_profile_method_with_existing_profile(setup):
     """Test that createNewArtPieceAndRegisterProfile fails with existing profile"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Create a profile first
-    profile_hub.createProfile(sender=user1)
-    assert profile_hub.hasProfile(user1.address) == True
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == True
     
     # Sample art piece data
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -502,7 +502,7 @@ def test_combined_profile_method_with_existing_profile(setup):
     
     # Attempt to create profile and commission when profile already exists
     with pytest.raises(Exception):
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -519,12 +519,12 @@ def test_combined_profile_and_commission_creation(setup):
     """Test combined profile creation with commission"""
     user1 = setup["user1"]
     artist = setup["artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Verify user1 doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) == False
+    assert profile_factory_and_regsitry.hasProfile(user1.address) == False
     
     # Sample art piece data
     image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -533,7 +533,7 @@ def test_combined_profile_and_commission_creation(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             image_data,
             "avif",
@@ -547,7 +547,7 @@ def test_combined_profile_and_commission_creation(setup):
         )
         
         # Verify the results match expectations
-        profile_address = profile_hub.getProfile(user1.address)
+        profile_address = profile_factory_and_regsitry.getProfile(user1.address)
         profile = project.Profile.at(profile_address)
         assert profile.owner() == user1.address
         

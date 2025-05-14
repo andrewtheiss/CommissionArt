@@ -24,25 +24,25 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub
-    profile_hub = project.ProfileHub.deploy(
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         sender=deployer
     )
     
-    # Link OwnerRegistry and ProfileHub
-    owner_registry.setProfileHub(profile_hub.address, sender=deployer)
+    # Link OwnerRegistry and ProfileFactoryAndRegistry
+    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify bidirectional connection
-    assert owner_registry.profileHub() == profile_hub.address
-    assert profile_hub.ownerRegistry() == owner_registry.address
+    assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
+    assert profile_factory_and_regsitry.ownerRegistry() == owner_registry.address
     
     return {
         "deployer": deployer,
         "user1": user1,
         "user2": user2,
         "owner_registry": owner_registry,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "profile_template": profile_template,
         "art_commission_hub_template": art_commission_hub_template
     }
@@ -50,7 +50,7 @@ def setup():
 def test_register_nft_owner_with_no_profile(setup):
     """Test registering an NFT owner who doesn't have a profile yet"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     
@@ -60,7 +60,7 @@ def test_register_nft_owner_with_no_profile(setup):
     token_id = 123
     
     # Verify user1 doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) is False
+    assert profile_factory_and_regsitry.hasProfile(user1.address) is False
     
     # Register NFT ownership for user1 who doesn't have a profile yet
     tx = owner_registry.registerNFTOwnerFromParentChain(
@@ -81,14 +81,14 @@ def test_register_nft_owner_with_no_profile(setup):
     assert hubs[0] == commission_hub
     
     # Verify a profile was automatically created for user1
-    assert profile_hub.hasProfile(user1.address) is True
-    user1_profile = profile_hub.getProfile(user1.address)
+    assert profile_factory_and_regsitry.hasProfile(user1.address) is True
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     
     # Verify the commission hub was automatically linked to the profile
     profile = project.Profile.at(user1_profile)
     assert profile.commissionHubCount() == 1
-    profile_hubs = profile.getCommissionHubs(0, 100)
-    assert profile_hubs[0] == commission_hub
+    profile_factory_and_regsitrys = profile.getCommissionHubs(0, 100)
+    assert profile_factory_and_regsitrys[0] == commission_hub
     
     # Verify the profile owner is set correctly
     assert profile.owner() == user1.address
@@ -96,14 +96,14 @@ def test_register_nft_owner_with_no_profile(setup):
 def test_register_nft_owner_with_existing_profile(setup):
     """Test registering an NFT owner who already has a profile"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user2 = setup["user2"]
     
     # First create a profile for user2
-    profile_hub.createProfile(sender=user2)
-    assert profile_hub.hasProfile(user2.address) is True
-    user2_profile = profile_hub.getProfile(user2.address)
+    profile_factory_and_regsitry.createProfile(sender=user2)
+    assert profile_factory_and_regsitry.hasProfile(user2.address) is True
+    user2_profile = profile_factory_and_regsitry.getProfile(user2.address)
     profile = project.Profile.at(user2_profile)
     
     # Verify no commission hubs yet
@@ -134,25 +134,25 @@ def test_register_nft_owner_with_existing_profile(setup):
     
     # Verify the commission hub was automatically linked to the profile
     assert profile.commissionHubCount() == 1
-    profile_hubs = profile.getCommissionHubs(0, 100)
-    assert profile_hubs[0] == commission_hub
+    profile_factory_and_regsitrys = profile.getCommissionHubs(0, 100)
+    assert profile_factory_and_regsitrys[0] == commission_hub
 
 def test_transfer_nft_ownership(setup):
     """Test transferring NFT ownership between users with profiles"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     user2 = setup["user2"]
     
     # Create profiles for both users
-    if not profile_hub.hasProfile(user1.address):
-        profile_hub.createProfile(sender=user1)
-    if not profile_hub.hasProfile(user2.address):
-        profile_hub.createProfile(sender=user2)
+    if not profile_factory_and_regsitry.hasProfile(user1.address):
+        profile_factory_and_regsitry.createProfile(sender=user1)
+    if not profile_factory_and_regsitry.hasProfile(user2.address):
+        profile_factory_and_regsitry.createProfile(sender=user2)
     
-    user1_profile = profile_hub.getProfile(user1.address)
-    user2_profile = profile_hub.getProfile(user2.address)
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
+    user2_profile = profile_factory_and_regsitry.getProfile(user2.address)
     profile1 = project.Profile.at(user1_profile)
     profile2 = project.Profile.at(user2_profile)
     
@@ -208,15 +208,15 @@ def test_transfer_nft_ownership(setup):
 def test_multiple_hubs_per_user(setup):
     """Test a user owning multiple commission hubs"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     
     # Create profile for user1 if not exists
-    if not profile_hub.hasProfile(user1.address):
-        profile_hub.createProfile(sender=user1)
+    if not profile_factory_and_regsitry.hasProfile(user1.address):
+        profile_factory_and_regsitry.createProfile(sender=user1)
     
-    user1_profile = profile_hub.getProfile(user1.address)
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     profile1 = project.Profile.at(user1_profile)
     
     # Register 3 different NFTs for user1
@@ -242,25 +242,25 @@ def test_multiple_hubs_per_user(setup):
     assert len(registry_hubs) == 3
     
     # Get all hubs from the profile
-    profile_hubs = profile1.getCommissionHubs(0, 100)
-    assert len(profile_hubs) == 3
+    profile_factory_and_regsitrys = profile1.getCommissionHubs(0, 100)
+    assert len(profile_factory_and_regsitrys) == 3
     
     # Verify the hubs match between registry and profile
     for hub in registry_hubs:
-        assert hub in profile_hubs
+        assert hub in profile_factory_and_regsitrys
 
 def test_pagination_of_hubs(setup):
     """Test pagination of commission hubs"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     
     # Create profile for user1 if not exists
-    if not profile_hub.hasProfile(user1.address):
-        profile_hub.createProfile(sender=user1)
+    if not profile_factory_and_regsitry.hasProfile(user1.address):
+        profile_factory_and_regsitry.createProfile(sender=user1)
     
-    user1_profile = profile_hub.getProfile(user1.address)
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     profile1 = project.Profile.at(user1_profile)
     
     # Register 5 different NFTs for user1
@@ -310,10 +310,10 @@ def test_pagination_of_hubs(setup):
     assert recent_hubs[2] == all_hubs[2]  # Third most recent
 
 def test_bidirectional_connection(setup):
-    """Test the bidirectional connection between OwnerRegistry and ProfileHub"""
+    """Test the bidirectional connection between OwnerRegistry and ProfileFactoryAndRegistry"""
     deployer = setup["deployer"]
     
-    # Deploy new instances of OwnerRegistry and ProfileHub
+    # Deploy new instances of OwnerRegistry and ProfileFactoryAndRegistry
     art_commission_hub_template = setup["art_commission_hub_template"]
     profile_template = setup["profile_template"]
     
@@ -324,46 +324,46 @@ def test_bidirectional_connection(setup):
         sender=deployer
     )
     
-    # Deploy ProfileHub
-    profile_hub = project.ProfileHub.deploy(
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         sender=deployer
     )
     
     # Verify no initial connection
-    assert owner_registry.profileHub() == "0x0000000000000000000000000000000000000000"
-    assert profile_hub.ownerRegistry() == "0x0000000000000000000000000000000000000000"
+    assert owner_registry.profileFactoryAndRegistry() == "0x0000000000000000000000000000000000000000"
+    assert profile_factory_and_regsitry.ownerRegistry() == "0x0000000000000000000000000000000000000000"
     
     # Set the bidirectional connection
-    owner_registry.setProfileHub(profile_hub.address, sender=deployer)
+    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify both connections are established
-    assert owner_registry.profileHub() == profile_hub.address
-    assert profile_hub.ownerRegistry() == owner_registry.address
+    assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
+    assert profile_factory_and_regsitry.ownerRegistry() == owner_registry.address
     
-    # Test updating the connection to a new ProfileHub
-    new_profile_hub = project.ProfileHub.deploy(
+    # Test updating the connection to a new ProfileFactoryAndRegistry
+    new_profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         sender=deployer
     )
     
-    owner_registry.setProfileHub(new_profile_hub.address, sender=deployer)
+    owner_registry.setProfileFactoryAndRegistry(new_profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify the connection is updated
-    assert owner_registry.profileHub() == new_profile_hub.address
-    assert new_profile_hub.ownerRegistry() == owner_registry.address
+    assert owner_registry.profileFactoryAndRegistry() == new_profile_factory_and_regsitry.address
+    assert new_profile_factory_and_regsitry.ownerRegistry() == owner_registry.address
 
 def test_access_control_for_commission_hub_methods(setup):
     """Test access control for addCommissionHub and removeCommissionHub in Profile"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     user2 = setup["user2"]
     
     # Create profile for user1
-    profile_hub.createProfile(sender=user1)
-    user1_profile = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(user1_profile)
     
     # Mock NFT data
@@ -406,13 +406,13 @@ def test_access_control_for_commission_hub_methods(setup):
 def test_events_for_hub_linking(setup):
     """Test events emitted when linking/unlinking hubs to owners"""
     owner_registry = setup["owner_registry"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
     user2 = setup["user2"]
     
     # Create profile for user1
-    profile_hub.createProfile(sender=user1)
+    profile_factory_and_regsitry.createProfile(sender=user1)
     
     # Mock NFT data
     chain_id = 1

@@ -14,7 +14,7 @@ This project stores Azuki NFT images as on-chain data on AnimeChain L3 using Vyp
 - **Registry.vy**: Main contract that maps Azuki IDs to their respective image contracts
 - **CommissionedArt.vy**: Contract for storing a single image's data on-chain
 - **Profile.vy**: User profile contract for artists and collectors
-- **ProfileHub.vy**: Central registry that manages user profiles
+- **ProfileFactoryAndRegistry.vy**: Central registry that manages user profiles
 - **ArtPiece.vy**: Contract for storing artwork and commission metadata
 - **Deployment scripts**: Scripts for deploying contracts and uploading images
 
@@ -33,9 +33,9 @@ cp .env.example .env
 
 ## Using the Contracts
 
-### ProfileHub Contract
+### ProfileFactoryAndRegistry Contract
 
-The ProfileHub contract serves as the central entry point for users. Key features:
+The ProfileFactoryAndRegistry contract serves as the central entry point for users. Key features:
 
 - **Single-Transaction Profile & Art Creation**: New users can create a profile and upload their first art piece in a single transaction, simplifying onboarding and saving gas
 - **Profile Management**: Tracks all user profiles in the system
@@ -43,7 +43,7 @@ The ProfileHub contract serves as the central entry point for users. Key feature
 
 ```python
 # Create a profile and art piece in one transaction
-profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
+profile_address, art_piece_address = profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
     art_piece_template.address,
     image_data,
     title,
@@ -56,7 +56,7 @@ profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterPro
 )
 ```
 
-For more details on this feature, see [profile_hub_guide.md](documentation/profile_hub_guide.md).
+For more details on this feature, see [profile_factory_and_regsitry_guide.md](documentation/profile_factory_and_regsitry_guide.md).
 
 ### Registry Contract
 

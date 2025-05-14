@@ -16,19 +16,19 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Create a profile for the user
-    profile_hub.createProfile(sender=user)
-    user_profile_address = profile_hub.getProfile(user.address)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    user_profile_address = profile_factory_and_regsitry.getProfile(user.address)
     user_profile = project.Profile.at(user_profile_address)
     
     return {
         "deployer": deployer,
         "user": user,
         "artist": artist,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "user_profile": user_profile
     }
 

@@ -16,13 +16,13 @@ def setup():
     user6 = accounts.test_accounts[8]
     user7 = accounts.test_accounts[9]
 
-    # Deploy Profile template and ProfileHub
+    # Deploy Profile template and ProfileFactoryAndRegistry
     profile_template = project.Profile.deploy(sender=deployer)
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
-    profile_hub.createProfile(sender=owner)
-    profile_hub.createProfile(sender=artist)
-    owner_profile_address = profile_hub.getProfile(owner.address)
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    profile_factory_and_regsitry.createProfile(sender=owner)
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     owner_profile = project.Profile.at(owner_profile_address)
     artist_profile = project.Profile.at(artist_profile_address)
     artist_profile.setIsArtist(True, sender=artist)
@@ -46,7 +46,7 @@ def setup():
         "user6": user6,
         "user7": user7,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
         "owner_sales": owner_sales,

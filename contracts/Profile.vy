@@ -10,7 +10,7 @@
 
 # Profile Contract
 # This contract represents a user's profile, with features for both regular users and artists.
-# It is designed to be cloned by the ProfileHub contract for each user.
+# It is designed to be cloned by the ProfileFactoryAndRegistry contract for each user.
 
 # State Variables
 
@@ -61,8 +61,8 @@ artSales1155: public(address)
 # Artist status for this profile
 isArtist: public(bool)
 
-# Interface for ProfileHub
-interface ProfileHub:
+# Interface for ProfileFactoryAndRegistry
+interface ProfileFactoryAndRegistry:
     def ownerRegistry() -> address: view
 
 # Interface for ArtPiece contract
@@ -175,7 +175,7 @@ def addCommission(_commission_art_piece: address):
     @notice Adds a commission to this profile, either to verified or unverified list based on sender status.
     @dev Access control:
          - self.owner: The owner of the profile can add commissions to their own profile
-         - self.hub: The ProfileHub contract can add commissions on behalf of users
+         - self.hub: The ProfileFactoryAndRegistry contract can add commissions on behalf of users
          - Any other user: Can add commissions based on whitelist/blacklist status
     @param _commission_art_piece The address of the commission art piece
     """
@@ -204,7 +204,7 @@ def addCommission(_commission_art_piece: address):
     add_to_verified: bool = False
     
     # Determine if this should be added to verified or unverified list
-    # When called from the ProfileHub, we need to check if the art creator is whitelisted
+    # When called from the ProfileFactoryAndRegistry, we need to check if the art creator is whitelisted
     if is_profile_owner:
         # Profile owner can always add to verified list
         add_to_verified = True
@@ -248,7 +248,7 @@ def removeCommission(_commission: address):
     @notice Removes a commission from this profile's verified or unverified commissions list
     @dev Access control:
          - self.owner: The owner of the profile can remove their own commissions
-         - self.hub: The ProfileHub contract can remove commissions on behalf of users
+         - self.hub: The ProfileFactoryAndRegistry contract can remove commissions on behalf of users
          - Art piece artist: Can remove unverified commissions they created
          - ArtCommissionHub owner: Can remove commissions from the hub
     @param _commission The address of the commission to remove
@@ -802,13 +802,13 @@ def setIsArtist(_is_artist: bool):
 #
 @external
 def addCommissionHub(_hub: address):
-    # Allow the hub (ProfileHub), owner registry, or original deployer to add commission hubs
+    # Allow the hub (ProfileFactoryAndRegistry), owner registry, or original deployer to add commission hubs
     # Check if we have an owner registry first
     registry_address: address = empty(address)
     if self.hub != empty(address):
         # Try to get the owner registry from the profile hub
-        profile_hub_interface: ProfileHub = ProfileHub(self.hub)
-        registry_address = staticcall profile_hub_interface.ownerRegistry()
+        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
+        registry_address = staticcall profile_factory_and_regsitry_interface.ownerRegistry()
     
     assert msg.sender == self.hub or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can add commission hub"
     
@@ -836,13 +836,13 @@ def addCommissionHub(_hub: address):
 #
 @external
 def removeCommissionHub(_hub: address):
-    # Allow the hub (ProfileHub), owner registry, or original deployer to remove commission hubs
+    # Allow the hub (ProfileFactoryAndRegistry), owner registry, or original deployer to remove commission hubs
     # Check if we have an owner registry first
     registry_address: address = empty(address)
     if self.hub != empty(address):
         # Try to get the owner registry from the profile hub
-        profile_hub_interface: ProfileHub = ProfileHub(self.hub)
-        registry_address = staticcall profile_hub_interface.ownerRegistry()
+        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
+        registry_address = staticcall profile_factory_and_regsitry_interface.ownerRegistry()
     
     assert msg.sender == self.hub or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can remove commission hub"
     

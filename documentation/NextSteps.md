@@ -43,7 +43,7 @@ Indicates it’s a collection of commissioned works tied to an NFT or artist.
 Profile → UserProfile
 Clearly denotes it as a user’s profile with art and social features.
 
-ProfileHub → ProfileRegistry
+ProfileFactoryAndRegistry → ProfileRegistry
 Emphasizes its role as the central registry for profiles.
 
 ArtPiece → ArtWork
@@ -71,7 +71,7 @@ file-syit3bfprksmahnrbfr593
 file-syit3bfprksmahnrbfr593
 , and the OwnerRegistry owners mapping would update accordingly.
 Profile Integration: When a generic hub is created, we link it to the owner’s profile similar to NFT hubs:
-In createGenericCommissionHub, after initializing the hub, call ProfileHub.hasProfile(owner). If true, get the profile and call Profile.addCommissionHub(hub_address) to list it on their profile (the ProfileHub address will be allowed to call this as set up earlier).
+In createGenericCommissionHub, after initializing the hub, call ProfileFactoryAndRegistry.hasProfile(owner). If true, get the profile and call Profile.addCommissionHub(hub_address) to list it on their profile (the ProfileFactoryAndRegistry address will be allowed to call this as set up earlier).
 If the owner has no profile (e.g., a DAO contract with no profile or a user who hasn’t joined), we add the hub to the ownerToCommissionHubs[owner] mapping in OwnerRegistry for future reference (as described in section 1). So even non-profile owners have their hubs tracked.
 The hub’s owner field is set to the provided owner address at deployment (by default, msg.sender in ArtCommissionHub’s __init__ was used
 file-syit3bfprksmahnrbfr593
@@ -140,9 +140,9 @@ We will update ArtCommissionHub.getLatestVerifiedArt(_count, _page) to allow up 
 file-syit3bfprksmahnrbfr593
 file-syit3bfprksmahnrbfr593
 ). We can change the DynArray size to, say, 50 and use _count capped at 50 to return that many recent verified commissions in a circular buffer manner. This can be useful for quickly grabbing a few recent verified pieces without pagination math. Similarly, a getLatestUnverifiedArt(count) can be added if needed.
-Fetching from Profile perspective: We might add a convenience method in ProfileHub such as getUserCommissionHubs(address user) -> address[] that simply calls the user’s profile getCommissionHubs. However, since one can get the profile via ProfileHub.getProfile(user)
+Fetching from Profile perspective: We might add a convenience method in ProfileFactoryAndRegistry such as getUserCommissionHubs(address user) -> address[] that simply calls the user’s profile getCommissionHubs. However, since one can get the profile via ProfileFactoryAndRegistry.getProfile(user)
 file-ggw1p8gbe3fgpszi2n8ehn
- and then call the profile’s view function directly, that might be unnecessary duplication. The frontend or an indexer can perform those two calls. Still, for a simplified frontend call, ProfileHub could expose:
+ and then call the profile’s view function directly, that might be unnecessary duplication. The frontend or an indexer can perform those two calls. Still, for a simplified frontend call, ProfileFactoryAndRegistry could expose:
 python
 Copy
 Edit
@@ -251,8 +251,8 @@ file-fmzu8fdbvzeeb9dx8lx5hc
 The old owner’s profile (if any) is updated, and the new owner’s profile (if exists) is updated.
 Thus, any front-end or indexer observing L3 events will see a consistent update. For instance, they’ll see OwnershipUpdated event from the hub contract
 file-syit3bfprksmahnrbfr593
- showing the new owner, and they’ll see ProfileHub or Profile events if we emit any for linking. We can emit events like HubLinkedToProfile(user, hub) and HubUnlinkedFromProfile(user, hub) from ProfileHub when performing those actions for easier tracking.
-Handling L2->L3 direct user actions: If the user initiates something on L2 that should reflect on L3 (for example, if there were an L2 marketplace for commissions, or if we store profiles on L2 as well – not in our case, profiles are only on L3), the L2 would use a similar retryable ticket mechanism to call L3’s ProfileHub or OwnerRegistry. Our contracts already include an L2Relay.relayToL3(...) for sending owner data to L3
+ showing the new owner, and they’ll see ProfileFactoryAndRegistry or Profile events if we emit any for linking. We can emit events like HubLinkedToProfile(user, hub) and HubUnlinkedFromProfile(user, hub) from ProfileFactoryAndRegistry when performing those actions for easier tracking.
+Handling L2->L3 direct user actions: If the user initiates something on L2 that should reflect on L3 (for example, if there were an L2 marketplace for commissions, or if we store profiles on L2 as well – not in our case, profiles are only on L3), the L2 would use a similar retryable ticket mechanism to call L3’s ProfileFactoryAndRegistry or OwnerRegistry. Our contracts already include an L2Relay.relayToL3(...) for sending owner data to L3
 file-5ahheepddqhn5l9dufupsg
 file-5ahheepddqhn5l9dufupsg
 . The same concept could be extended for profile or commission data if needed (though currently, all commission logic lives on L3).
@@ -356,7 +356,7 @@ Confirm atomic updates and consistent on-chain states.
 Recommended Implementation Order Summary:
 Step	Component	Priority	Complexity
 1	OwnerRegistry linking/unlinking logic	High	Medium
-2	Profile & ProfileHub updates	High	Medium
+2	Profile & ProfileFactoryAndRegistry updates	High	Medium
 3	Single-tx profile/art creation flows	High	Medium
 4	Generic (non-NFT) ArtCommissionHubs	Medium	Low
 5	Global registry & off-chain indexer setup	Medium	Medium

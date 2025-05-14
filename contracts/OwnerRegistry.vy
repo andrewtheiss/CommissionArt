@@ -29,14 +29,14 @@ ownerToCommissionHubs: public(HashMap[address, DynArray[address, 10**6]])  # own
 isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
 
 # Profile Hub address
-profileHub: public(address)
+profileFactoryAndRegistry: public(address)
 
 interface ArtCommissionHub:
     def initialize(chain_id: uint256, nft_contract: address, token_id: uint256, registry: address): nonpayable
     def updateRegistration(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address): nonpayable
     def initializeGeneric(chain_id: uint256, owner: address, registry: address, is_generic: bool): nonpayable
 
-interface ProfileHub:
+interface ProfileFactoryAndRegistry:
     def hasProfile(_user: address) -> bool: view
     def getProfile(_user: address) -> address: view
     def createProfile(_user: address) -> address: nonpayable
@@ -85,7 +85,7 @@ def __init__(_initial_l2relay: address, _initial_commission_hub_template: addres
     self.l2Relay = _initial_l2relay
     self.artCommissionHubTemplate = _initial_commission_hub_template
     self.owner = msg.sender
-    self.profileHub = empty(address)
+    self.profileFactoryAndRegistry = empty(address)
 
 # Internal function to ensure a user has a profile
 @internal
@@ -96,17 +96,17 @@ def _ensureProfile(_user: address) -> address:
     @param _user The address of the user to check/create a profile for
     @return The address of the user's profile
     """
-    if self.profileHub == empty(address):
+    if self.profileFactoryAndRegistry == empty(address):
         return empty(address)  # Profile hub not set, can't create profiles
     
-    profile_hub: ProfileHub = ProfileHub(self.profileHub)
+    profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
     
     # Check if user already has a profile
-    if staticcall profile_hub.hasProfile(_user):
-        return staticcall profile_hub.getProfile(_user)
+    if staticcall profile_factory_and_regsitry.hasProfile(_user):
+        return staticcall profile_factory_and_regsitry.getProfile(_user)
     
     # Create a new profile for the user using the createProfileFor function
-    profile_address: address = extcall profile_hub.createProfileFor(_user)
+    profile_address: address = extcall profile_factory_and_regsitry.createProfileFor(_user)
     
     return profile_address
 
@@ -128,7 +128,7 @@ def _addHubToOwner(_owner: address, _hub: address):
     log HubLinkedToOwner(owner=_owner, hub=_hub)
     
     # Ensure the owner has a profile and link the hub to it, but only if profile hub is set
-    if self.profileHub != empty(address):
+    if self.profileFactoryAndRegistry != empty(address):
         # This will create a profile if one doesn't exist
         profile_address: address = self._ensureProfile(_owner)
         if profile_address != empty(address):
@@ -163,10 +163,10 @@ def _removeHubFromOwner(_owner: address, _hub: address):
         log HubUnlinkedFromOwner(owner=_owner, hub=_hub)
         
         # If the owner has a profile, remove the hub from their profile
-        if self.profileHub != empty(address):
-            profile_hub: ProfileHub = ProfileHub(self.profileHub)
-            if staticcall profile_hub.hasProfile(_owner):
-                profile_address: address = staticcall profile_hub.getProfile(_owner)
+        if self.profileFactoryAndRegistry != empty(address):
+            profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+            if staticcall profile_factory_and_regsitry.hasProfile(_owner):
+                profile_address: address = staticcall profile_factory_and_regsitry.getProfile(_owner)
                 profile: Profile = Profile(profile_address)
                 extcall profile.removeCommissionHub(_hub)
 
@@ -241,11 +241,11 @@ def createGenericCommissionHub(_chain_id: uint256, _owner: address) -> address:
     assert _owner != empty(address), "Owner cannot be empty"
     
     # Create a profile for the owner if the profile hub is set and the owner doesn't have a profile yet
-    if self.profileHub != empty(address):
-        profile_hub: ProfileHub = ProfileHub(self.profileHub)
-        if not staticcall profile_hub.hasProfile(_owner):
+    if self.profileFactoryAndRegistry != empty(address):
+        profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        if not staticcall profile_factory_and_regsitry.hasProfile(_owner):
             # Create a profile for the owner using createProfileFor
-            profile_address: address = extcall profile_hub.createProfileFor(_owner)
+            profile_address: address = extcall profile_factory_and_regsitry.createProfileFor(_owner)
             # Log profile creation
             log ProfileCreated(owner=_owner, profile=profile_address)
     
@@ -288,7 +288,7 @@ def linkHubsToProfile(_owner: address):
     @param _owner The address whose hubs should be linked to their profile
     """
     # Ensure profile hub is set
-    assert self.profileHub != empty(address), "Profile hub not set"
+    assert self.profileFactoryAndRegistry != empty(address), "Profile hub not set"
     
     # Ensure the owner has a profile (creates one if needed)
     profile_address: address = self._ensureProfile(_owner)
@@ -352,27 +352,27 @@ def setL2Relay(_new_l2relay: address):
 
 # Set profile hub
 @external
-def setProfileHub(_profile_hub: address):
+def setProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
     """
-    @notice Sets the address of the ProfileHub contract and establishes bidirectional connection
+    @notice Sets the address of the ProfileFactoryAndRegistry contract and establishes bidirectional connection
     @dev This function should be called:
          1. During initial system deployment after both contracts are deployed
-         2. When upgrading to a new ProfileHub implementation
+         2. When upgrading to a new ProfileFactoryAndRegistry implementation
          3. If the connection between contracts needs to be reset
     @dev This establishes a critical link that enables:
          - Automatic linking of commission hubs to user profiles when NFT ownership changes
          - Automatic linking of existing hubs when a user creates a new profile
          - Proper unlinking of hubs when NFT ownership transfers to another user
     @dev Only the contract owner can call this function
-    @param _profile_hub The address of the ProfileHub contract
+    @param _profile_factory_and_regsitry The address of the ProfileFactoryAndRegistry contract
     """
     assert msg.sender == self.owner, "Only owner can set profile hub"
-    self.profileHub = _profile_hub
+    self.profileFactoryAndRegistry = _profile_factory_and_regsitry
     
-    # Inform the ProfileHub about this registry to establish bidirectional connection
-    if _profile_hub != empty(address):
-        profile_hub_interface: ProfileHub = ProfileHub(_profile_hub)
-        extcall profile_hub_interface.setOwnerRegistry(self)
+    # Inform the ProfileFactoryAndRegistry about this registry to establish bidirectional connection
+    if _profile_factory_and_regsitry != empty(address):
+        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_and_regsitry)
+        extcall profile_factory_and_regsitry_interface.setOwnerRegistry(self)
 
 # Get commission hubs for an owner with pagination
 @view

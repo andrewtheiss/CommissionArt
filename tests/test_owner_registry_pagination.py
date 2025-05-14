@@ -15,8 +15,8 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Deploy L2Relay and ArtCommissionHub template for OwnerRegistry
     l2_relay = project.L2Relay.deploy(sender=deployer)
@@ -25,15 +25,15 @@ def setup():
     # Deploy OwnerRegistry with the required parameters
     owner_registry = project.OwnerRegistry.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
     
-    # Set OwnerRegistry in ProfileHub
-    profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
+    # Set OwnerRegistry in ProfileFactoryAndRegistry
+    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
     
     # Set L2Relay to the deployer for testing purposes
     owner_registry.setL2Relay(deployer.address, sender=deployer)
     
     # Create a profile for the user
-    profile_hub.createProfile(sender=user)
-    user_profile_address = profile_hub.getProfile(user.address)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    user_profile_address = profile_factory_and_regsitry.getProfile(user.address)
     user_profile = project.Profile.at(user_profile_address)
     
     # Deploy multiple commission hubs for testing pagination
@@ -53,7 +53,7 @@ def setup():
     return {
         "deployer": deployer,
         "user": user,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "owner_registry": owner_registry,
         "user_profile": user_profile,
         "commission_hubs": commission_hubs

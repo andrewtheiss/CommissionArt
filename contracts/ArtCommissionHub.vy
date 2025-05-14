@@ -29,8 +29,8 @@ l1Contract: public(address)  # Address of the NFT contract on L1
 isOwnershipRescinded: public(bool)  # Flag to track if ownership has been rescinded
 is_generic: public(bool)  # Flag to indicate if this is a generic hub not tied to an NFT
 
-# Track allowed ArtPiece contracts
-whitelistedArtPieceContract: public(address)
+# Track allowed ArtPiece contracts by code hash
+approvedCodeHashes: public(HashMap[bytes32, bool])
 
 # Track commissions
 latestVerifiedArt: public(address[300])
@@ -79,8 +79,9 @@ event CommissionerWhitelisted:
     commissioner: indexed(address)
     status: bool
 
-event ArtPieceContractWhitelisted:
-    art_piece_contract: indexed(address)
+event CodeHashWhitelisted:
+    code_hash: indexed(bytes32)
+    status: bool
 
 @deploy
 def __init__():
@@ -92,7 +93,6 @@ def __init__():
     self.countVerifiedCommissions = 0
     self.countUnverifiedCommissions = 0
     self.nextLatestVerifiedArtIndex = 0
-    self.whitelistedArtPieceContract = empty(address)
     self.is_generic = False
 
 @external
@@ -172,19 +172,48 @@ def setL1Contract(_l1_contract_address: address):
     log L1ContractSet(l1_contract=_l1_contract_address)
 
 @external
-def setWhitelistedArtPieceContract(_art_piece_contract: address):
+def approveArtPieceCodeHash(_art_piece: address, _approved: bool):
     """
-    Sets the whitelisted ArtPiece contract that can be used for submissions
+    @notice Approves or removes approval for an art piece contract code hash
+    @dev Takes an art piece contract address, computes its code hash, and adds it to the whitelist
+    @param _art_piece The address of an art piece contract with the desired code
+    @param _approved Whether to approve (true) or revoke approval (false)
     """
     # Check rescinded status first
     assert not self.isOwnershipRescinded, "Ownership has been rescinded"
-    # Only owner can set the whitelisted contract
-    assert msg.sender == self.owner, "Only owner can set whitelisted contract"
-    assert _art_piece_contract != empty(address), "Invalid ArtPiece contract address"
+    # Only owner can set the whitelist
+    assert msg.sender == self.owner, "Only owner can set whitelist"
+    assert _art_piece != empty(address), "Invalid ArtPiece contract address"
+    assert self._isContract(_art_piece), "Address is not a contract"
     
-    # Set the whitelisted contract
-    self.whitelistedArtPieceContract = _art_piece_contract
-    log ArtPieceContractWhitelisted(art_piece_contract=_art_piece_contract)
+    # Compute code hash
+    code_hash: bytes32 = _art_piece.codehash
+    
+    # Set approval status
+    self.approvedCodeHashes[code_hash] = _approved
+    
+    # Log event
+    log CodeHashWhitelisted(code_hash=code_hash, status=_approved)
+
+@external
+def approveArtPieceCodeHashDirect(_code_hash: bytes32, _approved: bool):
+    """
+    @notice Directly approves or removes approval for an art piece code hash
+    @dev Allows owner to manage the whitelist using just the hash value
+    @param _code_hash The code hash to whitelist
+    @param _approved Whether to approve (true) or revoke approval (false)
+    """
+    # Check rescinded status first
+    assert not self.isOwnershipRescinded, "Ownership has been rescinded"
+    # Only owner can set the whitelist
+    assert msg.sender == self.owner, "Only owner can set whitelist"
+    assert _code_hash != empty(bytes32), "Invalid code hash"
+    
+    # Set approval status
+    self.approvedCodeHashes[_code_hash] = _approved
+    
+    # Log event
+    log CodeHashWhitelisted(code_hash=_code_hash, status=_approved)
 
 @internal
 @view
@@ -201,14 +230,28 @@ def _isContract(_addr: address) -> bool:
             size = 1
     return size > 0
 
+@view
+@external
+def isApprovedArtPieceType(_art_piece: address) -> bool:
+    """
+    @notice Checks if an art piece contract's code hash is whitelisted
+    @param _art_piece The art piece contract to check
+    @return Whether the art piece's code hash is approved
+    """
+    if not self._isContract(_art_piece):
+        return False
+        
+    code_hash: bytes32 = _art_piece.codehash
+    return self.approvedCodeHashes[code_hash]
+
 @external
 def submitCommission(_art_piece: address):
     # Need to assert that the art piece is actually an art piece
     assert self._isContract(_art_piece), "Art piece is not a contract"
     
-    # Check whitelisted contract (always enforced)
-    assert self.whitelistedArtPieceContract != empty(address), "No ArtPiece contract whitelisted"
-    assert _art_piece == self.whitelistedArtPieceContract, "Art piece is not from approved contract"
+    # Check if code hash is whitelisted
+    code_hash: bytes32 = _art_piece.codehash
+    assert self.approvedCodeHashes[code_hash], "Art piece code not approved"
 
     is_whitelisted: bool = staticcall ArtPiece(_art_piece).isOnCommissionWhitelist(msg.sender)
     
@@ -238,9 +281,9 @@ def verifyCommission(_art_piece: address, _submitter: address):
     # Only owner or authorized users can verify
     assert msg.sender == self.owner, "Not authorized to verify"
     
-    # Check whitelisted contract (always enforced)
-    assert self.whitelistedArtPieceContract != empty(address), "No ArtPiece contract whitelisted"
-    assert _art_piece == self.whitelistedArtPieceContract, "Art piece is not from approved contract"
+    # Check if code hash is whitelisted
+    code_hash: bytes32 = _art_piece.codehash
+    assert self.approvedCodeHashes[code_hash], "Art piece code not approved"
     
     # Update user's unverified count
     if self.unverifiedCountByUser[_submitter] > 0:

@@ -249,29 +249,29 @@ def deploy_profile_template(deployer, network_type="mainnet"):
         
         return profile_template
 
-def deploy_profile_hub(deployer, profile_template_address, network_type="mainnet"):
-    print("\n--- ProfileHub Setup ---")
+def deploy_profile_factory_and_regsitry(deployer, profile_template_address, network_type="mainnet"):
+    print("\n--- ProfileFactoryAndRegistry Setup ---")
     
-    existing_profile_hub_address = get_contract_address(network_type, "profileHub")
-    if existing_profile_hub_address:
-        print(f"Found existing ProfileHub in config: {existing_profile_hub_address}")
-        use_existing = input("Use existing ProfileHub? (y/n) [y]: ").strip().lower() or "y"
+    existing_profile_factory_and_regsitry_address = get_contract_address(network_type, "profileFactoryAndRegistry")
+    if existing_profile_factory_and_regsitry_address:
+        print(f"Found existing ProfileFactoryAndRegistry in config: {existing_profile_factory_and_regsitry_address}")
+        use_existing = input("Use existing ProfileFactoryAndRegistry? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.ProfileHub.at(existing_profile_hub_address)
+            return project.ProfileFactoryAndRegistry.at(existing_profile_factory_and_regsitry_address)
     
-    print("Deploying new ProfileHub on Animechain L3...")
+    print("Deploying new ProfileFactoryAndRegistry on Animechain L3...")
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
         deploy_kwargs.update(gas_params)
-        profile_hub = deployer.deploy(project.ProfileHub, profile_template_address, **deploy_kwargs)
-        print(f"ProfileHub deployed at: {profile_hub.address}")
+        profile_factory_and_regsitry = deployer.deploy(project.ProfileFactoryAndRegistry, profile_template_address, **deploy_kwargs)
+        print(f"ProfileFactoryAndRegistry deployed at: {profile_factory_and_regsitry.address}")
         
         # Update the contract address in the configuration
-        update_contract_address(network_type, "profileHub", profile_hub.address, "ProfileHub")
-        print(f"Updated profileHub address in configuration")
+        update_contract_address(network_type, "profileFactoryAndRegistry", profile_factory_and_regsitry.address, "ProfileFactoryAndRegistry")
+        print(f"Updated profileFactoryAndRegistry address in configuration")
         
-        return profile_hub
+        return profile_factory_and_regsitry
 
 def main():
     network_type = "mainnet"  # Always use mainnet
@@ -285,15 +285,15 @@ def main():
     commission_hub_template = None
     art_piece_stencil = None
     profile_template = None
-    profile_hub = None
+    profile_factory_and_regsitry = None
     
     if deploy_mode == "full":
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
         
-        # Deploy Profile template and ProfileHub
+        # Deploy Profile template and ProfileFactoryAndRegistry
         profile_template = deploy_profile_template(deployer, network_type)
-        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
+        profile_factory_and_regsitry = deploy_profile_factory_and_regsitry(deployer, profile_template.address, network_type)
         
         l1_contract = deploy_l1_query_owner(deployer, network_type)
         l2_relay = deploy_l2_relay(deployer, network_type)
@@ -327,9 +327,9 @@ def main():
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
         
-        # Deploy Profile template and ProfileHub
+        # Deploy Profile template and ProfileFactoryAndRegistry
         profile_template = deploy_profile_template(deployer, network_type)
-        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
+        profile_factory_and_regsitry = deploy_profile_factory_and_regsitry(deployer, profile_template.address, network_type)
         
         # Deploy ArtCommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)

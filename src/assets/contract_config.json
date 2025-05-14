@@ -25,17 +25,17 @@
         "address": "0xCB5ba99bAECb67F8282426d2d993888975af6d8E",
         "contract": "Profile"
       },
-      "profileHub": {
+      "profileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       },
-      "l2ProfileHub": {
+      "l2ProfileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
-        "contract": "ProfileHub" 
+        "contract": "ProfileFactoryAndRegistry" 
       },
-      "l3ProfileHub": {
+      "l3ProfileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169", 
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       }
     },
     "mainnet": {
@@ -63,17 +63,17 @@
         "address": "0xD1B46FB543f2A15560eD835857c7e90b43f66617",
         "contract": "Profile"
       },
-      "profileHub": {
+      "profileFactoryAndRegistry": {
         "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       },
-      "l2ProfileHub": {
+      "l2ProfileFactoryAndRegistry": {
         "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       },
-      "l3ProfileHub": {
+      "l3ProfileFactoryAndRegistry": {
         "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       }
     }
   },

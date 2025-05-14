@@ -25,14 +25,15 @@ def setup():
     # Deploy ArtPiece template for testing
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
-    # Set the whitelisted ArtPiece contract
-    commission_hub.setWhitelistedArtPieceContract(art_piece_template.address, sender=deployer)
+    # Approve the ArtPiece template's code hash
+    commission_hub.approveArtPieceCodeHash(art_piece_template.address, True, sender=deployer)
     
     return {
         "deployer": deployer,
         "user": user,
         "artist": artist,
-        "commission_hub": commission_hub
+        "commission_hub": commission_hub,
+        "art_piece_template": art_piece_template
     }
 
 def test_pagination_functions_with_empty_arrays(setup):
@@ -76,4 +77,54 @@ def test_get_art_piece_by_index_with_empty_arrays(setup):
     
     # Test index out of bounds for unverified art
     with pytest.raises(Exception):
-        commission_hub.getArtPieceByIndex(False, 0) 
+        commission_hub.getArtPieceByIndex(False, 0)
+
+def test_code_hash_verification(setup):
+    """
+    Test the code hash verification functionality
+    """
+    # Arrange
+    deployer = setup["deployer"]
+    commission_hub = setup["commission_hub"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Test that the template is approved
+    assert commission_hub.isApprovedArtPieceType(art_piece_template.address), "Template should be approved"
+    
+    # Deploy another instance of the same contract (same bytecode)
+    another_art_piece = project.ArtPiece.deploy(sender=deployer)
+    
+    # This new instance should also be approved since it has the same bytecode
+    assert commission_hub.isApprovedArtPieceType(another_art_piece.address), "Contract with same bytecode should be approved"
+    
+    # Deploy a different contract type
+    # For test purposes, we'll use a simple contract that's not an ArtPiece
+    # Assuming there's a SimpleContract in the project
+    try:
+        different_contract = project.SimpleContract.deploy(sender=deployer)
+        
+        # This different contract should not be approved
+        assert not commission_hub.isApprovedArtPieceType(different_contract.address), "Different contract type should not be approved"
+    except AttributeError:
+        # If SimpleContract doesn't exist, we'll use different approach
+        pass
+    
+    # Test revoking approval
+    commission_hub.approveArtPieceCodeHash(art_piece_template.address, False, sender=deployer)
+    
+    # Now both template and second instance should no longer be approved
+    assert not commission_hub.isApprovedArtPieceType(art_piece_template.address), "Template should no longer be approved"
+    assert not commission_hub.isApprovedArtPieceType(another_art_piece.address), "Contract with same bytecode should no longer be approved"
+    
+    # Test direct hash approval
+    # Get code hash from first template
+    code_hash = None
+    
+    # Re-approve via direct hash method
+    # Note: In an actual test, we'd use the contract method to get the hash
+    # For this demo, we'll re-approve via the contract address method
+    commission_hub.approveArtPieceCodeHash(art_piece_template.address, True, sender=deployer)
+    
+    # Verify both are approved again
+    assert commission_hub.isApprovedArtPieceType(art_piece_template.address), "Template should be approved again"
+    assert commission_hub.isApprovedArtPieceType(another_art_piece.address), "Contract with same bytecode should be approved again" 

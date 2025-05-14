@@ -51,7 +51,7 @@ def deploy_contracts():
                 "artCommissionHub": {"address": "", "contract": "ArtCommissionHub"},
                 "artPiece": {"address": "", "contract": "ArtPiece"},
                 "profileTemplate": {"address": "", "contract": "Profile"},
-                "profileHub": {"address": "", "contract": "ProfileHub"}
+                "profileFactoryAndRegistry": {"address": "", "contract": "ProfileFactoryAndRegistry"}
             }
             # Save the updated config
             save_config(config)
@@ -110,7 +110,7 @@ def deploy_contracts():
     commission_hub_existing_address = get_contract_address(config_network, "artCommissionHub")
     art_piece_existing_address = get_contract_address(config_network, "artPiece")
     profile_template_existing_address = get_contract_address(config_network, "profileTemplate")
-    profile_hub_existing_address = get_contract_address(config_network, "profileHub")
+    profile_factory_and_regsitry_existing_address = get_contract_address(config_network, "profileFactoryAndRegistry")
     
     # For prodtest mode, if we don't have an L1 address, prompt for one
     if network_choice == "prodtest" and not l1_existing_address:
@@ -127,7 +127,7 @@ def deploy_contracts():
     commission_hub_template = None
     art_piece_stencil = None
     profile_template = None
-    profile_hub = None
+    profile_factory_and_regsitry = None
 
     # Deploy L2Relay first with 0 parameters
     with networks.parse_network_choice(l2_network) as provider:
@@ -248,32 +248,32 @@ def deploy_contracts():
                 print(f"Error deploying Profile template: {e}")
                 sys.exit(1)
 
-    # Deploy ProfileHub on L3
+    # Deploy ProfileFactoryAndRegistry on L3
     with networks.parse_network_choice(l3_network) as provider:
-        if not full_redeploy and profile_hub_existing_address and input(f"Use existing ProfileHub at {profile_hub_existing_address}? (Y/n): ").strip().lower() != 'n':
-            print(f"Using existing ProfileHub at: {profile_hub_existing_address}")
-            profile_hub = project.ProfileHub.at(profile_hub_existing_address)
+        if not full_redeploy and profile_factory_and_regsitry_existing_address and input(f"Use existing ProfileFactoryAndRegistry at {profile_factory_and_regsitry_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ProfileFactoryAndRegistry at: {profile_factory_and_regsitry_existing_address}")
+            profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.at(profile_factory_and_regsitry_existing_address)
         else:
-            print(f"Deploying ProfileHub on {l3_network}")
+            print(f"Deploying ProfileFactoryAndRegistry on {l3_network}")
             try:
                 # For L3 deployments, we may need higher gas limits
-                gas_limit = 6000000  # Much higher gas limit for ProfileHub which might be large
-                profile_hub = deployer.deploy(
-                    project.ProfileHub,
+                gas_limit = 6000000  # Much higher gas limit for ProfileFactoryAndRegistry which might be large
+                profile_factory_and_regsitry = deployer.deploy(
+                    project.ProfileFactoryAndRegistry,
                     profile_template.address,  # Profile template address
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
-                print(f"ProfileHub deployed at: {profile_hub.address}")
+                print(f"ProfileFactoryAndRegistry deployed at: {profile_factory_and_regsitry.address}")
                 
                 # Update the frontend config
-                update_contract_address(config_network, "profileHub", profile_hub.address, "ProfileHub")
+                update_contract_address(config_network, "profileFactoryAndRegistry", profile_factory_and_regsitry.address, "ProfileFactoryAndRegistry")
                 
-                print("=" * 50)  # Delimiter after ProfileHub deployment
-                print("ProfileHub deployment completed")
+                print("=" * 50)  # Delimiter after ProfileFactoryAndRegistry deployment
+                print("ProfileFactoryAndRegistry deployment completed")
                 print("=" * 50)
             except Exception as e:
-                print(f"Error deploying ProfileHub: {e}")
+                print(f"Error deploying ProfileFactoryAndRegistry: {e}")
                 sys.exit(1)
 
     # Deploy or use existing OwnerRegistry on L3
@@ -456,7 +456,7 @@ def deploy_contracts():
         print(f"  - ArtCommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
-        print(f"  - ProfileHub: {profile_hub.address if profile_hub else 'Not deployed'}")
+        print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_regsitry.address if profile_factory_and_regsitry else 'Not deployed'}")
         print("\nNOTE: These are TEST contracts deployed to PRODUCTION networks.")
         print("They can be used for testing with real chain interactions, but should not be")
         print("considered the final production deployment.")
@@ -466,7 +466,7 @@ def deploy_contracts():
         print(f"  - ArtCommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
-        print(f"  - ProfileHub: {profile_hub.address if profile_hub else 'Not deployed'}")
+        print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_regsitry.address if profile_factory_and_regsitry else 'Not deployed'}")
     
     # Check if the contracts were properly linked
     if l2_contract:
@@ -506,7 +506,7 @@ def deploy_contracts():
     print(f"\nMake sure to use these contract addresses in your application.\n")
     print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
-    return l1_contract, l2_contract, l3_owner_registry, commission_hub_template, art_piece_stencil, profile_template, profile_hub
+    return l1_contract, l2_contract, l3_owner_registry, commission_hub_template, art_piece_stencil, profile_template, profile_factory_and_regsitry
 
 def main():
     try:

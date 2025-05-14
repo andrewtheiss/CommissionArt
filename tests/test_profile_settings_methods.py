@@ -15,15 +15,15 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Create profiles for testing
-    profile_hub.createProfile(sender=owner)
-    profile_hub.createProfile(sender=artist)
+    profile_factory_and_regsitry.createProfile(sender=owner)
+    profile_factory_and_regsitry.createProfile(sender=artist)
     
-    owner_profile_address = profile_hub.getProfile(owner.address)
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     
     owner_profile = project.Profile.at(owner_profile_address)
     artist_profile = project.Profile.at(artist_profile_address)
@@ -40,7 +40,7 @@ def setup():
         "artist": artist,
         "other_user": other_user,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
         "art_piece_template": art_piece_template
@@ -53,7 +53,7 @@ def test_initialization(setup):
     artist = setup["artist"]
     artist_profile = setup["artist_profile"]
     deployer = setup["deployer"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
     # Deploy and link ArtSales1155 for owner and artist
     owner_sales = project.ArtSales1155.deploy(owner_profile.address, owner.address, sender=deployer)
@@ -63,7 +63,7 @@ def test_initialization(setup):
     
     # Check owner profile initial state
     assert owner_profile.owner() == owner.address
-    assert owner_profile.deployer() == profile_hub.address
+    assert owner_profile.deployer() == profile_factory_and_regsitry.address
     assert owner_profile.isArtist() is False
     assert owner_profile.allowUnverifiedCommissions() is True
     assert owner_profile.profileExpansion() == "0x" + "0" * 40

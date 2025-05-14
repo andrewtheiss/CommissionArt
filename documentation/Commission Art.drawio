@@ -116,7 +116,7 @@
                 <mxCell id="g5kdfNZb34JJmgtbnOKz-171" value="" style="rounded=0;whiteSpace=wrap;html=1;shadow=1;" parent="g5kdfNZb34JJmgtbnOKz-170" vertex="1">
                     <mxGeometry y="30" width="710" height="600" as="geometry"/>
                 </mxCell>
-                <mxCell id="g5kdfNZb34JJmgtbnOKz-172" value="ProfileHub" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" parent="g5kdfNZb34JJmgtbnOKz-170" vertex="1">
+                <mxCell id="g5kdfNZb34JJmgtbnOKz-172" value="ProfileFactoryAndRegistry" style="swimlane;whiteSpace=wrap;html=1;startSize=40;" parent="g5kdfNZb34JJmgtbnOKz-170" vertex="1">
                     <mxGeometry x="40" y="220" width="200" height="220" as="geometry"/>
                 </mxCell>
                 <mxCell id="g5kdfNZb34JJmgtbnOKz-173" value="" style="whiteSpace=wrap;html=1;" parent="g5kdfNZb34JJmgtbnOKz-172" vertex="1">
@@ -544,7 +544,7 @@
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="FGytAcMrJiCwcNNB0F9V-3" value="ProfileHub" style="swimlane;whiteSpace=wrap;html=1;startSize=220;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+                <mxCell id="FGytAcMrJiCwcNNB0F9V-3" value="ProfileFactoryAndRegistry" style="swimlane;whiteSpace=wrap;html=1;startSize=220;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
                     <mxGeometry x="1250" y="1900" width="200" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="FGytAcMrJiCwcNNB0F9V-6" value="Profile" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#cce5ff;strokeColor=#36393d;" parent="1" vertex="1">

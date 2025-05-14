@@ -10,13 +10,13 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Create a profile for testing
-    profile_hub.createProfile(sender=owner)
+    profile_factory_and_regsitry.createProfile(sender=owner)
     
-    profile_address = profile_hub.getProfile(owner.address)
+    profile_address = profile_factory_and_regsitry.getProfile(owner.address)
     profile = project.Profile.at(profile_address)
     
     # Deploy ArtPiece template
@@ -26,7 +26,7 @@ def setup():
         "deployer": deployer,
         "owner": owner,
         "profile": profile,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template
     }
 

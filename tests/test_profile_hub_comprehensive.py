@@ -19,8 +19,8 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
     # Deploy ArtPiece template for createArtPiece tests
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -35,7 +35,7 @@ def setup():
         "commissioner": commissioner,
         "other_artist": other_artist,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template,
         "commission_hub": commission_hub
     }
@@ -48,12 +48,12 @@ def test_user_first_upload_creates_profile_and_art(setup):
     # Arrange
     user = setup["user"]
     artist = setup["artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Verify user doesn't have a profile yet
-    assert profile_hub.hasProfile(user.address) == False
+    assert profile_factory_and_regsitry.hasProfile(user.address) == False
     
     # Sample art piece data for first upload
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiTXkgRmlyc3QgQXJ0d29yayIsImRlc2NyaXB0aW9uIjoiVGhpcyBpcyBteSBmaXJzdCBldmVyIHVwbG9hZGVkIGFydCBwaWVjZSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFqQVA5L2c0dWFBQUFBQUVsRlRrU3VRbUNDIn0="
@@ -66,7 +66,7 @@ def test_user_first_upload_creates_profile_and_art(setup):
     
     try:
         # Act - Create profile and art piece in one transaction
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -80,10 +80,10 @@ def test_user_first_upload_creates_profile_and_art(setup):
         )
         
         # Get profile address
-        profile_address = profile_hub.getProfile(user.address)
+        profile_address = profile_factory_and_regsitry.getProfile(user.address)
         
         # Assert - Verify profile was created and registered
-        assert profile_hub.hasProfile(user.address) == True
+        assert profile_factory_and_regsitry.hasProfile(user.address) == True
         
         # Load the profile contract
         profile = project.Profile.at(profile_address)
@@ -116,12 +116,12 @@ def test_commissioner_creates_profile_and_commission(setup):
     """
     commissioner = setup["commissioner"]
     artist = setup["artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Verify commissioner doesn't have a profile yet
-    assert profile_hub.hasProfile(commissioner.address) == False
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) == False
     
     # Sample commission data
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiQXJ0IENvbW1pc3Npb24gUmVxdWVzdCIsImRlc2NyaXB0aW9uIjoiSSdkIGxpa2UgdG8gY29tbWlzc2lvbiBhIGZhbnRhc3kgbGFuZHNjYXBlIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDgvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
@@ -134,7 +134,7 @@ def test_commissioner_creates_profile_and_commission(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -148,10 +148,10 @@ def test_commissioner_creates_profile_and_commission(setup):
         )
         
         # Get profile address
-        profile_address = profile_hub.getProfile(commissioner.address)
+        profile_address = profile_factory_and_regsitry.getProfile(commissioner.address)
         
         # Verify profile was created
-        assert profile_hub.hasProfile(commissioner.address) == True
+        assert profile_factory_and_regsitry.hasProfile(commissioner.address) == True
         
         # Load the profile contract
         profile = project.Profile.at(profile_address)
@@ -183,12 +183,12 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
     Test an artist creating a profile and portfolio piece in one transaction.
     """
     other_artist = setup["other_artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Verify artist doesn't have a profile yet
-    assert profile_hub.hasProfile(other_artist.address) == False
+    assert profile_factory_and_regsitry.hasProfile(other_artist.address) == False
     
     # Sample portfolio piece data
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiUG9ydGZvbGlvIFNob3djYXNlIFBpZWNlIiwiZGVzY3JpcHRpb24iOiJNeSBiZXN0IHdvcmsgdG8gZGVtb25zdHJhdGUgbXkgc2tpbGxzIiwiaW1hZ2UiOiJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFRQUFBQUVDQUlBQUFCQ05DdkRBQUFBQXhwSlJFRlVDTmRqL0E4REFBQU5BUDkvaFpZYUFBQUFBRWxGVGtTdVFtQ0MifQ=="
@@ -201,7 +201,7 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
     
     try:
         # Create profile and portfolio piece in one transaction
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -215,10 +215,10 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
         )
         
         # Get profile address
-        profile_address = profile_hub.getProfile(other_artist.address)
+        profile_address = profile_factory_and_regsitry.getProfile(other_artist.address)
         
         # Verify profile was created
-        assert profile_hub.hasProfile(other_artist.address) == True
+        assert profile_factory_and_regsitry.hasProfile(other_artist.address) == True
         
         # Load profile and set as artist
         profile = project.Profile.at(profile_address)
@@ -255,7 +255,7 @@ def test_multiple_users_create_profiles_with_art(setup):
     artist = setup["artist"]
     commissioner = setup["commissioner"]
     other_artist = setup["other_artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
@@ -267,14 +267,14 @@ def test_multiple_users_create_profiles_with_art(setup):
         # Create multiple profiles with art
         for i, test_user in enumerate(users):
             # Skip users who already have profiles
-            if profile_hub.hasProfile(test_user.address):
+            if profile_factory_and_regsitry.hasProfile(test_user.address):
                 continue
                 
             # Create token_uri_data for this user
             token_uri_data = f'data:application/json;base64,{base64.b64encode(json.dumps({"name": titles[i], "description": f"Description for {titles[i]}", "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAA3NCSVQICAjb4U/gAAAAKElEQVQImWP8//8/AwMDAwMDI1DSWTCCTGJ8zPjI+JjxK+M3RkYmJiYA1QwJBvakF/MAAAAASUVORK5CYII="}).encode("utf-8")).decode("utf-8")}'.encode('utf-8')
             
             # Create profile and art
-            profile_hub.createNewArtPieceAndRegisterProfile(
+            profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
                 art_piece_template.address,
                 token_uri_data,
                 "avif",
@@ -288,10 +288,10 @@ def test_multiple_users_create_profiles_with_art(setup):
             )
             
             # Verify profile was created
-            assert profile_hub.hasProfile(test_user.address) == True
+            assert profile_factory_and_regsitry.hasProfile(test_user.address) == True
             
             # Load profile and verify art
-            profile = project.Profile.at(profile_hub.getProfile(test_user.address))
+            profile = project.Profile.at(profile_factory_and_regsitry.getProfile(test_user.address))
             assert profile.owner() == test_user.address
             
             # If art creation worked, verify it
@@ -312,13 +312,13 @@ def test_edge_case_max_size_art(setup):
     Test upload of art with maximum allowed data size.
     """
     user = setup["user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Create a profile first if needed
-    if not profile_hub.hasProfile(user.address):
-        profile_hub.createProfile(sender=user)
+    if not profile_factory_and_regsitry.hasProfile(user.address):
+        profile_factory_and_regsitry.createProfile(sender=user)
     
     # Generate a large base64 encoded image (just under the 45000 byte limit)
     # We'll create a placeholder - in reality we would create a valid larger image
@@ -327,7 +327,7 @@ def test_edge_case_max_size_art(setup):
     
     try:
         # Create the art piece with max size
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             large_token_uri_data,
             "avif",
@@ -341,7 +341,7 @@ def test_edge_case_max_size_art(setup):
         )
         
         # If successful, verify the art piece was created properly
-        profile = project.Profile.at(profile_hub.getProfile(user.address))
+        profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
         
         if profile.myArtCount() > 0:
             art_pieces = profile.getLatestArtPieces()
@@ -365,7 +365,7 @@ def test_ai_generated_art_flag(setup):
     Test creating profile and art with AI generated flag set.
     """
     user = setup["user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
@@ -379,7 +379,7 @@ def test_ai_generated_art_flag(setup):
     
     try:
         # Create profile and AI art
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -393,8 +393,8 @@ def test_ai_generated_art_flag(setup):
         )
         
         # Check if profile was created
-        if profile_hub.hasProfile(user.address):
-            profile = project.Profile.at(profile_hub.getProfile(user.address))
+        if profile_factory_and_regsitry.hasProfile(user.address):
+            profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
             
             # Check if art piece was created
             if profile.myArtCount() > 0:
@@ -413,16 +413,16 @@ def test_error_profile_exists_already(setup):
     Test that creating a profile with art fails if the profile already exists.
     """
     user = setup["user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Create a profile first
-    if not profile_hub.hasProfile(user.address):
-        profile_hub.createProfile(sender=user)
+    if not profile_factory_and_regsitry.hasProfile(user.address):
+        profile_factory_and_regsitry.createProfile(sender=user)
     
     # Verify user has a profile
-    assert profile_hub.hasProfile(user.address) == True
+    assert profile_factory_and_regsitry.hasProfile(user.address) == True
     
     # Sample art piece data
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiRXJyb3IgVGVzdCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiVGhpcyBzaG91bGQgZmFpbCBhcyBwcm9maWxlIGV4aXN0cyIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQENOQ3ZEQUFBQUF4cEpSRUZVQ05kai9BOERBQUFOQVArL2hRYWFBQUFBQUVsRlRrU3VRbUNDIn0="
@@ -431,7 +431,7 @@ def test_error_profile_exists_already(setup):
         # Attempt to create profile and commission when profile already exists
         # This should fail (and we're testing that it fails properly)
         with pytest.raises(Exception):
-            profile_hub.createNewArtPieceAndRegisterProfile(
+            profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
                 art_piece_template.address,
                 token_uri_data,
                 "avif",
@@ -452,14 +452,14 @@ def test_special_characters_in_title_and_description(setup):
     Test that titles and descriptions with special characters work properly.
     """
     user = setup["user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     
     # Create a profile first
-    if not profile_hub.hasProfile(user.address):
-        profile_hub.createProfile(sender=user)
+    if not profile_factory_and_regsitry.hasProfile(user.address):
+        profile_factory_and_regsitry.createProfile(sender=user)
     
-    profile_address = profile_hub.getProfile(user.address)
+    profile_address = profile_factory_and_regsitry.getProfile(user.address)
     profile = project.Profile.at(profile_address)
     
     # Special character test data
@@ -501,7 +501,7 @@ def test_create_profile_with_empty_description(setup):
     Test creating profile with art that has an empty description.
     """
     user = setup["user"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
@@ -514,7 +514,7 @@ def test_create_profile_with_empty_description(setup):
     
     try:
         # Create profile and art with empty description
-        profile_hub.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -528,8 +528,8 @@ def test_create_profile_with_empty_description(setup):
         )
         
         # Verify if creation was successful
-        if profile_hub.hasProfile(user.address):
-            profile = project.Profile.at(profile_hub.getProfile(user.address))
+        if profile_factory_and_regsitry.hasProfile(user.address):
+            profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
             
             if profile.myArtCount() > 0:
                 art_pieces = profile.getLatestArtPieces()

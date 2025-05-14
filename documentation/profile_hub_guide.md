@@ -1,4 +1,4 @@
-# ProfileHub User Guide
+# ProfileFactoryAndRegistry User Guide
 
 ## Creating a Profile with Art in One Transaction
 
@@ -42,7 +42,7 @@ Artists can upload their first portfolio piece and create their profile simultan
 
 ### Technical Details
 
-Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile` method on the ProfileHub contract, which:
+Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile` method on the ProfileFactoryAndRegistry contract, which:
 
 - Verifies you don't already have a profile
 - Creates a new Profile contract instance for you
@@ -65,7 +65,7 @@ Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile
 
 ### For Developers
 
-The `createNewArtPieceAndRegisterProfile` function in the ProfileHub contract accepts these parameters:
+The `createNewArtPieceAndRegisterProfile` function in the ProfileFactoryAndRegistry contract accepts these parameters:
 
 ```solidity
 function createNewArtPieceAndRegisterProfile(

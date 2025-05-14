@@ -32,8 +32,8 @@ def profile_template(deployer):
     return project.Profile.deploy(sender=deployer)
 
 @pytest.fixture
-def profile_hub(deployer, profile_template):
-    hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+def profile_factory_and_regsitry(deployer, profile_template):
+    hub = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     return hub
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def test_initialization(owner_registry, l2_relay, art_commission_hub_template, d
     assert owner_registry.l2Relay() == l2_relay.address
     assert owner_registry.artCommissionHubTemplate() == art_commission_hub_template.address
     assert owner_registry.owner() == deployer.address
-    assert owner_registry.profileHub() == ZERO_ADDRESS
+    assert owner_registry.profileFactoryAndRegistry() == ZERO_ADDRESS
 
 # Test NFT owner registration
 def test_register_nft_owner(owner_registry, l2_relay, user1, deployer):
@@ -133,15 +133,15 @@ def test_create_generic_commission_hub(owner_registry, user1):
     assert hubs[0] == hub_address
 
 # Test profile integration
-def test_profile_integration(owner_registry, profile_hub, deployer, user1):
+def test_profile_integration(owner_registry, profile_factory_and_regsitry, deployer, user1):
     # Set the profile hub
-    owner_registry.setProfileHub(profile_hub.address, sender=deployer)
-    profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
-    assert owner_registry.profileHub() == profile_hub.address
+    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
+    assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
     
     # Create a profile for user1
-    profile_hub.createProfile(sender=user1)
-    user1_profile = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     
     # Create a generic commission hub
     tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
@@ -156,28 +156,28 @@ def test_profile_integration(owner_registry, profile_hub, deployer, user1):
     # Verify the hub was linked to the profile
     profile = project.Profile.at(user1_profile)
     assert profile.commissionHubCount() == 1
-    profile_hubs = profile.getCommissionHubs(0, 10)
-    assert len(profile_hubs) == 1
-    assert profile_hubs[0] == hub_address
+    profile_factory_and_regsitrys = profile.getCommissionHubs(0, 10)
+    assert len(profile_factory_and_regsitrys) == 1
+    assert profile_factory_and_regsitrys[0] == hub_address
 
 # Test profile creation
-def test_profile_creation(owner_registry, profile_hub, deployer, user1):
+def test_profile_creation(owner_registry, profile_factory_and_regsitry, deployer, user1):
     # Set the profile hub
-    owner_registry.setProfileHub(profile_hub.address, sender=deployer)
-    profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
+    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
     
     # Set L2Relay to the deployer for testing purposes
     owner_registry.setL2Relay(deployer.address, sender=deployer)
     
     # Verify user1 doesn't have a profile yet
-    assert profile_hub.hasProfile(user1.address) is False
+    assert profile_factory_and_regsitry.hasProfile(user1.address) is False
     
     # Create a profile for user1 first
-    profile_hub.createProfile(sender=user1)
+    profile_factory_and_regsitry.createProfile(sender=user1)
     
     # Verify profile was created
-    assert profile_hub.hasProfile(user1.address) is True
-    user1_profile = profile_hub.getProfile(user1.address)
+    assert profile_factory_and_regsitry.hasProfile(user1.address) is True
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     
     # Create a generic commission hub
     tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
@@ -192,12 +192,12 @@ def test_profile_creation(owner_registry, profile_hub, deployer, user1):
     # Verify the hub was linked to the profile
     profile = project.Profile.at(user1_profile)
     assert profile.commissionHubCount() == 1
-    profile_hubs = profile.getCommissionHubs(0, 10)
-    assert len(profile_hubs) == 1
-    assert profile_hubs[0] == hub_address
+    profile_factory_and_regsitrys = profile.getCommissionHubs(0, 10)
+    assert len(profile_factory_and_regsitrys) == 1
+    assert profile_factory_and_regsitrys[0] == hub_address
 
 # Test linking hubs to profile
-def test_link_hubs_to_profile(owner_registry, profile_hub, deployer, user1):
+def test_link_hubs_to_profile(owner_registry, profile_factory_and_regsitry, deployer, user1):
     # Create a generic commission hub (without profile integration)
     tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
     
@@ -209,12 +209,12 @@ def test_link_hubs_to_profile(owner_registry, profile_hub, deployer, user1):
             break
     
     # Set the profile hub
-    owner_registry.setProfileHub(profile_hub.address, sender=deployer)
-    profile_hub.setOwnerRegistry(owner_registry.address, sender=deployer)
+    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
     
     # Create a profile for user1
-    profile_hub.createProfile(sender=user1)
-    user1_profile = profile_hub.getProfile(user1.address)
+    profile_factory_and_regsitry.createProfile(sender=user1)
+    user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     profile = project.Profile.at(user1_profile)
     
     # Link hubs to profile
@@ -222,9 +222,9 @@ def test_link_hubs_to_profile(owner_registry, profile_hub, deployer, user1):
     
     # Verify the hub was linked to the profile
     assert profile.commissionHubCount() == 1
-    profile_hubs = profile.getCommissionHubs(0, 10)
-    assert len(profile_hubs) == 1
-    assert profile_hubs[0] == hub_address
+    profile_factory_and_regsitrys = profile.getCommissionHubs(0, 10)
+    assert len(profile_factory_and_regsitrys) == 1
+    assert profile_factory_and_regsitrys[0] == hub_address
 
 # Test multiple generic hubs for the same owner
 def test_multiple_generic_hubs(owner_registry, user1):
@@ -274,7 +274,7 @@ def test_permissions(owner_registry, deployer, user1, l2_relay):
     
     # Only owner can set profile hub
     with reverts("Only owner can set profile hub"):
-        owner_registry.setProfileHub(user1.address, sender=user1)
+        owner_registry.setProfileFactoryAndRegistry(user1.address, sender=user1)
 
 # Test pagination of commission hubs
 def test_commission_hub_pagination(owner_registry, user1):

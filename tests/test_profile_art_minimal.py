@@ -20,9 +20,9 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     print(f"Deployed Profile template at {profile_template.address}")
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
-    print(f"Deployed ProfileHub at {profile_hub.address}")
+    # Deploy ProfileFactoryAndRegistry with the template
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    print(f"Deployed ProfileFactoryAndRegistry at {profile_factory_and_regsitry.address}")
     
     return {
         "deployer": deployer,
@@ -31,21 +31,21 @@ def setup():
         "commission_hub": commission_hub,
         "art_piece_template": art_piece_template,
         "profile_template": profile_template,
-        "profile_hub": profile_hub
+        "profile_factory_and_regsitry": profile_factory_and_regsitry
     }
 
 def test_minimal_profile_creation(setup):
     """Test the most basic profile creation"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     owner = setup["owner"]
     
     # Create a profile for the owner
-    tx = profile_hub.createProfile(sender=owner)
+    tx = profile_factory_and_regsitry.createProfile(sender=owner)
     print(f"Profile creation transaction: {tx.txn_hash}")
     
     # Verify profile was created
-    assert profile_hub.hasProfile(owner.address) is True
-    profile_address = profile_hub.getProfile(owner.address)
+    assert profile_factory_and_regsitry.hasProfile(owner.address) is True
+    profile_address = profile_factory_and_regsitry.getProfile(owner.address)
     print(f"Profile created at address: {profile_address}")
     
     # Access the profile
@@ -66,9 +66,9 @@ def test_minimal_art_piece_creation(setup):
     test_minimal_profile_creation(setup)
     
     # Get the profile directly instead of using the return value
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     owner = setup["owner"]
-    profile_address = profile_hub.getProfile(owner.address)
+    profile_address = profile_factory_and_regsitry.getProfile(owner.address)
     profile = project.Profile.at(profile_address)
     
     artist = setup["artist"] 

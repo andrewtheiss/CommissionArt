@@ -7,7 +7,7 @@ import L1QueryOwnerABI from '../assets/abis/L1QueryOwner.json';
 import L2RelayABI from '../assets/abis/L2Relay.json';
 import OwnerRegistryABI from '../assets/abis/OwnerRegistry.json';
 import ProfileABI from '../assets/abis/Profile.json';
-import ProfileHubABI from '../assets/abis/ProfileHub.json';
+import ProfileFactoryAndRegistryABI from '../assets/abis/ProfileFactoryAndRegistry.json';
 import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 
 // Map of ABI names to their actual content
@@ -20,7 +20,7 @@ const abiMap: { [key: string]: any } = {
   'L2Relay': L2RelayABI,
   'OwnerRegistry': OwnerRegistryABI,
   'Profile': ProfileABI,
-  'ProfileHub': ProfileHubABI,
+  'ProfileFactoryAndRegistry': ProfileFactoryAndRegistryABI,
   'SimpleERC721': SimpleERC721ABI,
 };
 
