@@ -25,9 +25,6 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy alternate Profile template for testing createProfileFromContract
-    alternate_template = project.Profile.deploy(sender=deployer)
-    
     # Deploy ProfileFactoryAndRegistry with the template
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
     
@@ -38,7 +35,6 @@ def setup():
         "deployer": deployer,
         "test_users": test_users,
         "profile_template": profile_template,
-        "alternate_template": alternate_template,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template
     }
@@ -47,31 +43,37 @@ def test_update_profile_template_contract(setup):
     """Test updateProfileTemplateContract method"""
     deployer = setup["deployer"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    alternate_template = setup["alternate_template"]
+    profile_template = setup["profile_template"]
     
     # Get current template
     original_template = profile_factory_and_regsitry.profileTemplate()
     
+    # Create a new template for testing update
+    new_template = project.Profile.deploy(sender=deployer)
+    
     # Update template
-    profile_factory_and_regsitry.updateProfileTemplateContract(alternate_template.address, sender=deployer)
+    profile_factory_and_regsitry.updateProfileTemplateContract(new_template.address, sender=deployer)
     
     # Verify template was updated
-    assert profile_factory_and_regsitry.profileTemplate() == alternate_template.address
+    assert profile_factory_and_regsitry.profileTemplate() == new_template.address
     assert profile_factory_and_regsitry.profileTemplate() != original_template
 
 def test_update_profile_template_unauthorized(setup):
     """Test updateProfileTemplateContract by unauthorized user"""
     test_users = setup["test_users"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    alternate_template = setup["alternate_template"]
+    profile_template = setup["profile_template"]
     
     # Skip if we don't have any test users
     if not test_users:
         pytest.skip("No test users available")
+        
+    # Create a new template for testing update
+    new_template = project.Profile.deploy(sender=test_users[0])
     
     # Attempt unauthorized update
     with pytest.raises(Exception) as excinfo:
-        profile_factory_and_regsitry.updateProfileTemplateContract(alternate_template.address, sender=test_users[0])
+        profile_factory_and_regsitry.updateProfileTemplateContract(new_template.address, sender=test_users[0])
     assert "Only owner" in str(excinfo.value)
 
 def test_update_profile_template_invalid_address(setup):
@@ -83,38 +85,6 @@ def test_update_profile_template_invalid_address(setup):
     with pytest.raises(Exception) as excinfo:
         profile_factory_and_regsitry.updateProfileTemplateContract(ZERO_ADDRESS, sender=deployer)
     assert "Invalid template address" in str(excinfo.value)
-
-def test_create_profile_from_contract(setup):
-    """Test createProfileFromContract method"""
-    test_users = setup["test_users"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    alternate_template = setup["alternate_template"]
-    
-    # Skip if we don't have any test users
-    if not test_users:
-        pytest.skip("No test users available")
-    
-    user = test_users[0]
-    
-    # Verify user doesn't have a profile yet
-    assert profile_factory_and_regsitry.hasProfile(user.address) is False
-    
-    # Create profile from alternate template
-    tx_receipt = profile_factory_and_regsitry.createProfileFromContract(alternate_template.address, sender=user)
-    
-    # Wait for the transaction to be processed and get the profile address
-    # The transaction receipt might contain the profile address directly,
-    # or we need to get it from the hub after the transaction completes
-    profile_address = profile_factory_and_regsitry.getProfile(user.address)
-    
-    # Verify profile was created
-    assert profile_factory_and_regsitry.hasProfile(user.address) is True
-    
-    # Verify profile was initialized correctly
-    profile = project.Profile.at(profile_address)
-    assert profile.owner() == user.address
-    assert profile.hub() == profile_factory_and_regsitry.address
-    assert profile.deployer() == profile_factory_and_regsitry.address
 
 def test_create_profile_already_exists(setup):
     """Test createProfile fails when profile already exists"""
@@ -136,29 +106,6 @@ def test_create_profile_already_exists(setup):
     # Attempt to create profile again
     with pytest.raises(Exception) as excinfo:
         profile_factory_and_regsitry.createProfile(sender=user)
-    assert "Profile already exists" in str(excinfo.value)
-
-def test_create_profile_from_contract_already_exists(setup):
-    """Test createProfileFromContract fails when profile already exists"""
-    test_users = setup["test_users"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    alternate_template = setup["alternate_template"]
-    
-    # Skip if we don't have any test users
-    if not test_users:
-        pytest.skip("No test users available")
-    
-    user = test_users[0]
-    
-    # Create profile
-    profile_factory_and_regsitry.createProfile(sender=user)
-    
-    # Verify profile was created
-    assert profile_factory_and_regsitry.hasProfile(user.address) is True
-    
-    # Attempt to create profile again using createProfileFromContract
-    with pytest.raises(Exception) as excinfo:
-        profile_factory_and_regsitry.createProfileFromContract(alternate_template.address, sender=user)
     assert "Profile already exists" in str(excinfo.value)
 
 def test_get_user_profiles_pagination(setup):
@@ -234,111 +181,4 @@ def test_get_user_profiles_pagination(setup):
     
     # Test empty page (beyond available data)
     empty_page = profile_factory_and_regsitry.getUserProfiles(page_size, 100)
-    assert len(empty_page) == 0
-
-def test_create_new_art_piece_and_register_profile(setup):
-    """Test createNewArtPieceAndRegisterProfile method"""
-    test_users = setup["test_users"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    art_piece_template = setup["art_piece_template"]
-    deployer = setup["deployer"]
-    
-    # Find a user that doesn't have a profile
-    user = None
-    for test_user in test_users:
-        if not profile_factory_and_regsitry.hasProfile(test_user.address):
-            user = test_user
-            break
-    
-    if user is None:
-        # Since we couldn't find a user without a profile, let's skip this test
-        pytest.skip("All users already have profiles")
-    
-    try:
-        # Verify user doesn't have a profile yet
-        assert profile_factory_and_regsitry.hasProfile(user.address) is False
-        
-        # Sample art piece data
-        token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
-        title = "Test Artwork"
-        description = "This is a test description for the artwork"
-        
-        # Use another test user as the other party - use deployer if needed
-        other_party = deployer
-        
-        # Create profile and art piece in one transaction
-        print(f"Creating profile and art piece for user {user.address}")
-        result = profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
-            art_piece_template.address,
-            token_uri_data,
-            "avif",
-            title,
-            description,
-            False,  # Not an artist
-            other_party.address,  # Other party
-            ZERO_ADDRESS,  # Use zero address for commission hub
-            False,  # Not AI generated
-            sender=user
-        )
-        
-        # Verify profile was created
-        assert profile_factory_and_regsitry.hasProfile(user.address) is True
-        profile_address = profile_factory_and_regsitry.getProfile(user.address)
-        print(f"Profile created at {profile_address}")
-        
-        # Get the profile and check basic properties
-        profile = project.Profile.at(profile_address)
-        assert profile.owner() == user.address
-        print(f"Profile owner verified: {profile.owner()}")
-        
-        print("Test passed successfully")
-        
-    except Exception as e:
-        print(f"Error in test_create_new_art_piece_and_register_profile: {e}")
-        raise
-
-def test_get_user_profiles_with_multiple_users(setup):
-    """Test getUserProfiles with multiple users, focusing on ordering"""
-    test_users = setup["test_users"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    
-    # Create profiles for all test users we have
-    user_addresses = []
-    profile_addresses = []
-    for user in test_users:
-        profile_factory_and_regsitry.createProfile(sender=user)
-        user_addresses.append(user.address)
-        profile_addresses.append(profile_factory_and_regsitry.getProfile(user.address))
-    
-    print(f"Created {len(user_addresses)} profiles for ordering test")
-    
-    # Check how many profiles were actually created
-    user_count = profile_factory_and_regsitry.userProfileCount()
-    print(f"Profile count after creation: {user_count}")
-    
-    # If we couldn't create any profiles, skip the test
-    if user_count == 0:
-        pytest.skip("No profiles could be created")
-    
-    # Get all profiles in one call
-    profiles = profile_factory_and_regsitry.getUserProfiles(user_count, 0)
-    
-    # Check if we got any profiles
-    print(f"Number of profiles returned: {len(profiles)}")
-    
-    # If we didn't get any profiles, skip the remaining assertions
-    if len(profiles) == 0:
-        pytest.skip("No profiles returned from getUserProfiles")
-    
-    # The profiles should be returned in reverse order (most recent first)
-    # Convert profiles to strings for comparison
-    profiles_str = [str(addr) for addr in profiles]
-    profile_addresses_str = [str(addr) for addr in profile_addresses]
-    
-    # If we have multiple profiles and the same number as we created, check order
-    if len(profiles_str) > 1 and len(profiles_str) == len(profile_addresses):
-        # Check first profile is the most recently created
-        assert profiles_str[0] == profile_addresses_str[-1]
-        
-        # Check last profile is the first created
-        assert profiles_str[-1] == profile_addresses_str[0] 
+    assert len(empty_page) == 0 

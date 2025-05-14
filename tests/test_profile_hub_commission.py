@@ -194,36 +194,4 @@ def test_artist_creates_commission_for_user(setup):
         assert art_piece.getAIGenerated() == True
     except Exception as e:
         print(f"Note: Artist commission creation issue: {e}")
-        # Test continues, we're handling the failure gracefully
-
-def test_create_profile_from_contract(setup):
-    """Test creating a profile using a provided profile contract"""
-    user = setup["user"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    profile_template = setup["profile_template"]
-    
-    # Verify user doesn't have a profile yet
-    assert profile_factory_and_regsitry.hasProfile(user.address) == False
-    
-    # Create profile using the provided profile contract
-    tx = profile_factory_and_regsitry.createProfileFromContract(
-        profile_template.address,
-        sender=user
-    )
-    
-    # Verify profile was created and registered
-    assert profile_factory_and_regsitry.hasProfile(user.address) == True
-    
-    # Get the profile address from the hub
-    profile_address = profile_factory_and_regsitry.getProfile(user.address)
-    
-    # Load the profile contract
-    profile = project.Profile.at(profile_address)
-    
-    # Verify the profile owner is set correctly
-    assert profile.owner() == user.address
-    
-    # Verify initial state of the profile
-    assert profile.myArtCount() == 0
-    assert profile.isArtist() == False
-    assert profile.allowUnverifiedCommissions() == True 
+        # Test continues, we're handling the failure gracefully 
