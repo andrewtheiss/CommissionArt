@@ -28,6 +28,7 @@ imageDataContracts: public(HashMap[uint256, address])
 l1Contract: public(address)  # Address of the NFT contract on L1
 isOwnershipRescinded: public(bool)  # Flag to track if ownership has been rescinded
 is_generic: public(bool)  # Flag to indicate if this is a generic hub not tied to an NFT
+isBurned: public(bool)  # Flag to track if the NFT has been burned
 
 # Track allowed ArtPiece contracts by code hash
 approvedCodeHashes: public(HashMap[bytes32, bool])
@@ -94,6 +95,7 @@ def __init__():
     self.countUnverifiedCommissions = 0
     self.nextLatestVerifiedArtIndex = 0
     self.is_generic = False
+    self.isBurned = False
 
 @external
 def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _registry: address):
@@ -144,6 +146,10 @@ def updateRegistration(_chain_id: uint256, _nft_contract: address, _token_id: ui
         self.owner = _owner
         log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
         return
+
+    # If the new owner is the empty address and the old owner isnt empty we need to burn the NFT
+    elif _owner == empty(address) and self.owner != empty(address):
+        self.isBurned = True
     
     # For NFT-based hubs, we check all parameters
     assert self.chainId == _chain_id, "Chain ID mismatch"
@@ -248,6 +254,9 @@ def isApprovedArtPieceType(_art_piece: address) -> bool:
 def submitCommission(_art_piece: address):
     # Need to assert that the art piece is actually an art piece
     assert self._isContract(_art_piece), "Art piece is not a contract"
+
+    # Make sure are piece is not burned
+    assert not self.isBurned, "Art piece has been burned"
     
     # Check if code hash is whitelisted
     code_hash: bytes32 = _art_piece.codehash
