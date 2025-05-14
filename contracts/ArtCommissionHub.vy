@@ -14,6 +14,10 @@
 # These are NFT Contracts who's children are Art Pieces and also nfts  
 # The commission hub CHANGES OWNER as the L1QueryOwner updates and propegates across chains
 
+# Constants for maximum array sizes
+MAX_UNVERIFIED_ART: constant(uint256) = 10000
+MAX_VERIFIED_ART: constant(uint256) = 10000
+
 # Interface for ArtPiece contract
 interface ArtPiece:
     def isOnCommissionWhitelist(_commissioner: address) -> bool: view
@@ -75,6 +79,10 @@ event CommissionSubmitted:
 event CommissionVerified:
     art_piece: indexed(address)
     verifier: indexed(address)
+
+event CommissionUnverified:
+    art_piece: indexed(address)
+    unverifier: indexed(address)
 
 event CommissionerWhitelisted:
     commissioner: indexed(address)
@@ -294,9 +302,29 @@ def verifyCommission(_art_piece: address, _submitter: address):
     code_hash: bytes32 = _art_piece.codehash
     assert self.approvedCodeHashes[code_hash], "Art piece code not approved"
     
-    # Update user's unverified count
-    if self.unverifiedCountByUser[_submitter] > 0:
-        self.unverifiedCountByUser[_submitter] -= 1
+    # Find the art piece in the unverified array
+    found_index: int256 = -1
+    for i: uint256 in range(0, len(self.unverifiedArt), bound=MAX_UNVERIFIED_ART):
+        if self.unverifiedArt[i] == _art_piece:
+            found_index = convert(i, int256)
+            break
+    
+    # If found, remove from unverified list by replacing with the last item
+    if found_index >= 0:
+        # Update user's unverified count
+        if self.unverifiedCountByUser[_submitter] > 0:
+            self.unverifiedCountByUser[_submitter] -= 1
+            
+        # Remove from unverified array (replace with last element and pop)
+        last_index: uint256 = len(self.unverifiedArt) - 1
+        if convert(found_index, uint256) != last_index:  # If not already the last element
+            self.unverifiedArt[convert(found_index, uint256)] = self.unverifiedArt[last_index]
+        self.unverifiedArt.pop()  # Remove last element
+        self.countUnverifiedCommissions -= 1
+    else:
+        # If not found in unverified array, just decrease the unverified count for the user
+        if self.unverifiedCountByUser[_submitter] > 0:
+            self.unverifiedCountByUser[_submitter] -= 1
     
     # Add to verified list
     self.verifiedArt.append(_art_piece)
@@ -307,6 +335,45 @@ def verifyCommission(_art_piece: address, _submitter: address):
     self.nextLatestVerifiedArtIndex = (self.nextLatestVerifiedArtIndex + 1) % 300
     
     log CommissionVerified(art_piece=_art_piece, verifier=msg.sender)
+
+@external
+def unverifyCommission(_art_piece: address, _submitter: address):
+    """
+    @notice Moves a commission from verified to unverified status
+    @dev Only the owner can unverify commissions
+    @param _art_piece The address of the art piece to unverify
+    @param _submitter The address of the user who submitted the commission
+    """
+    # Only owner can unverify
+    assert msg.sender == self.owner, "Not authorized to unverify"
+    
+    # Find the art piece in the verified array
+    found_index: int256 = -1
+    for i: uint256 in range(0, len(self.verifiedArt), bound=MAX_VERIFIED_ART):
+        if self.verifiedArt[i] == _art_piece:
+            found_index = convert(i, int256)
+            break
+    
+    # If found, remove from verified list
+    if found_index >= 0:
+        # Remove from verified array (replace with last element and pop)
+        last_index: uint256 = len(self.verifiedArt) - 1
+        if convert(found_index, uint256) != last_index:  # If not already the last element
+            self.verifiedArt[convert(found_index, uint256)] = self.verifiedArt[last_index]
+        self.verifiedArt.pop()  # Remove last element
+        self.countVerifiedCommissions -= 1
+        
+        # Update the submitter's unverified count
+        self.unverifiedCountByUser[_submitter] += 1
+        
+        # Add to unverified list
+        self.unverifiedArt.append(_art_piece)
+        self.countUnverifiedCommissions += 1
+        
+        log CommissionUnverified(art_piece=_art_piece, unverifier=msg.sender)
+    else:
+        # If not found in verified array, revert
+        assert False, "Art piece not found in verified list"
 
 @view
 @external
