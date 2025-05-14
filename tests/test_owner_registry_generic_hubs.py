@@ -528,7 +528,7 @@ def test_create_generic_commission_hub_permission_denial(setup):
         assert False, "Should have failed with permission error"
     except Exception as e:
         # Check that the error message matches what we expect
-        assert "Only the owner can create their own commission hub" in str(e), "Incorrect error message"
+        assert "Only the owner can create their own generic commission hub" in str(e), "Incorrect error message"
     
     # Verify no hub was created
     assert owner_registry.getCommissionHubCountForOwner(user1.address) == 0 
