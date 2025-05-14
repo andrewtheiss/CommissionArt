@@ -396,7 +396,7 @@ def test_full_profile_verification(setup):
     # STEP 6: Verify in Profile contract
     profile = project.Profile.at(profile_address)
     assert profile.owner() == new_user.address, "Profile owner mismatch"
-    assert profile.hub() == profile_factory_and_regsitry.address, "Profile hub mismatch"
+    assert profile.hub() == profile_factory_and_regsitry.address, "Profile-Factory-And-Registry mismatch"
     
     # STEP 7: Verify in OwnerRegistry
     assert owner_registry.getCommissionHubCountForOwner(new_user.address) == 1, "Hub count mismatch in OwnerRegistry"
@@ -496,3 +496,39 @@ def test_automatic_profile_creation(setup):
     
     assert profile_created_event is not None, "ProfileCreated event not found"
     assert profile_created_event.profile == profile_address 
+
+def test_create_generic_commission_hub_owner_permission(setup):
+    """Test that an owner can create a generic hub for themselves"""
+    owner_registry = setup["owner_registry"]
+    user1 = setup["user1"]
+    
+    # User creates a hub for themselves - should succeed
+    tx = owner_registry.createGenericCommissionHub(1, user1.address, sender=user1)
+    
+    # Extract the hub address from the event
+    hub_address = None
+    for event in tx.events:
+        if hasattr(event, 'commission_hub') and hasattr(event, 'owner') and event.owner == user1.address:
+            hub_address = event.commission_hub
+            break
+    
+    assert hub_address is not None, "Commission hub should be created successfully"
+    assert owner_registry.isGeneric(hub_address) is True
+    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 1
+
+def test_create_generic_commission_hub_permission_denial(setup):
+    """Test that only the owner can create a generic hub for themselves"""
+    owner_registry = setup["owner_registry"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    # User2 tries to create a hub for user1 - should fail
+    try:
+        owner_registry.createGenericCommissionHub(1, user1.address, sender=user2)
+        assert False, "Should have failed with permission error"
+    except Exception as e:
+        # Check that the error message matches what we expect
+        assert "Only the owner can create their own commission hub" in str(e), "Incorrect error message"
+    
+    # Verify no hub was created
+    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 0 

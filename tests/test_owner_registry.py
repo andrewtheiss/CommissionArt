@@ -134,7 +134,7 @@ def test_create_generic_commission_hub(owner_registry, user1):
 
 # Test profile integration
 def test_profile_integration(owner_registry, profile_factory_and_regsitry, deployer, user1):
-    # Set the profile hub
+    # Set the profile-factory-and-registry
     owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
     assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
@@ -162,7 +162,7 @@ def test_profile_integration(owner_registry, profile_factory_and_regsitry, deplo
 
 # Test profile creation
 def test_profile_creation(owner_registry, profile_factory_and_regsitry, deployer, user1):
-    # Set the profile hub
+    # Set the profile-factory-and-registry
     owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
     
@@ -208,7 +208,7 @@ def test_link_hubs_to_profile(owner_registry, profile_factory_and_regsitry, depl
             hub_address = event.commission_hub
             break
     
-    # Set the profile hub
+    # Set the profile-factory-and-registry
     owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
     
@@ -272,8 +272,8 @@ def test_permissions(owner_registry, deployer, user1, l2_relay):
     with reverts("Only owner can set commission hub template"):
         owner_registry.setArtCommissionHubTemplate(user1.address, sender=user1)
     
-    # Only owner can set profile hub
-    with reverts("Only owner can set profile hub"):
+    # Only owner can set profile-factory-and-registry
+    with reverts("Only owner can set profile-factory-and-registry"):
         owner_registry.setProfileFactoryAndRegistry(user1.address, sender=user1)
 
 # Test pagination of commission hubs

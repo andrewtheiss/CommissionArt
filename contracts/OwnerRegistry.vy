@@ -28,7 +28,7 @@ ownerToCommissionHubs: public(HashMap[address, DynArray[address, 10**6]])  # own
 # Track which commission hubs are generic (not tied to NFTs)
 isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
 
-# Profile Hub address
+# Profile-Factory-And-Registry address
 profileFactoryAndRegistry: public(address)
 
 interface ArtCommissionHub:
@@ -97,7 +97,7 @@ def _ensureProfile(_user: address) -> address:
     @return The address of the user's profile
     """
     if self.profileFactoryAndRegistry == empty(address):
-        return empty(address)  # Profile hub not set, can't create profiles
+        return empty(address)  # Profile-Factory-And-Registry not set, can't create profiles
     
     profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
     
@@ -127,7 +127,7 @@ def _addHubToOwner(_owner: address, _hub: address):
     # Emit event for tracking
     log HubLinkedToOwner(owner=_owner, hub=_hub)
     
-    # Ensure the owner has a profile and link the hub to it, but only if profile hub is set
+    # Ensure the owner has a profile and link the hub to it, but only if profile-factory-and-registry is set
     if self.profileFactoryAndRegistry != empty(address):
         # This will create a profile if one doesn't exist
         profile_address: address = self._ensureProfile(_owner)
@@ -239,8 +239,11 @@ def createGenericCommissionHub(_chain_id: uint256, _owner: address) -> address:
     """
     # Ensure the owner address is valid
     assert _owner != empty(address), "Owner cannot be empty"
+
+    # Only the owner can create their own commission hub
+    assert msg.sender == _owner, "Only the owner can create their own generic commission hub"
     
-    # Create a profile for the owner if the profile hub is set and the owner doesn't have a profile yet
+    # Create a profile for the owner if the profile-factory-and-registry is set and the owner doesn't have a profile yet
     if self.profileFactoryAndRegistry != empty(address):
         profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
         if not staticcall profile_factory_and_regsitry.hasProfile(_owner):
@@ -287,8 +290,8 @@ def linkHubsToProfile(_owner: address):
          or to repair links if they become out of sync
     @param _owner The address whose hubs should be linked to their profile
     """
-    # Ensure profile hub is set
-    assert self.profileFactoryAndRegistry != empty(address), "Profile hub not set"
+    # Ensure profile-factory-and-registry is set
+    assert self.profileFactoryAndRegistry != empty(address), "Profile-Factory-And-Registry not set"
     
     # Ensure the owner has a profile (creates one if needed)
     profile_address: address = self._ensureProfile(_owner)
@@ -350,7 +353,7 @@ def setL2Relay(_new_l2relay: address):
     self.l2Relay = _new_l2relay
     log L2RelaySet(l2Relay=_new_l2relay)
 
-# Set profile hub
+# Set profile-factory-and-registry
 @external
 def setProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
     """
@@ -366,7 +369,7 @@ def setProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
     @dev Only the contract owner can call this function
     @param _profile_factory_and_regsitry The address of the ProfileFactoryAndRegistry contract
     """
-    assert msg.sender == self.owner, "Only owner can set profile hub"
+    assert msg.sender == self.owner, "Only owner can set profile-factory-and-registry"
     self.profileFactoryAndRegistry = _profile_factory_and_regsitry
     
     # Inform the ProfileFactoryAndRegistry about this registry to establish bidirectional connection

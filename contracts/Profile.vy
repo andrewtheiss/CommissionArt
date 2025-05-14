@@ -806,7 +806,7 @@ def addCommissionHub(_hub: address):
     # Check if we have an owner registry first
     registry_address: address = empty(address)
     if self.hub != empty(address):
-        # Try to get the owner registry from the profile hub
+        # Try to get the owner registry from the profile-factory-and-registry
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
         registry_address = staticcall profile_factory_and_regsitry_interface.ownerRegistry()
     
@@ -840,7 +840,7 @@ def removeCommissionHub(_hub: address):
     # Check if we have an owner registry first
     registry_address: address = empty(address)
     if self.hub != empty(address):
-        # Try to get the owner registry from the profile hub
+        # Try to get the owner registry from the profile-factory-and-registry
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
         registry_address = staticcall profile_factory_and_regsitry_interface.ownerRegistry()
     

@@ -27,7 +27,7 @@ User creates commissioned work on a new profile.  This will create their profile
 
 
 
- registering the profile in the profile hub, registering the SECOND profile if the user destination address doesn't have a profile and you are registering a piece on someone else's profile, 
+ registering the profile in the profile-factory-and-registry, registering the SECOND profile if the user destination address doesn't have a profile and you are registering a piece on someone else's profile, 
 
 TODO: 
 Last and finally i need a way for any number of ArtCommissionHubs to be associated with a profile.  When the ArtCommissionHub updates to a new user, i need that users profile to show all the recent art.  I also need the ArtCommissionHub of the previous owner to be unregistered as they no longer are the owner of the ACH work.  
@@ -51,7 +51,7 @@ Simplifies and clarifies that it represents individual art pieces.
 
 
 1. it should automatically unlink the hub as the hub links to the new owner's profile.
-2. if the profile doesnt exist, i need to create the profile.  anyone can create a profile for anyone, but the profile account address remains the owner of that profile.  the profile will always be registered to the profile hub on creation.  also yes create the profile.
+2. if the profile doesnt exist, i need to create the profile.  anyone can create a profile for anyone, but the profile account address remains the owner of that profile.  the profile will always be registered to the profile-factory-and-registry on creation.  also yes create the profile.
 3. A group commission is actually a single commission done without a NFT-based ArtCommissionHub but a more generic ArtCommissionHub.  in reality a group commission is a single artist making an ArtPiece.  that artPiece has a bunch of tagged individuals.
 There also is the need for a ArtCommissionHub which is owned by a 3rd party wallet , multisig, single account and chainId and not specifically attached to an NFT collection.  This needs to be addressed.
 4. Yes, every time an ArtCommissionHub is created, it needs to be Registered.

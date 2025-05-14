@@ -13,6 +13,24 @@
 # Has a list of artists that have commissioned the piece
 # Implements ERC721 for a single token NFT
 
+
+#
+# TODO - This is to be supported in the second phase....
+#
+#   This includes the following issues between the two art pieces 
+# On-chain ArtPieces (ArtPiece.vy):
+# Track whether they've ever been attached to a hub with everAttachedToHub
+# Permanently block transfers if they've ever been attached with:
+# Apply to ArtPieceOffC...
+# "
+# Once attached, the piece is permanently locked to the hub
+# Off-chain ArtPieces (ArtPieceOffChain.vy):
+# DO NOT have the everAttachedToHub variable
+# Track current attachment status but not historical attachment
+# Allow normal ERC721 transfers without restrictions
+# No code prevents transfers even when attachedToArtCommissionHub is true
+#
+
 # Interface for ArtCommissionHub
 interface ArtCommissionHub:
     def owner() -> address: view

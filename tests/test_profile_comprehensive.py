@@ -40,7 +40,7 @@ def setup():
     }
 
 def test_profile_creation(setup):
-    """Test creating a profile through the profile hub"""
+    """Test creating a profile through the profile-factory-and-registry"""
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     
