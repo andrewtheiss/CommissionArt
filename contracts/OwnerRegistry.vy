@@ -353,6 +353,13 @@ def setL2Relay(_new_l2relay: address):
     self.l2Relay = _new_l2relay
     log L2RelaySet(l2Relay=_new_l2relay)
 
+# IMPORTANT: Deployment Order Requirements
+# This function MUST be called after both contracts are deployed in this order:
+# 1. Deploy ProfileFactoryAndRegistry
+# 2. Deploy OwnerRegistry
+# 3. Call setProfileFactoryAndRegistry on OwnerRegistry
+# Failure to call this function will prevent automatic linking of commission hubs to profiles,
+# causing hubs to be invisible in user profiles until manually linked.
 # Set profile-factory-and-registry
 @external
 def setProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):

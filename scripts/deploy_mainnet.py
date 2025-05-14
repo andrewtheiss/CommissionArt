@@ -303,6 +303,36 @@ def main():
         
         owner_registry = deploy_owner_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
         update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
+        
+        # CRITICAL: Establish bidirectional connection between OwnerRegistry and ProfileFactoryAndRegistry
+        print("\n--- Setting up bidirectional connection between contracts ---")
+        with networks.parse_network_choice("ethereum:animechain") as provider:
+            gas_params = get_optimized_gas_params(provider)
+            tx_kwargs = {}
+            tx_kwargs.update(gas_params)
+            print(f"Connecting OwnerRegistry ({owner_registry.address}) to ProfileFactoryAndRegistry ({profile_factory_and_regsitry.address})")
+            try:
+                # This call is critical - it sets up the bidirectional connection
+                # Without it, commission hubs won't be automatically linked to profiles
+                tx = owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
+                print(f"Bidirectional connection established successfully")
+                
+                # Verify the connection
+                registry_from_factory = profile_factory_and_regsitry.ownerRegistry()
+                factory_from_registry = owner_registry.profileFactoryAndRegistry()
+                print(f"Verification: ProfileFactoryAndRegistry points to: {registry_from_factory}")
+                print(f"Verification: OwnerRegistry points to: {factory_from_registry}")
+                
+                if registry_from_factory != owner_registry.address:
+                    print(f"WARNING: Verification failed - ProfileFactoryAndRegistry not pointing to OwnerRegistry")
+                if factory_from_registry != profile_factory_and_regsitry.address:
+                    print(f"WARNING: Verification failed - OwnerRegistry not pointing to ProfileFactoryAndRegistry")
+            except Exception as e:
+                print(f"Error establishing bidirectional connection: {e}")
+                print(f"CRITICAL: You must manually call setProfileFactoryAndRegistry later using:")
+                print(f"OwnerRegistry.setProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
+        
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
             gas_params = get_optimized_gas_params(provider)
             tx_kwargs = {}
@@ -345,6 +375,36 @@ def main():
         if not ch_address:
             ch_address = input("Enter ArtCommissionHub template address: ").strip()
         owner_registry = deploy_owner_registry(deployer, l2_address, ch_address, network_type)
+        
+        # CRITICAL: Establish bidirectional connection between OwnerRegistry and ProfileFactoryAndRegistry
+        if profile_factory_and_regsitry and owner_registry:
+            print("\n--- Setting up bidirectional connection between contracts ---")
+            with networks.parse_network_choice("ethereum:animechain") as provider:
+                gas_params = get_optimized_gas_params(provider)
+                tx_kwargs = {}
+                tx_kwargs.update(gas_params)
+                print(f"Connecting OwnerRegistry ({owner_registry.address}) to ProfileFactoryAndRegistry ({profile_factory_and_regsitry.address})")
+                try:
+                    # This call is critical - it sets up the bidirectional connection
+                    # Without it, commission hubs won't be automatically linked to profiles
+                    tx = owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
+                    print(f"Bidirectional connection established successfully")
+                    
+                    # Verify the connection
+                    registry_from_factory = profile_factory_and_regsitry.ownerRegistry()
+                    factory_from_registry = owner_registry.profileFactoryAndRegistry()
+                    print(f"Verification: ProfileFactoryAndRegistry points to: {registry_from_factory}")
+                    print(f"Verification: OwnerRegistry points to: {factory_from_registry}")
+                    
+                    if registry_from_factory != owner_registry.address:
+                        print(f"WARNING: Verification failed - ProfileFactoryAndRegistry not pointing to OwnerRegistry")
+                    if factory_from_registry != profile_factory_and_regsitry.address:
+                        print(f"WARNING: Verification failed - OwnerRegistry not pointing to ProfileFactoryAndRegistry")
+                except Exception as e:
+                    print(f"Error establishing bidirectional connection: {e}")
+                    print(f"CRITICAL: You must manually call setProfileFactoryAndRegistry later using:")
+                    print(f"OwnerRegistry.setProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                    print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
     
     if deploy_mode != "full" and input("Update L2Relay with L3 OwnerRegistry address? (y/n): ").strip().lower() == 'y':
         if not l2_relay:

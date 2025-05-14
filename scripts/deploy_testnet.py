@@ -440,6 +440,33 @@ def deploy_contracts():
                 print(f"You will need to manually register L1QueryOwner later using:")
                 print(f"L2Relay.updateCrossChainQueryOwnerContract({l1_contract.address}, {l1_chain_id})")
 
+    # CRITICAL: Establish bidirectional connection between OwnerRegistry and ProfileFactoryAndRegistry
+    if l3_owner_registry and profile_factory_and_regsitry:
+        with networks.parse_network_choice(l3_network) as provider:
+            print(f"\n=== Setting up bidirectional connection between contracts ===")
+            print(f"Connecting OwnerRegistry ({l3_owner_registry.address}) to ProfileFactoryAndRegistry ({profile_factory_and_regsitry.address})")
+            try:
+                # This call is critical - it sets up the bidirectional connection
+                # Without it, commission hubs won't be automatically linked to profiles
+                tx = l3_owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address)
+                print(f"Bidirectional connection established successfully")
+                
+                # Verify the connection
+                registry_from_factory = profile_factory_and_regsitry.ownerRegistry()
+                factory_from_registry = l3_owner_registry.profileFactoryAndRegistry()
+                print(f"Verification: ProfileFactoryAndRegistry points to: {registry_from_factory}")
+                print(f"Verification: OwnerRegistry points to: {factory_from_registry}")
+                
+                if registry_from_factory != l3_owner_registry.address:
+                    print(f"WARNING: Verification failed - ProfileFactoryAndRegistry not pointing to OwnerRegistry")
+                if factory_from_registry != profile_factory_and_regsitry.address:
+                    print(f"WARNING: Verification failed - OwnerRegistry not pointing to ProfileFactoryAndRegistry")
+            except Exception as e:
+                print(f"Error establishing bidirectional connection: {e}")
+                print(f"CRITICAL: You must manually call setProfileFactoryAndRegistry later using:")
+                print(f"OwnerRegistry.setProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
+
     # Print deployment summary
     print("\n=== Deployment Summary ===")
     print(f"Network: {network_choice}")
