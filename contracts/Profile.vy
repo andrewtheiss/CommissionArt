@@ -103,13 +103,17 @@ def __init__():
 
 # Initialization Function
 @external
-def initialize(_owner: address):
+def initialize(_owner: address, _profile_social: address):
     assert self.owner == empty(address), "Already initialized"
     self.owner = _owner
     self.hub = msg.sender  # Set the hub to be the contract that called initialize
     self.deployer = msg.sender  # Also set deployer to be the same as hub for backward compatibility
     self.allowUnverifiedCommissions = True  # Default to allowing commissions
-    self.profileSocial = empty(address)
+    
+    # Set the profileSocial link permanently
+    assert _profile_social != empty(address), "Profile social address cannot be empty"
+    self.profileSocial = _profile_social
+    
     self.isArtist = False  # Default to non-artist
     
     # Initialize counters
@@ -123,12 +127,6 @@ def initialize(_owner: address):
 def setAllowUnverifiedCommissions(_allow: bool):
     assert msg.sender == self.owner, "Only owner can set allow new commissions"
     self.allowUnverifiedCommissions = _allow
-
-# Set profile social address
-@external
-def setProfileSocial(_address: address):
-    assert msg.sender == self.owner, "Only owner can set profile social"
-    self.profileSocial = _address
 
 # Add address to whitelist
 @external

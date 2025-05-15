@@ -172,8 +172,16 @@ def test_art_piece_interface_change(setup):
     # Now check that the Profile can create art pieces properly
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
-    # Deploy ProfileFactoryAndRegistry with the required profile_template address
-    profile_factory = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry with the required template addresses
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Create profile for artist
     profile_factory.createProfile(sender=artist)
@@ -187,6 +195,17 @@ def test_art_piece_interface_change(setup):
     # Verify the profile exists and is correctly associated with the artist
     assert profile_factory.hasProfile(artist.address), "Artist should have a profile"
     assert artist_profile_contract != ZERO_ADDRESS, "Artist profile should not be zero address"
+    
+    # Verify ProfileSocial was created and linked
+    profile_social_address = artist_profile_contract.profileSocial()
+    assert profile_social_address != ZERO_ADDRESS, "Profile should have a linked ProfileSocial"
+    
+    # Get the ProfileSocial contract
+    profile_social_contract = project.ProfileSocial.at(profile_social_address)
+    
+    # Verify bidirectional link
+    assert profile_social_contract.profile() == artist_profile, "ProfileSocial should link back to Profile"
+    assert profile_social_contract.owner() == artist.address, "ProfileSocial should have the same owner as Profile"
 
 def test_verification_flow(setup):
     """Test the full verification flow for a commission piece"""
@@ -239,4 +258,4 @@ def test_verification_flow(setup):
     
     # Assert final state
     assert commission_piece.artistVerified(), "Artist side should now be verified"
-    assert commission_piece.isFullyVerifiedCommission(), "Commission should now be fully verified" 
+    assert commission_piece.isFullyVerifiedCommission(), "Commission should now be fully verified"

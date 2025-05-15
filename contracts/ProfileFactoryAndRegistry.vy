@@ -15,7 +15,7 @@
 
 interface Profile:
     def deployer() -> address: view
-    def initialize(_owner: address): nonpayable
+    def initialize(_owner: address, _profile_social: address): nonpayable
     def createArtPiece(
         _art_piece_template: address, 
         _token_uri_data: Bytes[45000], 
@@ -33,12 +33,16 @@ interface Profile:
     def allowUnverifiedCommissions() -> bool: view
     def addCommission(_commission: address): nonpayable
 
+interface ProfileSocial:
+    def initialize(_owner: address, _profile: address): nonpayable
+
 interface OwnerRegistry:
     def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
     def getCommissionHubCountForOwner(_owner: address) -> uint256: view
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
+profileSocialTemplate: public(address)  # Address of the profile social contract template to clone
 accountToProfile: public(HashMap[address, address])  # Maps user address to profile contract
 userProfileCount: public(uint256)  # Total number of registered user profiles
 latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
@@ -48,12 +52,17 @@ ownerRegistry: public(address)  # Address of the OwnerRegistry contract
 event ProfileCreated:
     user: indexed(address)
     profile: indexed(address)
+    social: indexed(address)
 
 event OwnershipTransferred:
     previous_owner: indexed(address)
     new_owner: indexed(address)
 
 event ProfileTemplateUpdated:
+    previous_template: indexed(address)
+    new_template: indexed(address)
+    
+event ProfileSocialTemplateUpdated:
     previous_template: indexed(address)
     new_template: indexed(address)
     
@@ -72,12 +81,13 @@ event OwnerRegistrySet:
     registry: indexed(address)
 
 @deploy
-def __init__(_profile_template: address):
+def __init__(_profile_template: address, _profile_social_template: address):
     self.owner = msg.sender
     # Verify the profile template was deployed by the same address
     template_deployer: address = staticcall Profile(_profile_template).deployer()
     assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
+    self.profileSocialTemplate = _profile_social_template
     self.userProfileCount = 0
     self.ownerRegistry = empty(address)
 
@@ -145,8 +155,15 @@ def createProfile():
     profile: address = create_minimal_proxy_to(self.profileTemplate)
     profile_instance: Profile = Profile(profile)
     
+    # Create a new profile social contract for the user
+    profile_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+    profile_social_instance: ProfileSocial = ProfileSocial(profile_social)
+    
     # Initialize the profile with the user as the owner
-    extcall profile_instance.initialize(msg.sender)
+    extcall profile_instance.initialize(msg.sender, profile_social)
+    
+    # Initialize the profile social with the user and profile
+    extcall profile_social_instance.initialize(msg.sender, profile)
     
     # Update our records
     # TODO - actuall save the latest 10 even if we max out
@@ -162,7 +179,7 @@ def createProfile():
     # Link any existing commission hubs from the OwnerRegistry
     self._linkExistingHubs(msg.sender, profile)
     
-    log ProfileCreated(user=msg.sender, profile=profile)
+    log ProfileCreated(user=msg.sender, profile=profile, social=profile_social)
 
 @external
 def createProfileFor(_user: address) -> address:
@@ -183,8 +200,15 @@ def createProfileFor(_user: address) -> address:
     profile: address = create_minimal_proxy_to(self.profileTemplate)
     profile_instance: Profile = Profile(profile)
     
+    # Create a new profile social contract for the user
+    profile_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+    profile_social_instance: ProfileSocial = ProfileSocial(profile_social)
+    
     # Initialize the profile with the specified user as the owner
-    extcall profile_instance.initialize(_user)
+    extcall profile_instance.initialize(_user, profile_social)
+    
+    # Initialize the profile social with the user and profile
+    extcall profile_social_instance.initialize(_user, profile)
     
     # Update our records
     if (self.userProfileCount < 1000):
@@ -199,7 +223,7 @@ def createProfileFor(_user: address) -> address:
     # Link any existing commission hubs from the OwnerRegistry
     self._linkExistingHubs(_user, profile)
     
-    log ProfileCreated(user=_user, profile=profile)
+    log ProfileCreated(user=_user, profile=profile, social=profile_social)
     
     return profile
 
@@ -303,8 +327,15 @@ def createNewArtPieceAndRegisterProfile(
     profile: address = create_minimal_proxy_to(self.profileTemplate)
     profile_instance: Profile = Profile(profile)
     
+    # Create a new profile social contract for the user
+    profile_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+    profile_social_instance: ProfileSocial = ProfileSocial(profile_social)
+    
     # Initialize the profile
-    extcall profile_instance.initialize(msg.sender)
+    extcall profile_instance.initialize(msg.sender, profile_social)
+    
+    # Initialize the profile social with the user and profile
+    extcall profile_social_instance.initialize(msg.sender, profile)
     
     # Update profile records
     if (self.userProfileCount < 1000):
@@ -319,7 +350,7 @@ def createNewArtPieceAndRegisterProfile(
     # Link any existing commission hubs from the OwnerRegistry
     self._linkExistingHubs(msg.sender, profile)
     
-    log ProfileCreated(user=msg.sender, profile=profile)
+    log ProfileCreated(user=msg.sender, profile=profile, social=profile_social)
     
     # Create the art piece on the profile
     art_piece: address = extcall profile_instance.createArtPiece(
@@ -392,8 +423,15 @@ def createArtPieceForParty(
         caller_profile = create_minimal_proxy_to(self.profileTemplate)
         caller_profile_instance: Profile = Profile(caller_profile)
         
+        # Create a new profile social contract for the caller
+        caller_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+        caller_social_instance: ProfileSocial = ProfileSocial(caller_social)
+        
         # Initialize the profile with the caller as the owner
-        extcall caller_profile_instance.initialize(msg.sender)
+        extcall caller_profile_instance.initialize(msg.sender, caller_social)
+        
+        # Initialize the profile social with the caller and profile
+        extcall caller_social_instance.initialize(msg.sender, caller_profile)
         
         # Update our records
         if (self.userProfileCount < 1000):
@@ -408,7 +446,7 @@ def createArtPieceForParty(
         # Link any existing commission hubs from the OwnerRegistry
         self._linkExistingHubs(msg.sender, caller_profile)
         
-        log ProfileCreated(user=msg.sender, profile=caller_profile)
+        log ProfileCreated(user=msg.sender, profile=caller_profile, social=caller_social)
     
     # Check if the other party has a profile, create one if not
     other_profile: address = self.accountToProfile[_other_party]
@@ -417,8 +455,15 @@ def createArtPieceForParty(
         other_profile = create_minimal_proxy_to(self.profileTemplate)
         other_profile_instance: Profile = Profile(other_profile)
         
+        # Create a new profile social contract for the other party
+        other_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+        other_social_instance: ProfileSocial = ProfileSocial(other_social)
+        
         # Initialize the profile with the other party as the owner
-        extcall other_profile_instance.initialize(_other_party)
+        extcall other_profile_instance.initialize(_other_party, other_social)
+        
+        # Initialize the profile social with the other party and profile
+        extcall other_social_instance.initialize(_other_party, other_profile)
         
         # Update our records
         if (self.userProfileCount < 1000):
@@ -433,7 +478,7 @@ def createArtPieceForParty(
         # Link any existing commission hubs from the OwnerRegistry
         self._linkExistingHubs(_other_party, other_profile)
         
-        log ProfileCreated(user=_other_party, profile=other_profile)
+        log ProfileCreated(user=_other_party, profile=other_profile, social=other_social)
     
     # Get the profile instances
     caller_profile_instance: Profile = Profile(caller_profile)
@@ -629,3 +674,15 @@ def getLatestProfilesPaginated(_page: uint256, _page_size: uint256) -> DynArray[
                 result.append(profile_address)
     
     return result
+
+@external
+def updateProfileSocialTemplateContract(_new_template: address):
+    """
+    @notice Updates the profile social template contract address
+    @param _new_template The address of the new profile social template contract
+    """
+    assert msg.sender == self.owner, "Only owner can update template"
+    assert _new_template != empty(address), "Invalid template address"
+    
+    log ProfileSocialTemplateUpdated(previous_template=self.profileSocialTemplate, new_template=_new_template)
+    self.profileSocialTemplate = _new_template

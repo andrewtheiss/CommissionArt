@@ -7,19 +7,23 @@ PAGE_SIZE: constant(uint256) = 20
 MAX_ITEMS: constant(uint256) = 10**8
 
 owner: public(address)
+profile: public(address)  # The address of the profile this social contract belongs to
 likedProfiles: public(DynArray[address, MAX_ITEMS])
 likedProfileCount: public(uint256)
 linkedProfiles: public(DynArray[address, MAX_ITEMS])
 linkedProfileCount: public(uint256)
 
 @external
-def initialize(_owner: address):
+def initialize(_owner: address, _profile: address):
     """
-    @notice Initialize the ProfileSocial contract with the owner address
+    @notice Initialize the ProfileSocial contract with the owner and profile addresses
     @param _owner The address to set as the owner
+    @param _profile The address of the linked Profile contract
     """
     assert self.owner == empty(address), "Already initialized"
+    assert _profile != empty(address), "Profile address cannot be empty"
     self.owner = _owner
+    self.profile = _profile
     self.likedProfileCount = 0
     self.linkedProfileCount = 0
 
