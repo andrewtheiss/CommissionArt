@@ -39,8 +39,8 @@ approvedCodeHashes: public(HashMap[bytes32, bool])
 
 # Track commissions
 latestVerifiedArt: public(address[300])
-verifiedArt: public(DynArray[address, 10**9])
-unverifiedArt: public(DynArray[address, 10**9])
+verifiedArt: public(DynArray[address, 10**8])
+unverifiedArt: public(DynArray[address, 10**8])
 countVerifiedCommissions: public(uint256)
 countUnverifiedCommissions: public(uint256)
 nextLatestVerifiedArtIndex: public(uint256)

@@ -23,7 +23,7 @@ owners: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  #
 lastUpdated: public(HashMap[uint256, HashMap[address, HashMap[uint256, uint256]]])  # chain_id -> nft_contract -> token_id -> timestamp
 
 # Mapping to track commission hubs owned by each address
-ownerToCommissionHubs: public(HashMap[address, DynArray[address, 10**6]])  # owner -> list of commission hubs
+ownerToCommissionHubs: public(HashMap[address, DynArray[address, 10**8]])  # owner -> list of commission hubs
 
 # Track which commission hubs are generic (not tied to NFTs)
 isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
@@ -115,7 +115,7 @@ def _ensureProfile(_user: address) -> address:
 def _addHubToOwner(_owner: address, _hub: address):
     # Check if hub is already in the owner's list
     hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
-    for i:uint256 in range(10**6):
+    for i:uint256 in range(10**8):
         if i >= hubs_len:
             break
         if self.ownerToCommissionHubs[_owner][i] == _hub:
@@ -141,7 +141,7 @@ def _removeHubFromOwner(_owner: address, _hub: address):
     # Find the hub in the owner's list
     hub_index: int256 = -1
     hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
-    for i:uint256 in range(10**6):
+    for i:uint256 in range(10**8):
         if i >= hubs_len:
             break
         if self.ownerToCommissionHubs[_owner][i] == _hub:
@@ -302,7 +302,7 @@ def linkHubsToProfile(_owner: address):
     
     # Link all hubs to the profile
     hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
-    for i:uint256 in range(10**6):
+    for i:uint256 in range(10**8):
         if i >= hubs_len:
             break
         hub: address = self.ownerToCommissionHubs[_owner][i]

@@ -85,7 +85,7 @@ Multi-signature wallets or DAO contracts (which are identified by an address) ca
 Users without any base NFT can still create a hub to receive commissions (this might overlap with simply using their profile’s commission list, but a hub provides the on-chain verification flows and separation of verified/unverified submissions).
 Global Registry of ArtCommissionHubs
 To facilitate discovery and indexing, all ArtCommissionHubs (NFT-based or generic) will be registered in a global list when created:
-We will maintain a dynamic array allCommissionHubs: DynArray[address, 10**6] in the OwnerRegistry (or a separate registry contract). Each time a new hub is created, whether via an NFT owner registration or via createGenericCommissionHub, we append the hub’s address to this array.
+We will maintain a dynamic array allCommissionHubs: DynArray[address, 10**8] in the OwnerRegistry (or a separate registry contract). Each time a new hub is created, whether via an NFT owner registration or via createGenericCommissionHub, we append the hub’s address to this array.
 An event GlobalHubRegistered(hub_address, chain_id, owner) will be emitted as well. (Note: We already emit ArtCommissionHubCreated with details
 file-fmzu8fdbvzeeb9dx8lx5hc
 , which can serve a similar purpose. We can rely on that event for off-chain indexing of all hubs.)

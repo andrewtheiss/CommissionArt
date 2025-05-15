@@ -16,7 +16,7 @@
 
 # Constants for standardized pagination and unified array capacities
 PAGE_SIZE: constant(uint256) = 20
-MAX_ITEMS: constant(uint256) = 10**9  # unified max length for all item lists (adjusted if needed to original limits)
+MAX_ITEMS: constant(uint256) = 10**8  # unified max length for all item lists (adjusted if needed to original limits)
 
 
 # Owner of the profile (user address)
@@ -36,7 +36,7 @@ allowUnverifiedCommissions: public(bool)
 commissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
 
 # Commission hubs owned by this profile
-commissionHubs: public(DynArray[address, 10**5])
+commissionHubs: public(DynArray[address, 10**8])
 commissionHubCount: public(uint256)
 
 # Art pieces collection
@@ -48,7 +48,7 @@ likedProfiles: public(DynArray[address, MAX_ITEMS])
 likedProfileCount: public(uint256)
 whitelist: public(HashMap[address, bool])
 blacklist: public(HashMap[address, bool])
-linkedProfiles: public(DynArray[address, 10**5])  
+linkedProfiles: public(DynArray[address, 10**8])  
 linkedProfileCount: public(uint256)
 
 
@@ -65,12 +65,20 @@ isArtist: public(bool)
 interface ProfileFactoryAndRegistry:
     def ownerRegistry() -> address: view
 
-# Interface for ArtPiece contract
+# Interface for ArtPiece contract - updated with new verification methods
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
+    def getCommissioner() -> address: view
     def getArtCommissionHubAddress() -> address: view
     def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def isVerified() -> bool: view
+    def verifyAsArtist(): nonpayable
+    def verifyAsCommissioner(): nonpayable
+    def isCommission() -> bool: view
+    def artistVerified() -> bool: view
+    def commissionerVerified() -> bool: view
+    def getOriginalUploader() -> address: view
 
 # Interface for ArtCommissionHub
 interface ArtCommissionHub:
@@ -81,6 +89,12 @@ interface ArtCommissionHub:
 # Interface for ArtSales1155 (expanded)
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
+
+# Event for commission verification in profile context
+event CommissionVerifiedInProfile:
+    profile: indexed(address)
+    art_piece: indexed(address)
+    is_artist: bool
 
 # Constructor
 @deploy
@@ -135,6 +149,9 @@ def removeFromWhitelist(_address: address):
 def addToBlacklist(_address: address):
     assert msg.sender == self.owner, "Only owner can add to blacklist"
     self.blacklist[_address] = True
+    
+    # TODO: Consider adding logic to remove already existing commissions from blacklisted addresses
+    # This would be complex and gas-intensive, so for now, we just prevent new additions
 
 @external
 def removeFromBlacklist(_address: address):
@@ -147,32 +164,24 @@ def setProfileImage(_profile_image: address):
     assert msg.sender == self.owner, "Only owner can set profile image"
     # check we are owner of the art piece
     art_piece: ArtPiece = ArtPiece(_profile_image)
-    assert staticcall(art_piece.getOwner()) == self.owner or staticcall(art_piece.getArtist()) == self.owner, "Only owner can set profile image"
+    effective_owner: address = staticcall art_piece.getOwner()
+    assert effective_owner == self.owner or staticcall(art_piece.getArtist()) == self.owner, "Only owner can set profile image"
     self.profileImage = _profile_image
 
-## Commissions
+## Commissions - Updated to implement new verification workflow
 #
 # addCommission
 # -------------
-# Adds a commission to this profile, either to verified or unverified list based on sender status.
+# Adds a commission to this profile, always to the unverified list until both parties verify it
 # Use case:
 # - If the profile is an artist, this is a piece of work they created for someone else (they are the artist).
 # - If the profile is a non-artist (commissioner/curator), this is a piece of work they commissioned from an artist (they are the client).
 # - The contract records the user's role at the time of upload in commissionRole.
-# Example:
-# - Alice (artist) uploads a new commission she did for Bob: Alice calls Bob.addCommission(commissionArtPieceAddress).
-#    - If Alice is whitelisted, the commission is added to the verified list.
-#    - If Alice is not whitelisted, the commission is added to the unverified list.
-# - Bob (commissioner) uploads a commission he received from Alice: Bob calls Bob.addCommission(commissionAddress).
-# - Charlie (stranger) uploads a commission he did for Bob: Charlie calls Bob.addCommission(commissionAddress);
-#      - If Charlie is whitelisted, the commission is added to the verified list.
-#      - If Charlie is not whitelisted, the commission is added to the unverified list.
-#      - If Charlie is blacklisted, the commission is not added.
 #
 @external
 def addCommission(_commission_art_piece: address):
     """
-    @notice Adds a commission to this profile, either to verified or unverified list based on sender status.
+    @notice Adds a commission to this profile, to verified or unverified list based on verification status
     @dev Access control:
          - self.owner: The owner of the profile can add commissions to their own profile
          - self.hub: The ProfileFactoryAndRegistry contract can add commissions on behalf of users
@@ -181,8 +190,11 @@ def addCommission(_commission_art_piece: address):
     """
     # Get the art piece details to check permissions
     art_piece: ArtPiece = ArtPiece(_commission_art_piece)
-    art_owner: address = staticcall art_piece.getOwner()
+    effective_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_commission: bool = staticcall art_piece.isCommission()
+    original_uploader: address = staticcall art_piece.getOriginalUploader()
     
     # Check if sender is the owner of this profile
     is_profile_owner: bool = msg.sender == self.owner
@@ -190,8 +202,8 @@ def addCommission(_commission_art_piece: address):
     # Check if sender is the hub
     is_hub: bool = msg.sender == self.hub
     
-    # Check if sender is the artist or owner of the art piece
-    is_art_creator: bool = msg.sender == art_artist or msg.sender == art_owner
+    # Check if sender is the artist or commissioner of the art piece
+    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner
     
     # Verify the sender has permission to add this commission
     assert is_profile_owner or is_hub or is_art_creator, "No permission to add commission"
@@ -200,23 +212,20 @@ def addCommission(_commission_art_piece: address):
     if self.blacklist[msg.sender] and not is_profile_owner:
         assert False, "Sender is blacklisted"
     
-    # Initialize add_to_verified flag
-    add_to_verified: bool = False
+    # If the profile owner is blacklisted by either the artist or commissioner, reject the commission
+    if not is_profile_owner and (self.blacklist[art_artist] or self.blacklist[commissioner]):
+        assert False, "Art creator is blacklisted"
     
     # Determine if this should be added to verified or unverified list
-    # When called from the ProfileFactoryAndRegistry, we need to check if the art creator is whitelisted
-    if is_profile_owner:
-        # Profile owner can always add to verified list
-        add_to_verified = True
-    elif is_hub:
-        # If hub is calling, check if the art creator is whitelisted
-        # Since the hub is calling on behalf of the art creator
-        add_to_verified = self.whitelist[art_artist] or self.whitelist[art_owner]
+    # Commissions are now verified only when both parties verify them
+    is_verified: bool = False
+    if is_commission:
+        is_verified = staticcall art_piece.isVerified()
     else:
-        # Direct call from another user, check if they're whitelisted
-        add_to_verified = self.whitelist[msg.sender]
+        # Non-commission art is always considered verified
+        is_verified = True
     
-    if add_to_verified:
+    if is_verified:
         # Add to verified list
         assert _commission_art_piece not in self.commissions, "Commission already added"
         self.commissions.append(_commission_art_piece)
@@ -231,6 +240,95 @@ def addCommission(_commission_art_piece: address):
         self.unverifiedCommissionCount += 1
         # Record the role at upload time
         self.commissionRole[_commission_art_piece] = self.isArtist
+
+#
+# verifyCommission
+# -------------
+# Verifies a commission piece. The profile owner can verify as artist or commissioner depending on their role.
+# Once both parties verify, the piece is moved from unverified to verified and ownership may transfer to the hub.
+#
+@external
+def verifyCommission(_commission_art_piece: address):
+    """
+    @notice Verifies a commission piece based on the profile owner's role
+    @dev Only the profile owner can call this
+    @param _commission_art_piece The address of the commission art piece to verify
+    """
+    assert msg.sender == self.owner, "Only profile owner can verify commission"
+    
+    # Get the art piece details
+    art_piece: ArtPiece = ArtPiece(_commission_art_piece)
+    effective_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_commission: bool = staticcall art_piece.isCommission()
+    original_uploader: address = staticcall art_piece.getOriginalUploader()
+    
+    # Ensure this is actually a commission
+    assert is_commission, "Not a commission art piece"
+    
+    # Determine if the profile owner is the artist or commissioner
+    is_artist: bool = self.owner == art_artist
+    is_commissioner: bool = self.owner == commissioner
+    
+    # Ensure the profile owner is one of the parties involved
+    assert is_artist or is_commissioner, "Profile owner not involved in this commission"
+    
+    # The uploader implicitly verifies their side, so we only need to verify 
+    # if the profile owner is not the original uploader
+    if self.owner != original_uploader:
+        # Check if already verified
+        if is_artist:
+            artist_verified: bool = staticcall art_piece.artistVerified()
+            assert not artist_verified, "Already verified by artist"
+            # Verify as artist
+            extcall art_piece.verifyAsArtist()
+        else:
+            commissioner_verified: bool = staticcall art_piece.commissionerVerified()
+            assert not commissioner_verified, "Already verified by commissioner"
+            # Verify as commissioner
+            extcall art_piece.verifyAsCommissioner()
+    else:
+        # The profile owner is the original uploader, so they've already verified implicitly
+        # Just check that their verification status is set correctly
+        if is_artist:
+            artist_verified: bool = staticcall art_piece.artistVerified()
+            assert artist_verified, "Artist verification status inconsistent"
+        else:
+            commissioner_verified: bool = staticcall art_piece.commissionerVerified()
+            assert commissioner_verified, "Commissioner verification status inconsistent"
+    
+    # Check if now fully verified - this will move from unverified to verified
+    is_now_verified: bool = staticcall art_piece.isVerified()
+    
+    # If now verified, move from unverified to verified list
+    if is_now_verified:
+        # Check if it's in the unverified list
+        found_unverified: bool = False
+        unverified_index: uint256 = 0
+        
+        for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
+            if i >= len(self.unverifiedCommissions):
+                break
+            if self.unverifiedCommissions[i] == _commission_art_piece:
+                unverified_index = i
+                found_unverified = True
+                break
+        
+        if found_unverified:
+            # Remove from unverified list
+            if unverified_index < len(self.unverifiedCommissions) - 1:
+                last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
+                self.unverifiedCommissions[unverified_index] = last_item
+            self.unverifiedCommissions.pop()
+            self.unverifiedCommissionCount -= 1
+            
+            # Add to verified list if not already there
+            if _commission_art_piece not in self.commissions:
+                self.commissions.append(_commission_art_piece)
+                self.commissionCount += 1
+    
+    log CommissionVerifiedInProfile(profile=self, art_piece=_commission_art_piece, is_artist=is_artist)
 
 #
 # removeCommission
@@ -593,9 +691,9 @@ def getProfileErc1155sForSale(_page: uint256, _page_size: uint256) -> DynArray[a
     return staticcall ArtSales1155(self.artSales1155).getAdditionalMintErc1155s(_page, _page_size)
 
 # Three types of art pieces can be created:
-# #1 - Profile Art Piece 
+# #1 - Personal Art Piece (non-commission)
 # #2 - Commission Art Piece
-# #3 - Profile Art Peice
+# #3 - Profile Art Piece (special case for profile image)
 @external
 def createArtPiece(
     _art_piece_template: address,
@@ -611,6 +709,19 @@ def createArtPiece(
 ) -> address:
     """
     Create a new art piece with optional profile art and commission registration
+    
+    @dev New workflow: uploader is initial owner, commission pieces start with uploader's side verified
+    @param _art_piece_template The template contract to clone for this art piece
+    @param _token_uri_data The art data
+    @param _token_uri_data_format Format of the art data
+    @param _title Title of the art piece
+    @param _description Description of the art piece
+    @param _is_artist Flag indicating if the uploader is the artist (or commissioner)
+    @param _other_party Address of the other party (artist if uploader is commissioner, vice versa)
+    @param _ai_generated Flag indicating if the art was AI-generated
+    @param _art_commission_hub Optional hub address to register commission with
+    @param _is_profile_art Flag indicating if this is a profile image
+    @return The address of the created art piece
     """
     # Determine permissions
     if _is_profile_art:
@@ -625,20 +736,22 @@ def createArtPiece(
     other_party: address = _other_party
     art_commission_hub: address = _art_commission_hub
 
-    # If this art piece is your profile, flog as not commissionable
+    # If this art piece is your profile, flag as not commissionable
     if _is_profile_art:
         is_artist = True
         other_party = self.owner
         art_commission_hub = empty(address)
 
     # Calculate owner_input and artist_input
-    owner_input: address = empty(address)
+    # NEW WORKFLOW: The uploader (profile owner) is always the initial owner
+    owner_input: address = self.owner
     artist_input: address = empty(address)
+    
+    # Set artist based on uploader's role
     if is_artist:
         artist_input = self.owner
-        owner_input = other_party if other_party != empty(address) else self.owner
     else:
-        owner_input = self.owner
+        # If uploader is commissioner, other party is artist
         artist_input = other_party if other_party != empty(address) else self.owner
 
     # Create minimal proxy to the ArtPiece template
@@ -661,33 +774,77 @@ def createArtPiece(
     if _is_profile_art:
         self.profileImage = art_piece_address
 
-    # Add to my art collection if not profile art
-    if not _is_profile_art:
-        self.myArt.append(art_piece_address)
-        self.myArtCount += 1
+    # Add to my art collection 
+    self.myArt.append(art_piece_address)
+    self.myArtCount += 1
+
+    # If this is a commission, add to unverified commissions
+    if is_artist != (other_party == empty(address)) and not _is_profile_art:
+        # Check if already fully verified (could happen in some edge cases)
+        is_verified: bool = staticcall art_piece.isVerified()
+        
+        if is_verified:
+            # Add to verified commissions
+            self.commissions.append(art_piece_address)
+            self.commissionCount += 1
+        else:
+            # Add to unverified commissions
+            self.unverifiedCommissions.append(art_piece_address)
+            self.unverifiedCommissionCount += 1
+            
+        # Record commission role
+        self.commissionRole[art_piece_address] = is_artist
 
     # If commission hub is provided, register with it
     if art_commission_hub != empty(address):
         _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
+        extcall _art_commission_hub_link.submitCommission(art_piece_address)
 
     return art_piece_address
 
 
 @external
 def addArtPiece(_art_piece: address):
+    """
+    @notice Add an existing art piece to this profile
+    @dev Only the profile owner can call this, and must be either owner or artist of the piece
+    @param _art_piece Address of the art piece to add
+    """
     assert msg.sender == self.owner, "Only owner can add art piece"
     
     # Get the art piece owner and artist
     art_piece: ArtPiece = ArtPiece(_art_piece)
-    art_owner: address = staticcall art_piece.getOwner()
+    effective_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_commission: bool = staticcall art_piece.isCommission()
     
     # Verify the profile owner is either the art piece owner or artist
-    assert self.owner == art_owner or self.owner == art_artist, "Can only add art you own or created"
+    assert self.owner == effective_owner or self.owner == art_artist, "Can only add art you own or created"
     
-    assert _art_piece not in self.myArt, "Art piece already added"
-    self.myArt.append(_art_piece)
-    self.myArtCount += 1
+    # First, add to myArt if not already there
+    if _art_piece not in self.myArt:
+        self.myArt.append(_art_piece)
+        self.myArtCount += 1
+    
+    # If this is a commission, determine where to add it
+    if is_commission:
+        is_verified: bool = staticcall art_piece.isVerified()
+        
+        if is_verified:
+            # Add to verified commissions if not already there
+            if _art_piece not in self.commissions:
+                self.commissions.append(_art_piece)
+                self.commissionCount += 1
+                # Record the role (owner=commissioner, artist=artist)
+                self.commissionRole[_art_piece] = (self.owner == art_artist)
+        else:
+            # Add to unverified commissions if not already there
+            if _art_piece not in self.unverifiedCommissions:
+                self.unverifiedCommissions.append(_art_piece)
+                self.unverifiedCommissionCount += 1
+                # Record the role (owner=commissioner, artist=artist)
+                self.commissionRole[_art_piece] = (self.owner == art_artist)
 
 @external
 def removeArtPiece(_art_piece: address):
@@ -697,6 +854,8 @@ def removeArtPiece(_art_piece: address):
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(self.myArt), bound=1000):
+        if i >= len(self.myArt):
+            break
         if self.myArt[i] == _art_piece:
             index = i
             found = True
@@ -715,6 +874,27 @@ def removeArtPiece(_art_piece: address):
     # Pop the last item (now a duplicate if we did the swap)
     self.myArt.pop()
     self.myArtCount -= 1
+    
+    # Also check if it's in commissions or unverified commissions and remove if found
+    # This is optional - the user can use removeCommission for more explicit control
+    
+    # Check verified commissions
+    for i: uint256 in range(0, len(self.commissions), bound=1000):
+        if i >= len(self.commissions):
+            break
+        if self.commissions[i] == _art_piece:
+            # Found, call removeCommission to properly handle it
+            self.removeCommission(_art_piece)
+            break
+    
+    # Check unverified commissions
+    for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
+        if i >= len(self.unverifiedCommissions):
+            break
+        if self.unverifiedCommissions[i] == _art_piece:
+            # Found, call removeCommission to properly handle it
+            self.removeCommission(_art_piece)
+            break
 
 @view
 @external
@@ -814,7 +994,7 @@ def addCommissionHub(_hub: address):
     
     # Check if hub is already in the list
     hubs_len: uint256 = len(self.commissionHubs)
-    for i: uint256 in range(10**6):  # Use a large fixed bound
+    for i: uint256 in range(10**8):  # Use a large fixed bound
         if i >= hubs_len:
             break
         if self.commissionHubs[i] == _hub:
@@ -850,7 +1030,7 @@ def removeCommissionHub(_hub: address):
     index: uint256 = 0
     found: bool = False
     hubs_len: uint256 = len(self.commissionHubs)
-    for i: uint256 in range(10**6):  # Use a large fixed bound
+    for i: uint256 in range(10**8):  # Use a large fixed bound
         if i >= hubs_len:
             break
         if self.commissionHubs[i] == _hub:
