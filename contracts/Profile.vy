@@ -64,6 +64,7 @@ isArtist: public(bool)
 # Interface for ProfileFactoryAndRegistry
 interface ProfileFactoryAndRegistry:
     def ownerRegistry() -> address: view
+    def getProfileByOwner(_owner: address) -> address: view
 
 # Interface for ArtPiece contract - updated with new verification methods
 interface ArtPiece:
@@ -71,7 +72,7 @@ interface ArtPiece:
     def getArtist() -> address: view
     def getCommissioner() -> address: view
     def getArtCommissionHubAddress() -> address: view
-    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
     def isVerified() -> bool: view
     def verifyAsArtist(): nonpayable
     def verifyAsCommissioner(): nonpayable
@@ -327,6 +328,35 @@ def verifyCommission(_commission_art_piece: address):
             if _commission_art_piece not in self.commissions:
                 self.commissions.append(_commission_art_piece)
                 self.commissionCount += 1
+        
+        # If this profile owner is the commissioner, also add to myArt if not already there
+        if is_commissioner and _commission_art_piece not in self.myArt:
+            self.myArt.append(_commission_art_piece)
+            self.myArtCount += 1
+        
+        # Now we need to update the other party's profile as well
+        # Get the profile factory registry to find the other party's profile
+        if self.hub != empty(address):
+            # Try to find the other party's profile
+            other_party: address = empty(address)
+            if is_artist:
+                # If this profile owner is the artist, the other party is the commissioner
+                other_party = commissioner
+            else:
+                # If this profile owner is the commissioner, the other party is the artist
+                other_party = art_artist
+            
+            # If we have the other party's address, try to update their profile
+            if other_party != empty(address):
+                # Get the other party's profile from the hub
+                profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
+                other_profile: address = staticcall profile_factory.getProfileByOwner(other_party)
+                
+                # If the other party has a profile, update their commission status
+                if other_profile != empty(address):
+                    # Call the updateCommissionVerificationStatus method on the other profile
+                    other_profile_contract: Profile = Profile(other_profile)
+                    extcall other_profile_contract.updateCommissionVerificationStatus(_commission_art_piece)
     
     log CommissionVerifiedInProfile(profile=self, art_piece=_commission_art_piece, is_artist=is_artist)
 
@@ -1392,3 +1422,68 @@ def getCommissionHubsByOffset(_offset: uint256, _count: uint256) -> DynArray[add
         result.append(self.commissionHubs[_offset + i])
     
     return result
+
+@external
+def updateCommissionVerificationStatus(_commission_art_piece: address):
+    """
+    @notice Updates the commission verification status in this profile
+    @dev Can be called by the hub, the profile owner, or the commission hub owner
+    @param _commission_art_piece The address of the commission art piece to update
+    """
+    # Get the art piece details
+    art_piece: ArtPiece = ArtPiece(_commission_art_piece)
+    effective_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_commission: bool = staticcall art_piece.isCommission()
+    commission_hub: address = staticcall art_piece.getArtCommissionHubAddress()
+    
+    # Check permissions
+    is_profile_owner: bool = msg.sender == self.owner
+    is_hub: bool = msg.sender == self.hub
+    is_commission_hub_owner: bool = False
+    if commission_hub != empty(address):
+        commission_hub_interface: ArtCommissionHub = ArtCommissionHub(commission_hub)
+        hub_owner: address = staticcall commission_hub_interface.owner()
+        is_commission_hub_owner = (hub_owner == msg.sender)
+    
+    # Verify the sender has permission to update verification status
+    assert is_profile_owner or is_hub or is_commission_hub_owner, "No permission to update verification status"
+    
+    # Check if the art piece is verified
+    is_verified: bool = staticcall art_piece.isVerified()
+    
+    # Determine if this profile owner is the artist or commissioner
+    is_artist: bool = self.owner == art_artist
+    is_commissioner: bool = self.owner == commissioner
+    
+    # Ensure the profile owner is one of the parties involved
+    assert is_artist or is_commissioner, "Profile owner not involved in this commission"
+    
+    if is_verified:
+        # Check if it's in the unverified list
+        found_unverified: bool = False
+        unverified_index: uint256 = 0
+        
+        for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
+            if i >= len(self.unverifiedCommissions):
+                break
+            if self.unverifiedCommissions[i] == _commission_art_piece:
+                unverified_index = i
+                found_unverified = True
+                break
+        
+        if found_unverified:
+            # Remove from unverified list
+            if unverified_index < len(self.unverifiedCommissions) - 1:
+                last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
+                self.unverifiedCommissions[unverified_index] = last_item
+            self.unverifiedCommissions.pop()
+            self.unverifiedCommissionCount -= 1
+        
+        # Add to verified list if not already there
+        if _commission_art_piece not in self.commissions:
+            self.commissions.append(_commission_art_piece)
+            self.commissionCount += 1
+            # Record the role
+            self.commissionRole[_commission_art_piece] = is_artist

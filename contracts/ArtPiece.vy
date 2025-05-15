@@ -182,7 +182,7 @@ def initialize(
     
     # Initialize verification state
     # Determine if this is a commission based on commissioner and artist being different
-    self.isCommission = _owner_input != _artist_input
+    self.isCommission = _commissioner_input != _artist_input
     
     # The uploader implicitly verifies their side
     if self.isCommission:
@@ -705,4 +705,3 @@ def checkOwner() -> address:
     @return The effective owner address
     """
     return self._getEffectiveOwner()
-
