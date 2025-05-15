@@ -68,7 +68,7 @@ event CommissionVerified:
     is_artist: bool
 
 # Add event for fully verified commission
-event CommissionFullyVerified:
+event CommissionfullyVerified:
     art_piece: indexed(address)
     artist: indexed(address)
     commissioner: indexed(address)
@@ -103,10 +103,10 @@ everAttachedToHub: public(bool)  # Flag to track if this piece was ever attached
 permanentHubAddress: public(address)  # The address of the hub that will forever determine ownership
 
 # New variables for commission verification
-isCommission: public(bool)  # Flag to indicate if this is a commission piece
+isPrivateOrNonCommissionPiece: public(bool)  # Flag to indicate if this is a private or non-commission piece (true if commissioner == artist)
 artistVerified: public(bool)  # Flag to indicate if the artist has verified this piece
 commissionerVerified: public(bool)  # Flag to indicate if the commissioner has verified this piece
-fullyVerified: public(bool)  # Flag to indicate if both parties have verified this piece
+fullyVerifiedCommission: public(bool)  # Flag to indicate if both parties have verified this piece
 originalUploader: address  # Store the original uploader's address, do not need to expose
 commissioner: public(address)  # Store the commissioner's address explicitly
 
@@ -181,31 +181,26 @@ def initialize(
         self.permanentHubAddress = empty(address)
     
     # Initialize verification state
-    # Determine if this is a commission based on commissioner and artist being different
-    self.isCommission = _commissioner_input != _artist_input
+    # Determine if this is a private or non-commission piece based on commissioner and artist being the same
+    self.isPrivateOrNonCommissionPiece = _commissioner_input == _artist_input
     
     # The uploader implicitly verifies their side
-    if self.isCommission:
-        if _commissioner_input == _artist_input:
-            # This is unusual but possible if somehow commissioner and artist are the same
-            self.artistVerified = True
-            self.commissionerVerified = True
-            self.fullyVerified = True
-        elif _commissioner_input == self.originalUploader:
+    if not self.isPrivateOrNonCommissionPiece:
+        if _commissioner_input == self.originalUploader:
             # If the uploader is the commissioner, they've implicitly verified
             self.artistVerified = False
             self.commissionerVerified = True
-            self.fullyVerified = False
+            self.fullyVerifiedCommission = False
         else:
             # If the uploader is the artist, they've implicitly verified
             self.artistVerified = True
             self.commissionerVerified = False
-            self.fullyVerified = False
+            self.fullyVerifiedCommission = False
     else:
-        # Non-commission pieces are always fully verified
+        # Non-commission pieces are always fully verified, but never attached to the hub
         self.artistVerified = True
         self.commissionerVerified = True
-        self.fullyVerified = True
+        self.fullyVerifiedCommission = True
 
     # Set ERC721 metadata
     self.name = "ArtPiece"
@@ -410,7 +405,7 @@ def _getEffectiveOwner() -> address:
             return hub_owner
     
     # If fully verified but not attached to hub, or hub owner is empty
-    if self.fullyVerified:
+    if self.fullyVerifiedCommission:
         return self.commissioner
     
     # Before verification, return the original uploader
@@ -460,7 +455,7 @@ def verifyAsArtist():
     @dev Can only be called by the artist of the piece
     """
     assert self.initialized, "Contract not initialized"
-    assert self.isCommission, "Not a commission piece"
+    assert not self.isPrivateOrNonCommissionPiece, "Not a commission piece"
     assert msg.sender == self.artist, "Only the artist can verify as artist"
     assert not self.artistVerified, "Already verified by artist"
     
@@ -479,7 +474,7 @@ def verifyAsCommissioner():
     @dev Can only be called by the commissioner of the piece
     """
     assert self.initialized, "Contract not initialized"
-    assert self.isCommission, "Not a commission piece"
+    assert not self.isPrivateOrNonCommissionPiece, "Not a commission piece"
     assert msg.sender == self.commissioner, "Only the commissioner can verify as commissioner"
     assert not self.commissionerVerified, "Already verified by commissioner"
     
@@ -495,31 +490,17 @@ def verifyAsCommissioner():
 def _completeVerification():
     """
     Internal helper to complete the verification process
-    - Sets fullyVerified flag
+    - Sets fullyVerifiedCommission flag
     - Updates ownership if attached to a hub
     - Emits events
     """
-    self.fullyVerified = True
+    self.fullyVerifiedCommission = True
     
     # If attached to a hub, ownership will now be determined by the hub owner
     # No need to update any internal state since _getEffectiveOwner() will handle this
     
     # Emit verification complete event
-    log CommissionFullyVerified(art_piece=self, artist=self.artist, commissioner=self.commissioner)
-
-@external
-@view
-def isVerified() -> bool:
-    """
-    @notice Check if this art piece is fully verified by both parties
-    @dev For non-commission pieces, always returns true
-    @return Whether the art piece is fully verified
-    """
-    # If not a commission, it's always considered verified
-    if not self.isCommission:
-        return True
-    
-    return self.fullyVerified
+    log CommissionfullyVerified(art_piece=self, artist=self.artist, commissioner=self.commissioner)
 
 @external
 def transferOwnership(_new_owner: address):
@@ -705,3 +686,26 @@ def checkOwner() -> address:
     @return The effective owner address
     """
     return self._getEffectiveOwner()
+
+@external
+@view
+def isUnverifiedCommission() -> bool:
+    """
+    @notice Check if this art piece is an unverified commission (commissioner != artist but not fully verified)
+    @dev This is for backward compatibility with tests that check if a piece is a commission
+    @return Whether the art piece is an unverified commission
+    """
+    # It's an unverified commission if:
+    # 1. It's not a private/non-commission piece (commissioner != artist)
+    # 2. It's not fully verified yet
+    return not self.isPrivateOrNonCommissionPiece and not self.fullyVerifiedCommission
+
+@external
+@view
+def isFullyVerifiedCommission() -> bool:
+    """
+    @notice Check if this art piece is fully verified (commission or non-commission)
+    @dev Returns true if fullyVerifiedCommission is true, regardless of commission type
+    @return Whether the art piece is fully verified
+    """
+    return self.fullyVerifiedCommission

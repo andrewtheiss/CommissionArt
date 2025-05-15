@@ -210,6 +210,16 @@ def getProfile(_user: address) -> address:
 
 @view
 @external
+def getProfileByOwner(_owner: address) -> address:
+    """
+    @notice Gets the profile contract address associated with an owner address
+    @param _owner The address of the profile owner
+    @return Address of the profile contract for the given owner
+    """
+    return self.accountToProfile[_owner]
+
+@view
+@external
 def hasProfile(_user: address) -> bool:
     return self.accountToProfile[_user] != empty(address)
 
