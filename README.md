@@ -146,7 +146,18 @@ Once ownership is rescinded, no more images can be added to the Registry.
 # pip install pipx
 # pipx install eth-ape  (pipx installs everything in a venv system wide!)
 # Install plugins
-pip install eth-ape
+brew install pyenv
+pyenv install 3.13.3
+pyenv global 3.13.3
+
+python3 --version (should be 3.13.3)
+
+make a venv
+python3 -m venv vyperenv
+source ./vyperenv/bin/activate
+
+pip install vyper==0.4.1
+pip3 install eth-ape
 ape plugins install .
 pip install --upgrade eth-ape
 # (ape plugins install vyper alchemy -y)
@@ -166,6 +177,7 @@ ape test tests/test_L1QueryOwner_testnet.py
 # Plans for ROADMAP
 - Create a way for artists to offer commissions to artists
 
+## ATTENTION PLEASE USE PYTHON 3.13 for 100x faster compiling and testing
 ## Windows installation (Power Shell)
 After installing 
 pip install -r ./requirements.txt
