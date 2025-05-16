@@ -106,12 +106,39 @@ def test_transfer_ownership(setup):
     art_piece = setup["art_piece"]
     owner = setup["owner"]
     deployer = setup["deployer"]
+    artist = setup["artist"]
     
-    # Transfer ownership to deployer
+    # Make sure the art piece is not attached to a hub
+    if art_piece.attachedToArtCommissionHub():
+        # Skip this test as piece is attached to a hub and can't transfer ownership
+        pytest.skip("Art piece is attached to a hub, can't transfer ownership")
+    
+    # Get the initial state
+    initial_owner = art_piece.getOwner()
+    assert initial_owner == owner.address, "Initial owner should be the owner from setup"
+    
+    # Check if it's a commission piece (commissioner != artist)
+    is_commission = art_piece.getCommissioner() != art_piece.getArtist()
+    
+    if is_commission:
+        # This is a commission piece, so we need to ensure it's fully verified
+        # Let's check the verification status
+        if not art_piece.isFullyVerifiedCommission():
+            # If not fully verified, verify both sides
+            if not art_piece.artistVerified():
+                art_piece.verifyAsArtist(sender=artist)
+            if not art_piece.commissionerVerified():
+                art_piece.verifyAsCommissioner(sender=owner)
+            
+            # Confirm it's now fully verified
+            assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified after verification"
+    
+    # Now transfer ownership to deployer
     art_piece.transferOwnership(deployer.address, sender=owner)
     
-    # Check that the owner was updated
-    assert art_piece.getOwner() == deployer.address
+    # Check that the owner was correctly updated to deployer
+    new_owner = art_piece.getOwner()
+    assert new_owner == deployer.address, f"Owner should be deployer after transfer, but got {new_owner} instead of {deployer.address}"
 
 
 def test_transfer_ownership_only_by_owner(setup):

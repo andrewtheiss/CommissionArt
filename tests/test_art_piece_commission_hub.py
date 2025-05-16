@@ -75,12 +75,37 @@ def test_initial_hub_attachment(setup):
 def test_detach_from_hub(setup):
     """Test detachFromArtCommissionHub method"""
     art_piece = setup["art_piece"]
-    deployer = setup["deployer"]  # Deployer is the hub owner
+    deployer = setup["deployer"]
+    owner = setup["owner"]  # Commissioner
+    artist = setup["artist"]
+    commission_hub = setup["commission_hub"]
     
     # First verify initial attachment
     assert art_piece.attachedToArtCommissionHub() is True
     
-    # Detach from hub - only the hub owner (deployer) can do this
+    # Initialize the commission hub with deployer as registry and owner
+    if not commission_hub.isInitialized():
+        chain_id = 1
+        nft_contract = "0x1234567890123456789012345678901234567890"
+        token_id = 123
+        # Initialize the hub with deployer address as _registry
+        commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+        # Make sure the hub owner is set to deployer
+        assert commission_hub.owner() == deployer.address
+    
+    # Ensure the art piece is fully verified
+    if not art_piece.isFullyVerifiedCommission():
+        # If the artist side isn't verified, verify it
+        if not art_piece.artistVerified():
+            art_piece.verifyAsArtist(sender=artist)
+        # If the commissioner side isn't verified, verify it
+        if not art_piece.commissionerVerified():
+            art_piece.verifyAsCommissioner(sender=owner)
+    
+    # Verify the piece is now fully verified
+    assert art_piece.isFullyVerifiedCommission() is True
+    
+    # Detach from hub - the hub owner (deployer) can do this
     art_piece.detachFromArtCommissionHub(sender=deployer)
     
     # Verify detachment
@@ -116,14 +141,38 @@ def test_artist_cannot_detach(setup):
 def test_attach_to_new_hub_after_detach(setup):
     """Test attaching to a new hub after detaching"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
-    deployer = setup["deployer"]  # Hub owner
+    owner = setup["owner"]  # Commissioner
+    artist = setup["artist"]
+    deployer = setup["deployer"]
+    commission_hub = setup["commission_hub"]
     alternate_hub = setup["alternate_hub"]
     
     # Verify initial attachment
     assert art_piece.attachedToArtCommissionHub() is True
     
-    # Detach from current hub (only hub owner can do this)
+    # Initialize the commission hub with deployer as registry and owner
+    if not commission_hub.isInitialized():
+        chain_id = 1
+        nft_contract = "0x1234567890123456789012345678901234567890"
+        token_id = 123
+        # Initialize the hub with deployer address as _registry
+        commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+        # Make sure the hub owner is set to deployer
+        assert commission_hub.owner() == deployer.address
+    
+    # Ensure the art piece is fully verified
+    if not art_piece.isFullyVerifiedCommission():
+        # If the artist side isn't verified, verify it
+        if not art_piece.artistVerified():
+            art_piece.verifyAsArtist(sender=artist)
+        # If the commissioner side isn't verified, verify it
+        if not art_piece.commissionerVerified():
+            art_piece.verifyAsCommissioner(sender=owner)
+    
+    # Verify the piece is now fully verified
+    assert art_piece.isFullyVerifiedCommission() is True
+    
+    # Detach from current hub (the hub owner can do this)
     art_piece.detachFromArtCommissionHub(sender=deployer)
     
     # Verify detachment
@@ -168,21 +217,41 @@ def test_cannot_attach_twice(setup):
     # Try to attach to alternate hub
     with pytest.raises(Exception) as excinfo:
         unattached_art_piece.attachToArtCommissionHub(alternate_hub.address, sender=owner)
-    assert "Only owner or artist can attach to a ArtCommissionHub" in str(excinfo.value)
+    assert "Already attached to a ArtCommissionHub" in str(excinfo.value)
 
 def test_check_owner_with_hub(setup):
     """Test checkOwner method when attached to hub"""
     art_piece = setup["art_piece"]
     commission_hub = setup["commission_hub"]
-    owner = setup["owner"]
-    deployer = setup["deployer"]  # Hub owner
+    owner = setup["owner"]  # Commissioner
+    artist = setup["artist"]
+    deployer = setup["deployer"]
+    
+    # Initialize the commission hub with deployer as registry and owner
+    if not commission_hub.isInitialized():
+        chain_id = 1
+        nft_contract = "0x1234567890123456789012345678901234567890"
+        token_id = 123
+        commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+        assert commission_hub.owner() == deployer.address
     
     # Verify initial attachment
     assert art_piece.attachedToArtCommissionHub() is True
     
-    # Initial owner check - should be the hub owner
+    # Ensure the art piece is fully verified before checking ownership
+    if not art_piece.isFullyVerifiedCommission():
+        # If the artist side isn't verified, verify it
+        if not art_piece.artistVerified():
+            art_piece.verifyAsArtist(sender=artist)
+        # If the commissioner side isn't verified, verify it
+        if not art_piece.commissionerVerified():
+            art_piece.verifyAsCommissioner(sender=owner)
+    
+    # Verify the piece is now fully verified
+    assert art_piece.isFullyVerifiedCommission() is True
+    
+    # Initial owner check - should be the hub owner when fully verified and attached
     current_owner = art_piece.checkOwner()
-    # Use deployer.address which is the hub owner
     assert current_owner == deployer.address
     
     # Detach from hub
@@ -191,21 +260,19 @@ def test_check_owner_with_hub(setup):
     # Verify detachment
     assert art_piece.attachedToArtCommissionHub() is False
     
-    # After detachment, the owner should be the commissioner (owner)
+    # After detachment, the owner should be the commissioner because it's still fully verified
     assert art_piece.checkOwner() == owner.address
 
 def test_check_owner_follows_hub_owner(setup):
     """Test checkOwner follows hub owner when hub ownership changes"""
     art_piece = setup["art_piece"]
     commission_hub = setup["commission_hub"]
-    owner = setup["owner"]
+    owner = setup["owner"]  # Commissioner
+    artist = setup["artist"]
     deployer = setup["deployer"]  # Current hub owner
     
     # Verify initial attachment
     assert art_piece.attachedToArtCommissionHub() is True
-    
-    # Verify initial checkOwner follows hub owner
-    assert art_piece.checkOwner() == deployer.address
     
     # First, initialize the hub if not already initialized
     # We need to set the registry to deployer so we can update ownership
@@ -229,6 +296,21 @@ def test_check_owner_follows_hub_owner(setup):
         # We can't update the registry after initialization, so we need to skip this test
         pytest.skip("Registry is not set to deployer, can't update ownership")
     
+    # Ensure the art piece is fully verified before checking ownership
+    if not art_piece.isFullyVerifiedCommission():
+        # If the artist side isn't verified, verify it
+        if not art_piece.artistVerified():
+            art_piece.verifyAsArtist(sender=artist)
+        # If the commissioner side isn't verified, verify it
+        if not art_piece.commissionerVerified():
+            art_piece.verifyAsCommissioner(sender=owner)
+    
+    # Verify the piece is now fully verified
+    assert art_piece.isFullyVerifiedCommission() is True
+    
+    # Verify initial checkOwner follows hub owner
+    assert art_piece.checkOwner() == deployer.address
+    
     # Update registration to change owner (using updateRegistration instead of transferOwnership)
     commission_hub.updateRegistration(chain_id, nft_contract, token_id, owner.address, sender=deployer)
     
@@ -242,8 +324,9 @@ def test_update_registration(setup):
     """Test updateRegistration method for changing hub ownership"""
     art_piece = setup["art_piece"]
     commission_hub = setup["commission_hub"]
-    owner = setup["owner"]
-    deployer = setup["deployer"]  # Current hub owner
+    owner = setup["owner"]  # Commissioner
+    artist = setup["artist"]
+    deployer = setup["deployer"]
     
     # We need to initialize the hub with registry set to deployer for this test
     # Mock values for initialization
@@ -264,6 +347,34 @@ def test_update_registration(setup):
     
     # Verify initial owner
     assert commission_hub.owner() == deployer.address
+    
+    # Make sure the art piece is attached to the hub
+    if not art_piece.attachedToArtCommissionHub() or art_piece.getArtCommissionHubAddress() != commission_hub.address:
+        # If not attached to the right hub, detach and re-attach
+        if art_piece.attachedToArtCommissionHub():
+            try:
+                # Fix the staticcall syntax
+                hub_owner_address = ArtCommissionHub(art_piece.getArtCommissionHubAddress()).owner(sender=deployer)
+                art_piece.detachFromArtCommissionHub(sender=hub_owner_address)
+            except Exception as e:
+                print(f"Note: Could not detach art piece from previous hub: {e}")
+        # Attach to the correct hub
+        try:
+            art_piece.attachToArtCommissionHub(commission_hub.address, sender=owner)
+        except Exception as e:
+            print(f"Note: Could not attach art piece to hub: {e}")
+    
+    # Ensure the art piece is fully verified before checking ownership
+    if not art_piece.isFullyVerifiedCommission():
+        # If the artist side isn't verified, verify it
+        if not art_piece.artistVerified():
+            art_piece.verifyAsArtist(sender=artist)
+        # If the commissioner side isn't verified, verify it
+        if not art_piece.commissionerVerified():
+            art_piece.verifyAsCommissioner(sender=owner)
+    
+    # Verify the piece is fully verified
+    assert art_piece.isFullyVerifiedCommission() is True
     
     # Update registration to change owner (call from registry address which is deployer)
     commission_hub.updateRegistration(chain_id, nft_contract, token_id, owner.address, sender=deployer)
@@ -295,13 +406,6 @@ def test_update_registration(setup):
     assert commission_hub.owner() == owner.address
     
     # Test that art piece owner check reflects the hub owner
-    # First make sure the art piece is attached to the hub
-    if not art_piece.attachedToArtCommissionHub():
-        try:
-            art_piece.attachToArtCommissionHub(commission_hub.address, sender=owner)
-        except Exception as e:
-            print(f"Note: Could not attach art piece to hub: {e}")
-    
     # If the art piece is attached to the hub, check that its owner is the hub owner
     if art_piece.attachedToArtCommissionHub() and art_piece.getArtCommissionHubAddress() == commission_hub.address:
         assert art_piece.checkOwner() == owner.address

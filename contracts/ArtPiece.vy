@@ -630,7 +630,7 @@ def getAIGenerated() -> bool:
 def attachToArtCommissionHub(_commission_hub: address):
     """
     Attach this ArtPiece to a ArtCommissionHub
-    Can only be called once per ArtPiece if not previously attached
+    Can only be called if not currently attached to a hub
     """
     current_owner: address = self._getEffectiveOwner()
     assert msg.sender == current_owner or msg.sender == self.artist, "Only owner or artist can attach to a ArtCommissionHub"
