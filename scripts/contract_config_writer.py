@@ -20,15 +20,15 @@ def get_default_config():
             "testnet": {
                 "l1": {
                     "address": "",
-                    "contract": "L1QueryOwner"
+                    "contract": "L1QueryOwnership"
                 },
                 "l2": {
                     "address": "",
-                    "contract": "L2Relay"
+                    "contract": "L2RelayOwnership"
                 },
                 "l3": {
                     "address": "",
-                    "contract": "OwnerRegistry"
+                    "contract": "ArtCommissionHubOwners"
                 },
                 "artCommissionHub": {
                     "address": "",
@@ -50,15 +50,15 @@ def get_default_config():
             "mainnet": {
                 "l1": {
                     "address": "",
-                    "contract": "L1QueryOwner"
+                    "contract": "L1QueryOwnership"
                 },
                 "l2": {
                     "address": "",
-                    "contract": "L2Relay"
+                    "contract": "L2RelayOwnership"
                 },
                 "l3": {
                     "address": "",
-                    "contract": "OwnerRegistry"
+                    "contract": "ArtCommissionHubOwners"
                 },
                 "artCommissionHub": {
                     "address": "",

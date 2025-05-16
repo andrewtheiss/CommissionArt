@@ -12,23 +12,52 @@
 # This takes in messages from the L2 and updates a registry of nft/id pairs to their owner
 # This handles taking queries from other contracts on L3 and returning the owner of the NFT
 
-# Need to double check storage variables
-l2Relay: public(address)
+
+# Internal Functions
+# __init__
+# _ensureProfileForAddress
+# _appendHubToOwner
+# _removeHubFromOwner
+# _registerNFTOwner
+
+# External/Public Functions
+# registerNFTOwnerFromParentChain
+# createCommissionHub
+# createGenericCommissionHub
+# isGeneric
+# linkHubsToProfile
+# lookupRegisteredOwner
+# getArtCommissionHubLastUpdated
+# getArtCommissionHubByOwner
+# lookupEthereumRegisteredOwner
+# getEthereumArtCommissionHubLastUpdated
+# getEthereumArtCommissionHubByOwner
+# setArtCommissionHubTemplate
+# setL2RelayOwnership
+# setProfileFactoryAndRegistry
+# getCommissionHubsByOwner
+# getCommissionHubsByOwnerWithOffset
+# getCommissionHubCountByOwner
+# getRandomCommissionHubsByOwner
+
+
+l2RelayOwnership: public(address)
 artCommissionHubTemplate: public(address)
 owner: public(address)
-# Updated data structures to include chain ID
-artCommissionHubs: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> token_id -> commission_hub
-owners: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> token_id -> owner
-# Add last update timestamps for each NFT/token ID pair
-lastUpdated: public(HashMap[uint256, HashMap[address, HashMap[uint256, uint256]]])  # chain_id -> nft_contract -> token_id -> timestamp
 
-# Mapping to track commission hubs owned by each address
-ownerToCommissionHubs: public(HashMap[address, DynArray[address, 10**8]])  # owner -> list of commission hubs
+# Container for ArtCommissionHubs (NFT vs Generic):
+# artCommissionHubRegistry[chain_id][nft_contract][token_id] = commission_hub_address
+# artCommissionHubRegistry[chain_id][GENERIC_HUB_CONTRACT][convert(owner_address, uint256)] = commission_hub_address
+GENERIC_ART_COMMISSION_HUB_CONTRACT: constant(address) = 0x1000000000000000000000000000000000000001
+artCommissionHubRegistry: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> token_id -> commission_hub
+artCommissionHubOwners: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> token_id -> owner
+artCommissionHubLastUpdated: public(HashMap[uint256, HashMap[address, HashMap[uint256, uint256]]])  # chain_id -> nft_contract -> token_id -> timestamp
+artCommissionHubsByOwner: public(HashMap[address, DynArray[address, 10**8]])  # owner -> list of commission hubs
 
 # Track which commission hubs are generic (not tied to NFTs)
 isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
 
-# Profile-Factory-And-Registry address
+# Profile-Factory-And-Registry contract address
 profileFactoryAndRegistry: public(address)
 
 interface ArtCommissionHub:
@@ -37,11 +66,11 @@ interface ArtCommissionHub:
     def initializeGeneric(chain_id: uint256, owner: address, registry: address, is_generic: bool): nonpayable
 
 interface ProfileFactoryAndRegistry:
-    def hasProfile(_user: address) -> bool: view
-    def getProfile(_user: address) -> address: view
-    def createProfile(_user: address) -> address: nonpayable
+    def hasProfile(_address: address) -> bool: view
+    def getProfile(_address: address) -> address: view
+    def createProfile(_address: address) -> address: nonpayable
     def setOwnerRegistry(_registry: address): nonpayable
-    def createProfileFor(_user: address) -> address: nonpayable
+    def createProfileFor(_address: address) -> address: nonpayable
 
 interface Profile:
     def addCommissionHub(_hub: address): nonpayable
@@ -82,18 +111,17 @@ event ProfileCreated:
 
 @deploy
 def __init__(_initial_l2relay: address, _initial_commission_hub_template: address):
-    self.l2Relay = _initial_l2relay
+    self.l2RelayOwnership = _initial_l2relay
     self.artCommissionHubTemplate = _initial_commission_hub_template
     self.owner = msg.sender
     self.profileFactoryAndRegistry = empty(address)
 
-# Internal function to ensure a user has a profile
 @internal
-def _ensureProfile(_user: address) -> address:
+def _ensureProfileForAddress(_address: address) -> address:
     """
     @notice Ensures that a user has a profile, creating one if needed
     @dev This function will check if a profile exists and create one if not
-    @param _user The address of the user to check/create a profile for
+    @param _address The address of the user to check/create a profile for
     @return The address of the user's profile
     """
     if self.profileFactoryAndRegistry == empty(address):
@@ -102,27 +130,25 @@ def _ensureProfile(_user: address) -> address:
     profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
     
     # Check if user already has a profile
-    if staticcall profile_factory_and_regsitry.hasProfile(_user):
-        return staticcall profile_factory_and_regsitry.getProfile(_user)
+    if staticcall profile_factory_and_regsitry.hasProfile(_address):
+        return staticcall profile_factory_and_regsitry.getProfile(_address)
     
     # Create a new profile for the user using the createProfileFor function
-    profile_address: address = extcall profile_factory_and_regsitry.createProfileFor(_user)
-    
+    profile_address: address = extcall profile_factory_and_regsitry.createProfileFor(_address)
     return profile_address
 
-# Internal function to add a hub to an owner's list
 @internal
-def _addHubToOwner(_owner: address, _hub: address):
+def _appendHubToOwner(_owner: address, _hub: address):
     # Check if hub is already in the owner's list
-    hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
+    hubs_len: uint256 = len(self.artCommissionHubsByOwner[_owner])
     for i:uint256 in range(10**8):
         if i >= hubs_len:
             break
-        if self.ownerToCommissionHubs[_owner][i] == _hub:
+        if self.artCommissionHubsByOwner[_owner][i] == _hub:
             return  # Hub already exists, nothing to do
     
     # Add the hub to the owner's list
-    self.ownerToCommissionHubs[_owner].append(_hub)
+    self.artCommissionHubsByOwner[_owner].append(_hub)
     
     # Emit event for tracking
     log HubLinkedToOwner(owner=_owner, hub=_hub)
@@ -130,7 +156,7 @@ def _addHubToOwner(_owner: address, _hub: address):
     # Ensure the owner has a profile and link the hub to it, but only if profile-factory-and-registry is set
     if self.profileFactoryAndRegistry != empty(address):
         # This will create a profile if one doesn't exist
-        profile_address: address = self._ensureProfile(_owner)
+        profile_address: address = self._ensureProfileForAddress(_owner)
         if profile_address != empty(address):
             profile: Profile = Profile(profile_address)
             extcall profile.addCommissionHub(_hub)
@@ -140,11 +166,11 @@ def _addHubToOwner(_owner: address, _hub: address):
 def _removeHubFromOwner(_owner: address, _hub: address):
     # Find the hub in the owner's list
     hub_index: int256 = -1
-    hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
+    hubs_len: uint256 = len(self.artCommissionHubsByOwner[_owner])
     for i:uint256 in range(10**8):
         if i >= hubs_len:
             break
-        if self.ownerToCommissionHubs[_owner][i] == _hub:
+        if self.artCommissionHubsByOwner[_owner][i] == _hub:
             hub_index = convert(i, int256)
             break
     
@@ -153,11 +179,11 @@ def _removeHubFromOwner(_owner: address, _hub: address):
         # Convert back to uint256 for array operations
         idx: uint256 = convert(hub_index, uint256)
         # If not the last element, swap with the last element
-        if idx < len(self.ownerToCommissionHubs[_owner]) - 1:
-            last_hub: address = self.ownerToCommissionHubs[_owner][len(self.ownerToCommissionHubs[_owner]) - 1]
-            self.ownerToCommissionHubs[_owner][idx] = last_hub
+        if idx < len(self.artCommissionHubsByOwner[_owner]) - 1:
+            last_hub: address = self.artCommissionHubsByOwner[_owner][len(self.artCommissionHubsByOwner[_owner]) - 1]
+            self.artCommissionHubsByOwner[_owner][idx] = last_hub
         # Remove the last element
-        self.ownerToCommissionHubs[_owner].pop()
+        self.artCommissionHubsByOwner[_owner].pop()
         
         # Emit event for tracking
         log HubUnlinkedFromOwner(owner=_owner, hub=_hub)
@@ -177,12 +203,12 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
     current_time: uint256 = block.timestamp
     
     # Store the old owner before updating
-    old_owner: address = self.owners[_chain_id][_nft_contract][_token_id]
+    old_owner: address = self.artCommissionHubOwners[_chain_id][_nft_contract][_token_id]
     
     # Update the owner and the last update timestamp FIRST
     # This ensures the owner is available when the hub queries it during initialization
-    self.owners[_chain_id][_nft_contract][_token_id] = _owner
-    self.lastUpdated[_chain_id][_nft_contract][_token_id] = current_time
+    self.artCommissionHubOwners[_chain_id][_nft_contract][_token_id] = _owner
+    self.artCommissionHubLastUpdated[_chain_id][_nft_contract][_token_id] = current_time
     
     # If the commission hub doesn't exist, create it
     commission_hub: address = empty(address)
@@ -190,16 +216,16 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
         commission_hub = create_minimal_proxy_to(self.artCommissionHubTemplate)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
         extcall commission_hub_instance.initialize(_chain_id, _nft_contract, _token_id, self)
-        self.artCommissionHubs[_chain_id][_nft_contract][_token_id] = commission_hub
+        self.artCommissionHubRegistry[_chain_id][_nft_contract][_token_id] = commission_hub
         self.isGenericHub[commission_hub] = False
         log ArtCommissionHubCreated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, commission_hub=commission_hub, is_generic=False)
         
         # Add the hub to the new owner's list
         if _owner != empty(address):
-            self._addHubToOwner(_owner, commission_hub)
+            self._appendHubToOwner(_owner, commission_hub)
     elif old_owner != _owner:
         # If the owner is changing, we need to update the commission hub
-        commission_hub = self.artCommissionHubs[_chain_id][_nft_contract][_token_id]
+        commission_hub = self.artCommissionHubRegistry[_chain_id][_nft_contract][_token_id]
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
         extcall commission_hub_instance.updateRegistration(_chain_id, _nft_contract, _token_id, _owner)
         
@@ -209,10 +235,10 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
         
         # Add the hub to the new owner's list
         if _owner != empty(address):
-            self._addHubToOwner(_owner, commission_hub)
+            self._appendHubToOwner(_owner, commission_hub)
     else:
         # Owner hasn't changed, just get the existing hub
-        commission_hub = self.artCommissionHubs[_chain_id][_nft_contract][_token_id]
+        commission_hub = self.artCommissionHubRegistry[_chain_id][_nft_contract][_token_id]
     
     log Registered(
         chain_id=_chain_id,
@@ -224,18 +250,36 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
         source=_source
     )
 
-#Called by L2Relay when ownership is verified, including chain_id, nft_contract, token_id, and owner as parameters.
+#Called by L2RelayOwnership when ownership is verified, including chain_id, nft_contract, token_id, and owner as parameters.
 @external
 def registerNFTOwnerFromParentChain(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
-    # Only allow registration from L2Relay
-    assert msg.sender == self.l2Relay, "Only L2Relay can register NFT owners"
+    # Only allow registration from L2RelayOwnership
+    assert msg.sender == self.l2RelayOwnership, "Only L2RelayOwnership can register artCommissionHubOwners"
     self._registerNFTOwner(_chain_id, _nft_contract, _token_id, _owner, msg.sender)
 
-# Create a generic commission hub for non-NFT owners like multisigs, DAOs, or individual wallets
+@external
+def createCommissionHub(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
+
+    # Only allow registration from L2RelayOwnership or the ProfileFactoryAndRegistry or the owner if not revoked
+    assert msg.sender == self.l2RelayOwnership or msg.sender == self.profileFactoryAndRegistry or msg.sender == _owner, "Only L2RelayOwnership or ProfileFactoryAndRegistry or the owner can create a commission hub"
+
+    # Create commission hub if it doesn't exist
+    if (self.artCommissionHubRegistry[_chain_id][_nft_contract][_token_id] == empty(address)):
+        commission_hub: address = self.artCommissionHubRegistry[_chain_id][_nft_contract][_token_id]
+        commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
+        profile: address = commission_hub_instance.getProfile()
+        if (profile != empty(address)):
+            return profile
+    
+    
+
+
+
+# Create a generic commission hub for non-NFT artCommissionHubOwners like multisigs, DAOs, or individual wallets
 @external
 def createGenericCommissionHub(_chain_id: uint256, _owner: address) -> address:
     """
-    @notice Creates a generic commission hub for non-NFT owners
+    @notice Creates a generic commission hub for non-NFT artCommissionHubOwners
     @dev This allows multisigs, DAOs, or individual wallets to have commission hubs
          without requiring them to own an NFT
     @param _chain_id The chain ID where the hub will be registered
@@ -268,7 +312,7 @@ def createGenericCommissionHub(_chain_id: uint256, _owner: address) -> address:
     self.isGenericHub[commission_hub] = True
     
     # Add the hub to the owner's list
-    self._addHubToOwner(_owner, commission_hub)
+    self._appendHubToOwner(_owner, commission_hub)
     
     # Emit event for tracking
     log GenericCommissionHubCreated(chain_id=_chain_id, owner=_owner, commission_hub=commission_hub)
@@ -299,51 +343,51 @@ def linkHubsToProfile(_owner: address):
     assert self.profileFactoryAndRegistry != empty(address), "Profile-Factory-And-Registry not set"
     
     # Ensure the owner has a profile (creates one if needed)
-    profile_address: address = self._ensureProfile(_owner)
+    profile_address: address = self._ensureProfileForAddress(_owner)
     if profile_address == empty(address):
         return
     
     profile: Profile = Profile(profile_address)
     
     # Link all hubs to the profile
-    hubs_len: uint256 = len(self.ownerToCommissionHubs[_owner])
+    hubs_len: uint256 = len(self.artCommissionHubsByOwner[_owner])
     for i:uint256 in range(10**8):
         if i >= hubs_len:
             break
-        hub: address = self.ownerToCommissionHubs[_owner][i]
+        hub: address = self.artCommissionHubsByOwner[_owner][i]
         extcall profile.addCommissionHub(hub)
 
 #Called by other contracts on L3 to query the owner of an NFT
 @view
 @external
 def lookupRegisteredOwner(_chain_id: uint256, _nft_contract: address, _token_id: uint256) -> address:
-    return self.owners[_chain_id][_nft_contract][_token_id]
+    return self.artCommissionHubOwners[_chain_id][_nft_contract][_token_id]
 
 #Get the timestamp when an owner was last updated
 @view
 @external
-def getLastUpdated(_chain_id: uint256, _nft_contract: address, _token_id: uint256) -> uint256:
-    return self.lastUpdated[_chain_id][_nft_contract][_token_id]
+def getArtCommissionHubLastUpdated(_chain_id: uint256, _nft_contract: address, _token_id: uint256) -> uint256:
+    return self.artCommissionHubLastUpdated[_chain_id][_nft_contract][_token_id]
 
 @view
 @external
 def getArtCommissionHubByOwner(_chain_id: uint256, _nft_contract: address, _token_id: uint256) -> address:
-    return self.artCommissionHubs[_chain_id][_nft_contract][_token_id]
+    return self.artCommissionHubRegistry[_chain_id][_nft_contract][_token_id]
 
 @view
 @external
 def lookupEthereumRegisteredOwner(_nft_contract: address, _token_id: uint256) -> address:
-    return self.owners[1][_nft_contract][_token_id]
+    return self.artCommissionHubOwners[1][_nft_contract][_token_id]
 
 @view
 @external
-def getEthereumLastUpdated(_nft_contract: address, _token_id: uint256) -> uint256:
-    return self.lastUpdated[1][_nft_contract][_token_id]
+def getEthereumArtCommissionHubLastUpdated(_nft_contract: address, _token_id: uint256) -> uint256:
+    return self.artCommissionHubLastUpdated[1][_nft_contract][_token_id]
 
 @view
 @external
 def getEthereumArtCommissionHubByOwner(_nft_contract: address, _token_id: uint256) -> address:
-    return self.artCommissionHubs[1][_nft_contract][_token_id]
+    return self.artCommissionHubRegistry[1][_nft_contract][_token_id]
     
 # Set commission hub template
 @external
@@ -353,10 +397,10 @@ def setArtCommissionHubTemplate(_new_template: address):
 
 # Set L2 relay
 @external
-def setL2Relay(_new_l2relay: address):
+def setL2RelayOwnership(_new_l2relay: address):
     assert msg.sender == self.owner, "Only owner can set L2 relay"
-    self.l2Relay = _new_l2relay
-    log L2RelaySet(l2Relay=_new_l2relay)
+    self.l2RelayOwnership = _new_l2relay
+    log L2RelayOwnershipSet(l2RelayOwnership=_new_l2relay)
 
 # IMPORTANT: Deployment Order Requirements
 # This function MUST be called after both contracts are deployed in this order:
@@ -392,10 +436,10 @@ def setProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
 # Get commission hubs for an owner with pagination
 @view
 @external
-def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+def getCommissionHubsByOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
     result: DynArray[address, 100] = []
     
-    total_hubs: uint256 = len(self.ownerToCommissionHubs[_owner])
+    total_hubs: uint256 = len(self.artCommissionHubsByOwner[_owner])
     if total_hubs == 0 or _page * _page_size >= total_hubs:
         return result
     
@@ -406,14 +450,14 @@ def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint2
         if i >= count:
             break
         if start + i < total_hubs:  # Safety check
-            result.append(self.ownerToCommissionHubs[_owner][start + i])
+            result.append(self.artCommissionHubsByOwner[_owner][start + i])
     
     return result
 
 # Get commission hubs for an owner with offset-based pagination
 @view
 @external
-def getCommissionHubsForOwnerByOffset(_owner: address, _offset: uint256, _count: uint256) -> DynArray[address, 50]:
+def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256) -> DynArray[address, 50]:
     """
     @notice Returns a paginated list of commission hubs owned by a specific address using offset-based pagination
     @dev This allows the UI to implement its own randomization by fetching different pages
@@ -424,7 +468,7 @@ def getCommissionHubsForOwnerByOffset(_owner: address, _offset: uint256, _count:
     """
     result: DynArray[address, 50] = []
     
-    total_hubs: uint256 = len(self.ownerToCommissionHubs[_owner])
+    total_hubs: uint256 = len(self.artCommissionHubsByOwner[_owner])
     if total_hubs == 0 or _offset >= total_hubs:
         return result
     
@@ -436,20 +480,20 @@ def getCommissionHubsForOwnerByOffset(_owner: address, _offset: uint256, _count:
     for i: uint256 in range(50):
         if i >= count:
             break
-        result.append(self.ownerToCommissionHubs[_owner][_offset + i])
+        result.append(self.artCommissionHubsByOwner[_owner][_offset + i])
     
     return result
 
 # Get the total number of commission hubs for an owner
 @view
 @external
-def getCommissionHubCountForOwner(_owner: address) -> uint256:
-    return len(self.ownerToCommissionHubs[_owner])
+def getCommissionHubCountByOwner(_owner: address) -> uint256:
+    return len(self.artCommissionHubsByOwner[_owner])
 
 # Get random commission hubs for an owner
 @view
 @external
-def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uint256) -> DynArray[address, 50]:
+def getRandomCommissionHubsByOwner(_owner: address, _count: uint256, _seed: uint256) -> DynArray[address, 50]:
     """
     @notice Returns a set of random commission hubs owned by a specific address
     @dev Uses the provided seed combined with block timestamp for randomness
@@ -460,7 +504,7 @@ def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uin
     """
     result: DynArray[address, 50] = []
     
-    total_hubs: uint256 = len(self.ownerToCommissionHubs[_owner])
+    total_hubs: uint256 = len(self.artCommissionHubsByOwner[_owner])
     if total_hubs == 0:
         return result
     
@@ -473,7 +517,7 @@ def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uin
             if i >= count:
                 break
             if i < total_hubs:
-                result.append(self.ownerToCommissionHubs[_owner][i])
+                result.append(self.artCommissionHubsByOwner[_owner][i])
         return result
     
     # Use a simple pseudo-random approach for selecting a subset
@@ -487,7 +531,7 @@ def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uin
             
         # Generate a random index
         random_index: uint256 = (random_seed + i * 13) % total_hubs
-        hub_address: address = self.ownerToCommissionHubs[_owner][random_index]
+        hub_address: address = self.artCommissionHubsByOwner[_owner][random_index]
         
         # Check if this hub is already in our result
         already_added: bool = False
@@ -504,7 +548,7 @@ def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uin
         else:
             # If already added, find the next unused one sequentially
             for k: uint256 in range(total_hubs, bound=1000):
-                next_hub: address = self.ownerToCommissionHubs[_owner][k]
+                next_hub: address = self.artCommissionHubsByOwner[_owner][k]
                 
                 # Check if this hub is already in our result
                 already_in_result: bool = False
@@ -521,8 +565,8 @@ def getRandomCommissionHubsForOwner(_owner: address, _count: uint256, _seed: uin
     
     return result
 
-event L2RelaySet:
-    l2Relay: address
+event L2RelayOwnershipSet:
+    l2RelayOwnership: address
     
     
 

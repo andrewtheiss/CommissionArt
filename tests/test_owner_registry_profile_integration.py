@@ -8,14 +8,14 @@ def setup():
     user1 = accounts.test_accounts[1]
     user2 = accounts.test_accounts[2]
     
-    # Deploy L2Relay (mock)
+    # Deploy L2RelayOwnership (mock)
     l2_relay = deployer
     
     # Deploy ArtCommissionHub template
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy OwnerRegistry
-    owner_registry = project.OwnerRegistry.deploy(
+    # Deploy ArtCommissionHubOwners
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(
         l2_relay.address,
         art_commission_hub_template.address,
         sender=deployer
@@ -34,18 +34,18 @@ def setup():
         sender=deployer
     )
     
-    # Link OwnerRegistry and ProfileFactoryAndRegistry
-    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    # Link ArtCommissionHubOwners and ProfileFactoryAndRegistry
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify bidirectional connection
-    assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
-    assert profile_factory_and_regsitry.ownerRegistry() == owner_registry.address
+    assert art_collection_ownership_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
+    assert profile_factory_and_regsitry.artCommissionHubOwners() == art_collection_ownership_registry.address
     
     return {
         "deployer": deployer,
         "user1": user1,
         "user2": user2,
-        "owner_registry": owner_registry,
+        "art_collection_ownership_registry": art_collection_ownership_registry,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "profile_template": profile_template,
         "profile_social_template": profile_social_template,
@@ -54,7 +54,7 @@ def setup():
 
 def test_register_nft_owner_with_no_profile(setup):
     """Test registering an NFT owner who doesn't have a profile yet"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
@@ -68,21 +68,21 @@ def test_register_nft_owner_with_no_profile(setup):
     assert profile_factory_and_regsitry.hasProfile(user1.address) is False
     
     # Register NFT ownership for user1 who doesn't have a profile yet
-    tx = owner_registry.registerNFTOwnerFromParentChain(
+    tx = art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
         user1.address,
-        sender=deployer  # Acting as L2Relay
+        sender=deployer  # Acting as L2RelayOwnership
     )
     
     # Verify the hub was created and linked to user1
-    commission_hub = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    commission_hub = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     assert commission_hub != "0x0000000000000000000000000000000000000000"
     
-    # Verify the hub is linked to user1 in the ownerToCommissionHubs mapping
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 1
-    hubs = owner_registry.getCommissionHubsForOwner(user1.address, 0, 100)
+    # Verify the hub is linked to user1 in the artCommissionHubsByOwner mapping
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 1
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 100)
     assert hubs[0] == commission_hub
     
     # Verify a profile was automatically created for user1
@@ -100,7 +100,7 @@ def test_register_nft_owner_with_no_profile(setup):
 
 def test_register_nft_owner_with_existing_profile(setup):
     """Test registering an NFT owner who already has a profile"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user2 = setup["user2"]
@@ -120,21 +120,21 @@ def test_register_nft_owner_with_existing_profile(setup):
     token_id = 456
     
     # Register NFT ownership for user2 who already has a profile
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
         user2.address,
-        sender=deployer  # Acting as L2Relay
+        sender=deployer  # Acting as L2RelayOwnership
     )
     
     # Verify the hub was created and linked to user2
-    commission_hub = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    commission_hub = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     assert commission_hub != "0x0000000000000000000000000000000000000000"
     
-    # Verify the hub is linked to user2 in the ownerToCommissionHubs mapping
-    assert owner_registry.getCommissionHubCountForOwner(user2.address) == 1
-    hubs = owner_registry.getCommissionHubsForOwner(user2.address, 0, 100)
+    # Verify the hub is linked to user2 in the artCommissionHubsByOwner mapping
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user2.address) == 1
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user2.address, 0, 100)
     assert hubs[0] == commission_hub
     
     # Verify the commission hub was automatically linked to the profile
@@ -144,7 +144,7 @@ def test_register_nft_owner_with_existing_profile(setup):
 
 def test_transfer_nft_ownership(setup):
     """Test transferring NFT ownership between users with profiles"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
@@ -167,16 +167,16 @@ def test_transfer_nft_ownership(setup):
     token_id = 789
     
     # Register NFT ownership for user1
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
         user1.address,
-        sender=deployer  # Acting as L2Relay
+        sender=deployer  # Acting as L2RelayOwnership
     )
     
     # Verify the hub was created and linked to user1
-    commission_hub = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    commission_hub = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     assert commission_hub != "0x0000000000000000000000000000000000000000"
     
     # Verify the hub is linked to user1's profile
@@ -188,12 +188,12 @@ def test_transfer_nft_ownership(setup):
     assert profile2.commissionHubCount() == 0
     
     # Transfer NFT ownership from user1 to user2
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
         user2.address,
-        sender=deployer  # Acting as L2Relay
+        sender=deployer  # Acting as L2RelayOwnership
     )
     
     # Verify the hub was unlinked from user1's profile
@@ -204,15 +204,15 @@ def test_transfer_nft_ownership(setup):
     hubs2 = profile2.getCommissionHubs(0, 100)
     assert hubs2[0] == commission_hub
     
-    # Verify the ownerToCommissionHubs mappings were updated
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 0
-    assert owner_registry.getCommissionHubCountForOwner(user2.address) == 1
-    hubs = owner_registry.getCommissionHubsForOwner(user2.address, 0, 100)
+    # Verify the artCommissionHubsByOwner mappings were updated
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 0
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user2.address) == 1
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user2.address, 0, 100)
     assert hubs[0] == commission_hub
 
 def test_multiple_hubs_per_user(setup):
     """Test a user owning multiple commission hubs"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
@@ -230,20 +230,20 @@ def test_multiple_hubs_per_user(setup):
         nft_contract = f"0x{i+1}000000000000000000000000000000000000000"
         token_id = i + 1
         
-        owner_registry.registerNFTOwnerFromParentChain(
+        art_collection_ownership_registry.registerNFTOwnerFromParentChain(
             chain_id,
             nft_contract,
             token_id,
             user1.address,
-            sender=deployer  # Acting as L2Relay
+            sender=deployer  # Acting as L2RelayOwnership
         )
     
     # Verify user1 now has 3 commission hubs
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 3
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 3
     assert profile1.commissionHubCount() == 3
     
     # Get all hubs from the registry
-    registry_hubs = owner_registry.getCommissionHubsForOwner(user1.address, 0, 100)
+    registry_hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 100)
     assert len(registry_hubs) == 3
     
     # Get all hubs from the profile
@@ -256,7 +256,7 @@ def test_multiple_hubs_per_user(setup):
 
 def test_pagination_of_hubs(setup):
     """Test pagination of commission hubs"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
@@ -274,22 +274,22 @@ def test_pagination_of_hubs(setup):
         nft_contract = f"0x{i+1}000000000000000000000000000000000000000"
         token_id = i + 1
         
-        owner_registry.registerNFTOwnerFromParentChain(
+        art_collection_ownership_registry.registerNFTOwnerFromParentChain(
             chain_id,
             nft_contract,
             token_id,
             user1.address,
-            sender=deployer  # Acting as L2Relay
+            sender=deployer  # Acting as L2RelayOwnership
         )
     
     # Verify user1 now has 5 commission hubs
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 5
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 5
     assert profile1.commissionHubCount() == 5
     
     # Test pagination from registry
-    page1 = owner_registry.getCommissionHubsForOwner(user1.address, 0, 2)
-    page2 = owner_registry.getCommissionHubsForOwner(user1.address, 1, 2)
-    page3 = owner_registry.getCommissionHubsForOwner(user1.address, 2, 2)
+    page1 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 2)
+    page2 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 1, 2)
+    page3 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 2, 2)
     
     assert len(page1) == 2
     assert len(page2) == 2
@@ -315,16 +315,16 @@ def test_pagination_of_hubs(setup):
     assert recent_hubs[2] == all_hubs[2]  # Third most recent
 
 def test_bidirectional_connection(setup):
-    """Test the bidirectional connection between OwnerRegistry and ProfileFactoryAndRegistry"""
+    """Test the bidirectional connection between ArtCommissionHubOwners and ProfileFactoryAndRegistry"""
     deployer = setup["deployer"]
     
-    # Deploy new instances of OwnerRegistry and ProfileFactoryAndRegistry
+    # Deploy new instances of ArtCommissionHubOwners and ProfileFactoryAndRegistry
     art_commission_hub_template = setup["art_commission_hub_template"]
     profile_template = setup["profile_template"]
     
-    # Deploy OwnerRegistry without initial connection
-    owner_registry = project.OwnerRegistry.deploy(
-        deployer.address,  # Mock L2Relay
+    # Deploy ArtCommissionHubOwners without initial connection
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(
+        deployer.address,  # Mock L2RelayOwnership
         art_commission_hub_template.address,
         sender=deployer
     )
@@ -337,15 +337,15 @@ def test_bidirectional_connection(setup):
     )
     
     # Verify no initial connection
-    assert owner_registry.profileFactoryAndRegistry() == "0x0000000000000000000000000000000000000000"
-    assert profile_factory_and_regsitry.ownerRegistry() == "0x0000000000000000000000000000000000000000"
+    assert art_collection_ownership_registry.profileFactoryAndRegistry() == "0x0000000000000000000000000000000000000000"
+    assert profile_factory_and_regsitry.artCommissionHubOwners() == "0x0000000000000000000000000000000000000000"
     
     # Set the bidirectional connection
-    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify both connections are established
-    assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
-    assert profile_factory_and_regsitry.ownerRegistry() == owner_registry.address
+    assert art_collection_ownership_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
+    assert profile_factory_and_regsitry.artCommissionHubOwners() == art_collection_ownership_registry.address
     
     # Test updating the connection to a new ProfileFactoryAndRegistry
     new_profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
@@ -354,15 +354,15 @@ def test_bidirectional_connection(setup):
         sender=deployer
     )
     
-    owner_registry.setProfileFactoryAndRegistry(new_profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(new_profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify the connection is updated
-    assert owner_registry.profileFactoryAndRegistry() == new_profile_factory_and_regsitry.address
-    assert new_profile_factory_and_regsitry.ownerRegistry() == owner_registry.address
+    assert art_collection_ownership_registry.profileFactoryAndRegistry() == new_profile_factory_and_regsitry.address
+    assert new_profile_factory_and_regsitry.artCommissionHubOwners() == art_collection_ownership_registry.address
 
 def test_access_control_for_commission_hub_methods(setup):
     """Test access control for addCommissionHub and removeCommissionHub in Profile"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
@@ -379,7 +379,7 @@ def test_access_control_for_commission_hub_methods(setup):
     token_id = 123
     
     # Register NFT ownership for user1
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
@@ -388,7 +388,7 @@ def test_access_control_for_commission_hub_methods(setup):
     )
     
     # Get the hub address
-    commission_hub = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    commission_hub = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Try to add a hub directly as user1 (profile owner) - should fail
     with pytest.raises(Exception) as excinfo:
@@ -412,7 +412,7 @@ def test_access_control_for_commission_hub_methods(setup):
 
 def test_events_for_hub_linking(setup):
     """Test events emitted when linking/unlinking hubs to owners"""
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     deployer = setup["deployer"]
     user1 = setup["user1"]
@@ -427,7 +427,7 @@ def test_events_for_hub_linking(setup):
     token_id = 123
     
     # Register NFT ownership for user1 and capture the event
-    tx = owner_registry.registerNFTOwnerFromParentChain(
+    tx = art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
@@ -436,7 +436,7 @@ def test_events_for_hub_linking(setup):
     )
     
     # Get the hub address
-    commission_hub = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    commission_hub = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Verify HubLinkedToOwner event was emitted - instead of checking event.name, check for existence of specific attributes
     linked_events = []
@@ -449,7 +449,7 @@ def test_events_for_hub_linking(setup):
     assert linked_events[0].hub == commission_hub
     
     # Transfer ownership to user2 and capture events
-    tx = owner_registry.registerNFTOwnerFromParentChain(
+    tx = art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,

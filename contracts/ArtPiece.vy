@@ -398,7 +398,7 @@ def _getEffectiveOwner() -> address:
     @notice Internal function to determine the effective owner based on verification and hub status
     @return The effective owner address
     """
-    # If attached to a hub and fully verified, return the hub owner (which is set only by OwnerRegistry)
+    # If attached to a hub and fully verified, return the hub owner (which is set only by ArtCommissionHubOwners)
     if self.attachedToArtCommissionHub and self.artCommissionHubAddress != empty(address) and self.fullyVerifiedCommission:
         hub_owner: address = staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
         if hub_owner != empty(address):
@@ -494,6 +494,9 @@ def _completeVerification():
     """
     self.fullyVerifiedCommission = True
     
+    ## TODO - attach this to a hub, or create a new hub if it's not attached to one
+
+
     # If attached to a hub, ownership will now be determined by the hub owner
     # No need to update any internal state since _getEffectiveOwner() will handle this
     
@@ -628,14 +631,23 @@ def getAIGenerated() -> bool:
 
 @external
 def attachToArtCommissionHub(_commission_hub: address):
+    self._attachToArtCommissionHub(_commission_hub, False)
+
+@internal
+def _attachToArtCommissionHub(_commission_hub: address, first_attachment: bool = False):
     """
     Attach this ArtPiece to a ArtCommissionHub
     Can only be called if not currently attached to a hub
     """
-    current_owner: address = self._getEffectiveOwner()
-    assert msg.sender == current_owner or msg.sender == self.artist, "Only owner or artist can attach to a ArtCommissionHub"
     assert not self.attachedToArtCommissionHub, "Already attached to a ArtCommissionHub"
     assert _commission_hub != empty(address), "Invalid ArtCommissionHub address"
+
+    # If this is the first attachment, only the artist or commissioner can attach (implicitly on verification)
+    if first_attachment is not False:
+        assert msg.sender == self.artist or msg.sender == self.commissioner, "Only artist or commissioner can attach to a ArtCommissionHub"
+    else:
+        current_owner: address = self._getEffectiveOwner()
+        assert msg.sender == current_owner, "Only owner or artist can attach to a ArtCommissionHub"
 
     # Set attachment status
     self.attachedToArtCommissionHub = True
@@ -659,12 +671,7 @@ def detachFromArtCommissionHub():
     """
     # Check that the art piece is actually attached to a hub
     assert self.attachedToArtCommissionHub, "Not attached to a ArtCommissionHub"
-    
-    # For tests to pass, we get the hub owner directly
-    hub_owner: address = staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
-    
-    # Check that caller is the hub owner
-    assert msg.sender == hub_owner, "Only hub owner can detach from ArtCommissionHub"
+    assert msg.sender == self._getEffectiveOwner(), "Only the hub owner can detach from ArtCommissionHub"
     
     # Store hub address for event logging before clearing
     previous_hub: address = self.artCommissionHubAddress

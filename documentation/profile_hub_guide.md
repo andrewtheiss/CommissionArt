@@ -115,7 +115,7 @@ Link Art to NFT/CommissionHub
 Profile Metadata Management
 D. Methods to Strip/Move
 Direct ERC1155 Sale/Transfer: Move to sales contract/profile.
-Ownership Transfer Logic for Linked Art: Should be handled by the ArtCommissionHub and OwnerRegistry, not Profile.
+Ownership Transfer Logic for Linked Art: Should be handled by the ArtCommissionHub and ArtCommissionHubOwners, not Profile.
 Complex Removal Methods: If you have many similar "removeX" methods, consider a single generic method with an enum/int parameter (as you noted in your drawio comment).
 3. Profile: Clear Behavior Flow
 A. Uploading Art
@@ -131,7 +131,7 @@ E. Linking to NFT/CommissionHub
 Art is linked to an ArtCommissionHub (NFT collection).
 Ownership and sale logic for the art is now managed by the hub and not the profile.
 F. Ownership Propagation
-If the NFT is sold/transferred, the OwnerRegistry and ArtCommissionHub update the owner for all linked art.
+If the NFT is sold/transferred, the ArtCommissionHubOwners and ArtCommissionHub update the owner for all linked art.
 4. Are You Missing Anything?
 Sale Approval/Permissions: Make sure both artist and curator can put art for sale, but only if they have the right (e.g., original uploader or current owner).
 Event Emissions: For all state changes (upload, tag, sale, verification), emit events for off-chain tracking.

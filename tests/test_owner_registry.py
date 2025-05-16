@@ -13,7 +13,7 @@ def deployer():
 
 @pytest.fixture
 def l2_relay(deployer):
-    return project.L2Relay.deploy(sender=deployer)
+    return project.L2RelayOwnership.deploy(sender=deployer)
 
 @pytest.fixture
 def user1():
@@ -45,82 +45,82 @@ def profile_factory_and_regsitry(deployer, profile_template, profile_social_temp
     return hub
 
 @pytest.fixture
-def owner_registry(deployer, l2_relay, art_commission_hub_template):
-    # Deploy the OwnerRegistry contract
-    registry = project.OwnerRegistry.deploy(l2_relay.address, art_commission_hub_template.address, sender=deployer)
+def art_collection_ownership_registry(deployer, l2_relay, art_commission_hub_template):
+    # Deploy the ArtCommissionHubOwners contract
+    registry = project.ArtCommissionHubOwners.deploy(l2_relay.address, art_commission_hub_template.address, sender=deployer)
     return registry
 
 # Test initialization
-def test_initialization(owner_registry, l2_relay, art_commission_hub_template, deployer):
-    assert owner_registry.l2Relay() == l2_relay.address
-    assert owner_registry.artCommissionHubTemplate() == art_commission_hub_template.address
-    assert owner_registry.owner() == deployer.address
-    assert owner_registry.profileFactoryAndRegistry() == ZERO_ADDRESS
+def test_initialization(art_collection_ownership_registry, l2_relay, art_commission_hub_template, deployer):
+    assert art_collection_ownership_registry.l2RelayOwnership() == l2_relay.address
+    assert art_collection_ownership_registry.artCommissionHubTemplate() == art_commission_hub_template.address
+    assert art_collection_ownership_registry.owner() == deployer.address
+    assert art_collection_ownership_registry.profileFactoryAndRegistry() == ZERO_ADDRESS
 
 # Test NFT owner registration
-def test_register_nft_owner(owner_registry, l2_relay, user1, deployer):
-    # Set L2Relay to the deployer for testing
-    owner_registry.setL2Relay(deployer.address, sender=deployer)
+def test_register_nft_owner(art_collection_ownership_registry, l2_relay, user1, deployer):
+    # Set L2RelayOwnership to the deployer for testing
+    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
     
     # Register an NFT owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID, user1.address, sender=deployer
     )
     
     # Verify the owner was registered
-    assert owner_registry.lookupRegisteredOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID) == user1.address
-    assert owner_registry.lookupEthereumRegisteredOwner(TEST_NFT_CONTRACT, TEST_TOKEN_ID) == user1.address
+    assert art_collection_ownership_registry.lookupRegisteredOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID) == user1.address
+    assert art_collection_ownership_registry.lookupEthereumRegisteredOwner(TEST_NFT_CONTRACT, TEST_TOKEN_ID) == user1.address
     
     # Verify a timestamp was recorded
-    assert owner_registry.getLastUpdated(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID) > 0
-    assert owner_registry.getEthereumLastUpdated(TEST_NFT_CONTRACT, TEST_TOKEN_ID) > 0
+    assert art_collection_ownership_registry.getLastUpdated(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID) > 0
+    assert art_collection_ownership_registry.getEthereumLastUpdated(TEST_NFT_CONTRACT, TEST_TOKEN_ID) > 0
     
     # Verify a commission hub was created
-    hub_address = owner_registry.getArtCommissionHubByOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID)
+    hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID)
     assert hub_address != ZERO_ADDRESS
-    assert owner_registry.getEthereumArtCommissionHubByOwner(TEST_NFT_CONTRACT, TEST_TOKEN_ID) == hub_address
+    assert art_collection_ownership_registry.getEthereumArtCommissionHubByOwner(TEST_NFT_CONTRACT, TEST_TOKEN_ID) == hub_address
     
     # Verify the hub is not generic
-    assert not owner_registry.isGeneric(hub_address)
+    assert not art_collection_ownership_registry.isGeneric(hub_address)
     
     # Verify the hub was linked to the owner
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 1
-    hubs = owner_registry.getCommissionHubsForOwner(user1.address, 0, 10)
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 1
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 10)
     assert len(hubs) == 1
     assert hubs[0] == hub_address
 
 # Test NFT owner update
-def test_update_nft_owner(owner_registry, l2_relay, user1, user2, deployer):
-    # Set L2Relay to the deployer for testing
-    owner_registry.setL2Relay(deployer.address, sender=deployer)
+def test_update_nft_owner(art_collection_ownership_registry, l2_relay, user1, user2, deployer):
+    # Set L2RelayOwnership to the deployer for testing
+    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
     
     # Register an NFT owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID, user1.address, sender=deployer
     )
     
     # Get the hub address
-    hub_address = owner_registry.getArtCommissionHubByOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID)
+    hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID)
     
     # Update the owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID, user2.address, sender=deployer
     )
     
     # Verify the owner was updated
-    assert owner_registry.lookupRegisteredOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID) == user2.address
+    assert art_collection_ownership_registry.lookupRegisteredOwner(CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID) == user2.address
     
     # Verify the hub was unlinked from user1 and linked to user2
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 0
-    assert owner_registry.getCommissionHubCountForOwner(user2.address) == 1
-    hubs = owner_registry.getCommissionHubsForOwner(user2.address, 0, 10)
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 0
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user2.address) == 1
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user2.address, 0, 10)
     assert len(hubs) == 1
     assert hubs[0] == hub_address
 
 # Test generic commission hub creation
-def test_create_generic_commission_hub(owner_registry, user1):
+def test_create_generic_commission_hub(art_collection_ownership_registry, user1):
     # Create a generic commission hub
-    tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
+    tx = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
     
     # Get the hub address from the event
     hub_address = None
@@ -132,27 +132,27 @@ def test_create_generic_commission_hub(owner_registry, user1):
     assert hub_address is not None
     
     # Verify the hub is generic
-    assert owner_registry.isGeneric(hub_address)
+    assert art_collection_ownership_registry.isGeneric(hub_address)
     
     # Verify the hub was linked to the owner
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 1
-    hubs = owner_registry.getCommissionHubsForOwner(user1.address, 0, 10)
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 1
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 10)
     assert len(hubs) == 1
     assert hubs[0] == hub_address
 
 # Test profile integration
-def test_profile_integration(owner_registry, profile_factory_and_regsitry, deployer, user1):
+def test_profile_integration(art_collection_ownership_registry, profile_factory_and_regsitry, deployer, user1):
     # Set the profile-factory-and-registry
-    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
-    assert owner_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    assert art_collection_ownership_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
     
     # Create a profile for user1
     profile_factory_and_regsitry.createProfile(sender=user1)
     user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     
     # Create a generic commission hub
-    tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
+    tx = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
     
     # Get the hub address from the event
     hub_address = None
@@ -169,13 +169,13 @@ def test_profile_integration(owner_registry, profile_factory_and_regsitry, deplo
     assert profile_factory_and_regsitrys[0] == hub_address
 
 # Test profile creation
-def test_profile_creation(owner_registry, profile_factory_and_regsitry, deployer, user1):
+def test_profile_creation(art_collection_ownership_registry, profile_factory_and_regsitry, deployer, user1):
     # Set the profile-factory-and-registry
-    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
     
-    # Set L2Relay to the deployer for testing purposes
-    owner_registry.setL2Relay(deployer.address, sender=deployer)
+    # Set L2RelayOwnership to the deployer for testing purposes
+    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
     
     # Verify user1 doesn't have a profile yet
     assert profile_factory_and_regsitry.hasProfile(user1.address) is False
@@ -188,7 +188,7 @@ def test_profile_creation(owner_registry, profile_factory_and_regsitry, deployer
     user1_profile = profile_factory_and_regsitry.getProfile(user1.address)
     
     # Create a generic commission hub
-    tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
+    tx = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
     
     # Get the hub address from the event
     hub_address = None
@@ -205,9 +205,9 @@ def test_profile_creation(owner_registry, profile_factory_and_regsitry, deployer
     assert profile_factory_and_regsitrys[0] == hub_address
 
 # Test linking hubs to profile
-def test_link_hubs_to_profile(owner_registry, profile_factory_and_regsitry, deployer, user1):
+def test_link_hubs_to_profile(art_collection_ownership_registry, profile_factory_and_regsitry, deployer, user1):
     # Create a generic commission hub (without profile integration)
-    tx = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
+    tx = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
     
     # Get the hub address from the event
     hub_address = None
@@ -217,8 +217,8 @@ def test_link_hubs_to_profile(owner_registry, profile_factory_and_regsitry, depl
             break
     
     # Set the profile-factory-and-registry
-    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
     
     # Create a profile for user1
     profile_factory_and_regsitry.createProfile(sender=user1)
@@ -226,7 +226,7 @@ def test_link_hubs_to_profile(owner_registry, profile_factory_and_regsitry, depl
     profile = project.Profile.at(user1_profile)
     
     # Link hubs to profile
-    owner_registry.linkHubsToProfile(user1.address, sender=user1)
+    art_collection_ownership_registry.linkHubsToProfile(user1.address, sender=user1)
     
     # Verify the hub was linked to the profile
     assert profile.commissionHubCount() == 1
@@ -235,9 +235,9 @@ def test_link_hubs_to_profile(owner_registry, profile_factory_and_regsitry, depl
     assert profile_factory_and_regsitrys[0] == hub_address
 
 # Test multiple generic hubs for the same owner
-def test_multiple_generic_hubs(owner_registry, user1):
+def test_multiple_generic_hubs(art_collection_ownership_registry, user1):
     # Create first generic commission hub
-    tx1 = owner_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
+    tx1 = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID, user1.address, sender=user1)
     hub1 = None
     for event in tx1.events:
         if hasattr(event, 'commission_hub') and hasattr(event, 'owner') and event.owner == user1.address:
@@ -245,7 +245,7 @@ def test_multiple_generic_hubs(owner_registry, user1):
             break
     
     # Create second generic commission hub on a different chain
-    tx2 = owner_registry.createGenericCommissionHub(CHAIN_ID + 1, user1.address, sender=user1)
+    tx2 = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID + 1, user1.address, sender=user1)
     hub2 = None
     for event in tx2.events:
         if hasattr(event, 'commission_hub') and hasattr(event, 'owner') and event.owner == user1.address:
@@ -258,63 +258,63 @@ def test_multiple_generic_hubs(owner_registry, user1):
     assert hub1 != hub2
     
     # Verify both hubs are linked to the owner
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 2
-    hubs = owner_registry.getCommissionHubsForOwner(user1.address, 0, 10)
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 2
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 10)
     assert len(hubs) == 2
     assert hub1 in hubs
     assert hub2 in hubs
 
 # Test permission checks
-def test_permissions(owner_registry, deployer, user1, l2_relay):
-    # Only L2Relay can register NFT owners
-    with reverts("Only L2Relay can register NFT owners"):
-        owner_registry.registerNFTOwnerFromParentChain(
+def test_permissions(art_collection_ownership_registry, deployer, user1, l2_relay):
+    # Only L2RelayOwnership can register NFT owners
+    with reverts("Only L2RelayOwnership can register NFT owners"):
+        art_collection_ownership_registry.registerNFTOwnerFromParentChain(
             CHAIN_ID, TEST_NFT_CONTRACT, TEST_TOKEN_ID, user1.address, sender=user1
         )
     
-    # Only owner can set L2Relay
+    # Only owner can set L2RelayOwnership
     with reverts("Only owner can set L2 relay"):
-        owner_registry.setL2Relay(user1.address, sender=user1)
+        art_collection_ownership_registry.setL2RelayOwnership(user1.address, sender=user1)
     
     # Only owner can set commission hub template
     with reverts("Only owner can set commission hub template"):
-        owner_registry.setArtCommissionHubTemplate(user1.address, sender=user1)
+        art_collection_ownership_registry.setArtCommissionHubTemplate(user1.address, sender=user1)
     
     # Only owner can set profile-factory-and-registry
     with reverts("Only owner can set profile-factory-and-registry"):
-        owner_registry.setProfileFactoryAndRegistry(user1.address, sender=user1)
+        art_collection_ownership_registry.setProfileFactoryAndRegistry(user1.address, sender=user1)
 
 # Test pagination of commission hubs
-def test_commission_hub_pagination(owner_registry, user1):
+def test_commission_hub_pagination(art_collection_ownership_registry, user1):
     # Create multiple generic commission hubs
     hubs = []
     for i in range(5):
-        tx = owner_registry.createGenericCommissionHub(CHAIN_ID + i, user1.address, sender=user1)
+        tx = art_collection_ownership_registry.createGenericCommissionHub(CHAIN_ID + i, user1.address, sender=user1)
         for event in tx.events:
             if hasattr(event, 'commission_hub') and hasattr(event, 'owner') and event.owner == user1.address:
                 hubs.append(event.commission_hub)
                 break
     
     # Test pagination
-    assert owner_registry.getCommissionHubCountForOwner(user1.address) == 5
+    assert art_collection_ownership_registry.getCommissionHubCountByOwner(user1.address) == 5
     
     # Page 0, size 2
-    page0 = owner_registry.getCommissionHubsForOwner(user1.address, 0, 2)
+    page0 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 0, 2)
     assert len(page0) == 2
     assert page0[0] == hubs[0]
     assert page0[1] == hubs[1]
     
     # Page 1, size 2
-    page1 = owner_registry.getCommissionHubsForOwner(user1.address, 1, 2)
+    page1 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 1, 2)
     assert len(page1) == 2
     assert page1[0] == hubs[2]
     assert page1[1] == hubs[3]
     
     # Page 2, size 2
-    page2 = owner_registry.getCommissionHubsForOwner(user1.address, 2, 2)
+    page2 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 2, 2)
     assert len(page2) == 1
     assert page2[0] == hubs[4]
     
     # Page 3, size 2 (empty)
-    page3 = owner_registry.getCommissionHubsForOwner(user1.address, 3, 2)
+    page3 = art_collection_ownership_registry.getCommissionHubsByOwner(user1.address, 3, 2)
     assert len(page3) == 0 

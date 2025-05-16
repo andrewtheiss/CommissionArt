@@ -23,8 +23,8 @@ def setup(deployer, mock_inbox):
     token_id = 1
     erc721.mint(deployer.address, token_id, sender=deployer)
     
-    # Deploy the L1QueryOwner contract
-    l1_contract = deployer.deploy(project.L1QueryOwner, mock_inbox)
+    # Deploy the L1QueryOwnership contract
+    l1_contract = deployer.deploy(project.L1QueryOwnership, mock_inbox)
     
     return {
         "erc721": erc721,
@@ -39,7 +39,7 @@ def test_contract_initialization(setup):
     # The initialization already happened in the fixture
     # We can verify the deployment was successful
     assert setup["l1_contract"].address is not None
-    print(f"L1QueryOwner deployed at: {setup['l1_contract'].address}")
+    print(f"L1QueryOwnership deployed at: {setup['l1_contract'].address}")
 
 def test_verify_erc721_ownership(setup):
     """Test that the ERC721 contract correctly reports ownership"""

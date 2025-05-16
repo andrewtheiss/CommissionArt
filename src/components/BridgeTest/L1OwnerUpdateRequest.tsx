@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import './BridgeTest.css';
-import l1QueryOwnerABI from '../../assets/abis/L1QueryOwner.json';
+import l1QueryOwnerABI from '../../assets/abis/L1QueryOwnership.json';
 import { NodeInterface__factory } from '@arbitrum/sdk/dist/lib/abi/factories/NodeInterface__factory';
 import { NODE_INTERFACE_ADDRESS } from '@arbitrum/sdk/dist/lib/dataEntities/constants';
 import useContractConfig from '../../utils/useContractConfig';
@@ -117,7 +117,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
         // Only update state if the address has actually changed
         if (newAddress !== contractAddress) {
           setContractAddress(newAddress);
-          setBridgeStatus(`Using L1QueryOwner at ${newAddress}`);
+          setBridgeStatus(`Using L1QueryOwnership at ${newAddress}`);
         }
       } catch (error) {
         const newError = error instanceof Error ? error : new Error('Unknown error');
@@ -733,7 +733,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
                     placeholder="0x... (L2 Relay Address)"
                     disabled={isSubmitting}
                   />
-                  <small>Address on L2 (e.g., L2Relay) to receive the owner info.</small>
+                  <small>Address on L2 (e.g., L2RelayOwnership) to receive the owner info.</small>
                 </div>
                 
                 <div className="form-group">

@@ -17,15 +17,15 @@ def setup():
     # Deploy ArtCommissionHub template
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy OwnerRegistry
-    owner_registry = project.OwnerRegistry.deploy(l2relay.address, art_commission_hub_template.address, sender=deployer)
+    # Deploy ArtCommissionHubOwners
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(l2relay.address, art_commission_hub_template.address, sender=deployer)
     
     # Use registry to create and initialize the hub
     chain_id = 1
     nft_contract = deployer.address
     token_id = 1
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, hub_owner.address, sender=l2relay)
-    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, hub_owner.address, sender=l2relay)
+    commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     
     return {
@@ -213,7 +213,7 @@ def test_hub_attached_commission_verification():
     deployer = accounts.test_accounts[0]
     l2relay = accounts.test_accounts[9]
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
-    owner_registry = project.OwnerRegistry.deploy(l2relay.address, art_commission_hub_template.address, sender=deployer)
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(l2relay.address, art_commission_hub_template.address, sender=deployer)
     artist = accounts.test_accounts[1]
     commissioner = accounts.test_accounts[2]
     hub_owner = accounts.test_accounts[3]
@@ -221,8 +221,8 @@ def test_hub_attached_commission_verification():
     nft_contract = accounts.test_accounts[4].address
     token_id = 55
     # Register NFT owner and get hub
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, hub_owner.address, sender=l2relay)
-    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, hub_owner.address, sender=l2relay)
+    commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     # --- End new setup ---
     # Deploy ArtPiece attached to hub
@@ -330,25 +330,25 @@ def test_artist_verification(setup):
     assert not art_piece.artistVerified(), "Artist should not be verified initially"
     assert art_piece.commissionerVerified(), "Commissioner should be verified initially (uploader)"
 
-# Helper fixture to deploy OwnerRegistry and ArtCommissionHub template
+# Helper fixture to deploy ArtCommissionHubOwners and ArtCommissionHub template
 @pytest.fixture
 def registry_and_template():
     deployer = accounts.test_accounts[0]
     l2relay = accounts.test_accounts[9]
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
-    owner_registry = project.OwnerRegistry.deploy(l2relay.address, art_commission_hub_template.address, sender=deployer)
-    return deployer, l2relay, art_commission_hub_template, owner_registry
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(l2relay.address, art_commission_hub_template.address, sender=deployer)
+    return deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry
 
-# Test creation and initialization of a generic commission hub via OwnerRegistry
+# Test creation and initialization of a generic commission hub via ArtCommissionHubOwners
 @pytest.mark.usefixtures("registry_and_template")
 def test_create_generic_commission_hub(registry_and_template):
-    deployer, l2relay, art_commission_hub_template, owner_registry = registry_and_template
+    deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry = registry_and_template
     owner = accounts.test_accounts[1]
     chain_id = 1
     
     # Owner creates a generic commission hub via the registry
     # The function returns a transaction receipt, not the address directly
-    tx = owner_registry.createGenericCommissionHub(chain_id, owner.address, sender=owner)
+    tx = art_collection_ownership_registry.createGenericCommissionHub(chain_id, owner.address, sender=owner)
     
     # Debug: Print logs to understand their structure
     print("\nTransaction logs:")
@@ -358,10 +358,10 @@ def test_create_generic_commission_hub(registry_and_template):
         print(f"  Topics: {[t.hex() if isinstance(t, bytes) else t for t in log['topics']]}")
         print(f"  Data: {log['data'].hex() if isinstance(log['data'], bytes) else log['data']}")
     
-    # Get the hub address from the OwnerRegistry directly instead of parsing logs
+    # Get the hub address from the ArtCommissionHubOwners directly instead of parsing logs
     # This is a more reliable approach
-    # We'll use getCommissionHubsForOwner which returns the hubs for a given owner
-    hubs = owner_registry.getCommissionHubsForOwner(owner.address, 0, 100)
+    # We'll use getCommissionHubsByOwner which returns the hubs for a given owner
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(owner.address, 0, 100)
     assert len(hubs) > 0, "No commission hubs found for owner"
     commission_hub_address = hubs[0]  # Get the first hub (should be the one we just created)
     
@@ -373,17 +373,17 @@ def test_create_generic_commission_hub(registry_and_template):
     assert commission_hub.is_generic() is True
     assert commission_hub.chainId() == chain_id
 
-# Test creation and initialization of an NFT-based commission hub via OwnerRegistry
+# Test creation and initialization of an NFT-based commission hub via ArtCommissionHubOwners
 @pytest.mark.usefixtures("registry_and_template")
 def test_create_nft_commission_hub(registry_and_template):
-    deployer, l2relay, art_commission_hub_template, owner_registry = registry_and_template
+    deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry = registry_and_template
     nft_owner = accounts.test_accounts[2]
     chain_id = 1
     nft_contract = accounts.test_accounts[3].address  # Use an address as a dummy NFT contract
     token_id = 42
-    # L2Relay registers NFT owner, which creates and initializes the hub
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, nft_owner.address, sender=l2relay)
-    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    # L2RelayOwnership registers NFT owner, which creates and initializes the hub
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, nft_owner.address, sender=l2relay)
+    commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     # Check that the hub is initialized and owned by the correct owner
     assert commission_hub.isInitialized() is True
@@ -393,36 +393,36 @@ def test_create_nft_commission_hub(registry_and_template):
     assert commission_hub.nftContract() == nft_contract
     assert commission_hub.tokenId() == token_id
 
-# Test updating the owner of an NFT-based commission hub via OwnerRegistry
+# Test updating the owner of an NFT-based commission hub via ArtCommissionHubOwners
 @pytest.mark.usefixtures("registry_and_template")
 def test_update_nft_commission_hub_owner(registry_and_template):
-    deployer, l2relay, art_commission_hub_template, owner_registry = registry_and_template
+    deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry = registry_and_template
     nft_owner = accounts.test_accounts[2]
     new_owner = accounts.test_accounts[4]
     chain_id = 1
     nft_contract = accounts.test_accounts[3].address
     token_id = 99
     # Register initial owner
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, nft_owner.address, sender=l2relay)
-    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, nft_owner.address, sender=l2relay)
+    commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     assert commission_hub.owner() == nft_owner.address
     # Update owner
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, new_owner.address, sender=l2relay)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, new_owner.address, sender=l2relay)
     assert commission_hub.owner() == new_owner.address
 
 # Test ArtPiece attachment to a hub and correct owner logic after full verification
 @pytest.mark.usefixtures("registry_and_template")
 def test_art_piece_hub_ownership_flow(registry_and_template):
-    deployer, l2relay, art_commission_hub_template, owner_registry = registry_and_template
+    deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry = registry_and_template
     artist = accounts.test_accounts[5]
     commissioner = accounts.test_accounts[6]
     chain_id = 1
     nft_contract = accounts.test_accounts[7].address
     token_id = 123
     # Register NFT owner and get hub
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, commissioner.address, sender=l2relay)
-    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, commissioner.address, sender=l2relay)
+    commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     # Deploy ArtPiece
     art_piece = project.ArtPiece.deploy(sender=deployer)
@@ -448,20 +448,20 @@ def test_art_piece_hub_ownership_flow(registry_and_template):
     assert art_piece.getOwner() == commissioner.address
     # Simulate NFT transfer: update hub owner via registry
     new_owner = accounts.test_accounts[8]
-    owner_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, new_owner.address, sender=l2relay)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, new_owner.address, sender=l2relay)
     # ArtPiece should now report new owner
     assert art_piece.getOwner() == new_owner.address
 
-# Test that only OwnerRegistry can initialize a hub (negative test)
-def test_only_owner_registry_can_initialize(registry_and_template):
-    deployer, l2relay, art_commission_hub_template, owner_registry = registry_and_template
+# Test that only ArtCommissionHubOwners can initialize a hub (negative test)
+def test_only_art_collection_ownership_registry_can_initialize(registry_and_template):
+    deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry = registry_and_template
     attacker = accounts.test_accounts[8]
     commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     # Try to initialize directly as attacker
     with pytest.raises(Exception) as excinfo:
-        commission_hub.initialize(1, attacker.address, 1, owner_registry.address, sender=attacker)
-    assert "Only OwnerRegistry can initialize" in str(excinfo.value)
+        commission_hub.initialize(1, attacker.address, 1, art_collection_ownership_registry.address, sender=attacker)
+    assert "Only ArtCommissionHubOwners can initialize" in str(excinfo.value)
     # Try to initializeGeneric directly as attacker
     with pytest.raises(Exception) as excinfo:
-        commission_hub.initializeGeneric(1, attacker.address, owner_registry.address, True, sender=attacker)
-    assert "Only OwnerRegistry can initialize generic hub" in str(excinfo.value) 
+        commission_hub.initializeGeneric(1, attacker.address, art_collection_ownership_registry.address, True, sender=attacker)
+    assert "Only ArtCommissionHubOwners can initialize generic hub" in str(excinfo.value) 

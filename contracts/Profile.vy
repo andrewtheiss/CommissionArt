@@ -58,7 +58,7 @@ isArtist: public(bool)
 
 # Interface for ProfileFactoryAndRegistry
 interface ProfileFactoryAndRegistry:
-    def ownerRegistry() -> address: view
+    def artCommissionHubOwners() -> address: view
     def getProfileByOwner(_owner: address) -> address: view
 
 # Interface for Profile (for cross-profile calls)
@@ -856,7 +856,7 @@ def setIsArtist(_is_artist: bool):
 #   the hub is added to their profile for tracking.
 # - Only the hub or owner registry can add hubs to ensure proper ownership tracking.
 # Example:
-# - When Alice buys an NFT, the OwnerRegistry calls addCommissionHub to link the hub to Alice's profile.
+# - When Alice buys an NFT, the ArtCommissionHubOwners calls addCommissionHub to link the hub to Alice's profile.
 #
 @external
 def addCommissionHub(_hub: address):
@@ -866,7 +866,7 @@ def addCommissionHub(_hub: address):
     if self.hub != empty(address):
         # Try to get the owner registry from the profile-factory-and-registry
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
-        registry_address = staticcall profile_factory_and_regsitry_interface.ownerRegistry()
+        registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
     
     assert msg.sender == self.hub or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can add commission hub"
     
@@ -890,7 +890,7 @@ def addCommissionHub(_hub: address):
 # - When a user transfers ownership of an NFT, the associated hub is removed from their profile.
 # - Only the hub or owner registry can remove hubs to ensure proper ownership tracking.
 # Example:
-# - When Alice sells her NFT to Bob, the OwnerRegistry calls removeCommissionHub to unlink the hub from Alice's profile.
+# - When Alice sells her NFT to Bob, the ArtCommissionHubOwners calls removeCommissionHub to unlink the hub from Alice's profile.
 #
 @external
 def removeCommissionHub(_hub: address):
@@ -900,7 +900,7 @@ def removeCommissionHub(_hub: address):
     if self.hub != empty(address):
         # Try to get the owner registry from the profile-factory-and-registry
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
-        registry_address = staticcall profile_factory_and_regsitry_interface.ownerRegistry()
+        registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
     
     assert msg.sender == self.hub or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can remove commission hub"
     
@@ -1273,4 +1273,4 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
             self.myArt.append(_commission_art_piece)
             self.myArtCount += 1
 
-# NOTE: For any commission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by OwnerRegistry). The Profile contract should never override this; always query the hub for the current owner if needed.
+# NOTE: For any commission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.

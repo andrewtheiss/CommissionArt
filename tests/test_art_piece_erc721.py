@@ -274,12 +274,12 @@ def test_attachToArtCommissionHub(setup):
     assert art_piece.getArtCommissionHubAddress() == original_commission_hub.address
     
     # Step 2: Create a proper registry and hub setup for the test
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract with real dependencies
-    # For testing, we can use deployer as the L2Relay address
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    # For testing, we can use deployer as the L2RelayOwnership address
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Step 3: Ensure the art piece is fully verified
     if not art_piece.isFullyVerifiedCommission():
@@ -299,16 +299,16 @@ def test_attachToArtCommissionHub(setup):
     token_id = 123
     
     # Step 5: Create an NFT and corresponding Hub in the Registry
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the NFT owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub address for this NFT from the registry
-    registered_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    registered_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the registered hub 
     registered_hub = project.ArtCommissionHub.at(registered_hub_address)
@@ -404,15 +404,15 @@ def test_checkOwner(setup):
     deployer = setup["deployer"]
     artist = setup["artist"]
     
-    # Step 1: Create a commission hub template for the OwnerRegistry
+    # Step 1: Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Step 2: Deploy an actual OwnerRegistry contract with real dependencies
-    # For testing, we can use deployer as the L2Relay address
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Step 2: Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    # For testing, we can use deployer as the L2RelayOwnership address
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Step 3: Deploy a new hub specifically for this test (don't use the one from setup)
-    # Using the ArtCommissionHub contract directly, not through the OwnerRegistry for better control
+    # Using the ArtCommissionHub contract directly, not through the ArtCommissionHubOwners for better control
     new_commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Step 4: Check current attachment
@@ -435,17 +435,17 @@ def test_checkOwner(setup):
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     
-    # First manually register the owner in the OwnerRegistry
-    owner_registry.registerNFTOwnerFromParentChain(
+    # First manually register the owner in the ArtCommissionHubOwners
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the NFT owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub address for this NFT from the registry
-    registered_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    registered_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the registered hub 
     registered_hub = project.ArtCommissionHub.at(registered_hub_address)

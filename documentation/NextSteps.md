@@ -1,6 +1,6 @@
 
 i need to create a mechanism to register art commission hubs in what is currently called the 'ownerregistry'. 
-At the end of the day, the 'OwnerRegsitry'  also gets cross chain messages from the L2 and updates the correct owner of a artcommissionhubs on the L3.  This registry also is the focal point to lookup all different commissioned works which are registered, via their ArtCommissionHubs.  So if i want to update the owner of an art piece, i can call a method on the L1 which will propagate all the way down and relay to the 'OwnerRegistry' which will update the owner of that artCommissionHub. this way an ArtCommissionHub can always have the latest owner for ALL the commissioned works under a single contract/update.
+At the end of the day, the 'OwnerRegsitry'  also gets cross chain messages from the L2 and updates the correct owner of a artcommissionhubs on the L3.  This registry also is the focal point to lookup all different commissioned works which are registered, via their ArtCommissionHubs.  So if i want to update the owner of an art piece, i can call a method on the L1 which will propagate all the way down and relay to the 'ArtCommissionHubOwners' which will update the owner of that artCommissionHub. this way an ArtCommissionHub can always have the latest owner for ALL the commissioned works under a single contract/update.
 
 
 When a user uploads a piece they have the option of saying that its a commission:
@@ -34,7 +34,7 @@ Last and finally i need a way for any number of ArtCommissionHubs to be associat
 
 
 To clarify contract purposes, I suggest the following renames:
-OwnerRegistry → NFTOwnershipRegistry
+ArtCommissionHubOwners → NFTOwnershipRegistry
 Reflects its role in managing NFT ownership and hub registration across chains.
 
 ArtCommissionHub → CommissionCollection
@@ -64,15 +64,15 @@ Also i need a way to see latest commissions both confirmed and unverified so tha
 
 
 .
-The OwnerRegistry.updateRegistration path can be reused to transfer ownership of generic hubs if needed. For example, if a DAO wants to transfer control of its hub to a new multisig, we could call OwnerRegistry._registerNFTOwner(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner, msg.sender). This will invoke ArtCommissionHub.updateRegistration(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner) to update the stored owner in the hub
+The ArtCommissionHubOwners.updateRegistration path can be reused to transfer ownership of generic hubs if needed. For example, if a DAO wants to transfer control of its hub to a new multisig, we could call ArtCommissionHubOwners._registerNFTOwner(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner, msg.sender). This will invoke ArtCommissionHub.updateRegistration(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner) to update the stored owner in the hub
 file-fmzu8fdbvzeeb9dx8lx5hc
 . We would allow this only if msg.sender is authorized (likely the current owner or the hub itself calling via some admin function). The hub’s owner variable would update
 file-syit3bfprksmahnrbfr593
 file-syit3bfprksmahnrbfr593
-, and the OwnerRegistry owners mapping would update accordingly.
+, and the ArtCommissionHubOwners owners mapping would update accordingly.
 Profile Integration: When a generic hub is created, we link it to the owner’s profile similar to NFT hubs:
 In createGenericCommissionHub, after initializing the hub, call ProfileFactoryAndRegistry.hasProfile(owner). If true, get the profile and call Profile.addCommissionHub(hub_address) to list it on their profile (the ProfileFactoryAndRegistry address will be allowed to call this as set up earlier).
-If the owner has no profile (e.g., a DAO contract with no profile or a user who hasn’t joined), we add the hub to the ownerToCommissionHubs[owner] mapping in OwnerRegistry for future reference (as described in section 1). So even non-profile owners have their hubs tracked.
+If the owner has no profile (e.g., a DAO contract with no profile or a user who hasn’t joined), we add the hub to the artCommissionHubsByOwner[owner] mapping in ArtCommissionHubOwners for future reference (as described in section 1). So even non-profile owners have their hubs tracked.
 The hub’s owner field is set to the provided owner address at deployment (by default, msg.sender in ArtCommissionHub’s __init__ was used
 file-syit3bfprksmahnrbfr593
 , but since we use initialize, we explicitly set it via updateRegistration call or directly in initialize for the newly created hub).
@@ -85,7 +85,7 @@ Multi-signature wallets or DAO contracts (which are identified by an address) ca
 Users without any base NFT can still create a hub to receive commissions (this might overlap with simply using their profile’s commission list, but a hub provides the on-chain verification flows and separation of verified/unverified submissions).
 Global Registry of ArtCommissionHubs
 To facilitate discovery and indexing, all ArtCommissionHubs (NFT-based or generic) will be registered in a global list when created:
-We will maintain a dynamic array allCommissionHubs: DynArray[address, 10**8] in the OwnerRegistry (or a separate registry contract). Each time a new hub is created, whether via an NFT owner registration or via createGenericCommissionHub, we append the hub’s address to this array.
+We will maintain a dynamic array allCommissionHubs: DynArray[address, 10**8] in the ArtCommissionHubOwners (or a separate registry contract). Each time a new hub is created, whether via an NFT owner registration or via createGenericCommissionHub, we append the hub’s address to this array.
 An event GlobalHubRegistered(hub_address, chain_id, owner) will be emitted as well. (Note: We already emit ArtCommissionHubCreated with details
 file-fmzu8fdbvzeeb9dx8lx5hc
 , which can serve a similar purpose. We can rely on that event for off-chain indexing of all hubs.)
@@ -97,7 +97,7 @@ Why a global registry? This makes it easy to retrieve or iterate over all hubs f
 For example, a discovery page could query random hubs from this list.
 It helps verify that a given hub address is recognized by the system (if an address isn’t in the registry, it’s not an official ArtCommissionHub).
 Off-chain, one can quickly index all hubs by starting from index 0 and reading batches, or by processing events.
-Chain separation: Because the registry includes a chain_id for each hub (in its stored data or events), if in the future multiple L3 instances or cross-chain commissions are considered, one could filter by chain. In our single L3 environment, all hubs reside on the same chain (Animechain L3), but chain_id might refer to the origin of the NFT or owner. All new hubs (NFT-based or generic) will call log ArtCommissionHubCreated(chain_id, nft_contract, token_id, commission_hub) in OwnerRegistry
+Chain separation: Because the registry includes a chain_id for each hub (in its stored data or events), if in the future multiple L3 instances or cross-chain commissions are considered, one could filter by chain. In our single L3 environment, all hubs reside on the same chain (Animechain L3), but chain_id might refer to the origin of the NFT or owner. All new hubs (NFT-based or generic) will call log ArtCommissionHubCreated(chain_id, nft_contract, token_id, commission_hub) in ArtCommissionHubOwners
 file-fmzu8fdbvzeeb9dx8lx5hc
 , which we will use as the trigger to also append to allCommissionHubs. (For NFT-based hubs this already happens in _registerNFTOwner on first discovery of an NFT
 file-fmzu8fdbvzeeb9dx8lx5hc
@@ -204,7 +204,7 @@ The indexer can store attributes like which hub, which profile (artist/submitter
 To get the recent commissions feed, the frontend queries the indexer for the last X commissions (mixing verified and unverified). Because the indexer has them sorted by block time, this is straightforward.
 The feed can then display each item with context: e.g., “New ArtPiece by Alice for Azuki #1234 (Verified)” or “Unverified commission submitted for Bob’s CoolCat NFT”.
 We can mix verified and unverified as needed; perhaps highlight verified ones differently. The question specifically says “mix verified and unverified commissions across recent blocks,” so we will indeed show both, giving a real-time sense of activity.
-On-chain alternative: It is theoretically possible to have a central contract on L3 receive notifications of new commissions (for example, OwnerRegistry could have a function that each hub calls on submission to log a global event or store in a ring buffer). However, this adds overhead to every commission submission (extra call) and complexity in storage. Given that off-chain solutions excel at this kind of aggregation, we choose not to duplicate this on-chain.
+On-chain alternative: It is theoretically possible to have a central contract on L3 receive notifications of new commissions (for example, ArtCommissionHubOwners could have a function that each hub calls on submission to log a global event or store in a ring buffer). However, this adds overhead to every commission submission (extra call) and complexity in storage. Given that off-chain solutions excel at this kind of aggregation, we choose not to duplicate this on-chain.
 The L3 Indexer Node (or Graph node) can also apply any additional logic for the feed:
 For instance, “mixing verified and unverified” might involve showing some proportion of each. If needed, the indexer could filter to ensure a balance (though likely we just show all sorted by time).
 It can also join with profile data (so it can display user names or profile images if available by linking the submitter’s profile).
@@ -228,23 +228,23 @@ file-fmzu8fdbvzeeb9dx8lx5hc
 Cross-Chain State Synchronization (L1 → L2 → L3)
 Finally, we ensure the architecture cleanly handles synchronization of state across L1, L2, and L3, especially for NFT-based commission hubs:
 NFT Ownership Updates: The chain of custody for NFT ownership info is:
-L1 Ethereum (or other L1): The actual NFT contract (e.g., an ERC-721 collection) emits transfers. Our L1QueryOwner contract can be called to query the owner on L1 and send that info to L2
+L1 Ethereum (or other L1): The actual NFT contract (e.g., an ERC-721 collection) emits transfers. Our L1QueryOwnership contract can be called to query the owner on L1 and send that info to L2
 file-j1sbtmc7y94qxhevwttgg4
 file-j1sbtmc7y94qxhevwttgg4
 .
 L2 (Arbitrum): The L2 Relay (on e.g. Arbitrum) receives the L1 query result via receiveNFTOwnerFromCrossChainMessage
 file-5ahheepddqhn5l9dufupsg
-, then forwards it to the L3 OwnerRegistry by calling registerNFTOwnerFromParentChain(chainId, nftContract, tokenId, owner)
+, then forwards it to the L3 ArtCommissionHubOwners by calling registerNFTOwnerFromParentChain(chainId, nftContract, tokenId, owner)
 file-5ahheepddqhn5l9dufupsg
 file-5ahheepddqhn5l9dufupsg
 .
-L3 (Animechain): The OwnerRegistry on L3 then invokes _registerNFTOwner internally
+L3 (Animechain): The ArtCommissionHubOwners on L3 then invokes _registerNFTOwner internally
 file-fmzu8fdbvzeeb9dx8lx5hc
-. This is exactly where our extended logic will update the CommissionHub’s owner and link/unlink profiles in the same transaction. The Registered event emitted from L3 OwnerRegistry will reflect the new owner and hub address
+. This is exactly where our extended logic will update the CommissionHub’s owner and link/unlink profiles in the same transaction. The Registered event emitted from L3 ArtCommissionHubOwners will reflect the new owner and hub address
 file-fmzu8fdbvzeeb9dx8lx5hc
 .
 Atomicity: Because the cross-chain message triggers a single call on L3, our linking/unlinking in _registerNFTOwner is executed atomically within that call. So by the time the L3 transaction from the relay is done:
-The OwnerRegistry’s owners mapping is updated,
+The ArtCommissionHubOwners’s owners mapping is updated,
 The ArtCommissionHub’s owner variable is updated via updateRegistration call
 file-fmzu8fdbvzeeb9dx8lx5hc
 ,
@@ -252,11 +252,11 @@ The old owner’s profile (if any) is updated, and the new owner’s profile (if
 Thus, any front-end or indexer observing L3 events will see a consistent update. For instance, they’ll see OwnershipUpdated event from the hub contract
 file-syit3bfprksmahnrbfr593
  showing the new owner, and they’ll see ProfileFactoryAndRegistry or Profile events if we emit any for linking. We can emit events like HubLinkedToProfile(user, hub) and HubUnlinkedFromProfile(user, hub) from ProfileFactoryAndRegistry when performing those actions for easier tracking.
-Handling L2->L3 direct user actions: If the user initiates something on L2 that should reflect on L3 (for example, if there were an L2 marketplace for commissions, or if we store profiles on L2 as well – not in our case, profiles are only on L3), the L2 would use a similar retryable ticket mechanism to call L3’s ProfileFactoryAndRegistry or OwnerRegistry. Our contracts already include an L2Relay.relayToL3(...) for sending owner data to L3
+Handling L2->L3 direct user actions: If the user initiates something on L2 that should reflect on L3 (for example, if there were an L2 marketplace for commissions, or if we store profiles on L2 as well – not in our case, profiles are only on L3), the L2 would use a similar retryable ticket mechanism to call L3’s ProfileFactoryAndRegistry or ArtCommissionHubOwners. Our contracts already include an L2RelayOwnership.relayToL3(...) for sending owner data to L3
 file-5ahheepddqhn5l9dufupsg
 file-5ahheepddqhn5l9dufupsg
 . The same concept could be extended for profile or commission data if needed (though currently, all commission logic lives on L3).
-Multi-Chain CommissionHubs: In case we ever have multiple L3s or sidechains, the chainId field in ArtCommissionHub and OwnerRegistry mapping keys allows distinguishing hubs from different source chains. For example, if in the future we had commission hubs tracking NFTs from Ethereum (chainId 1) and maybe another chain (chainId 137 for Polygon) concurrently, the mapping keeps them separate. Our linking logic uses the full tuple including chainId and contract, so it won’t mix up hubs from different chains.
+Multi-Chain CommissionHubs: In case we ever have multiple L3s or sidechains, the chainId field in ArtCommissionHub and ArtCommissionHubOwners mapping keys allows distinguishing hubs from different source chains. For example, if in the future we had commission hubs tracking NFTs from Ethereum (chainId 1) and maybe another chain (chainId 137 for Polygon) concurrently, the mapping keeps them separate. Our linking logic uses the full tuple including chainId and contract, so it won’t mix up hubs from different chains.
 Synchronization of Commission Verification: Commission verification (the NFT owner marking a commission as verified) is an L3 action (calling ArtCommissionHub.verifyCommission) – it does not need to propagate back to L1 or L2, as it’s only relevant to the commission system. The results (e.g., moving an item from unverified to verified list) are contained in L3 and reflected in events
 file-syit3bfprksmahnrbfr593
 . The NFT itself on L1 is not affected by commissions except as an off-chain value-add.
@@ -265,13 +265,13 @@ E.g., to display an NFT’s image or metadata on L3, the commission hub stores c
 Our system also emits L1ContractSet event on a hub if we ever link it to an L1 contract address (the code has setL1Contract in ArtCommissionHub
 file-syit3bfprksmahnrbfr593
 ). This could be used to record the L1 collection address for the NFT for UI reference.
-Consistency and Race Conditions: The design assumes the cross-chain messages for ownership come in order. If an NFT rapidly transfers on L1, multiple retryable tickets to L3 might arrive out of order. However, OwnerRegistry’s logic will simply update to the latest one. The profile linking will likewise adjust to the final owner accordingly (each update unlinking the previous, linking the new). The lastUpdated timestamp mapping in OwnerRegistry
+Consistency and Race Conditions: The design assumes the cross-chain messages for ownership come in order. If an NFT rapidly transfers on L1, multiple retryable tickets to L3 might arrive out of order. However, ArtCommissionHubOwners’s logic will simply update to the latest one. The profile linking will likewise adjust to the final owner accordingly (each update unlinking the previous, linking the new). The lastUpdated timestamp mapping in ArtCommissionHubOwners
 file-fmzu8fdbvzeeb9dx8lx5hc
  can be used to ignore stale updates if needed (we can compare and only update if the incoming timestamp is newer than stored, ensuring eventual consistency).
 L3 to L2 (or L1) communications: Currently, we do not send anything back to L2/L1 except through events. Profiles and commissions live solely on L3 for now, which simplifies matters. If in future, one wanted to reflect some reputation or token on L1 for completed commissions, that would require additional bridging logic (out of scope here).
 Off-Chain Indexer Recap: We strongly recommend using an off-chain indexer for:
 Aggregating global events (for feeds, leaderboards, etc.).
-Resolving data that isn’t efficient on-chain (like searching which hubs a user owns if they have no profile – our ownerToCommissionHubs helps on-chain, but an indexer can also invert the mapping easily).
+Resolving data that isn’t efficient on-chain (like searching which hubs a user owns if they have no profile – our artCommissionHubsByOwner helps on-chain, but an indexer can also invert the mapping easily).
 Joining cross-chain data (linking L1 NFT metadata with L3 commission records).
 The combination of on-chain automatic linking and off-chain indexing provides a robust, real-time view of the system:
 The moment an NFT is bought on L1, the owner’s profile on L3 (if exists) is updated within one cross-chain transaction to reflect the commission hub transfer.
@@ -294,7 +294,7 @@ Sources
 🛠️ Step 4: Generic (Non-NFT) CommissionHub Support
 Goal: Support ArtCommissionHubs owned by multisigs, DAOs, or individual wallets.
 
-Update OwnerRegistry:
+Update ArtCommissionHubOwners:
 
 Introduce a constant GENERIC_HUB_ADDRESS (e.g., 0x0000...01).
 
@@ -348,14 +348,14 @@ Test flow end-to-end:
 
 Transfer NFTs on L1.
 
-Validate correct updates propagate to L3 profiles/hubs via L2Relay.
+Validate correct updates propagate to L3 profiles/hubs via L2RelayOwnership.
 
 Confirm atomic updates and consistent on-chain states.
 
 ✅ Outcome: Reliable cross-chain synchronization and data consistency.
 Recommended Implementation Order Summary:
 Step	Component	Priority	Complexity
-1	OwnerRegistry linking/unlinking logic	High	Medium
+1	ArtCommissionHubOwners linking/unlinking logic	High	Medium
 2	Profile & ProfileFactoryAndRegistry updates	High	Medium
 3	Single-tx profile/art creation flows	High	Medium
 4	Generic (non-NFT) ArtCommissionHubs	Medium	Low

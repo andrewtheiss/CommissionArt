@@ -76,8 +76,8 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
 
   // State for admin functions
   const [isOwner, setIsOwner] = useState(false);
-  const [newL2RelayAddress, setNewL2RelayAddress] = useState('');
-  const [isSettingL2Relay, setIsSettingL2Relay] = useState(false);
+  const [newL2RelayOwnershipAddress, setNewL2RelayOwnershipAddress] = useState('');
+  const [isSettingL2RelayOwnership, setIsSettingL2RelayOwnership] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   // Add state for direct registration form
@@ -103,16 +103,16 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         contractAddress: contractConfig.addresses.l3?.testnet || ''
       }));
       
-      // Autopopulate the L2Relay address from config
-      setNewL2RelayAddress(contractConfig.addresses.l2?.testnet || '');
+      // Autopopulate the L2RelayOwnership address from config
+      setNewL2RelayOwnershipAddress(contractConfig.addresses.l2?.testnet || '');
     } else {
       setRegistryInfo(prev => ({
         ...prev,
         contractAddress: contractConfig.addresses.l3?.mainnet || ''
       }));
       
-      // Autopopulate the L2Relay address from config
-      setNewL2RelayAddress(contractConfig.addresses.l2?.mainnet || '');
+      // Autopopulate the L2RelayOwnership address from config
+      setNewL2RelayOwnershipAddress(contractConfig.addresses.l2?.mainnet || '');
     }
   }, [environment, contractConfig.addresses.l3, contractConfig.addresses.l2]);
   
@@ -183,11 +183,11 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
   const loadContractInfo = async () => {
     // Ensure we're on the right network
     if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
-      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query OwnerRegistry...');
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query ArtCommissionHubOwners...');
       switchToLayer('l3', 'testnet');
       return;
     } else if (networkType !== 'animechain' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Animechain L3 to query OwnerRegistry...');
+      setBridgeStatus('Automatically switching to Animechain L3 to query ArtCommissionHubOwners...');
       switchToLayer('l3', 'mainnet');
       return;
     }
@@ -202,10 +202,10 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     }
     
     try {
-      // Get the OwnerRegistry contract address
+      // Get the ArtCommissionHubOwners contract address
       const l3Address = contractConfig.addresses.l3[environment];
       if (!l3Address) {
-        throw new Error('OwnerRegistry contract address not set');
+        throw new Error('ArtCommissionHubOwners contract address not set');
       }
       
       // Create a provider
@@ -219,13 +219,13 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       }
       
       // Load ABI from JSON file
-      const ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
-      if (!ownerRegistryABI) {
-        throw new Error('Failed to load OwnerRegistry ABI');
+      const artCommissionHubOwnersABI = abiLoader.loadABI('ArtCommissionHubOwners');
+      if (!artCommissionHubOwnersABI) {
+        throw new Error('Failed to load ArtCommissionHubOwners ABI');
       }
       
       // Create contract instance
-      const contract = new ethers.Contract(l3Address, ownerRegistryABI, provider);
+      const contract = new ethers.Contract(l3Address, artCommissionHubOwnersABI, provider);
       
       // Query public variables - use try/catch for each to handle potential errors
       let l2relay = ethers.ZeroAddress;
@@ -233,9 +233,9 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       let contractOwner = ethers.ZeroAddress;
       
       try {
-        l2relay = await contract.l2Relay();
+        l2relay = await contract.l2RelayOwnership();
       } catch (error) {
-        handleContractError(error, 'l2Relay()');
+        handleContractError(error, 'l2RelayOwnership()');
       }
       
       try {
@@ -258,30 +258,30 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         contractAddress: l3Address
       });
       
-      // Autopopulate the L2Relay form with current value
-      setNewL2RelayAddress(l2relay);
+      // Autopopulate the L2RelayOwnership form with current value
+      setNewL2RelayOwnershipAddress(l2relay);
       
-      setBridgeStatus(`OwnerRegistry Info:\nAddress: ${l3Address}\nL2 Relay: ${l2relay}\nCommission Hub Template: ${artCommissionHubTemplate}\nOwner: ${contractOwner}`);
+      setBridgeStatus(`ArtCommissionHubOwners Info:\nAddress: ${l3Address}\nL2 Relay: ${l2relay}\nCommission Hub Template: ${artCommissionHubTemplate}\nOwner: ${contractOwner}`);
       
     } catch (error) {
       console.error('Error loading contract info:', error);
       setBridgeStatus(prev => 
-        `${prev}\n\nError loading OwnerRegistry info: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `${prev}\n\nError loading ArtCommissionHubOwners info: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   };
 
-  // Submit L3 lookup query to the OwnerRegistry contract
+  // Submit L3 lookup query to the ArtCommissionHubOwners contract
   const submitL3Lookup = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Ensure we're on the right network
     if (networkType !== 'arbitrum_testnet' && environment === 'testnet') {
-      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query OwnerRegistry...');
+      setBridgeStatus('Automatically switching to Arbitrum Sepolia to query ArtCommissionHubOwners...');
       switchToLayer('l3', 'testnet');
       return;
     } else if (networkType !== 'animechain' && environment === 'mainnet') {
-      setBridgeStatus('Automatically switching to Animechain L3 to query OwnerRegistry...');
+      setBridgeStatus('Automatically switching to Animechain L3 to query ArtCommissionHubOwners...');
       switchToLayer('l3', 'mainnet');
       return;
     }
@@ -305,13 +305,13 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         lastUpdated: ''
       }));
       
-      // Get the OwnerRegistry contract address
+      // Get the ArtCommissionHubOwners contract address
       const l3Address = contractConfig.addresses.l3[environment];
       if (!l3Address) {
-        throw new Error('L3 OwnerRegistry contract address not set');
+        throw new Error('L3 ArtCommissionHubOwners contract address not set');
       }
       
-      setBridgeStatus(prev => `${prev}\nUsing L3 OwnerRegistry address: ${l3Address}`);
+      setBridgeStatus(prev => `${prev}\nUsing L3 ArtCommissionHubOwners address: ${l3Address}`);
       
       // Create a provider - use a type assertion to handle window.ethereum
       let provider;
@@ -325,13 +325,13 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       }
       
       // Load ABI from JSON file
-      const ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
-      if (!ownerRegistryABI) {
-        throw new Error('Failed to load OwnerRegistry ABI');
+      const artCommissionHubOwnersABI = abiLoader.loadABI('ArtCommissionHubOwners');
+      if (!artCommissionHubOwnersABI) {
+        throw new Error('Failed to load ArtCommissionHubOwners ABI');
       }
       
       // Create contract instance
-      const contract = new ethers.Contract(l3Address, ownerRegistryABI, provider);
+      const contract = new ethers.Contract(l3Address, artCommissionHubOwnersABI, provider);
       
       const { contractAddress, tokenId, queryType } = l3LookupQuery;
       
@@ -402,9 +402,9 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         if (queryType === 'l2relay') {
           setBridgeStatus(prev => `${prev}\nQuerying L2 relay address...`);
           try {
-            result = await contract.l2Relay();
+            result = await contract.l2RelayOwnership();
           } catch (error) {
-            handleContractError(error, 'l2Relay()');
+            handleContractError(error, 'l2RelayOwnership()');
             throw error;
           }
         } else if (queryType === 'artCommissionHubTemplate') {
@@ -450,7 +450,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       }
       
     } catch (error) {
-      console.error('Error querying L3 OwnerRegistry:', error);
+      console.error('Error querying L3 ArtCommissionHubOwners:', error);
       
       // Update state to show error
       setL3LookupQuery(prev => ({
@@ -461,13 +461,13 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       
       // Update bridge status
       setBridgeStatus(prev => 
-        `${prev}\n\nError querying L3 OwnerRegistry: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `${prev}\n\nError querying L3 ArtCommissionHubOwners: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   };
 
-  // Set L2 Relay address in the OwnerRegistry contract
-  const setL2RelayAddress = async (e: React.FormEvent) => {
+  // Set L2 Relay address in the ArtCommissionHubOwners contract
+  const setL2RelayOwnershipAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Ensure we're on the right network
@@ -482,7 +482,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     }
     
     // Validate the L2 relay address
-    if (!ethers.isAddress(newL2RelayAddress)) {
+    if (!ethers.isAddress(newL2RelayOwnershipAddress)) {
       setBridgeStatus(prev => `${prev}\n\nError: Invalid L2 relay address format`);
       return;
     }
@@ -497,12 +497,12 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     }
     
     try {
-      setIsSettingL2Relay(true);
+      setIsSettingL2RelayOwnership(true);
       
-      // Get the OwnerRegistry contract address
+      // Get the ArtCommissionHubOwners contract address
       const l3Address = contractConfig.addresses.l3[environment];
       if (!l3Address) {
-        throw new Error('L3 OwnerRegistry contract address not set');
+        throw new Error('L3 ArtCommissionHubOwners contract address not set');
       }
       
       // Create a provider and signer
@@ -510,28 +510,28 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       const provider = new ethers.BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       
-      // Load ABI for OwnerRegistry
-      let ownerRegistryABI;
+      // Load ABI for ArtCommissionHubOwners
+      let artCommissionHubOwnersABI;
       try {
-        ownerRegistryABI = abiLoader.loadABI('OwnerRegistry');
+        artCommissionHubOwnersABI = abiLoader.loadABI('ArtCommissionHubOwners');
       } catch (error) {
-        console.log('Could not load OwnerRegistry ABI, using minimal ABI with setL2Relay');
-        ownerRegistryABI = [
-          "function l2Relay() view returns (address)",
+        console.log('Could not load ArtCommissionHubOwners ABI, using minimal ABI with setL2RelayOwnership');
+        artCommissionHubOwnersABI = [
+          "function l2RelayOwnership() view returns (address)",
           "function owner() view returns (address)",
-          "function setL2Relay(address _new_l2relay) external"
+          "function setL2RelayOwnership(address _new_l2relay) external"
         ];
       }
       
       // Create contract instance with signer
-      const contract = new ethers.Contract(l3Address, ownerRegistryABI, signer);
+      const contract = new ethers.Contract(l3Address, artCommissionHubOwnersABI, signer);
       
       // We'll attempt to set the L2 relay address regardless of ownership
       // Note: The contract will reject this call if the sender is not the owner
       
       // Set the L2 relay address
-      setBridgeStatus(prev => `${prev}\n\nSetting L2 relay address to ${newL2RelayAddress}...`);
-      const tx = await contract.setL2Relay(newL2RelayAddress);
+      setBridgeStatus(prev => `${prev}\n\nSetting L2 relay address to ${newL2RelayOwnershipAddress}...`);
+      const tx = await contract.setL2RelayOwnership(newL2RelayOwnershipAddress);
       
       // Wait for transaction to be mined
       setBridgeStatus(prev => `${prev}\nTransaction submitted. Waiting for confirmation...`);
@@ -557,7 +557,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         );
       }
     } finally {
-      setIsSettingL2Relay(false);
+      setIsSettingL2RelayOwnership(false);
     }
   };
 
@@ -618,10 +618,10 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
     try {
       setDirectRegisterParams(prev => ({ ...prev, isSubmitting: true }));
       
-      // Get the OwnerRegistry contract address
+      // Get the ArtCommissionHubOwners contract address
       const l3Address = contractConfig.addresses.l3[environment];
       if (!l3Address) {
-        throw new Error('L3 OwnerRegistry contract address not set');
+        throw new Error('L3 ArtCommissionHubOwners contract address not set');
       }
       
       // Create a provider and signer
@@ -630,7 +630,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       const signer = await provider.getSigner();
       
       // Simplified ABI with no parameter names to avoid ethers.js parsing issues
-      const ownerRegistryABI = [
+      const artCommissionHubOwnersABI = [
         "function registerNFTOwnerFromParentChain(uint256, address, uint256, address) external",
         "function l2relay() view returns (address)",
         "function owner() view returns (address)",
@@ -638,19 +638,19 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       ];
       
       // Create contract instance with signer
-      const contract = new ethers.Contract(l3Address, ownerRegistryABI, signer);
+      const contract = new ethers.Contract(l3Address, artCommissionHubOwnersABI, signer);
       
       // Convert parameters to appropriate types
       const chainIdBN = ethers.toBigInt(chainId);
       const tokenIdBN = ethers.toBigInt(tokenId);
       
       // Get the L2 relay address for the warning message
-      let l2RelayAddress;
+      let l2RelayOwnershipAddress;
       try {
-        l2RelayAddress = await contract.l2relay();
+        l2RelayOwnershipAddress = await contract.l2relay();
       } catch (error) {
         console.error("Error getting L2 relay address:", error);
-        l2RelayAddress = "unknown";
+        l2RelayOwnershipAddress = "unknown";
       }
       
       setBridgeStatus(prev => 
@@ -660,7 +660,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         Token ID: ${tokenIdBN}
         Owner: ${directRegisterParams.ownerAddress}
         
-        NOTE: This call will likely fail unless your wallet is the L2 Relay address (${l2RelayAddress})`
+        NOTE: This call will likely fail unless your wallet is the L2 Relay address (${l2RelayOwnershipAddress})`
       );
       
       // Log the exact parameters for debugging
@@ -705,10 +705,10 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
       
       // Provide a more user-friendly error message
       if (error instanceof Error) {
-        if (error.message.includes("Only L2Relay can register NFT owners") || 
+        if (error.message.includes("Only L2RelayOwnership can register NFT owners") || 
             error.message.includes("execution reverted")) {
           setBridgeStatus(prev => 
-            `${prev}\n\nTransaction failed: Only the L2Relay contract can call this function directly. ` +
+            `${prev}\n\nTransaction failed: Only the L2RelayOwnership contract can call this function directly. ` +
             `This is enforced by the contract's code (assert msg.sender == self.l2relay).`
           );
         } else if (error.message.includes("no matching fragment")) {
@@ -738,7 +738,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
             rel="noopener noreferrer"
             className="explorer-link"
           >
-            View OwnerRegistry on Arbitrum Sepolia
+            View ArtCommissionHubOwners on Arbitrum Sepolia
           </a>
         )}
         {environment === 'mainnet' && contractConfig.addresses.l3.mainnet && (
@@ -748,7 +748,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
             rel="noopener noreferrer"
             className="explorer-link"
           >
-            View OwnerRegistry on Animechain L3
+            View ArtCommissionHubOwners on Animechain L3
           </a>
         )}
       </div>
@@ -758,7 +758,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
           <button 
             className="network-switch-button" 
             onClick={() => switchToLayer('l3', environment)}
-            title={`Switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'} to connect to OwnerRegistry`}
+            title={`Switch to ${environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'} to connect to ArtCommissionHubOwners`}
           >
             Switch to {environment === 'testnet' ? 'Arbitrum Sepolia' : 'Animechain L3'}
           </button>
@@ -772,7 +772,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
         </div>
         
         <div className="registry-info">
-          <h4>OwnerRegistry Contract</h4>
+          <h4>ArtCommissionHubOwners Contract</h4>
           <div className="info-item">
             <span className="info-label">Contract Address:</span>
             <span className="info-value">{registryInfo.contractAddress || 'Not set'}</span>
@@ -813,7 +813,7 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
             <h4>Admin Controls</h4>
             
             <h5>L2 Relay Configuration</h5>
-            <form onSubmit={setL2RelayAddress} className="l2-relay-form">
+            <form onSubmit={setL2RelayOwnershipAddress} className="l2-relay-form">
               <div className="input-group">
                 <label htmlFor="l2-relay-address">
                   L2 Relay Address 
@@ -822,10 +822,10 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
                 <input
                   type="text"
                   id="l2-relay-address"
-                  value={newL2RelayAddress}
-                  onChange={(e) => setNewL2RelayAddress(e.target.value)}
+                  value={newL2RelayOwnershipAddress}
+                  onChange={(e) => setNewL2RelayOwnershipAddress(e.target.value)}
                   placeholder={contractConfig.addresses.l2?.[environment] || "Enter L2 relay address"}
-                  disabled={isSettingL2Relay}
+                  disabled={isSettingL2RelayOwnership}
                 />
               </div>
 
@@ -833,10 +833,10 @@ const L3OwnerLookup: React.FC<L3OwnerLookupProps> = ({
                 <button 
                   type="submit" 
                   className="admin-button"
-                  disabled={isSettingL2Relay}
+                  disabled={isSettingL2RelayOwnership}
                   title={!isOwner ? "Note: Transaction will fail due to contract-side owner check" : ""}
                 >
-                  {isSettingL2Relay ? 'Setting L2 Relay...' : 'Set L2 Relay Address'}
+                  {isSettingL2RelayOwnership ? 'Setting L2 Relay...' : 'Set L2 Relay Address'}
                 </button>
               </div>
 

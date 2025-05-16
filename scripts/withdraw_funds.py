@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Script to withdraw funds from an L2Relay contract
+# Script to withdraw funds from an L2RelayOwnership contract
 
 import argparse
 import sys
@@ -11,11 +11,11 @@ from dotenv import load_dotenv
 
 def withdraw_funds(network='testnet', l2_address=None, amount=None, recipient=None):
     """
-    Withdraw funds from an L2Relay contract
+    Withdraw funds from an L2RelayOwnership contract
     
     Args:
         network: Network to use (local, testnet, production)
-        l2_address: L2Relay contract address
+        l2_address: L2RelayOwnership contract address
         amount: Amount of ETH to withdraw (in ETH, not wei)
         recipient: Address to receive the withdrawn funds (defaults to sender)
     
@@ -31,7 +31,7 @@ def withdraw_funds(network='testnet', l2_address=None, amount=None, recipient=No
         return False
     
     if not l2_address:
-        print("ERROR: L2Relay contract address is required")
+        print("ERROR: L2RelayOwnership contract address is required")
         return False
     
     if not amount:
@@ -82,10 +82,10 @@ def withdraw_funds(network='testnet', l2_address=None, amount=None, recipient=No
         print(f"ERROR: Failed to create account: {e}")
         return False
     
-    # Load L2Relay contract
+    # Load L2RelayOwnership contract
     try:
         l2_relay = Contract(l2_address)
-        print(f"L2Relay contract loaded at {l2_address}")
+        print(f"L2RelayOwnership contract loaded at {l2_address}")
         
         # Check contract balance
         contract_balance = networks.provider.get_balance(l2_address)
@@ -107,7 +107,7 @@ def withdraw_funds(network='testnet', l2_address=None, amount=None, recipient=No
             print("WARNING: Could not verify contract ownership. Proceeding anyway...")
         
         # Perform withdrawal
-        print(f"\nWithdrawing {amount} ETH from L2Relay contract...")
+        print(f"\nWithdrawing {amount} ETH from L2RelayOwnership contract...")
         
         # Look for different withdrawal function names
         withdraw_function = None
@@ -162,14 +162,14 @@ def withdraw_funds(network='testnet', l2_address=None, amount=None, recipient=No
         return True
             
     except Exception as e:
-        print(f"ERROR: Failed to interact with L2Relay contract: {e}")
+        print(f"ERROR: Failed to interact with L2RelayOwnership contract: {e}")
         return False
 
 def main():
-    parser = argparse.ArgumentParser(description="Withdraw funds from an L2Relay contract")
+    parser = argparse.ArgumentParser(description="Withdraw funds from an L2RelayOwnership contract")
     parser.add_argument('--network', type=str, choices=['local', 'testnet', 'production'], 
                         default='testnet', help='Network to use')
-    parser.add_argument('--l2', type=str, help='L2Relay contract address')
+    parser.add_argument('--l2', type=str, help='L2RelayOwnership contract address')
     parser.add_argument('--amount', type=float, help='Amount of ETH to withdraw')
     parser.add_argument('--recipient', type=str, help='Address to receive the withdrawn funds (defaults to sender)')
     
@@ -178,7 +178,7 @@ def main():
     # Interactive mode if arguments are missing
     l2_address = args.l2
     if not l2_address:
-        l2_address = input("Enter L2Relay contract address: ")
+        l2_address = input("Enter L2RelayOwnership contract address: ")
     
     amount = args.amount
     if not amount:

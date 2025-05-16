@@ -172,7 +172,7 @@ ape accounts list
 
 ## Running tests:
 ape test tests/deploy_L1_L2.py --verbose
-ape test tests/test_L1QueryOwner_testnet.py
+ape test tests/test_L1QueryOwnership_testnet.py
 
 # Plans for ROADMAP
 - Create a way for artists to offer commissions to artists
@@ -222,12 +222,12 @@ As of commit e84f4ff you can compile the contract code and get the back end link
 
  - Verify L1 Contract Settings match the contract_config.json settings
    -  (Note: This should be updated and show all the L1,L2,L3 contracts under this section)
- - Verify L3 OwnerRegistry Contract settings match the contract_config.json settings
+ - Verify L3 ArtCommissionHubOwners Contract settings match the contract_config.json settings
    -  (Note: This should be updated and show all the L1,L2,L3 contracts under this section)
 
  - UPDATE L2 Contract Settings:
    - The L2 Links to L1 and the L3
-- Please register the L1QueryOwner ALIASED address to whitelist its abiliaty to update NFT contract owners
+- Please register the L1QueryOwnership ALIASED address to whitelist its abiliaty to update NFT contract owners
     on the L1.  The aliased address for the above example is:
      0xED5AF388653567Af2F388E6224dC7C4b3241C544 and chain ID 1 (to be testnet)
 - Please register the L3 contract address so that the L2 knows how to Relay the owners to the L3

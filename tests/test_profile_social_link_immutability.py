@@ -105,30 +105,30 @@ def test_factory_created_profile_social_link(setup):
     """Test the creation of a Profile and ProfileSocial through the registry and verify the link"""
     # Arrange
     # Use the same fixture pattern as in generic hub tests
-    # We need to deploy OwnerRegistry and link it to the factory
+    # We need to deploy ArtCommissionHubOwners and link it to the factory
     deployer = setup["deployer"]
     profile_factory = setup["profile_factory"]
     profile_social_template = setup["profile_social_template"]
     profile_template = setup["profile_template"]
     
-    # Deploy L2Relay and ArtCommissionHub template for OwnerRegistry
-    l2_relay = project.L2Relay.deploy(sender=deployer)
+    # Deploy L2RelayOwnership and ArtCommissionHub template for ArtCommissionHubOwners
+    l2_relay = project.L2RelayOwnership.deploy(sender=deployer)
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy OwnerRegistry
-    owner_registry = project.OwnerRegistry.deploy(
+    # Deploy ArtCommissionHubOwners
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(
         l2_relay.address,
         art_commission_hub_template.address,
         sender=deployer
     )
-    # Link OwnerRegistry and ProfileFactoryAndRegistry
-    owner_registry.setProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
-    profile_factory.setOwnerRegistry(owner_registry.address, sender=deployer)
-    # Set L2Relay to the deployer for testing
-    owner_registry.setL2Relay(deployer.address, sender=deployer)
+    # Link ArtCommissionHubOwners and ProfileFactoryAndRegistry
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    profile_factory.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    # Set L2RelayOwnership to the deployer for testing
+    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
 
     # Act - Create a generic commission hub for the deployer (this will create the profile via the registry)
-    tx = owner_registry.createGenericCommissionHub(1, deployer.address, sender=deployer)
+    tx = art_collection_ownership_registry.createGenericCommissionHub(1, deployer.address, sender=deployer)
 
     # Get the created profile
     profile_address = profile_factory.getProfile(deployer.address)

@@ -12,29 +12,29 @@ def setup():
     user = accounts.test_accounts[1]
     artist = accounts.test_accounts[2]
     
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract
-    # For testing, we can use deployer address as the L2Relay
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract
+    # For testing, we can use deployer address as the L2RelayOwnership
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Set test parameters
     chain_id = 1
     nft_contract = deployer.address  # Use deployer address as mock NFT contract
     token_id = 1
     
-    # Register an NFT owner through the OwnerRegistry (acting as L2Relay)
-    owner_registry.registerNFTOwnerFromParentChain(
+    # Register an NFT owner through the ArtCommissionHubOwners (acting as L2RelayOwnership)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the automatically created hub address from the registry
-    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the hub
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
@@ -50,7 +50,7 @@ def setup():
         "commission_hub": commission_hub,
         "art_piece_template_1": art_piece_template_1,
         "art_piece_template_2": art_piece_template_2,
-        "owner_registry": owner_registry,
+        "art_collection_ownership_registry": art_collection_ownership_registry,
         "chain_id": chain_id,
         "nft_contract": nft_contract,
         "token_id": token_id
@@ -205,7 +205,7 @@ def test_submit_commission_with_empty_owner(setup):
     user = setup["user"]
     commission_hub = setup["commission_hub"]
     template = setup["art_piece_template_1"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     chain_id = setup["chain_id"]
     nft_contract = setup["nft_contract"]
     token_id = setup["token_id"]
@@ -225,13 +225,13 @@ def test_submit_commission_with_empty_owner(setup):
     
     # STEP 2: Use registry mechanism to set owner to zero address
     
-    # Call registerNFTOwnerFromParentChain as the L2Relay to set owner to zero address
-    owner_registry.registerNFTOwnerFromParentChain(
+    # Call registerNFTOwnerFromParentChain as the L2RelayOwnership to set owner to zero address
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         ZERO_ADDRESS,  # Set owner to zero address 
-        sender=deployer  # Pretend to be the L2Relay
+        sender=deployer  # Pretend to be the L2RelayOwnership
     )
     
     # Verify owner is now zero
@@ -256,12 +256,12 @@ def test_submit_commission_with_empty_owner(setup):
     # STEP 4: Try to set the owner back (but NFT remains permanently burned)
     
     # Try to set the owner back to the initial owner using the registry
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         initial_owner,  # Try to restore original owner
-        sender=deployer  # Pretend to be the L2Relay
+        sender=deployer  # Pretend to be the L2RelayOwnership
     )
     
     # In this implementation, once burned, the owner remains zero address
@@ -288,7 +288,7 @@ def test_submit_commission_with_burned_nft(setup):
     artist = setup["artist"]
     commission_hub = setup["commission_hub"]
     template = setup["art_piece_template_1"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     chain_id = setup["chain_id"]
     nft_contract = setup["nft_contract"]
     token_id = setup["token_id"]
@@ -308,13 +308,13 @@ def test_submit_commission_with_burned_nft(setup):
     
     # STEP 2: Mark the NFT as burned by setting owner to zero address
     
-    # Call registerNFTOwnerFromParentChain as the L2Relay to set owner to zero address
-    owner_registry.registerNFTOwnerFromParentChain(
+    # Call registerNFTOwnerFromParentChain as the L2RelayOwnership to set owner to zero address
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         ZERO_ADDRESS,  # Set owner to zero address
-        sender=deployer  # Pretend to be the L2Relay
+        sender=deployer  # Pretend to be the L2RelayOwnership
     )
     
     # Verify hub is now marked as burned
@@ -333,12 +333,12 @@ def test_submit_commission_with_burned_nft(setup):
     # STEP 3: Try to restore the owner but hub remains permanently burned
     
     # Try to restore the original owner but the hub should remain burned
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id,
         nft_contract,
         token_id,
         initial_owner,  # Try to restore original owner
-        sender=deployer  # Pretend to be the L2Relay
+        sender=deployer  # Pretend to be the L2RelayOwnership
     )
     
     # In this implementation, once burned, the owner remains zero address

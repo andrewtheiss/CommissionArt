@@ -14,7 +14,7 @@ def setup():
     # Get accounts for testing
     deployer = accounts.test_accounts[0]
     artist = accounts.test_accounts[1]
-    owner = accounts.test_accounts[2]
+    commissioner = accounts.test_accounts[2]
     
     # Deploy ArtCommissionHub
     commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
@@ -31,7 +31,7 @@ def setup():
         TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
-        owner.address,
+        commissioner.address,
         artist.address,
         commission_hub.address,  # Initially attached to commission_hub
         TEST_AI_GENERATED,
@@ -47,7 +47,7 @@ def setup():
         TEST_TOKEN_URI_DATA_FORMAT,
         "Unattached Art",
         "Art piece with no initial hub attachment",
-        owner.address,
+        commissioner.address,
         artist.address,
         "0x0000000000000000000000000000000000000000",  # No initial hub
         TEST_AI_GENERATED,
@@ -57,7 +57,7 @@ def setup():
     return {
         "deployer": deployer,
         "artist": artist,
-        "owner": owner,
+        "commissioner": commissioner,
         "commission_hub": commission_hub,
         "alternate_hub": alternate_hub,
         "art_piece": art_piece,
@@ -77,37 +77,37 @@ def test_detach_from_hub(setup):
     """Test detachFromArtCommissionHub method"""
     art_piece = setup["art_piece"]
     deployer = setup["deployer"]
-    owner = setup["owner"]  # Commissioner
     artist = setup["artist"]
+    commissioner = setup["commissioner"]
     commission_hub = setup["commission_hub"]
     
     # First verify initial attachment
     assert art_piece.attachedToArtCommissionHub() is True
     
     # Setup a proper registry and commission hub for testing
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract with real dependencies
-    # For testing, we can use deployer as the L2Relay address
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    # For testing, we can use deployer as the L2RelayOwnership address
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Set test parameters
     chain_id = 1
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     
-    # Register an NFT owner through the OwnerRegistry (acting as L2Relay)
-    owner_registry.registerNFTOwnerFromParentChain(
+    # Register an NFT owner through the ArtCommissionHubOwners (acting as L2RelayOwnership)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub address from the registry
-    hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the automatically created hub
     new_hub = project.ArtCommissionHub.at(hub_address)
@@ -119,7 +119,7 @@ def test_detach_from_hub(setup):
             art_piece.verifyAsArtist(sender=artist)
         # If the commissioner side isn't verified, verify it
         if not art_piece.commissionerVerified():
-            art_piece.verifyAsCommissioner(sender=owner)
+            art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Verify the piece is now fully verified
     assert art_piece.isFullyVerifiedCommission() is True
@@ -132,7 +132,7 @@ def test_detach_from_hub(setup):
         TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
-        owner.address,
+        commissioner.address,
         artist.address,
         ZERO_ADDRESS,  # Start unattached
         TEST_AI_GENERATED,
@@ -143,10 +143,10 @@ def test_detach_from_hub(setup):
     if not test_art_piece.artistVerified():
         test_art_piece.verifyAsArtist(sender=artist)
     if not test_art_piece.commissionerVerified():
-        test_art_piece.verifyAsCommissioner(sender=owner)
+        test_art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Now attach the test art piece to the new hub
-    test_art_piece.attachToArtCommissionHub(new_hub.address, sender=owner)
+    test_art_piece.attachToArtCommissionHub(new_hub.address, sender=commissioner)
     
     # Verify it attached correctly
     assert test_art_piece.attachedToArtCommissionHub() is True
@@ -166,14 +166,14 @@ def test_detach_from_hub(setup):
 def test_detach_from_hub_unauthorized(setup):
     """Test detachFromArtCommissionHub by unauthorized user"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]  # Art piece owner but not hub owner
+    commissioner = setup["commissioner"]
     
     # Verify initial attachment
     assert art_piece.attachedToArtCommissionHub() is True
     
     # Owner (not hub owner) tries to detach
     with pytest.raises(Exception) as excinfo:
-        art_piece.detachFromArtCommissionHub(sender=owner)
+        art_piece.detachFromArtCommissionHub(sender=commissioner)
     assert "Only hub owner can detach from ArtCommissionHub" in str(excinfo.value)
 
 def test_artist_cannot_detach(setup):
@@ -192,7 +192,7 @@ def test_artist_cannot_detach(setup):
 def test_attach_to_new_hub_after_detach(setup):
     """Test attaching to a new hub after detaching"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]  # Commissioner
+    commissioner = setup["commissioner"]
     artist = setup["artist"]
     deployer = setup["deployer"]
     commission_hub = setup["commission_hub"]
@@ -202,11 +202,11 @@ def test_attach_to_new_hub_after_detach(setup):
     assert art_piece.attachedToArtCommissionHub() is True
     
     # Setup a proper registry and commission hubs for testing
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract with real dependencies
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Register two different NFTs for two different hubs
     chain_id = 1
@@ -215,26 +215,26 @@ def test_attach_to_new_hub_after_detach(setup):
     token_id_2 = 456
     
     # Register first NFT owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id_1, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Register second NFT owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id_2, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub addresses from the registry
-    hub_address_1 = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id_1)
-    hub_address_2 = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id_2)
+    hub_address_1 = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id_1)
+    hub_address_2 = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id_2)
     
     # Create references to the hubs
     hub_1 = project.ArtCommissionHub.at(hub_address_1)
@@ -247,7 +247,7 @@ def test_attach_to_new_hub_after_detach(setup):
             art_piece.verifyAsArtist(sender=artist)
         # If the commissioner side isn't verified, verify it
         if not art_piece.commissionerVerified():
-            art_piece.verifyAsCommissioner(sender=owner)
+            art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Verify the piece is now fully verified
     assert art_piece.isFullyVerifiedCommission() is True
@@ -259,7 +259,7 @@ def test_attach_to_new_hub_after_detach(setup):
         TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
-        owner.address,
+        commissioner.address,
         artist.address,
         ZERO_ADDRESS,  # Start unattached
         TEST_AI_GENERATED,
@@ -270,10 +270,10 @@ def test_attach_to_new_hub_after_detach(setup):
     if not test_art_piece.artistVerified():
         test_art_piece.verifyAsArtist(sender=artist)
     if not test_art_piece.commissionerVerified():
-        test_art_piece.verifyAsCommissioner(sender=owner)
+        test_art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Attach the test art piece to the first hub
-    test_art_piece.attachToArtCommissionHub(hub_1.address, sender=owner)
+    test_art_piece.attachToArtCommissionHub(hub_1.address, sender=commissioner)
     
     # Verify it attached correctly
     assert test_art_piece.attachedToArtCommissionHub() is True
@@ -286,7 +286,7 @@ def test_attach_to_new_hub_after_detach(setup):
     assert test_art_piece.attachedToArtCommissionHub() is False
     
     # Now attach to the second hub (owner can do this)
-    test_art_piece.attachToArtCommissionHub(hub_2.address, sender=owner)
+    test_art_piece.attachToArtCommissionHub(hub_2.address, sender=commissioner)
     
     # Verify new attachment
     assert test_art_piece.attachedToArtCommissionHub() is True
@@ -295,14 +295,14 @@ def test_attach_to_new_hub_after_detach(setup):
 def test_attach_unattached_piece(setup):
     """Test attaching an initially unattached art piece"""
     unattached_art_piece = setup["unattached_art_piece"]
-    owner = setup["owner"]
+    commissioner = setup["commissioner"]
     commission_hub = setup["commission_hub"]
     
     # Verify initially unattached
     assert unattached_art_piece.attachedToArtCommissionHub() is False
     
     # Attach to hub
-    unattached_art_piece.attachToArtCommissionHub(commission_hub.address, sender=owner)
+    unattached_art_piece.attachToArtCommissionHub(commission_hub.address, sender=commissioner)
     
     # Verify attachment
     assert unattached_art_piece.attachedToArtCommissionHub() is True
@@ -311,35 +311,35 @@ def test_attach_unattached_piece(setup):
 def test_cannot_attach_twice(setup):
     """Test that an art piece cannot be attached to a hub twice"""
     unattached_art_piece = setup["unattached_art_piece"]
-    owner = setup["owner"]
+    commissioner = setup["commissioner"]
     commission_hub = setup["commission_hub"]
     alternate_hub = setup["alternate_hub"]
     
     # First attach to hub
-    unattached_art_piece.attachToArtCommissionHub(commission_hub.address, sender=owner)
+    unattached_art_piece.attachToArtCommissionHub(commission_hub.address, sender=commissioner)
     
     # Verify attachment
     assert unattached_art_piece.attachedToArtCommissionHub() is True
     
     # Try to attach to alternate hub
     with pytest.raises(Exception) as excinfo:
-        unattached_art_piece.attachToArtCommissionHub(alternate_hub.address, sender=owner)
+        unattached_art_piece.attachToArtCommissionHub(alternate_hub.address, sender=commissioner)
     assert "Already attached to a ArtCommissionHub" in str(excinfo.value)
 
 def test_check_owner_with_hub(setup):
     """Test checkOwner method when attached to hub"""
     art_piece = setup["art_piece"]
     commission_hub = setup["commission_hub"]
-    owner = setup["owner"]  # Commissioner
+    commissioner = setup["commissioner"]
     artist = setup["artist"]
     deployer = setup["deployer"]
     
     # Setup a proper registry and commission hub for testing
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract with real dependencies
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Register an NFT owner
     chain_id = 1
@@ -347,16 +347,16 @@ def test_check_owner_with_hub(setup):
     token_id = 123
     
     # Register the NFT owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub address from the registry
-    hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the hub
     new_hub = project.ArtCommissionHub.at(hub_address)
@@ -368,7 +368,7 @@ def test_check_owner_with_hub(setup):
         TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
-        owner.address,
+        commissioner.address,
         artist.address,
         ZERO_ADDRESS,  # Start unattached
         TEST_AI_GENERATED,
@@ -379,13 +379,13 @@ def test_check_owner_with_hub(setup):
     if not test_art_piece.artistVerified():
         test_art_piece.verifyAsArtist(sender=artist)
     if not test_art_piece.commissionerVerified():
-        test_art_piece.verifyAsCommissioner(sender=owner)
+        test_art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Verify the piece is fully verified
     assert test_art_piece.isFullyVerifiedCommission() is True
     
     # Attach the test art piece to the hub
-    test_art_piece.attachToArtCommissionHub(new_hub.address, sender=owner)
+    test_art_piece.attachToArtCommissionHub(new_hub.address, sender=commissioner)
     
     # Verify it attached correctly
     assert test_art_piece.attachedToArtCommissionHub() is True
@@ -402,22 +402,22 @@ def test_check_owner_with_hub(setup):
     assert test_art_piece.attachedToArtCommissionHub() is False
     
     # After detachment, the owner should be the commissioner because it's still fully verified
-    assert test_art_piece.checkOwner() == owner.address
+    assert test_art_piece.checkOwner() == commissioner.address
 
 def test_check_owner_follows_hub_owner(setup):
     """Test checkOwner follows hub owner when hub ownership changes"""
     art_piece = setup["art_piece"]
     commission_hub = setup["commission_hub"]
-    owner = setup["owner"]  # Commissioner
+    commissioner = setup["commissioner"]
     artist = setup["artist"]
     deployer = setup["deployer"]  # Current hub owner
     
     # Setup a proper registry and commission hub for testing
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract with real dependencies
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Register an NFT owner
     chain_id = 1
@@ -425,16 +425,16 @@ def test_check_owner_follows_hub_owner(setup):
     token_id = 123
     
     # Register the NFT owner
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the initial owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub address from the registry
-    hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the hub
     new_hub = project.ArtCommissionHub.at(hub_address)
@@ -446,7 +446,7 @@ def test_check_owner_follows_hub_owner(setup):
         TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
-        owner.address,
+        commissioner.address,
         artist.address,
         ZERO_ADDRESS,  # Start unattached
         TEST_AI_GENERATED,
@@ -457,13 +457,13 @@ def test_check_owner_follows_hub_owner(setup):
     if not test_art_piece.artistVerified():
         test_art_piece.verifyAsArtist(sender=artist)
     if not test_art_piece.commissionerVerified():
-        test_art_piece.verifyAsCommissioner(sender=owner)
+        test_art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Verify the piece is fully verified
     assert test_art_piece.isFullyVerifiedCommission() is True
     
     # Attach the test art piece to the hub
-    test_art_piece.attachToArtCommissionHub(new_hub.address, sender=owner)
+    test_art_piece.attachToArtCommissionHub(new_hub.address, sender=commissioner)
     
     # Verify it attached correctly
     assert test_art_piece.attachedToArtCommissionHub() is True
@@ -473,51 +473,51 @@ def test_check_owner_follows_hub_owner(setup):
     assert test_art_piece.checkOwner() == deployer.address
     
     # Update owner through the registry (using updateRegistration)
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
-        owner.address,  # Change to owner as the new NFT owner
-        sender=deployer     # Pretend to be the L2Relay
+        commissioner.address,  # Change to owner as the new NFT owner
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Verify owner was updated in the hub
-    assert new_hub.owner() == owner.address
+    assert new_hub.owner() == commissioner.address
     
     # checkOwner should now return the new hub owner
-    assert test_art_piece.checkOwner() == owner.address
+    assert test_art_piece.checkOwner() == commissioner.address
 
 def test_update_registration(setup):
     """Test updateRegistration method for changing hub ownership"""
     art_piece = setup["art_piece"]
     commission_hub = setup["commission_hub"]
-    owner = setup["owner"]  # Commissioner
+    commissioner = setup["commissioner"]
     artist = setup["artist"]
     deployer = setup["deployer"]
     
     # Setup a proper registry and commission hub for testing
-    # Create a commission hub template for the OwnerRegistry
+    # Create a commission hub template for the ArtCommissionHubOwners
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy an actual OwnerRegistry contract with real dependencies
-    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    # Deploy an actual ArtCommissionHubOwners contract with real dependencies
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Register an NFT owner
     chain_id = 1
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     
-    # Register the NFT owner through the registry (acting as L2Relay)
-    owner_registry.registerNFTOwnerFromParentChain(
+    # Register the NFT owner through the registry (acting as L2RelayOwnership)
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the initial owner
-        sender=deployer     # Pretend to be the L2Relay
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Get the hub address from the registry
-    hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     
     # Create a reference to the hub
     test_hub = project.ArtCommissionHub.at(hub_address)
@@ -527,7 +527,7 @@ def test_update_registration(setup):
     assert test_hub.chainId() == chain_id
     assert test_hub.nftContract() == nft_contract
     assert test_hub.tokenId() == token_id
-    assert test_hub.registry() == owner_registry.address
+    assert test_hub.registry() == art_collection_ownership_registry.address
     
     # Verify initial owner
     assert test_hub.owner() == deployer.address
@@ -539,7 +539,7 @@ def test_update_registration(setup):
         TEST_TOKEN_URI_DATA_FORMAT,
         TEST_TITLE,
         TEST_DESCRIPTION,
-        owner.address,
+        commissioner.address,
         artist.address,
         ZERO_ADDRESS,  # Start unattached
         TEST_AI_GENERATED,
@@ -550,13 +550,13 @@ def test_update_registration(setup):
     if not test_art_piece.artistVerified():
         test_art_piece.verifyAsArtist(sender=artist)
     if not test_art_piece.commissionerVerified():
-        test_art_piece.verifyAsCommissioner(sender=owner)
+        test_art_piece.verifyAsCommissioner(sender=commissioner)
     
     # Verify the piece is fully verified
     assert test_art_piece.isFullyVerifiedCommission() is True
     
     # Attach the test art piece to the hub
-    test_art_piece.attachToArtCommissionHub(test_hub.address, sender=owner)
+    test_art_piece.attachToArtCommissionHub(test_hub.address, sender=commissioner)
     
     # Verify it attached correctly
     assert test_art_piece.attachedToArtCommissionHub() is True
@@ -566,31 +566,31 @@ def test_update_registration(setup):
     assert test_art_piece.checkOwner() == deployer.address
     
     # Update registration to change owner through the registry
-    owner_registry.registerNFTOwnerFromParentChain(
+    art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
-        owner.address,  # Change to owner as the new NFT owner
-        sender=deployer     # Pretend to be the L2Relay
+        commissioner.address,  # Change to owner as the new NFT owner
+        sender=deployer     # Pretend to be the L2RelayOwnership
     )
     
     # Verify owner was updated
-    assert test_hub.owner() == owner.address
+    assert test_hub.owner() == commissioner.address
     
     # Test that art piece owner check reflects the hub owner
-    assert test_art_piece.checkOwner() == owner.address
+    assert test_art_piece.checkOwner() == commissioner.address
     
     # We'll skip the direct hub update tests as they're not needed
     # The main functionality (updating through the registry) has been verified
     
     # Verify owner is still the same after all our tests
-    assert test_hub.owner() == owner.address
+    assert test_hub.owner() == commissioner.address
 
 def test_commission_verification_requires_both_parties(setup):
     """Test that both artist and commissioner must verify before a commission is fully verified"""
     art_piece = setup["art_piece"]
     artist = setup["artist"]
-    owner = setup["owner"]  # This is the commissioner in setup
+    commissioner = setup["commissioner"]
 
     # Initial state: should be unverified commission
     assert art_piece.isUnverifiedCommission(), "Should be an unverified commission initially"

@@ -94,7 +94,7 @@ def test_profile_creation_for_other(setup):
     user2 = setup["user2"]
     
     # First establish deployer as owner registry to allow using createProfileFor
-    profile_factory.setOwnerRegistry(deployer.address, sender=deployer)
+    profile_factory.setArtCommissionHubOwners(deployer.address, sender=deployer)
     
     # Act - Create profile for user2
     profile_factory.createProfileFor(user2.address, sender=deployer)

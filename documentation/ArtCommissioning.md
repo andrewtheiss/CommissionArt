@@ -84,7 +84,7 @@ The ArtCommissionHub acts as a collection manager for Art Pieces. Key properties
 The system is designed to be compatible with ERC6551 token-bound accounts, allowing:
 
 1. NFT collections to be represented as on-chain entities with their own storage and actions
-2. Ownership propagation from L1 chains to L2 chains through the OwnerRegistry
+2. Ownership propagation from L1 chains to L2 chains through the ArtCommissionHubOwners
 3. Batch management of art pieces through a single Commission Hub
 
 ## Usage Examples

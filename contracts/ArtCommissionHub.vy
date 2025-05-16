@@ -12,7 +12,7 @@
 # Allows for verification of the commissions
 # Allows for creation of a new commission
 # These are NFT Contracts who's children are Art Pieces and also nfts  
-# The commission hub CHANGES OWNER as the L1QueryOwner updates and propegates across chains
+# The commission hub CHANGES OWNER as the L1QueryOwnership updates and propegates across chains
 
 # Constants for maximum array sizes
 MAX_UNVERIFIED_ART: constant(uint256) = 10000
@@ -22,11 +22,16 @@ MAX_VERIFIED_ART: constant(uint256) = 10000
 interface ArtPiece:
     def isOnCommissionWhitelist(_commissioner: address) -> bool: view
 
-# Interface for OwnerRegistry
-interface OwnerRegistry:
+# Interface for ArtCommissionHubOwners
+interface ArtCommissionHubOwners:
     def lookupRegisteredOwner(_chain_id: uint256, _nft_contract: address, _token_id: uint256) -> address: view
 
-owner: public(address)
+# Single owner for the whole collection
+# Can be updated by anyone via L1/L2 QueryOwnership relay
+# Can be set to empty address when initialized before NFT is authenticated
+owner: public(address)  
+
+
 chainId: public(uint256)  # Added chain ID to identify which blockchain the NFT is on
 nftContract: public(address)
 tokenId: public(uint256)
@@ -98,7 +103,7 @@ event CodeHashWhitelisted:
 
 @deploy
 def __init__():
-    # Prevent direct deployment except by OwnerRegistry (enforced at initialize)
+    # Prevent direct deployment except by ArtCommissionHubOwners (enforced at initialize)
     # Set owner to zero address on deployment
     self.owner = empty(address)
     self.isOwnershipRescinded = False
@@ -110,13 +115,13 @@ def __init__():
     self.nextLatestVerifiedArtIndex = 0
     self.is_generic = False
     self.isBurned = False
-    # NOTE: Only OwnerRegistry is allowed to initialize this contract. See initialize().
+    # NOTE: Only ArtCommissionHubOwners is allowed to initialize this contract. See initialize().
 
 @external
 def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _registry: address):
-    # Only OwnerRegistry can initialize this contract
+    # Only ArtCommissionHubOwners can initialize this contract
     assert not self.isInitialized, "Already initialized"
-    assert msg.sender == _registry, "Only OwnerRegistry can initialize"
+    assert msg.sender == _registry, "Only ArtCommissionHubOwners can initialize"
     assert _registry != empty(address), "Registry cannot be empty"
     self.isInitialized = True
     self.chainId = _chain_id
@@ -127,7 +132,7 @@ def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _
     
     # Set owner immediately by querying the registry
     # This ensures the owner is set correctly from the beginning
-    registry_interface: OwnerRegistry = OwnerRegistry(_registry)
+    registry_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(_registry)
     self.owner = staticcall registry_interface.lookupRegisteredOwner(_chain_id, _nft_contract, _token_id)
     
     log Initialized(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, registry=_registry)
@@ -139,12 +144,12 @@ def initializeGeneric(_chain_id: uint256, _owner: address, _registry: address, _
     @dev This is used for multisigs, DAOs, or individual wallets that don't own NFTs
     @param _chain_id The chain ID where this hub is deployed
     @param _owner The address that will own this commission hub
-    @param _registry The address of the OwnerRegistry contract
+    @param _registry The address of the ArtCommissionHubOwners contract
     @param _is_generic Flag to indicate this is a generic hub
     """
-    # Only OwnerRegistry can initialize this contract
+    # Only ArtCommissionHubOwners can initialize this contract
     assert not self.isInitialized, "Already initialized"
-    assert msg.sender == _registry, "Only OwnerRegistry can initialize generic hub"
+    assert msg.sender == _registry, "Only ArtCommissionHubOwners can initialize generic hub"
     assert _owner != empty(address), "Owner cannot be empty"
     assert _registry != empty(address), "Registry cannot be empty"
     assert _is_generic, "Must be initialized as generic"
@@ -355,12 +360,11 @@ def verifyCommission(_art_piece: address, _submitter: address):
     log CommissionVerified(art_piece=_art_piece, verifier=msg.sender)
 
 @external
-def unverifyCommission(_art_piece: address, _submitter: address):
+def unverifyCommission(_art_piece: address):
     """
     @notice Moves a commission from verified to unverified status
     @dev Only the owner can unverify commissions
     @param _art_piece The address of the art piece to unverify
-    @param _submitter The address of the user who submitted the commission
     """
     # Only owner can unverify
     assert msg.sender == self.owner, "Not authorized to unverify"
@@ -382,7 +386,7 @@ def unverifyCommission(_art_piece: address, _submitter: address):
         self.countVerifiedCommissions -= 1
         
         # Update the submitter's unverified count
-        self.unverifiedCountByUser[_submitter] += 1
+        self.unverifiedCountByUser[msg.sender] += 1
         
         # Add to unverified list
         self.unverifiedArt.append(_art_piece)

@@ -27,21 +27,21 @@ def setup():
         sender=deployer
     )
     
-    # Deploy L2Relay and ArtCommissionHub template for OwnerRegistry
-    l2_relay = project.L2Relay.deploy(sender=deployer)
+    # Deploy L2RelayOwnership and ArtCommissionHub template for ArtCommissionHubOwners
+    l2_relay = project.L2RelayOwnership.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy OwnerRegistry with the required parameters
-    owner_registry = project.OwnerRegistry.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
+    # Deploy ArtCommissionHubOwners with the required parameters
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
     
-    # Set OwnerRegistry in ProfileFactoryAndRegistry
-    profile_factory_and_regsitry.setOwnerRegistry(owner_registry.address, sender=deployer)
+    # Set ArtCommissionHubOwners in ProfileFactoryAndRegistry
+    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
     
-    # Set ProfileFactoryAndRegistry in OwnerRegistry
-    owner_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    # Set ProfileFactoryAndRegistry in ArtCommissionHubOwners
+    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
-    # Set L2Relay to the deployer for testing purposes
-    owner_registry.setL2Relay(deployer.address, sender=deployer)
+    # Set L2RelayOwnership to the deployer for testing purposes
+    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
     
     # Create a profile for the user
     profile_factory_and_regsitry.createProfile(sender=user)
@@ -57,18 +57,18 @@ def setup():
         token_id = i + 1
         
         # Register the NFT with the owner registry
-        # Now the deployer is authorized as L2Relay
-        owner_registry.registerNFTOwnerFromParentChain(1, nft_contract, token_id, user.address, sender=deployer)
+        # Now the deployer is authorized as L2RelayOwnership
+        art_collection_ownership_registry.registerNFTOwnerFromParentChain(1, nft_contract, token_id, user.address, sender=deployer)
         
         # Get the commission hub address
-        commission_hub_address = owner_registry.getArtCommissionHubByOwner(1, nft_contract, token_id)
+        commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(1, nft_contract, token_id)
         commission_hubs.append(commission_hub_address)
     
     return {
         "deployer": deployer,
         "user": user,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
-        "owner_registry": owner_registry,
+        "art_collection_ownership_registry": art_collection_ownership_registry,
         "user_profile": user_profile,
         "commission_hubs": commission_hubs
     }
@@ -79,7 +79,7 @@ def test_get_commission_hubs_with_page_size_5(setup):
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     commission_hubs = setup["commission_hubs"]
     
     # Test page size 5
@@ -88,7 +88,7 @@ def test_get_commission_hubs_with_page_size_5(setup):
     
     all_hubs = []
     for page in range(total_pages):
-        hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+        hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user.address, page, page_size)
         all_hubs.extend(hubs)
         
         # Verify correct number of hubs returned
@@ -106,7 +106,7 @@ def test_get_commission_hubs_with_page_size_10(setup):
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     commission_hubs = setup["commission_hubs"]
     
     # Test page size 10
@@ -115,7 +115,7 @@ def test_get_commission_hubs_with_page_size_10(setup):
     
     all_hubs = []
     for page in range(total_pages):
-        hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+        hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user.address, page, page_size)
         all_hubs.extend(hubs)
         
         # Verify correct number of hubs returned
@@ -133,7 +133,7 @@ def test_get_commission_hubs_with_page_size_20(setup):
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     commission_hubs = setup["commission_hubs"]
     
     # Test page size 20
@@ -142,7 +142,7 @@ def test_get_commission_hubs_with_page_size_20(setup):
     
     all_hubs = []
     for page in range(total_pages):
-        hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+        hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user.address, page, page_size)
         all_hubs.extend(hubs)
         
         # Verify correct number of hubs returned
@@ -160,12 +160,12 @@ def test_get_commission_hubs_with_page_size_100(setup):
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     commission_hubs = setup["commission_hubs"]
     
     # Test page size 100 (larger than total)
     page_size = 100
-    hubs = owner_registry.getCommissionHubsForOwner(user.address, 0, page_size)
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user.address, 0, page_size)
     
     # Verify all hubs returned in a single page
     assert len(hubs) == len(commission_hubs)
@@ -178,28 +178,28 @@ def test_get_commission_hubs_empty_page(setup):
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     
     # Test requesting a page beyond available data
     page_size = 10
     page = 100  # Far beyond available data
     
-    hubs = owner_registry.getCommissionHubsForOwner(user.address, page, page_size)
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user.address, page, page_size)
     
     # Verify empty array returned
     assert len(hubs) == 0
 
 def test_get_commission_hub_count(setup):
     """
-    Test getCommissionHubCountForOwner returns the correct count
+    Test getCommissionHubCountByOwner returns the correct count
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     commission_hubs = setup["commission_hubs"]
     
     # Get the count
-    hub_count = owner_registry.getCommissionHubCountForOwner(user.address)
+    hub_count = art_collection_ownership_registry.getCommissionHubCountByOwner(user.address)
     
     # Verify correct count
     assert hub_count == len(commission_hubs)
@@ -225,17 +225,17 @@ def setup_empty_user():
         profile_social_template.address,
         sender=deployer
     )
-    l2_relay = project.L2Relay.deploy(sender=deployer)
+    l2_relay = project.L2RelayOwnership.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
-    owner_registry = project.OwnerRegistry.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
+    art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
     
-    # Set L2Relay to the deployer for testing purposes
-    owner_registry.setL2Relay(deployer.address, sender=deployer)
+    # Set L2RelayOwnership to the deployer for testing purposes
+    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
     
     return {
         "deployer": deployer,
         "user_with_no_hubs": user_with_no_hubs,
-        "owner_registry": owner_registry
+        "art_collection_ownership_registry": art_collection_ownership_registry
     }
 
 def test_get_commission_hubs_for_user_with_no_hubs(setup_empty_user):
@@ -244,16 +244,16 @@ def test_get_commission_hubs_for_user_with_no_hubs(setup_empty_user):
     """
     # Arrange
     user_with_no_hubs = setup_empty_user["user_with_no_hubs"]
-    owner_registry = setup_empty_user["owner_registry"]
+    art_collection_ownership_registry = setup_empty_user["art_collection_ownership_registry"]
     
     # Get hubs for user with no hubs
-    hubs = owner_registry.getCommissionHubsForOwner(user_with_no_hubs.address, 0, 10)
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwner(user_with_no_hubs.address, 0, 10)
     
     # Verify empty array returned
     assert len(hubs) == 0
     
     # Verify count is 0
-    hub_count = owner_registry.getCommissionHubCountForOwner(user_with_no_hubs.address)
+    hub_count = art_collection_ownership_registry.getCommissionHubCountByOwner(user_with_no_hubs.address)
     assert hub_count == 0
 
 def test_get_commission_hubs_by_offset(setup):
@@ -262,7 +262,7 @@ def test_get_commission_hubs_by_offset(setup):
     """
     # Arrange
     user = setup["user"]
-    owner_registry = setup["owner_registry"]
+    art_collection_ownership_registry = setup["art_collection_ownership_registry"]
     commission_hubs = setup["commission_hubs"]
     
     # Test different offsets and counts
@@ -280,7 +280,7 @@ def test_get_commission_hubs_by_offset(setup):
         count = case["count"]
         
         # Get hubs using offset-based pagination
-        hubs = owner_registry.getCommissionHubsForOwnerByOffset(user.address, offset, count)
+        hubs = art_collection_ownership_registry.getCommissionHubsByOwnerWithOffset(user.address, offset, count)
         
         # Calculate expected count
         expected_count = min(count, max(0, len(commission_hubs) - offset))
@@ -300,10 +300,10 @@ def test_get_commission_hubs_by_offset_empty_user(setup_empty_user):
     """
     # Arrange
     user_with_no_hubs = setup_empty_user["user_with_no_hubs"]
-    owner_registry = setup_empty_user["owner_registry"]
+    art_collection_ownership_registry = setup_empty_user["art_collection_ownership_registry"]
     
     # Get hubs using offset-based pagination
-    hubs = owner_registry.getCommissionHubsForOwnerByOffset(user_with_no_hubs.address, 0, 10)
+    hubs = art_collection_ownership_registry.getCommissionHubsByOwnerWithOffset(user_with_no_hubs.address, 0, 10)
     
     # Verify empty array returned
     assert len(hubs) == 0 

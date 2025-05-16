@@ -36,9 +36,9 @@ interface Profile:
 interface ProfileSocial:
     def initialize(_owner: address, _profile: address): nonpayable
 
-interface OwnerRegistry:
-    def getCommissionHubsForOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
-    def getCommissionHubCountForOwner(_owner: address) -> uint256: view
+interface ArtCommissionHubOwners:
+    def getCommissionHubsByOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
+    def getCommissionHubCountByOwner(_owner: address) -> uint256: view
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
@@ -46,7 +46,7 @@ profileSocialTemplate: public(address)  # Address of the profile social contract
 accountToProfile: public(HashMap[address, address])  # Maps user address to profile contract
 userProfileCount: public(uint256)  # Total number of registered user profiles
 latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
-ownerRegistry: public(address)  # Address of the OwnerRegistry contract
+artCommissionHubOwners: public(address)  # Address of the ArtCommissionHubOwners contract
 
 # Events
 event ProfileCreated:
@@ -77,7 +77,7 @@ event ArtPieceCreatedForParty:
     art_piece: indexed(address)
     is_artist: bool
 
-event OwnerRegistrySet:
+event ArtCommissionHubOwnersSet:
     registry: indexed(address)
 
 @deploy
@@ -89,7 +89,7 @@ def __init__(_profile_template: address, _profile_social_template: address):
     self.profileTemplate = _profile_template
     self.profileSocialTemplate = _profile_social_template
     self.userProfileCount = 0
-    self.ownerRegistry = empty(address)
+    self.artCommissionHubOwners = empty(address)
 
 # Internal function to link existing commission hubs to a profile
 @internal
@@ -97,7 +97,7 @@ def _linkExistingHubs(_user: address, _profile: address):
     """
     @notice Links all commission hubs a user already owns to their newly created profile
     @dev This function handles the important edge case where:
-         1. A user buys an NFT, creating a commission hub in OwnerRegistry
+         1. A user buys an NFT, creating a commission hub in ArtCommissionHubOwners
          2. Later, the user creates a profile
          3. We need to automatically link their existing hubs to their new profile
     
@@ -109,18 +109,18 @@ def _linkExistingHubs(_user: address, _profile: address):
          - createProfile
          - createNewArtPieceAndRegisterProfile
     
-    @dev It queries the OwnerRegistry for all hubs owned by the user and adds them
+    @dev It queries the ArtCommissionHubOwners for all hubs owned by the user and adds them
          to the user's profile in batches to handle gas limits efficiently
     
     @param _user The address of the user whose hubs should be linked
     @param _profile The address of the user's newly created profile
     """
     # If owner registry is not set, skip this step
-    if self.ownerRegistry == empty(address):
+    if self.artCommissionHubOwners == empty(address):
         return
     
-    registry: OwnerRegistry = OwnerRegistry(self.ownerRegistry)
-    hub_count: uint256 = staticcall registry.getCommissionHubCountForOwner(_user)
+    registry: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
+    hub_count: uint256 = staticcall registry.getCommissionHubCountByOwner(_user)
     
     # If user has no hubs, nothing to do
     if hub_count == 0:
@@ -139,7 +139,7 @@ def _linkExistingHubs(_user: address, _profile: address):
         if p >= max_pages:
             break
             
-        hubs: DynArray[address, 100] = staticcall registry.getCommissionHubsForOwner(_user, p, page_size)
+        hubs: DynArray[address, 100] = staticcall registry.getCommissionHubsByOwner(_user, p, page_size)
         
         # Add each hub to the profile
         for i: uint256 in range(100):  # Fixed bound as required by Vyper 0.4.1
@@ -176,7 +176,7 @@ def createProfile():
     self.accountToProfile[msg.sender] = profile
     self.userProfileCount += 1
     
-    # Link any existing commission hubs from the OwnerRegistry
+    # Link any existing commission hubs from the ArtCommissionHubOwners
     self._linkExistingHubs(msg.sender, profile)
     
     log ProfileCreated(user=msg.sender, profile=profile, social=profile_social)
@@ -184,14 +184,14 @@ def createProfile():
 @external
 def createProfileFor(_user: address) -> address:
     """
-    @notice Creates a new profile for a specific user, only callable by the OwnerRegistry
+    @notice Creates a new profile for a specific user, only callable by the ArtCommissionHubOwners
     @dev This enables automatic profile creation when a user gets a commission hub
          but doesn't have a profile yet
     @param _user The address of the user to create a profile for
     @return The address of the newly created profile
     """
-    # Only allow the OwnerRegistry to call this function
-    assert msg.sender == self.ownerRegistry, "Only OwnerRegistry can call this function"
+    # Only allow the ArtCommissionHubOwners to call this function
+    assert msg.sender == self.artCommissionHubOwners, "Only ArtCommissionHubOwners can call this function"
     
     # Ensure the user doesn't already have a profile
     assert self.accountToProfile[_user] == empty(address), "Profile already exists"
@@ -220,7 +220,7 @@ def createProfileFor(_user: address) -> address:
     self.accountToProfile[_user] = profile
     self.userProfileCount += 1
     
-    # Link any existing commission hubs from the OwnerRegistry
+    # Link any existing commission hubs from the ArtCommissionHubOwners
     self._linkExistingHubs(_user, profile)
     
     log ProfileCreated(user=_user, profile=profile, social=profile_social)
@@ -256,12 +256,12 @@ def updateProfileTemplateContract(_new_template: address):
     self.profileTemplate = _new_template
 
 @external
-def setOwnerRegistry(_registry: address):
+def setArtCommissionHubOwners(_registry: address):
     # Allow the owner or the owner registry itself to set this relationship
     # This modification enables bidirectional connection setup from either side
     assert msg.sender == self.owner or msg.sender == _registry, "Only owner or registry can set owner registry"
-    self.ownerRegistry = _registry
-    log OwnerRegistrySet(registry=_registry)
+    self.artCommissionHubOwners = _registry
+    log ArtCommissionHubOwnersSet(registry=_registry)
     
 @view
 @external
@@ -305,7 +305,9 @@ def createNewArtPieceAndRegisterProfile(
     _is_artist: bool,
     _other_party: address,
     _commission_hub: address,
-    _ai_generated: bool
+    _ai_generated: bool,
+    _linked_to_art_commission_hub_chain_id: uint256,
+    _linked_to_art_commission_hub_address: address
 ) -> (address, address):
     """
     @notice Creates a new profile for the caller if needed, then creates a new art piece
@@ -318,6 +320,9 @@ def createNewArtPieceAndRegisterProfile(
     @param _other_party The address of the other party (artist or commissioner)
     @param _commission_hub The commission hub address
     @param _ai_generated Whether the art is AI generated
+    @param _linked_to_art_commission_hub_chain_id The chain ID of the ArtCommissionHub this piece is linked to
+    @param _linked_to_art_commission_hub_address The address of the ArtCommissionHub this piece is linked to
+        ** Note - if Address is 
     @return Tuple of (profile_address, art_piece_address)
     """
     # Check if the user already has a profile
@@ -337,17 +342,26 @@ def createNewArtPieceAndRegisterProfile(
     # Initialize the profile social with the user and profile
     extcall profile_social_instance.initialize(msg.sender, profile)
     
-    # Update profile records
-    if (self.userProfileCount < 1000):
-        self.latestUsers.append(msg.sender)
-    else:
-        self.latestUsers.pop()
-        self.latestUsers.append(msg.sender)
+    # If there is no commission hub address AND we have details to create one, do so
+    if empty(address) == _commission_hub:
+        # Create a new commission hub
+        commission_hub: address = create_minimal_proxy_to(self.commissionHubTemplate)
+        commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
+        extcall commission_hub_instance.initialize(_linked_to_art_commission_hub_chain_id, _linked_to_art_commission_hub_address)
+
+
+    # Submit profile recort to latest... 
+    # # Update profile records
+    # if (self.userProfileCount < 1000):
+    #     self.latestUsers.append(msg.sender)
+    # else:
+    #     self.latestUsers.pop()
+    #     self.latestUsers.append(msg.sender)
 
     self.accountToProfile[msg.sender] = profile
     self.userProfileCount += 1
     
-    # Link any existing commission hubs from the OwnerRegistry
+    # Link any existing commission hubs from the ArtCommissionHubOwners
     self._linkExistingHubs(msg.sender, profile)
     
     log ProfileCreated(user=msg.sender, profile=profile, social=profile_social)
@@ -443,7 +457,7 @@ def createArtPieceForParty(
         self.accountToProfile[msg.sender] = caller_profile
         self.userProfileCount += 1
         
-        # Link any existing commission hubs from the OwnerRegistry
+        # Link any existing commission hubs from the ArtCommissionHubOwners
         self._linkExistingHubs(msg.sender, caller_profile)
         
         log ProfileCreated(user=msg.sender, profile=caller_profile, social=caller_social)
@@ -475,7 +489,7 @@ def createArtPieceForParty(
         self.accountToProfile[_other_party] = other_profile
         self.userProfileCount += 1
         
-        # Link any existing commission hubs from the OwnerRegistry
+        # Link any existing commission hubs from the ArtCommissionHubOwners
         self._linkExistingHubs(_other_party, other_profile)
         
         log ProfileCreated(user=_other_party, profile=other_profile, social=other_social)
