@@ -5,8 +5,8 @@ import contractConfigJson from '../assets/contract_config.json';
 import L3GasEstimatorWidget from './L3GasEstimatorWidget';
 import { L3GasEstimates } from '../utils/l3GasEstimator';
 
-// ABI for the L2RelayOwnership contract functions we need
-const L2RelayOwnershipABI = [
+// ABI for the L2OwnershipRelay contract functions we need
+const L2OwnershipRelayABI = [
   "function receiveNFTOwnerFromCrossChainMessage(uint256 _chain_id, address _nft_contract, uint256 _token_id, address _owner)",
   "function relayToL3(uint256 _chain_id, address _nft_contract, uint256 _token_id, address _owner) payable"
 ];
@@ -14,10 +14,10 @@ const L2RelayOwnershipABI = [
 // Get contract addresses from configuration
 const CONTRACT_ADDRESSES = {
   mainnet: {
-    l2RelayOwnership: contractConfigJson.networks.mainnet.l2.address
+    l2OwnershipRelay: contractConfigJson.networks.mainnet.l2.address
   },
   testnet: {
-    l2RelayOwnership: contractConfigJson.networks.testnet.l2.address
+    l2OwnershipRelay: contractConfigJson.networks.testnet.l2.address
   }
 };
 
@@ -28,7 +28,7 @@ const DEFAULT_OWNER_ADDRESS = "0xB9d4DA3aee7C5987C3B841F37808f00A2fc3866f";
 
 type NetworkType = 'mainnet' | 'testnet';
 
-const L2RelayOwnershipTester: React.FC = () => {
+const L2OwnershipRelayTester: React.FC = () => {
   const { isConnected, walletAddress, connectWallet } = useBlockchain();
   
   // Network selection
@@ -39,7 +39,7 @@ const L2RelayOwnershipTester: React.FC = () => {
   const [nftContract, setNftContract] = useState<string>(DEFAULT_NFT_CONTRACT);
   const [tokenId, setTokenId] = useState<string>(DEFAULT_NFT_ID);
   const [ownerAddress, setOwnerAddress] = useState<string>(DEFAULT_OWNER_ADDRESS);
-  const [relayContractAddress, setRelayContractAddress] = useState<string>(CONTRACT_ADDRESSES.testnet.l2RelayOwnership);
+  const [relayContractAddress, setRelayContractAddress] = useState<string>(CONTRACT_ADDRESSES.testnet.l2OwnershipRelay);
   const [txStatus, setTxStatus] = useState<string>("");
   const [txHash, setTxHash] = useState<string>("");
   const [ethValue, setEthValue] = useState<string>("0.01"); // Default ETH value for relayToL3
@@ -56,7 +56,7 @@ const L2RelayOwnershipTester: React.FC = () => {
 
   // Update relay contract address when network changes
   useEffect(() => {
-    setRelayContractAddress(CONTRACT_ADDRESSES[network].l2RelayOwnership);
+    setRelayContractAddress(CONTRACT_ADDRESSES[network].l2OwnershipRelay);
   }, [network]);
 
   const handleNetworkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,7 +96,7 @@ const L2RelayOwnershipTester: React.FC = () => {
       // Create contract instance
       const relayContract = new ethers.Contract(
         relayContractAddress,
-        L2RelayOwnershipABI,
+        L2OwnershipRelayABI,
         signer
       );
 
@@ -146,7 +146,7 @@ const L2RelayOwnershipTester: React.FC = () => {
       // Create contract instance
       const relayContract = new ethers.Contract(
         relayContractAddress,
-        L2RelayOwnershipABI,
+        L2OwnershipRelayABI,
         signer
       );
 
@@ -212,7 +212,7 @@ const L2RelayOwnershipTester: React.FC = () => {
   return (
     <div className="relay-tester-container">
       <h2>L2 to L3 Relay Tester</h2>
-      <p>Test the L2RelayOwnership contract by sending NFT ownership data to L3</p>
+      <p>Test the L2OwnershipRelay contract by sending NFT ownership data to L3</p>
       
       <div className="network-toggle">
         <label className="radio-label">
@@ -253,7 +253,7 @@ const L2RelayOwnershipTester: React.FC = () => {
       </div>
       
       <div className="form-group">
-        <label>L2RelayOwnership Contract Address:</label>
+        <label>L2OwnershipRelay Contract Address:</label>
         <input 
           type="text" 
           value={relayContractAddress} 
@@ -407,4 +407,4 @@ const L2RelayOwnershipTester: React.FC = () => {
   );
 };
 
-export default L2RelayOwnershipTester; 
+export default L2OwnershipRelayTester; 

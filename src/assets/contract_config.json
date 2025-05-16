@@ -7,7 +7,7 @@
       },
       "l2": {
         "address": "0x32BFa3AD2408821FA1631681F81603a84612687c",
-        "contract": "L2RelayOwnership"
+        "contract": "L2OwnershipRelay"
       },
       "l3": {
         "address": "0x89244283543881Af0E005AE6B4eb713d3603974c",
@@ -45,7 +45,7 @@
       },
       "l2": {
         "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
-        "contract": "L2RelayOwnership"
+        "contract": "L2OwnershipRelay"
       },
       "l3": {
         "address": "0x51C11796198289c3e3e3AD6e11B137e94ed2e793",

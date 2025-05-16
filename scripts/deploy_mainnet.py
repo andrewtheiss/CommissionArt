@@ -115,23 +115,23 @@ def deploy_l1_query_owner(deployer, network_type="mainnet"):
         return l1_contract
 
 def deploy_l2_relay(deployer, network_type="mainnet"):
-    print("\n--- L2RelayOwnership Setup ---")
+    print("\n--- L2OwnershipRelay Setup ---")
     
     existing_l2_address = get_contract_address(network_type, "l2")
     if existing_l2_address:
-        print(f"Found existing L2RelayOwnership in config: {existing_l2_address}")
-        use_existing = input("Use existing L2RelayOwnership? (y/n) [y]: ").strip().lower() or "y"
+        print(f"Found existing L2OwnershipRelay in config: {existing_l2_address}")
+        use_existing = input("Use existing L2OwnershipRelay? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.L2RelayOwnership.at(existing_l2_address)
+            return project.L2OwnershipRelay.at(existing_l2_address)
     
-    print("Deploying new L2RelayOwnership on Arbitrum Mainnet...")
+    print("Deploying new L2OwnershipRelay on Arbitrum Mainnet...")
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 1}
         deploy_kwargs.update(gas_params)
-        l2_relay = deployer.deploy(project.L2RelayOwnership, **deploy_kwargs)
-        print(f"L2RelayOwnership deployed at: {l2_relay.address}")
-        update_contract_address(network_type, "l2", l2_relay.address, "L2RelayOwnership")
+        l2_relay = deployer.deploy(project.L2OwnershipRelay, **deploy_kwargs)
+        print(f"L2OwnershipRelay deployed at: {l2_relay.address}")
+        update_contract_address(network_type, "l2", l2_relay.address, "L2OwnershipRelay")
         return l2_relay
 
 def deploy_art_piece_stencil(deployer, network_type="mainnet"):
@@ -214,14 +214,14 @@ def deploy_art_collection_ownership_registry(deployer, l2_relay_address, commiss
         return art_collection_ownership_registry
 
 def update_l2_relay_with_l3_contract(deployer, l2_relay, art_collection_ownership_registry):
-    print("\n--- Updating L2RelayOwnership with L3 ArtCommissionHubOwners Address ---")
+    print("\n--- Updating L2OwnershipRelay with L3 ArtCommissionHubOwners Address ---")
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
         gas_params = get_optimized_gas_params(provider)
         tx_kwargs = {}
         tx_kwargs.update(gas_params)
         print(f"Using transaction parameters: {tx_kwargs}")
         tx = l2_relay.setL3Contract(art_collection_ownership_registry.address, sender=deployer, **tx_kwargs)
-        print("L2RelayOwnership successfully updated with L3 ArtCommissionHubOwners address")
+        print("L2OwnershipRelay successfully updated with L3 ArtCommissionHubOwners address")
 
 def deploy_profile_template(deployer, network_type="mainnet"):
     print("\n--- Profile Template Setup ---")
@@ -314,7 +314,7 @@ def main():
             try:
                 # This call is critical - it sets up the bidirectional connection
                 # Without it, commission hubs won't be automatically linked to profiles
-                tx = art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
+                tx = art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
                 print(f"Bidirectional connection established successfully")
                 
                 # Verify the connection
@@ -329,8 +329,8 @@ def main():
                     print(f"WARNING: Verification failed - ArtCommissionHubOwners not pointing to ProfileFactoryAndRegistry")
             except Exception as e:
                 print(f"Error establishing bidirectional connection: {e}")
-                print(f"CRITICAL: You must manually call setProfileFactoryAndRegistry later using:")
-                print(f"ArtCommissionHubOwners.setProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                print(f"CRITICAL: You must manually call linkProfileFactoryAndRegistry later using:")
+                print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
                 print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
         
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
@@ -348,7 +348,7 @@ def main():
                 sender=deployer,
                 **tx_kwargs
             )
-            print(f"Aliased L1QueryOwnership ({aliased_l1_address}) registered in L2RelayOwnership for chain ID {l1_chain_id}")
+            print(f"Aliased L1QueryOwnership ({aliased_l1_address}) registered in L2OwnershipRelay for chain ID {l1_chain_id}")
     
     elif deploy_mode == "l2only":
         l2_relay = deploy_l2_relay(deployer, network_type)
@@ -366,7 +366,7 @@ def main():
         
         l2_address = get_contract_address(network_type, "l2")
         if l2_address:
-            use_existing = input(f"Use existing L2RelayOwnership at {l2_address}? (y/n) [y]: ").strip().lower() or "y"
+            use_existing = input(f"Use existing L2OwnershipRelay at {l2_address}? (y/n) [y]: ").strip().lower() or "y"
             if use_existing != "y":
                 l2_address = input("Enter L2 relay address: ").strip()
         else:
@@ -387,7 +387,7 @@ def main():
                 try:
                     # This call is critical - it sets up the bidirectional connection
                     # Without it, commission hubs won't be automatically linked to profiles
-                    tx = art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
+                    tx = art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
                     print(f"Bidirectional connection established successfully")
                     
                     # Verify the connection
@@ -402,14 +402,14 @@ def main():
                         print(f"WARNING: Verification failed - ArtCommissionHubOwners not pointing to ProfileFactoryAndRegistry")
                 except Exception as e:
                     print(f"Error establishing bidirectional connection: {e}")
-                    print(f"CRITICAL: You must manually call setProfileFactoryAndRegistry later using:")
-                    print(f"ArtCommissionHubOwners.setProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                    print(f"CRITICAL: You must manually call linkProfileFactoryAndRegistry later using:")
+                    print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
                     print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
     
-    if deploy_mode != "full" and input("Update L2RelayOwnership with L3 ArtCommissionHubOwners address? (y/n): ").strip().lower() == 'y':
+    if deploy_mode != "full" and input("Update L2OwnershipRelay with L3 ArtCommissionHubOwners address? (y/n): ").strip().lower() == 'y':
         if not l2_relay:
-            l2_address = input("Enter L2RelayOwnership address: ").strip()
-            l2_relay = project.L2RelayOwnership.at(l2_address)
+            l2_address = input("Enter L2OwnershipRelay address: ").strip()
+            l2_relay = project.L2OwnershipRelay.at(l2_address)
         if not art_collection_ownership_registry:
             art_collection_ownership_registry_address = input("Enter ArtCommissionHubOwners address: ").strip()
             art_collection_ownership_registry = project.ArtCommissionHubOwners.at(art_collection_ownership_registry_address)

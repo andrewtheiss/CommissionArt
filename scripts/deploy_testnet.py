@@ -46,7 +46,7 @@ def deploy_contracts():
             # Copy the structure from testnet as a starting point
             config["networks"]["prodtest"] = {
                 "l1": {"address": "", "contract": "L1QueryOwnership"},
-                "l2": {"address": "", "contract": "L2RelayOwnership"},
+                "l2": {"address": "", "contract": "L2OwnershipRelay"},
                 "l3": {"address": "", "contract": "ArtCommissionHubOwners"},
                 "artCommissionHub": {"address": "", "contract": "ArtCommissionHub"},
                 "artPiece": {"address": "", "contract": "ArtPiece"},
@@ -129,33 +129,33 @@ def deploy_contracts():
     profile_template = None
     profile_factory_and_regsitry = None
 
-    # Deploy L2RelayOwnership first with 0 parameters
+    # Deploy L2OwnershipRelay first with 0 parameters
     with networks.parse_network_choice(l2_network) as provider:
-        if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l2_existing_address and input(f"Use existing L2RelayOwnership at {l2_existing_address}? (Y/n): ").strip().lower() != 'n':
-            print(f"Using existing L2RelayOwnership at: {l2_existing_address}")
-            l2_contract = project.L2RelayOwnership.at(l2_existing_address)
+        if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l2_existing_address and input(f"Use existing L2OwnershipRelay at {l2_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing L2OwnershipRelay at: {l2_existing_address}")
+            l2_contract = project.L2OwnershipRelay.at(l2_existing_address)
         else:
-            print(f"Deploying L2RelayOwnership on {l2_network}")
+            print(f"Deploying L2OwnershipRelay on {l2_network}")
             try:
                 # For L2 deployments, we often need custom gas settings
                 gas_limit = 3000000  # Higher gas limit for L2
                 
-                # Deploy L2RelayOwnership with no parameters
+                # Deploy L2OwnershipRelay with no parameters
                 l2_contract = deployer.deploy(
-                    project.L2RelayOwnership,
+                    project.L2OwnershipRelay,
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
-                print(f"L2RelayOwnership deployed at: {l2_contract.address}")
+                print(f"L2OwnershipRelay deployed at: {l2_contract.address}")
                 
                 # Update the frontend config
-                update_contract_address(config_network, "l2", l2_contract.address, "L2RelayOwnership")
+                update_contract_address(config_network, "l2", l2_contract.address, "L2OwnershipRelay")
                 
-                print("=" * 50)  # Delimiter after L2RelayOwnership deployment
-                print("L2RelayOwnership deployment completed")
+                print("=" * 50)  # Delimiter after L2OwnershipRelay deployment
+                print("L2OwnershipRelay deployment completed")
                 print("=" * 50)
             except Exception as e:
-                print(f"Error deploying L2RelayOwnership: {e}")
+                print(f"Error deploying L2OwnershipRelay: {e}")
                 sys.exit(1)
 
     # Deploy ArtPiece stencil on L3
@@ -291,7 +291,7 @@ def deploy_contracts():
                 print(f"ArtCommissionHubOwners will be owned by: {deployer.address}")
                 l3_art_collection_ownership_registry = deployer.deploy(
                     project.ArtCommissionHubOwners,
-                    l2_contract.address,  # L2RelayOwnership address
+                    l2_contract.address,  # L2OwnershipRelay address
                     commission_hub_template.address,  # ArtCommissionHub template address
                     gas_limit=gas_limit,
                     required_confirmations=1
@@ -308,35 +308,35 @@ def deploy_contracts():
                 print(f"Error deploying ArtCommissionHubOwners: {e}")
                 sys.exit(1)
 
-    # Now update the L2RelayOwnership with the L3 ArtCommissionHubOwners address
+    # Now update the L2OwnershipRelay with the L3 ArtCommissionHubOwners address
     with networks.parse_network_choice(l2_network) as provider:
-        print(f"Updating L2RelayOwnership with L3 ArtCommissionHubOwners address: {l3_art_collection_ownership_registry.address}")
+        print(f"Updating L2OwnershipRelay with L3 ArtCommissionHubOwners address: {l3_art_collection_ownership_registry.address}")
         try:
-            # Check the owner of the L2RelayOwnership contract
+            # Check the owner of the L2OwnershipRelay contract
             current_owner = l2_contract.owner()
-            print(f"L2RelayOwnership contract owner: {current_owner}")
+            print(f"L2OwnershipRelay contract owner: {current_owner}")
             print(f"Deployer address: {deployer.address}")
             
             if current_owner != deployer.address:
-                print(f"WARNING: Deployer address does not match L2RelayOwnership owner!")
+                print(f"WARNING: Deployer address does not match L2OwnershipRelay owner!")
                 print(f"This might be due to network connection issues or contract state not being properly synced.")
                 print(f"Attempting to continue anyway...")
             
             # Set the L3 contract address
             tx = l2_contract.setL3Contract(l3_art_collection_ownership_registry.address)
-            print(f"L2RelayOwnership updated with L3 ArtCommissionHubOwners address")
+            print(f"L2OwnershipRelay updated with L3 ArtCommissionHubOwners address")
         except Exception as e:
-            print(f"Error updating L2RelayOwnership with L3 ArtCommissionHubOwners address: {e}")
-            print(f"Debug: Try manually checking the owner of the L2RelayOwnership contract")
+            print(f"Error updating L2OwnershipRelay with L3 ArtCommissionHubOwners address: {e}")
+            print(f"Debug: Try manually checking the owner of the L2OwnershipRelay contract")
             
             # Try getting more debugging information
             try:
                 current_owner = l2_contract.owner()
-                print(f"L2RelayOwnership contract owner: {current_owner}")
+                print(f"L2OwnershipRelay contract owner: {current_owner}")
                 print(f"Deployer address: {deployer.address}")
                 
                 if current_owner != deployer.address:
-                    print(f"ISSUE IDENTIFIED: Deployer is not registered as the owner of L2RelayOwnership.")
+                    print(f"ISSUE IDENTIFIED: Deployer is not registered as the owner of L2OwnershipRelay.")
                     print(f"If this is unexpected, it might be due to network state inconsistency.")
                     print(f"You may need to wait for transactions to be confirmed and try again.")
                     
@@ -346,8 +346,8 @@ def deploy_contracts():
             except Exception as debug_error:
                 print(f"Could not get debugging information: {debug_error}")
             
-            print(f"Please manually set the L3 contract address on L2RelayOwnership later using:")
-            print(f"L2RelayOwnership.setL3Contract({l3_art_collection_ownership_registry.address})")
+            print(f"Please manually set the L3 contract address on L2OwnershipRelay later using:")
+            print(f"L2OwnershipRelay.setL3Contract({l3_art_collection_ownership_registry.address})")
             
             # Ask if the user wants to retry
             if input("Do you want to retry updating the L3 contract address? (y/n): ").strip().lower() == 'y':
@@ -355,7 +355,7 @@ def deploy_contracts():
                     print("Retrying in 5 seconds...")
                     time.sleep(5)
                     tx = l2_contract.setL3Contract(l3_art_collection_ownership_registry.address)
-                    print(f"L2RelayOwnership successfully updated with L3 ArtCommissionHubOwners address on retry")
+                    print(f"L2OwnershipRelay successfully updated with L3 ArtCommissionHubOwners address on retry")
                 except Exception as retry_error:
                     print(f"Error on retry: {retry_error}")
                     print(f"You will need to manually set the L3 contract address later.")
@@ -415,7 +415,7 @@ def deploy_contracts():
                     print(f"Error deploying L1QueryOwnership: {e}")
                     sys.exit(1)
 
-    # Set up cross-chain communication by registering L1QueryOwnership in L2RelayOwnership for specific chain ID
+    # Set up cross-chain communication by registering L1QueryOwnership in L2OwnershipRelay for specific chain ID
     with networks.parse_network_choice(l2_network) as provider:
         if l1_contract:
             # Get the L1 chain ID
@@ -431,14 +431,14 @@ def deploy_contracts():
             if chain_id_input and chain_id_input.isdigit():
                 l1_chain_id = int(chain_id_input)
             
-            print(f"Registering L1QueryOwnership ({l1_contract.address}) for chain ID {l1_chain_id} in L2RelayOwnership")
+            print(f"Registering L1QueryOwnership ({l1_contract.address}) for chain ID {l1_chain_id} in L2OwnershipRelay")
             try:
                 tx = l2_contract.updateCrossChainQueryOwnerContract(l1_contract.address, l1_chain_id)
-                print(f"L1QueryOwnership successfully registered in L2RelayOwnership for chain ID {l1_chain_id}")
+                print(f"L1QueryOwnership successfully registered in L2OwnershipRelay for chain ID {l1_chain_id}")
             except Exception as e:
-                print(f"Error registering L1QueryOwnership in L2RelayOwnership: {e}")
+                print(f"Error registering L1QueryOwnership in L2OwnershipRelay: {e}")
                 print(f"You will need to manually register L1QueryOwnership later using:")
-                print(f"L2RelayOwnership.updateCrossChainQueryOwnerContract({l1_contract.address}, {l1_chain_id})")
+                print(f"L2OwnershipRelay.updateCrossChainQueryOwnerContract({l1_contract.address}, {l1_chain_id})")
 
     # CRITICAL: Establish bidirectional connection between ArtCommissionHubOwners and ProfileFactoryAndRegistry
     if l3_art_collection_ownership_registry and profile_factory_and_regsitry:
@@ -448,7 +448,7 @@ def deploy_contracts():
             try:
                 # This call is critical - it sets up the bidirectional connection
                 # Without it, commission hubs won't be automatically linked to profiles
-                tx = l3_art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address)
+                tx = l3_art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address)
                 print(f"Bidirectional connection established successfully")
                 
                 # Verify the connection
@@ -463,8 +463,8 @@ def deploy_contracts():
                     print(f"WARNING: Verification failed - ArtCommissionHubOwners not pointing to ProfileFactoryAndRegistry")
             except Exception as e:
                 print(f"Error establishing bidirectional connection: {e}")
-                print(f"CRITICAL: You must manually call setProfileFactoryAndRegistry later using:")
-                print(f"ArtCommissionHubOwners.setProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                print(f"CRITICAL: You must manually call linkProfileFactoryAndRegistry later using:")
+                print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
                 print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
 
     # Print deployment summary
@@ -500,14 +500,14 @@ def deploy_contracts():
         try:
             l3_contract = l2_contract.l3Contract()
             print(f"\nContract Links:")
-            print(f"  - L2RelayOwnership -> ArtCommissionHubOwners: {l3_contract}")
+            print(f"  - L2OwnershipRelay -> ArtCommissionHubOwners: {l3_contract}")
             
             # Check registered L1 contracts by chain
             if l1_contract:
                 try:
                     l1_chain_id_str = str(l1_chain_id) if 'l1_chain_id' in locals() else "unknown"
                     l1_registered = l2_contract.crossChainRegistryAddressByChainId(l1_chain_id if 'l1_chain_id' in locals() else 1)
-                    print(f"  - L2RelayOwnership -> L1QueryOwnership for chain {l1_chain_id_str}: {l1_registered}")
+                    print(f"  - L2OwnershipRelay -> L1QueryOwnership for chain {l1_chain_id_str}: {l1_registered}")
                 except Exception as e:
                     print(f"Could not retrieve L1 registration info: {e}")
         except Exception as e:
@@ -515,9 +515,9 @@ def deploy_contracts():
     
     if l3_art_collection_ownership_registry:
         try:
-            l2relay = l3_art_collection_ownership_registry.l2RelayOwnership()
+            l2relay = l3_art_collection_ownership_registry.l2OwnershipRelay()
             hub_template = l3_art_collection_ownership_registry.artCommissionHubTemplate()
-            print(f"  - ArtCommissionHubOwners -> L2RelayOwnership: {l2relay}")
+            print(f"  - ArtCommissionHubOwners -> L2OwnershipRelay: {l2relay}")
             print(f"  - ArtCommissionHubOwners -> ArtCommissionHub Template: {hub_template}")
         except Exception as e:
             print(f"Could not retrieve ArtCommissionHubOwners links: {e}")
@@ -527,7 +527,7 @@ def deploy_contracts():
     if network_choice == "production":
         print("\nIMPORTANT: For production, you will need to:")
         print("1. Deploy the L3 contracts to Animechain L3 later when available")
-        print("2. Update the L2RelayOwnership contract with the new L3 ArtCommissionHubOwners address")
+        print("2. Update the L2OwnershipRelay contract with the new L3 ArtCommissionHubOwners address")
         print("3. Update your frontend configuration with the final production addresses")
     
     print(f"\nMake sure to use these contract addresses in your application.\n")

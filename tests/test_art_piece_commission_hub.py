@@ -89,7 +89,7 @@ def test_detach_from_hub(setup):
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Deploy an actual ArtCommissionHubOwners contract with real dependencies
-    # For testing, we can use deployer as the L2RelayOwnership address
+    # For testing, we can use deployer as the L2OwnershipRelay address
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Set test parameters
@@ -97,13 +97,13 @@ def test_detach_from_hub(setup):
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     
-    # Register an NFT owner through the ArtCommissionHubOwners (acting as L2RelayOwnership)
+    # Register an NFT owner through the ArtCommissionHubOwners (acting as L2OwnershipRelay)
     art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub address from the registry
@@ -220,7 +220,7 @@ def test_attach_to_new_hub_after_detach(setup):
         nft_contract, 
         token_id_1, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Register second NFT owner
@@ -229,7 +229,7 @@ def test_attach_to_new_hub_after_detach(setup):
         nft_contract, 
         token_id_2, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub addresses from the registry
@@ -352,7 +352,7 @@ def test_check_owner_with_hub(setup):
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub address from the registry
@@ -430,7 +430,7 @@ def test_check_owner_follows_hub_owner(setup):
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the initial owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub address from the registry
@@ -478,7 +478,7 @@ def test_check_owner_follows_hub_owner(setup):
         nft_contract, 
         token_id, 
         commissioner.address,  # Change to owner as the new NFT owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Verify owner was updated in the hub
@@ -507,13 +507,13 @@ def test_update_registration(setup):
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     
-    # Register the NFT owner through the registry (acting as L2RelayOwnership)
+    # Register the NFT owner through the registry (acting as L2OwnershipRelay)
     art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the initial owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub address from the registry
@@ -571,7 +571,7 @@ def test_update_registration(setup):
         nft_contract, 
         token_id, 
         commissioner.address,  # Change to owner as the new NFT owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Verify owner was updated

@@ -733,7 +733,7 @@ const L1OwnerUpdateRequest: React.FC<L1OwnerUpdateRequestProps> = ({
                     placeholder="0x... (L2 Relay Address)"
                     disabled={isSubmitting}
                   />
-                  <small>Address on L2 (e.g., L2RelayOwnership) to receive the owner info.</small>
+                  <small>Address on L2 (e.g., L2OwnershipRelay) to receive the owner info.</small>
                 </div>
                 
                 <div className="form-group">

@@ -14,9 +14,14 @@
 # These are NFT Contracts who's children are Art Pieces and also nfts  
 # The commission hub CHANGES OWNER as the L1QueryOwnership updates and propegates across chains
 
+# TODO - add security for the following:
+# initializeForOwner is called by ArtCommissionHubOwners when a new owner is set
+# updateRegistration is called by ArtCommissionHubOwners when the owner is changing
+
 # Constants for maximum array sizes
 MAX_UNVERIFIED_ART: constant(uint256) = 10000
 MAX_VERIFIED_ART: constant(uint256) = 10000
+GENERIC_ART_COMMISSION_HUB_CONTRACT: constant(address) = 0x1000000000000000000000000000000000000001
 
 # Interface for ArtPiece contract
 interface ArtPiece:
@@ -33,9 +38,9 @@ owner: public(address)
 
 
 chainId: public(uint256)  # Added chain ID to identify which blockchain the NFT is on
-nftContract: public(address)
-tokenId: public(uint256)
-registry: public(address)
+nftContract: public(address) # If non-generic, the NFT contract address
+nftTokenIdOrGenericHubAccount: public(uint256) # If non-generic, the token ID of the NFT
+artCommissionHubOwners: public(address) # The address of the ArtCommissionHubOwners contract
 isInitialized: public(bool)
 imageDataContracts: public(HashMap[uint256, address])
 l1Contract: public(address)  # Address of the NFT contract on L1
@@ -66,12 +71,7 @@ event Initialized:
     chain_id: indexed(uint256)
     nft_contract: indexed(address)
     token_id: indexed(uint256)
-    registry: address
-
-event GenericInitialized:
-    chain_id: indexed(uint256)
-    owner: indexed(address)
-    registry: address
+    artCommissionHubOwners: address
     is_generic: bool
 
 event OwnershipUpdated:
@@ -118,54 +118,35 @@ def __init__():
     # NOTE: Only ArtCommissionHubOwners is allowed to initialize this contract. See initialize().
 
 @external
-def initialize(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _registry: address):
-    # Only ArtCommissionHubOwners can initialize this contract
+def initializeForOwner(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
+    # TODO - Only ArtCommissionHubOwners can initialize this contract / Verify source creation
+
     assert not self.isInitialized, "Already initialized"
-    assert msg.sender == _registry, "Only ArtCommissionHubOwners can initialize"
-    assert _registry != empty(address), "Registry cannot be empty"
+    assert msg.sender == _artCommissionHubOwners, "Only ArtCommissionHubOwners can initialize"
+    assert _artCommissionHubOwners != empty(address), "Registry cannot be empty"
+
+    if (_nft_contract == GENERIC_ART_COMMISSION_HUB_CONTRACT):
+        self.is_generic = True
+    else:
+        self.is_generic = False
+
     self.isInitialized = True
     self.chainId = _chain_id
     self.nftContract = _nft_contract
-    self.tokenId = _token_id
-    self.registry = _registry
-    self.is_generic = False
+    self.nftTokenIdOrGenericHubAccount = _token_id
+    self.artCommissionHubOwners = _artCommissionHubOwners
     
-    # Set owner immediately by querying the registry
+    # Set owner immediately by querying the artCommissionHubOwners
     # This ensures the owner is set correctly from the beginning
-    registry_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(_registry)
-    self.owner = staticcall registry_interface.lookupRegisteredOwner(_chain_id, _nft_contract, _token_id)
+    artCommissionHubOwners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(_artCommissionHubOwners)
+    self.owner = staticcall artCommissionHubOwners_interface.lookupRegisteredOwner(_chain_id, _nft_contract, _token_id)
     
-    log Initialized(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, registry=_registry)
-
-@external
-def initializeGeneric(_chain_id: uint256, _owner: address, _registry: address, _is_generic: bool):
-    """
-    @notice Initialize a generic commission hub not tied to an NFT
-    @dev This is used for multisigs, DAOs, or individual wallets that don't own NFTs
-    @param _chain_id The chain ID where this hub is deployed
-    @param _owner The address that will own this commission hub
-    @param _registry The address of the ArtCommissionHubOwners contract
-    @param _is_generic Flag to indicate this is a generic hub
-    """
-    # Only ArtCommissionHubOwners can initialize this contract
-    assert not self.isInitialized, "Already initialized"
-    assert msg.sender == _registry, "Only ArtCommissionHubOwners can initialize generic hub"
-    assert _owner != empty(address), "Owner cannot be empty"
-    assert _registry != empty(address), "Registry cannot be empty"
-    assert _is_generic, "Must be initialized as generic"
-    self.isInitialized = True
-    self.chainId = _chain_id
-    self.owner = _owner
-    self.registry = _registry
-    self.is_generic = True
-    self.nftContract = empty(address)
-    self.tokenId = 0
-    log GenericInitialized(chain_id=_chain_id, owner=_owner, registry=_registry, is_generic=_is_generic)
+    log Initialized(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, artCommissionHubOwners=_artCommissionHubOwners, is_generic=self.is_generic)
 
 @external
 def updateRegistration(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _owner: address):
     assert self.isInitialized, "Not initialized"
-    assert msg.sender == self.registry, "Only registry can update owner"
+    assert msg.sender == self.artCommissionHubOwners, "Only artCommissionHubOwners can update owner"
     
     # For generic hubs, we only check chain ID
     if self.is_generic:
@@ -181,7 +162,7 @@ def updateRegistration(_chain_id: uint256, _nft_contract: address, _token_id: ui
     # For NFT-based hubs, we check all parameters
     assert self.chainId == _chain_id, "Chain ID mismatch"
     assert self.nftContract == _nft_contract, "NFT contract mismatch"
-    assert self.tokenId == _token_id, "Token ID mismatch"
+    assert self.nftTokenIdOrGenericHubAccount == _token_id, "Token ID mismatch"
     
     # Always update the owner, even if it's the same as before
     # This ensures the owner is set correctly in all cases

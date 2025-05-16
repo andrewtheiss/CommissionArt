@@ -24,7 +24,7 @@ def get_default_config():
                 },
                 "l2": {
                     "address": "",
-                    "contract": "L2RelayOwnership"
+                    "contract": "L2OwnershipRelay"
                 },
                 "l3": {
                     "address": "",
@@ -54,7 +54,7 @@ def get_default_config():
                 },
                 "l2": {
                     "address": "",
-                    "contract": "L2RelayOwnership"
+                    "contract": "L2OwnershipRelay"
                 },
                 "l3": {
                     "address": "",

@@ -8,7 +8,7 @@ def setup():
     user1 = accounts.test_accounts[1]
     user2 = accounts.test_accounts[2]
     
-    # Deploy L2RelayOwnership (mock)
+    # Deploy L2OwnershipRelay (mock)
     l2_relay = deployer
     
     # Deploy ArtCommissionHub template
@@ -35,7 +35,7 @@ def setup():
     )
     
     # Link ArtCommissionHubOwners and ProfileFactoryAndRegistry
-    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify bidirectional connection
     assert art_collection_ownership_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
@@ -73,7 +73,7 @@ def test_register_nft_owner_with_no_profile(setup):
         nft_contract,
         token_id,
         user1.address,
-        sender=deployer  # Acting as L2RelayOwnership
+        sender=deployer  # Acting as L2OwnershipRelay
     )
     
     # Verify the hub was created and linked to user1
@@ -125,7 +125,7 @@ def test_register_nft_owner_with_existing_profile(setup):
         nft_contract,
         token_id,
         user2.address,
-        sender=deployer  # Acting as L2RelayOwnership
+        sender=deployer  # Acting as L2OwnershipRelay
     )
     
     # Verify the hub was created and linked to user2
@@ -172,7 +172,7 @@ def test_transfer_nft_ownership(setup):
         nft_contract,
         token_id,
         user1.address,
-        sender=deployer  # Acting as L2RelayOwnership
+        sender=deployer  # Acting as L2OwnershipRelay
     )
     
     # Verify the hub was created and linked to user1
@@ -193,7 +193,7 @@ def test_transfer_nft_ownership(setup):
         nft_contract,
         token_id,
         user2.address,
-        sender=deployer  # Acting as L2RelayOwnership
+        sender=deployer  # Acting as L2OwnershipRelay
     )
     
     # Verify the hub was unlinked from user1's profile
@@ -235,7 +235,7 @@ def test_multiple_hubs_per_user(setup):
             nft_contract,
             token_id,
             user1.address,
-            sender=deployer  # Acting as L2RelayOwnership
+            sender=deployer  # Acting as L2OwnershipRelay
         )
     
     # Verify user1 now has 3 commission hubs
@@ -279,7 +279,7 @@ def test_pagination_of_hubs(setup):
             nft_contract,
             token_id,
             user1.address,
-            sender=deployer  # Acting as L2RelayOwnership
+            sender=deployer  # Acting as L2OwnershipRelay
         )
     
     # Verify user1 now has 5 commission hubs
@@ -324,7 +324,7 @@ def test_bidirectional_connection(setup):
     
     # Deploy ArtCommissionHubOwners without initial connection
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(
-        deployer.address,  # Mock L2RelayOwnership
+        deployer.address,  # Mock L2OwnershipRelay
         art_commission_hub_template.address,
         sender=deployer
     )
@@ -341,7 +341,7 @@ def test_bidirectional_connection(setup):
     assert profile_factory_and_regsitry.artCommissionHubOwners() == "0x0000000000000000000000000000000000000000"
     
     # Set the bidirectional connection
-    art_collection_ownership_registry.setProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify both connections are established
     assert art_collection_ownership_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
@@ -354,7 +354,7 @@ def test_bidirectional_connection(setup):
         sender=deployer
     )
     
-    art_collection_ownership_registry.setProfileFactoryAndRegistry(new_profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.linkProfileFactoryAndRegistry(new_profile_factory_and_regsitry.address, sender=deployer)
     
     # Verify the connection is updated
     assert art_collection_ownership_registry.profileFactoryAndRegistry() == new_profile_factory_and_regsitry.address

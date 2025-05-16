@@ -64,7 +64,7 @@ Also i need a way to see latest commissions both confirmed and unverified so tha
 
 
 .
-The ArtCommissionHubOwners.updateRegistration path can be reused to transfer ownership of generic hubs if needed. For example, if a DAO wants to transfer control of its hub to a new multisig, we could call ArtCommissionHubOwners._registerNFTOwner(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner, msg.sender). This will invoke ArtCommissionHub.updateRegistration(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner) to update the stored owner in the hub
+The ArtCommissionHubOwners.updateRegistration path can be reused to transfer ownership of generic hubs if needed. For example, if a DAO wants to transfer control of its hub to a new multisig, we could call ArtCommissionHubOwners._createOrUpdateCommissionHubAndOwner(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner, msg.sender). This will invoke ArtCommissionHub.updateRegistration(chain_id, GENERIC_HUB_ADDRESS, hub_id, new_owner) to update the stored owner in the hub
 file-fmzu8fdbvzeeb9dx8lx5hc
 . We would allow this only if msg.sender is authorized (likely the current owner or the hub itself calling via some admin function). The hub’s owner variable would update
 file-syit3bfprksmahnrbfr593
@@ -99,7 +99,7 @@ It helps verify that a given hub address is recognized by the system (if an addr
 Off-chain, one can quickly index all hubs by starting from index 0 and reading batches, or by processing events.
 Chain separation: Because the registry includes a chain_id for each hub (in its stored data or events), if in the future multiple L3 instances or cross-chain commissions are considered, one could filter by chain. In our single L3 environment, all hubs reside on the same chain (Animechain L3), but chain_id might refer to the origin of the NFT or owner. All new hubs (NFT-based or generic) will call log ArtCommissionHubCreated(chain_id, nft_contract, token_id, commission_hub) in ArtCommissionHubOwners
 file-fmzu8fdbvzeeb9dx8lx5hc
-, which we will use as the trigger to also append to allCommissionHubs. (For NFT-based hubs this already happens in _registerNFTOwner on first discovery of an NFT
+, which we will use as the trigger to also append to allCommissionHubs. (For NFT-based hubs this already happens in _createOrUpdateCommissionHubAndOwner on first discovery of an NFT
 file-fmzu8fdbvzeeb9dx8lx5hc
 ; for generic, we will manually log a similar event.)
 Profile Query Methods for CommissionHubs and Art Pieces
@@ -238,12 +238,12 @@ file-5ahheepddqhn5l9dufupsg
 file-5ahheepddqhn5l9dufupsg
 file-5ahheepddqhn5l9dufupsg
 .
-L3 (Animechain): The ArtCommissionHubOwners on L3 then invokes _registerNFTOwner internally
+L3 (Animechain): The ArtCommissionHubOwners on L3 then invokes _createOrUpdateCommissionHubAndOwner internally
 file-fmzu8fdbvzeeb9dx8lx5hc
 . This is exactly where our extended logic will update the CommissionHub’s owner and link/unlink profiles in the same transaction. The Registered event emitted from L3 ArtCommissionHubOwners will reflect the new owner and hub address
 file-fmzu8fdbvzeeb9dx8lx5hc
 .
-Atomicity: Because the cross-chain message triggers a single call on L3, our linking/unlinking in _registerNFTOwner is executed atomically within that call. So by the time the L3 transaction from the relay is done:
+Atomicity: Because the cross-chain message triggers a single call on L3, our linking/unlinking in _createOrUpdateCommissionHubAndOwner is executed atomically within that call. So by the time the L3 transaction from the relay is done:
 The ArtCommissionHubOwners’s owners mapping is updated,
 The ArtCommissionHub’s owner variable is updated via updateRegistration call
 file-fmzu8fdbvzeeb9dx8lx5hc
@@ -252,7 +252,7 @@ The old owner’s profile (if any) is updated, and the new owner’s profile (if
 Thus, any front-end or indexer observing L3 events will see a consistent update. For instance, they’ll see OwnershipUpdated event from the hub contract
 file-syit3bfprksmahnrbfr593
  showing the new owner, and they’ll see ProfileFactoryAndRegistry or Profile events if we emit any for linking. We can emit events like HubLinkedToProfile(user, hub) and HubUnlinkedFromProfile(user, hub) from ProfileFactoryAndRegistry when performing those actions for easier tracking.
-Handling L2->L3 direct user actions: If the user initiates something on L2 that should reflect on L3 (for example, if there were an L2 marketplace for commissions, or if we store profiles on L2 as well – not in our case, profiles are only on L3), the L2 would use a similar retryable ticket mechanism to call L3’s ProfileFactoryAndRegistry or ArtCommissionHubOwners. Our contracts already include an L2RelayOwnership.relayToL3(...) for sending owner data to L3
+Handling L2->L3 direct user actions: If the user initiates something on L2 that should reflect on L3 (for example, if there were an L2 marketplace for commissions, or if we store profiles on L2 as well – not in our case, profiles are only on L3), the L2 would use a similar retryable ticket mechanism to call L3’s ProfileFactoryAndRegistry or ArtCommissionHubOwners. Our contracts already include an L2OwnershipRelay.relayToL3(...) for sending owner data to L3
 file-5ahheepddqhn5l9dufupsg
 file-5ahheepddqhn5l9dufupsg
 . The same concept could be extended for profile or commission data if needed (though currently, all commission logic lives on L3).
@@ -298,7 +298,7 @@ Update ArtCommissionHubOwners:
 
 Introduce a constant GENERIC_HUB_ADDRESS (e.g., 0x0000...01).
 
-Method: createGenericCommissionHub(chain_id, owner)
+Method: createGenericCommissionHub( owner)
 
 Handle non-NFT-based hubs creation.
 
@@ -348,7 +348,7 @@ Test flow end-to-end:
 
 Transfer NFTs on L1.
 
-Validate correct updates propagate to L3 profiles/hubs via L2RelayOwnership.
+Validate correct updates propagate to L3 profiles/hubs via L2OwnershipRelay.
 
 Confirm atomic updates and consistent on-chain states.
 

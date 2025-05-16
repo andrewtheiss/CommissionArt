@@ -17,11 +17,13 @@ Instance Variables should also be camelCase
 Method Inputs should _be_underscore_delimited
 
 
-ArtCollectionOwnershipRegsitry:
-- Source of truth for all Art Collection Ownership
-- Updates owner based on L2RelayOwnership: via registerNFTOwnerFromParentChain
-- Updates owner of non-nft collections via via _registerNFTOwner
-- Has simplilfied ownership functions to grab from the L1 Directly
+ArtCommissionHubOwners:
+- Source of truth for all Art Commission Hub Owners
+- Updates owner based on L2OwnershipRelay: via registerNFTOwnerFromParentChain
+- Updates owner of non-nft collections via via _createOrUpdateCommissionHubAndOwner
+- Allows access to CommissionHubs for dynamic content on UIs
+
+
 
 Profile Creation & Ownership
 Single Profile via Factory: Profiles must be created exclusively through the ProfileFactoryAndRegistry contract. Each user address can have at most one Profile (enforced by the factory). Direct deployment of Profile contracts is disallowed.
@@ -68,8 +70,8 @@ Link Originals to Editions: Maintain a clear mapping between an original ArtPiec
 Consistent Supply Management: The logic for minting and selling ERC1155 editions should enforce the intended supply limits. For instance, if an artist decides to mint 100 copies, the contract should not allow more than 100 to be sold. While this is mostly application logic, the rules should remind the developer to handle counters or supply caps in the ERC1155 contract as needed. All sales or transfers of these editions should respect the platform’s rules (e.g., if royalties or other conditions exist, though not detailed here).
 Cross-Chain NFT Ownership Updates
 
-Source of Truth on Ownership: The ownership of an NFT that underpins a commission hub must always reflect the actual owner on the main (parent) chain. Never assign or assume the owner in the ArtCommissionHub contract without a verified update from the cross-chain process. The only way to update an ArtCommissionHub’s owner is via the L1→L2 relay mechanism (L1QueryOwnership → L2RelayOwnership → ArtCommissionHubOwners).
-L1QueryOwnership & L2RelayOwnership Integration: Ensure that the L1QueryOwnership contract (on the main chain) monitors the NFT’s ownership (via events or direct queries) and sends the updated owner info to L2. The L2RelayOwnership contract should be authorized to receive these messages and call the ArtCommissionHubOwners’s function to register the new owner. The system must reject unauthorized or malformed updates – L2RelayOwnership should check the sender and chain ID before trusting any data.
+Source of Truth on Ownership: The ownership of an NFT that underpins a commission hub must always reflect the actual owner on the main (parent) chain. Never assign or assume the owner in the ArtCommissionHub contract without a verified update from the cross-chain process. The only way to update an ArtCommissionHub’s owner is via the L1→L2 relay mechanism (L1QueryOwnership → L2OwnershipRelay → ArtCommissionHubOwners).
+L1QueryOwnership & L2OwnershipRelay Integration: Ensure that the L1QueryOwnership contract (on the main chain) monitors the NFT’s ownership (via events or direct queries) and sends the updated owner info to L2. The L2OwnershipRelay contract should be authorized to receive these messages and call the ArtCommissionHubOwners’s function to register the new owner. The system must reject unauthorized or malformed updates – L2OwnershipRelay should check the sender and chain ID before trusting any data.
 ArtCommissionHubOwners Updates & Hub Sync: The ArtCommissionHubOwners contract on L2 is responsible for creating or updating commission hubs in response to ownership changes. On receiving a new owner for an NFT, ArtCommissionHubOwners will create a hub if none exists, or look up the existing hub for that NFT. It must then call ArtCommissionHub.updateRegistration(chain_id, nft_contract, token_id, new_owner) to sync the hub’s internal owner state. The old owner’s link to the hub should be removed and the new owner linked instead
 . This involves updating internal mappings and also adding/removing the hub in the Profile of the respective owners (if they have profiles).
 No Shortcut on Hub Owner: Developers should not manually set the owner in ArtCommissionHub or bypass the ArtCommissionHubOwners. All changes must propagate through the official pipeline to maintain consistency. The hub’s owner field should only change via the updateRegistration call coming from ArtCommissionHubOwners, which guarantees the hub’s owner is always the legitimate NFT holder.

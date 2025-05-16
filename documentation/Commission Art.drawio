@@ -49,7 +49,7 @@
                 <mxCell id="g5kdfNZb34JJmgtbnOKz-126" value="" style="rounded=0;whiteSpace=wrap;html=1;" parent="g5kdfNZb34JJmgtbnOKz-125" vertex="1">
                     <mxGeometry x="5" y="30" width="965" height="450" as="geometry"/>
                 </mxCell>
-                <mxCell id="g5kdfNZb34JJmgtbnOKz-127" value="L2RelayOwnership" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;startSize=30;" parent="g5kdfNZb34JJmgtbnOKz-125" vertex="1">
+                <mxCell id="g5kdfNZb34JJmgtbnOKz-127" value="L2OwnershipRelay" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;startSize=30;" parent="g5kdfNZb34JJmgtbnOKz-125" vertex="1">
                     <mxGeometry x="380" y="50" width="200" height="130" as="geometry"/>
                 </mxCell>
                 <mxCell id="g5kdfNZb34JJmgtbnOKz-128" value="Passes request to L1 for NFT Owner&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;*verify L1 address before response&lt;/div&gt;&lt;div&gt;*verify L3 address before request&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#36393d;" parent="g5kdfNZb34JJmgtbnOKz-127" vertex="1">

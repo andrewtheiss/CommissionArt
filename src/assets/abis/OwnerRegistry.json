@@ -73,11 +73,11 @@
     "inputs": [
       {
         "indexed": false,
-        "name": "l2RelayOwnership",
+        "name": "l2OwnershipRelay",
         "type": "address"
       }
     ],
-    "name": "L2RelayOwnershipSet",
+    "name": "L2OwnershipRelaySet",
     "type": "event"
   },
   {
@@ -261,14 +261,14 @@
         "type": "address"
       }
     ],
-    "name": "setL2RelayOwnership",
+    "name": "setL2OwnershipRelay",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "l2RelayOwnership",
+    "name": "l2OwnershipRelay",
     "outputs": [
       {
         "name": "",

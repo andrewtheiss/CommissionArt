@@ -27,8 +27,8 @@ def setup():
         sender=deployer
     )
     
-    # Deploy L2RelayOwnership and ArtCommissionHub template for ArtCommissionHubOwners
-    l2_relay = project.L2RelayOwnership.deploy(sender=deployer)
+    # Deploy L2OwnershipRelay and ArtCommissionHub template for ArtCommissionHubOwners
+    l2_relay = project.L2OwnershipRelay.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Deploy ArtCommissionHubOwners with the required parameters
@@ -37,8 +37,8 @@ def setup():
     # Set ArtCommissionHubOwners in ProfileFactoryAndRegistry
     profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
     
-    # Set L2RelayOwnership to the deployer for testing purposes
-    art_collection_ownership_registry.setL2RelayOwnership(deployer.address, sender=deployer)
+    # Set L2OwnershipRelay to the deployer for testing purposes
+    art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)
     
     # Create a profile for the user
     profile_factory_and_regsitry.createProfile(sender=user)
@@ -52,7 +52,7 @@ def setup():
         nft_contract = deployer.address  # Use a valid address that already exists
         token_id = i + 1
         
-        # Register NFT ownership - now the deployer is authorized as L2RelayOwnership
+        # Register NFT ownership - now the deployer is authorized as L2OwnershipRelay
         art_collection_ownership_registry.registerNFTOwnerFromParentChain(1, nft_contract, token_id, user.address, sender=deployer)
         
         # Get the created commission hub address

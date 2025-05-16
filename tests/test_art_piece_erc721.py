@@ -278,7 +278,7 @@ def test_attachToArtCommissionHub(setup):
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Deploy an actual ArtCommissionHubOwners contract with real dependencies
-    # For testing, we can use deployer as the L2RelayOwnership address
+    # For testing, we can use deployer as the L2OwnershipRelay address
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Step 3: Ensure the art piece is fully verified
@@ -304,7 +304,7 @@ def test_attachToArtCommissionHub(setup):
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the NFT owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub address for this NFT from the registry
@@ -408,7 +408,7 @@ def test_checkOwner(setup):
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Step 2: Deploy an actual ArtCommissionHubOwners contract with real dependencies
-    # For testing, we can use deployer as the L2RelayOwnership address
+    # For testing, we can use deployer as the L2OwnershipRelay address
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Step 3: Deploy a new hub specifically for this test (don't use the one from setup)
@@ -441,7 +441,7 @@ def test_checkOwner(setup):
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the NFT owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the hub address for this NFT from the registry

@@ -17,7 +17,7 @@ def setup():
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Deploy an actual ArtCommissionHubOwners contract
-    # For testing, we can use deployer address as the L2RelayOwnership
+    # For testing, we can use deployer address as the L2OwnershipRelay
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(deployer.address, commission_hub_template.address, sender=deployer)
     
     # Set test parameters
@@ -25,13 +25,13 @@ def setup():
     nft_contract = deployer.address  # Use deployer address as mock NFT contract
     token_id = 1
     
-    # Register an NFT owner through the ArtCommissionHubOwners (acting as L2RelayOwnership)
+    # Register an NFT owner through the ArtCommissionHubOwners (acting as L2OwnershipRelay)
     art_collection_ownership_registry.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
         token_id, 
         deployer.address,  # Set deployer as the owner
-        sender=deployer     # Pretend to be the L2RelayOwnership
+        sender=deployer     # Pretend to be the L2OwnershipRelay
     )
     
     # Get the automatically created hub address from the registry

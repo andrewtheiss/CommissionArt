@@ -338,7 +338,7 @@ h2 {
   text-decoration: underline;
 }
 
-/* L2RelayOwnershipTester styles */
+/* L2OwnershipRelayTester styles */
 .relay-tester-container {
   background-color: var(--bg-secondary);
   border-radius: 8px;

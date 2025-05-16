@@ -348,7 +348,7 @@ def test_create_generic_commission_hub(registry_and_template):
     
     # Owner creates a generic commission hub via the registry
     # The function returns a transaction receipt, not the address directly
-    tx = art_collection_ownership_registry.createGenericCommissionHub(chain_id, owner.address, sender=owner)
+    tx = art_collection_ownership_registry.createGenericCommissionHub( owner.address, sender=owner)
     
     # Debug: Print logs to understand their structure
     print("\nTransaction logs:")
@@ -381,7 +381,7 @@ def test_create_nft_commission_hub(registry_and_template):
     chain_id = 1
     nft_contract = accounts.test_accounts[3].address  # Use an address as a dummy NFT contract
     token_id = 42
-    # L2RelayOwnership registers NFT owner, which creates and initializes the hub
+    # L2OwnershipRelay registers NFT owner, which creates and initializes the hub
     art_collection_ownership_registry.registerNFTOwnerFromParentChain(chain_id, nft_contract, token_id, nft_owner.address, sender=l2relay)
     commission_hub_address = art_collection_ownership_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
@@ -452,7 +452,7 @@ def test_art_piece_hub_ownership_flow(registry_and_template):
     # ArtPiece should now report new owner
     assert art_piece.getOwner() == new_owner.address
 
-# Test that only ArtCommissionHubOwners can initialize a hub (negative test)
+# Test that only ArtCommissionHubOwners can initialize a hub (negative test) CURRENTLY NO TEST FOR GENERIC, I NEED ONE STILL
 def test_only_art_collection_ownership_registry_can_initialize(registry_and_template):
     deployer, l2relay, art_commission_hub_template, art_collection_ownership_registry = registry_and_template
     attacker = accounts.test_accounts[8]
