@@ -10,7 +10,17 @@ def setup():
     user2 = accounts.test_accounts[2]
     
     # Deploy ProfileFactoryAndRegistry
-    profile_factory = project.ProfileFactoryAndRegistry.deploy(sender=deployer)
+    # Deploy Profile template
+    profile_template = project.Profile.deploy(sender=deployer)
+
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Set the template in the factory
     profile_factory.updateProfileTemplateContract(project.Profile.deploy(sender=deployer), sender=deployer)

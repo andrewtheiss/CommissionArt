@@ -16,7 +16,16 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+
+
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Create profiles for testing
     profile_factory_and_regsitry.createProfile(sender=owner)
@@ -217,29 +226,6 @@ def test_set_allow_unverified_commissions(setup):
     # Attempt by non-owner should fail
     with pytest.raises(Exception):
         owner_profile.setAllowUnverifiedCommissions(False, sender=other_user)
-
-def test_set_profile_expansion(setup):
-    """Test setting profile expansion address"""
-    owner = setup["owner"]
-    owner_profile = setup["owner_profile"]
-    other_user = setup["other_user"]
-    
-    # Initial state
-    assert owner_profile.profileExpansion() == "0x" + "0" * 40
-    
-    # Set expansion address
-    expansion_address = "0x" + "1" * 40
-    owner_profile.setProfileExpansion(expansion_address, sender=owner)
-    assert owner_profile.profileExpansion() == expansion_address
-    
-    # Change expansion address
-    new_expansion = "0x" + "2" * 40
-    owner_profile.setProfileExpansion(new_expansion, sender=owner)
-    assert owner_profile.profileExpansion() == new_expansion
-    
-    # Attempt by non-owner should fail
-    with pytest.raises(Exception):
-        owner_profile.setProfileExpansion("0x" + "3" * 40, sender=other_user)
 
 def test_set_proceeds_address(setup):
     """Test setting proceeds address (artist-only)"""

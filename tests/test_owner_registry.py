@@ -32,8 +32,16 @@ def profile_template(deployer):
     return project.Profile.deploy(sender=deployer)
 
 @pytest.fixture
-def profile_factory_and_regsitry(deployer, profile_template):
-    hub = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+def profile_social_template(deployer):
+    return project.ProfileSocial.deploy(sender=deployer)
+
+@pytest.fixture
+def profile_factory_and_regsitry(deployer, profile_template, profile_social_template):
+    hub = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     return hub
 
 @pytest.fixture

@@ -24,9 +24,13 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    
     # Deploy ProfileFactoryAndRegistry
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
+        profile_social_template.address,
         sender=deployer
     )
     
@@ -44,6 +48,7 @@ def setup():
         "owner_registry": owner_registry,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "profile_template": profile_template,
+        "profile_social_template": profile_social_template,
         "art_commission_hub_template": art_commission_hub_template
     }
 
@@ -327,6 +332,7 @@ def test_bidirectional_connection(setup):
     # Deploy ProfileFactoryAndRegistry
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
+        setup["profile_social_template"].address,
         sender=deployer
     )
     
@@ -344,6 +350,7 @@ def test_bidirectional_connection(setup):
     # Test updating the connection to a new ProfileFactoryAndRegistry
     new_profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
+        setup["profile_social_template"].address,
         sender=deployer
     )
     

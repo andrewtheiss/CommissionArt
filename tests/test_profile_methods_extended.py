@@ -42,7 +42,16 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with the template
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+
+
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Create profiles for owner and artist
     profile_factory_and_regsitry.createProfile(sender=owner)
@@ -159,32 +168,6 @@ def test_getProfileErc1155sForSale(setup):
         print(f"Note: ERC1155 test issue: {e}")
         # If the contract doesn't support creating ERC1155s or there's another issue
         pytest.skip(f"ArtSales1155 contract test issue: {e}")
-
-def test_set_profile_expansion(setup):
-    """Test setProfileExpansion method"""
-    owner = setup["owner"]
-    other_user = setup["other_user"]
-    owner_profile = setup["owner_profile"]
-    
-    # Test setting profile expansion
-    owner_profile.setProfileExpansion(other_user.address, sender=owner)
-    
-    # Verify profile expansion was set
-    assert owner_profile.profileExpansion() == other_user.address
-    
-    # Test setting to a different address
-    owner_profile.setProfileExpansion(ZERO_ADDRESS, sender=owner)
-    assert owner_profile.profileExpansion() == ZERO_ADDRESS
-
-def test_set_profile_expansion_unauthorized(setup):
-    """Test setProfileExpansion by unauthorized user"""
-    owner_profile = setup["owner_profile"]
-    other_user = setup["other_user"]
-    
-    # Test unauthorized call
-    with pytest.raises(Exception) as excinfo:
-        owner_profile.setProfileExpansion(other_user.address, sender=other_user)
-    assert "Only owner" in str(excinfo.value)
 
 def test_get_art_piece_at_index(setup):
     """Test getArtPieceAtIndex method"""

@@ -24,9 +24,13 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    
     # Deploy ProfileFactoryAndRegistry
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
+        profile_social_template.address,
         sender=deployer
     )
     
@@ -45,6 +49,7 @@ def setup():
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "l2_relay": l2_relay,
         "profile_template": profile_template,
+        "profile_social_template": profile_social_template,
         "art_commission_hub_template": art_commission_hub_template
     }
 

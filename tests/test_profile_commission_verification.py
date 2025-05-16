@@ -11,7 +11,17 @@ def setup():
     hub_owner = accounts.test_accounts[3]
     
     # Deploy ProfileFactoryAndRegistry
-    profile_factory = project.ProfileFactoryAndRegistry.deploy(sender=deployer)
+    # Deploy Profile template
+    profile_template = project.Profile.deploy(sender=deployer)
+
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtPiece template
     art_piece_template = project.ArtPiece.deploy(sender=deployer)

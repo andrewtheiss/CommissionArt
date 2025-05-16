@@ -16,7 +16,16 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with the template
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+
+
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtPiece template for createArtPiece tests
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -245,23 +254,6 @@ def test_get_latest_art_pieces_empty(setup):
     # Test with empty array
     empty_result = profile.getLatestArtPieces()
     assert len(empty_result) == 0
-
-def test_profile_expansion(setup):
-    """Test setting profile expansion address"""
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
-    user1 = setup["user1"]
-    
-    # Create a profile
-    profile_factory_and_regsitry.createProfile(sender=user1)
-    profile_address = profile_factory_and_regsitry.getProfile(user1.address)
-    profile = project.Profile.at(profile_address)
-    
-    # Set profile expansion
-    expansion_address = "0x8888888888888888888888888888888888888888"
-    profile.setProfileExpansion(expansion_address, sender=user1)
-    
-    # Verify it was set
-    assert profile.profileExpansion() == expansion_address
 
 def test_profile_proceed_address(setup):
     """Test setting proceeds address (requires artist)"""

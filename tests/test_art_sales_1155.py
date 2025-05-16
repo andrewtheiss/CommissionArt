@@ -16,20 +16,36 @@ def setup():
     user6 = accounts.test_accounts[8]
     user7 = accounts.test_accounts[9]
 
-    # Deploy Profile template and ProfileFactoryAndRegistry
+    # Deploy Profile template and ProfileSocial template
     profile_template = project.Profile.deploy(sender=deployer)
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, 
+        profile_social_template.address, 
+        sender=deployer
+    )
+    
+    # Create profiles for owner and artist
     profile_factory_and_regsitry.createProfile(sender=owner)
     profile_factory_and_regsitry.createProfile(sender=artist)
+    
+    # Get the created profile addresses
     owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
     artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    
+    # Create profile objects
     owner_profile = project.Profile.at(owner_profile_address)
     artist_profile = project.Profile.at(artist_profile_address)
+    
+    # Set artist flag on artist profile
     artist_profile.setIsArtist(True, sender=artist)
 
-    # Deploy ArtSales1155 for owner and artist with both profile and owner addresses
+    # Deploy ArtSales1155 for owner and artist
     owner_sales = project.ArtSales1155.deploy(owner_profile_address, owner.address, sender=deployer)
     artist_sales = project.ArtSales1155.deploy(artist_profile_address, artist.address, sender=deployer)
+    
     # Link ArtSales1155 to profiles
     owner_profile.setArtSales1155(owner_sales.address, sender=owner)
     artist_profile.setArtSales1155(artist_sales.address, sender=artist)
@@ -46,6 +62,7 @@ def setup():
         "user6": user6,
         "user7": user7,
         "profile_template": profile_template,
+        "profile_social_template": profile_social_template,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,

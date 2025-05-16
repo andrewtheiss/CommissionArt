@@ -10,8 +10,15 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    
     # Deploy ProfileFactoryAndRegistry
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(profile_template.address, sender=deployer)
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Create a profile for testing
     profile_factory_and_regsitry.createProfile(sender=owner)
@@ -27,7 +34,8 @@ def setup():
         "owner": owner,
         "profile": profile,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
-        "art_piece_template": art_piece_template
+        "art_piece_template": art_piece_template,
+        "profile_social_template": profile_social_template
     }
 
 def test_minimal_commission_array(setup):
