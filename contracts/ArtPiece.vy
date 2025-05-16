@@ -398,16 +398,14 @@ def _getEffectiveOwner() -> address:
     @notice Internal function to determine the effective owner based on verification and hub status
     @return The effective owner address
     """
-    # If attached to a hub, return the hub owner
-    if self.attachedToArtCommissionHub and self.artCommissionHubAddress != empty(address):
+    # If attached to a hub and fully verified, return the hub owner (which is set only by OwnerRegistry)
+    if self.attachedToArtCommissionHub and self.artCommissionHubAddress != empty(address) and self.fullyVerifiedCommission:
         hub_owner: address = staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
         if hub_owner != empty(address):
             return hub_owner
-    
     # If fully verified but not attached to hub, or hub owner is empty
     if self.fullyVerifiedCommission:
         return self.commissioner
-    
     # Before verification, return the original uploader
     return self.originalUploader
 

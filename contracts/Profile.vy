@@ -1272,3 +1272,5 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
         if is_commissioner and _commission_art_piece not in self.myArt:
             self.myArt.append(_commission_art_piece)
             self.myArtCount += 1
+
+# NOTE: For any commission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by OwnerRegistry). The Profile contract should never override this; always query the hub for the current owner if needed.

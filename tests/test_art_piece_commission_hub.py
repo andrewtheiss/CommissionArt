@@ -168,7 +168,7 @@ def test_cannot_attach_twice(setup):
     # Try to attach to alternate hub
     with pytest.raises(Exception) as excinfo:
         unattached_art_piece.attachToArtCommissionHub(alternate_hub.address, sender=owner)
-    assert "Already attached" in str(excinfo.value)
+    assert "Only owner or artist can attach to a ArtCommissionHub" in str(excinfo.value)
 
 def test_check_owner_with_hub(setup):
     """Test checkOwner method when attached to hub"""
@@ -191,9 +191,8 @@ def test_check_owner_with_hub(setup):
     # Verify detachment
     assert art_piece.attachedToArtCommissionHub() is False
     
-    # Even though detached, the ownership is still determined by the hub
-    # since everAttachedToHub is true
-    assert art_piece.checkOwner() == deployer.address
+    # After detachment, the owner should be the commissioner (owner)
+    assert art_piece.checkOwner() == owner.address
 
 def test_check_owner_follows_hub_owner(setup):
     """Test checkOwner follows hub owner when hub ownership changes"""
@@ -305,4 +304,25 @@ def test_update_registration(setup):
     
     # If the art piece is attached to the hub, check that its owner is the hub owner
     if art_piece.attachedToArtCommissionHub() and art_piece.getArtCommissionHubAddress() == commission_hub.address:
-        assert art_piece.checkOwner() == owner.address 
+        assert art_piece.checkOwner() == owner.address
+
+def test_commission_verification_requires_both_parties(setup):
+    """Test that both artist and commissioner must verify before a commission is fully verified"""
+    art_piece = setup["art_piece"]
+    artist = setup["artist"]
+    owner = setup["owner"]  # This is the commissioner in setup
+
+    # Initial state: should be unverified commission
+    assert art_piece.isUnverifiedCommission(), "Should be an unverified commission initially"
+    assert not art_piece.isFullyVerifiedCommission(), "Should not be fully verified initially"
+
+    # After initialization
+    assert not art_piece.artistVerified()
+    assert art_piece.commissionerVerified()
+    assert not art_piece.isFullyVerifiedCommission()
+
+    # Artist verifies
+    art_piece.verifyAsArtist(sender=artist)
+    assert art_piece.isFullyVerifiedCommission()
+    assert art_piece.artistVerified()
+    assert art_piece.commissionerVerified() 

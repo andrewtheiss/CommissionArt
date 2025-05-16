@@ -179,9 +179,15 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
     # Store the old owner before updating
     old_owner: address = self.owners[_chain_id][_nft_contract][_token_id]
     
+    # Update the owner and the last update timestamp FIRST
+    # This ensures the owner is available when the hub queries it during initialization
+    self.owners[_chain_id][_nft_contract][_token_id] = _owner
+    self.lastUpdated[_chain_id][_nft_contract][_token_id] = current_time
+    
     # If the commission hub doesn't exist, create it
+    commission_hub: address = empty(address)
     if old_owner == empty(address):
-        commission_hub: address = create_minimal_proxy_to(self.artCommissionHubTemplate)
+        commission_hub = create_minimal_proxy_to(self.artCommissionHubTemplate)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
         extcall commission_hub_instance.initialize(_chain_id, _nft_contract, _token_id, self)
         self.artCommissionHubs[_chain_id][_nft_contract][_token_id] = commission_hub
@@ -193,7 +199,7 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
             self._addHubToOwner(_owner, commission_hub)
     elif old_owner != _owner:
         # If the owner is changing, we need to update the commission hub
-        commission_hub: address = self.artCommissionHubs[_chain_id][_nft_contract][_token_id]
+        commission_hub = self.artCommissionHubs[_chain_id][_nft_contract][_token_id]
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
         extcall commission_hub_instance.updateRegistration(_chain_id, _nft_contract, _token_id, _owner)
         
@@ -204,17 +210,16 @@ def _registerNFTOwner(_chain_id: uint256, _nft_contract: address, _token_id: uin
         # Add the hub to the new owner's list
         if _owner != empty(address):
             self._addHubToOwner(_owner, commission_hub)
-
-    # Update the owner and the last update timestamp
-    self.owners[_chain_id][_nft_contract][_token_id] = _owner
-    self.lastUpdated[_chain_id][_nft_contract][_token_id] = current_time
+    else:
+        # Owner hasn't changed, just get the existing hub
+        commission_hub = self.artCommissionHubs[_chain_id][_nft_contract][_token_id]
     
     log Registered(
         chain_id=_chain_id,
         nft_contract=_nft_contract, 
         token_id=_token_id, 
         owner=_owner, 
-        commission_hub=self.artCommissionHubs[_chain_id][_nft_contract][_token_id],
+        commission_hub=commission_hub,
         timestamp=current_time,
         source=_source
     )
