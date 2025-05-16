@@ -12,14 +12,32 @@ def setup():
     user = accounts.test_accounts[1]
     artist = accounts.test_accounts[2]
     
-    # Deploy ArtCommissionHub
-    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
+    # Create a commission hub template for the OwnerRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Initialize the hub
+    # Deploy an actual OwnerRegistry contract
+    # For testing, we can use deployer address as the L2Relay
+    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    
+    # Set test parameters
     chain_id = 1
     nft_contract = deployer.address  # Use deployer address as mock NFT contract
     token_id = 1
-    commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+    
+    # Register an NFT owner through the OwnerRegistry (acting as L2Relay)
+    owner_registry.registerNFTOwnerFromParentChain(
+        chain_id, 
+        nft_contract, 
+        token_id, 
+        deployer.address,  # Set deployer as the owner
+        sender=deployer     # Pretend to be the L2Relay
+    )
+    
+    # Get the automatically created hub address from the registry
+    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    
+    # Create a reference to the hub
+    commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     
     # Deploy Mock ArtPiece - To simplify testing, we'll use ArtPiece contracts
     # but in a real test would be better to use a mock that implements isOnCommissionWhitelist
@@ -37,7 +55,11 @@ def setup():
         "commission_hub": commission_hub,
         "art_piece_1": art_piece_1,
         "art_piece_2": art_piece_2,
-        "art_piece_3": art_piece_3
+        "art_piece_3": art_piece_3,
+        "owner_registry": owner_registry,
+        "chain_id": chain_id,
+        "nft_contract": nft_contract,
+        "token_id": token_id
     }
 
 def test_verify_commission_removes_from_unverified(setup):

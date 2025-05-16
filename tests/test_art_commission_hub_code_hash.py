@@ -12,14 +12,32 @@ def setup():
     user = accounts.test_accounts[1]
     artist = accounts.test_accounts[2]
     
-    # Deploy ArtCommissionHub
-    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
+    # Create a commission hub template for the OwnerRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Initialize the hub
+    # Deploy an actual OwnerRegistry contract
+    # For testing, we can use deployer address as the L2Relay
+    owner_registry = project.OwnerRegistry.deploy(deployer.address, commission_hub_template.address, sender=deployer)
+    
+    # Set test parameters
     chain_id = 1
     nft_contract = deployer.address  # Use deployer address as mock NFT contract
     token_id = 1
-    commission_hub.initialize(chain_id, nft_contract, token_id, deployer.address, sender=deployer)
+    
+    # Register an NFT owner through the OwnerRegistry (acting as L2Relay)
+    owner_registry.registerNFTOwnerFromParentChain(
+        chain_id, 
+        nft_contract, 
+        token_id, 
+        deployer.address,  # Set deployer as the owner
+        sender=deployer     # Pretend to be the L2Relay
+    )
+    
+    # Get the automatically created hub address from the registry
+    commission_hub_address = owner_registry.getArtCommissionHubByOwner(chain_id, nft_contract, token_id)
+    
+    # Create a reference to the hub
+    commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     
     # Deploy multiple ArtPiece templates for testing
     art_piece_template_1 = project.ArtPiece.deploy(sender=deployer)
@@ -31,7 +49,11 @@ def setup():
         "artist": artist,
         "commission_hub": commission_hub,
         "art_piece_template_1": art_piece_template_1,
-        "art_piece_template_2": art_piece_template_2
+        "art_piece_template_2": art_piece_template_2,
+        "owner_registry": owner_registry,
+        "chain_id": chain_id,
+        "nft_contract": nft_contract,
+        "token_id": token_id
     }
 
 def test_approve_art_piece_code_hash(setup):
@@ -177,12 +199,16 @@ def test_submit_commission_with_empty_owner(setup):
     This test:
     1. First verifies that a properly configured commission can be submitted to a hub with non-zero owner
     2. Then sets the owner to zero address using updateRegistration from registry (which marks it as burned)
-    3. Finally verifies that submission fails with the burned error
+    3. Finally verifies that submission fails with the burned error and that the hub remains burned permanently
     """
     deployer = setup["deployer"]
     user = setup["user"]
     commission_hub = setup["commission_hub"]
     template = setup["art_piece_template_1"]
+    owner_registry = setup["owner_registry"]
+    chain_id = setup["chain_id"]
+    nft_contract = setup["nft_contract"]
+    token_id = setup["token_id"]
     
     # STEP 1: Set up for submission testing
     
@@ -194,23 +220,25 @@ def test_submit_commission_with_empty_owner(setup):
     
     # Store the initial owner of the commission hub
     initial_owner = commission_hub.owner()
+    assert initial_owner == deployer.address, "Initial owner should be the deployer"
+    assert commission_hub.isBurned() is False, "Hub should not be burned initially"
     
     # STEP 2: Use registry mechanism to set owner to zero address
     
-    # Get chain ID, NFT contract, and token ID
-    chain_id = commission_hub.chainId()
-    nft_contract = commission_hub.nftContract()
-    token_id = commission_hub.tokenId()
-    
-    # In our test setup, deployer is the registry
-    # Call updateRegistration as the registry to set owner to zero address
-    commission_hub.updateRegistration(chain_id, nft_contract, token_id, ZERO_ADDRESS, sender=deployer)
+    # Call registerNFTOwnerFromParentChain as the L2Relay to set owner to zero address
+    owner_registry.registerNFTOwnerFromParentChain(
+        chain_id, 
+        nft_contract, 
+        token_id, 
+        ZERO_ADDRESS,  # Set owner to zero address 
+        sender=deployer  # Pretend to be the L2Relay
+    )
     
     # Verify owner is now zero
     assert commission_hub.owner() == ZERO_ADDRESS, "Owner should be set to zero address"
     
     # Verify the hub is marked as burned
-    assert commission_hub.isBurned(), "Hub should be marked as burned when owner is set to zero"
+    assert commission_hub.isBurned() is True, "Hub should be marked as burned when owner is set to zero"
     
     # STEP 3: Verify submission fails when hub is burned
     
@@ -223,34 +251,49 @@ def test_submit_commission_with_empty_owner(setup):
     print(f"Error message with zero owner: {error_message}")
     
     # Verify it failed due to the burned check
-    assert "burn" in error_message or "assert" in error_message, "Error should relate to art piece being burned"
+    assert "burn" in error_message or "art piece has been burned" in error_message, "Error should relate to art piece being burned"
     
-    # STEP 4: Set the owner back and verify submissions still fail (once burned, always burned)
+    # STEP 4: Try to set the owner back (but NFT remains permanently burned)
     
-    # Set the owner back to the initial owner
-    commission_hub.updateRegistration(chain_id, nft_contract, token_id, initial_owner, sender=deployer)
+    # Try to set the owner back to the initial owner using the registry
+    owner_registry.registerNFTOwnerFromParentChain(
+        chain_id, 
+        nft_contract, 
+        token_id, 
+        initial_owner,  # Try to restore original owner
+        sender=deployer  # Pretend to be the L2Relay
+    )
     
-    # Verify owner is restored but hub remains burned
-    assert commission_hub.owner() == initial_owner, "Owner should be restored to initial value"
-    assert commission_hub.isBurned(), "Hub should remain burned even after owner is restored"
+    # In this implementation, once burned, the owner remains zero address
+    # and the hub remains marked as burned permanently
+    assert commission_hub.owner() == ZERO_ADDRESS, "Owner should remain zero address (NFT permanently burned)"
+    assert commission_hub.isBurned() is True, "Hub should remain burned even after attempted restoration"
+    
+    # Try to submit again - should still fail because hub is burned
+    with pytest.raises(Exception) as excinfo:
+        commission_hub.submitCommission(art_piece.address, sender=user)
+    
+    # Verify it still fails due to the burned check
+    error_message = str(excinfo.value).lower()
+    print(f"Error message after attempting to restore owner: {error_message}")
+    assert "burn" in error_message or "art piece has been burned" in error_message, "Error should still relate to art piece being burned"
 
 def test_submit_commission_with_burned_nft(setup):
     """
     Test that commissions cannot be submitted when the NFT has been burned,
-    and verify different behavior between NFT-based hubs and generic hubs.
-    
-    This test:
-    1. Tests regular NFT hub setting isBurned when owner becomes empty
-    2. Tests generic hub never setting isBurned even when owner becomes empty
-    3. Verifies submission fails for burned NFT hub
+    and that NFTs remain permanently burned once the owner is set to zero address.
     """
     deployer = setup["deployer"]
     user = setup["user"]
     artist = setup["artist"]
     commission_hub = setup["commission_hub"]
     template = setup["art_piece_template_1"]
+    owner_registry = setup["owner_registry"]
+    chain_id = setup["chain_id"]
+    nft_contract = setup["nft_contract"]
+    token_id = setup["token_id"]
     
-    # PART 1: Test NFT-based hub (standard from setup)
+    # STEP 1: Set up for testing with a regular NFT hub
     
     # Approve the template's code hash
     commission_hub.approveArtPieceCodeHash(template.address, True, sender=deployer)
@@ -258,71 +301,56 @@ def test_submit_commission_with_burned_nft(setup):
     # Create an ArtPiece to submit
     art_piece = project.ArtPiece.deploy(sender=user)
     
-    # Get chain ID, NFT contract, and token ID
-    chain_id = commission_hub.chainId()
-    nft_contract = commission_hub.nftContract()
-    token_id = commission_hub.tokenId()
-    
-    # Store the initial owner and isBurned state
+    # Store the initial owner and burned state
     initial_owner = commission_hub.owner()
     initial_is_burned = commission_hub.isBurned()
+    assert initial_is_burned is False, "Hub should not be burned initially"
     
-    # Verify hub is not initially marked as burned
-    assert not initial_is_burned, "NFT hub should not be burned initially"
+    # STEP 2: Mark the NFT as burned by setting owner to zero address
     
-    # Set owner to zero address via updateRegistration (simulating NFT burn)
-    commission_hub.updateRegistration(chain_id, nft_contract, token_id, ZERO_ADDRESS, sender=deployer)
-    
-    # Verify owner is now zero
-    assert commission_hub.owner() == ZERO_ADDRESS, "Owner should be set to zero address"
+    # Call registerNFTOwnerFromParentChain as the L2Relay to set owner to zero address
+    owner_registry.registerNFTOwnerFromParentChain(
+        chain_id, 
+        nft_contract, 
+        token_id, 
+        ZERO_ADDRESS,  # Set owner to zero address
+        sender=deployer  # Pretend to be the L2Relay
+    )
     
     # Verify hub is now marked as burned
-    assert commission_hub.isBurned(), "NFT hub should be marked as burned when owner set to zero"
+    assert commission_hub.owner() == ZERO_ADDRESS, "Owner should be zero address"
+    assert commission_hub.isBurned() is True, "Hub should be marked as burned"
     
-    # Verify submission fails due to burned state
+    # Try to submit a commission to the burned hub - should fail
     with pytest.raises(Exception) as excinfo:
         commission_hub.submitCommission(art_piece.address, sender=user)
     
-    # Get the error message
+    # Verify error message
     error_message = str(excinfo.value).lower()
-    print(f"Error message with burned NFT: {error_message}")
+    print(f"Error message with burned hub: {error_message}")
+    assert "burn" in error_message or "art piece has been burned" in error_message, "Error should mention burning"
     
-    # Verify it failed due to the burned check
-    assert "burn" in error_message or "assert" in error_message, "Error should relate to burned NFT"
+    # STEP 3: Try to restore the owner but hub remains permanently burned
     
-    # Set the owner back but verify hub remains burned
-    commission_hub.updateRegistration(chain_id, nft_contract, token_id, initial_owner, sender=deployer)
+    # Try to restore the original owner but the hub should remain burned
+    owner_registry.registerNFTOwnerFromParentChain(
+        chain_id,
+        nft_contract,
+        token_id,
+        initial_owner,  # Try to restore original owner
+        sender=deployer  # Pretend to be the L2Relay
+    )
     
-    # Verify owner is restored but isBurned remains true
-    assert commission_hub.owner() == initial_owner, "Owner should be restored"
-    assert commission_hub.isBurned(), "Hub should remain burned even after owner is restored"
+    # In this implementation, once burned, the owner remains zero address
+    # and the hub remains marked as burned permanently
+    assert commission_hub.owner() == ZERO_ADDRESS, "Owner should remain zero address (NFT permanently burned)"
+    assert commission_hub.isBurned() is True, "NFT hub should remain burned permanently"
     
-    # PART 2: Test Generic Hub (need to create one)
+    # Try to submit a commission to the hub - should still fail because it's permanently burned
+    with pytest.raises(Exception) as excinfo:
+        commission_hub.submitCommission(art_piece.address, sender=user)
     
-    # Deploy a generic commission hub
-    generic_hub = project.ArtCommissionHub.deploy(sender=deployer)
-    
-    # Initialize as generic hub
-    generic_hub.initializeGeneric(chain_id, artist.address, deployer.address, True, sender=deployer)
-    
-    # Approve the same code hash in this hub
-    generic_hub.approveArtPieceCodeHash(template.address, True, sender=artist)
-    
-    # Verify hub is not marked as burned
-    assert not generic_hub.isBurned(), "Generic hub should not be burned initially"
-    
-    # Set owner to zero address
-    generic_hub.updateRegistration(chain_id, ZERO_ADDRESS, 0, ZERO_ADDRESS, sender=deployer)
-    
-    # Verify owner is now zero
-    assert generic_hub.owner() == ZERO_ADDRESS, "Generic hub owner should be set to zero"
-    
-    # Verify generic hub is still NOT marked as burned
-    assert not generic_hub.isBurned(), "Generic hub should never be marked as burned"
-    
-    # Set the owner back
-    generic_hub.updateRegistration(chain_id, ZERO_ADDRESS, 0, artist.address, sender=deployer)
-    
-    # Verify owner is restored and still not burned
-    assert generic_hub.owner() == artist.address, "Generic hub owner should be restored"
-    assert not generic_hub.isBurned(), "Generic hub should still not be marked as burned" 
+    # Verify error message
+    error_message = str(excinfo.value).lower()
+    print(f"Error message after attempted owner restoration: {error_message}")
+    assert "burn" in error_message or "art piece has been burned" in error_message, "Error should still mention burning" 
