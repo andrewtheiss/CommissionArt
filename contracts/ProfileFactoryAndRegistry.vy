@@ -43,7 +43,8 @@ interface ArtCommissionHubOwners:
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
 profileSocialTemplate: public(address)  # Address of the profile social contract template to clone
-accountToProfile: public(HashMap[address, address])  # Maps user address to profile contract
+userAddressToProfile: public(HashMap[address, address])  # Maps user address to profile contract
+userAddressToProfileSocial: public(HashMap[address, address])  # Maps user address to profile social contract
 userProfileCount: public(uint256)  # Total number of registered user profiles
 latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
 artCommissionHubOwners: public(address)  # Address of the ArtCommissionHubOwners contract
@@ -151,7 +152,7 @@ def _linkExistingHubs(_user: address, _profile: address):
 
 @external
 def createProfile():
-    assert self.accountToProfile[msg.sender] == empty(address), "Profile already exists"
+    assert self.userAddressToProfile[msg.sender] == empty(address), "Profile already exists"
     
     # Create a new profile contract for the user
     profile: address = create_minimal_proxy_to(self.profileTemplate)
@@ -175,7 +176,8 @@ def createProfile():
         self.latestUsers.pop()
         self.latestUsers.append(msg.sender)
 
-    self.accountToProfile[msg.sender] = profile
+    self.userAddressToProfile[msg.sender] = profile
+    self.userAddressToProfileSocial[msg.sender] = profile_social
     self.userProfileCount += 1
     
     # Link any existing commission hubs from the ArtCommissionHubOwners
@@ -196,7 +198,7 @@ def createProfileFor(_user: address) -> address:
     assert msg.sender == self.artCommissionHubOwners, "Only ArtCommissionHubOwners can call this function"
     
     # Ensure the user doesn't already have a profile
-    assert self.accountToProfile[_user] == empty(address), "Profile already exists"
+    assert self.userAddressToProfile[_user] == empty(address), "Profile already exists"
     
     # Create a new profile contract for the user
     profile: address = create_minimal_proxy_to(self.profileTemplate)
@@ -219,7 +221,8 @@ def createProfileFor(_user: address) -> address:
         self.latestUsers.pop()
         self.latestUsers.append(_user)
 
-    self.accountToProfile[_user] = profile
+    self.userAddressToProfile[_user] = profile
+    self.userAddressToProfileSocial[_user] = profile_social
     self.userProfileCount += 1
     
     # Link any existing commission hubs from the ArtCommissionHubOwners
@@ -232,22 +235,17 @@ def createProfileFor(_user: address) -> address:
 @view
 @external
 def getProfile(_user: address) -> address:
-    return self.accountToProfile[_user]
+    return self.userAddressToProfile[_user]
 
 @view
 @external
-def getProfileByOwner(_owner: address) -> address:
-    """
-    @notice Gets the profile contract address associated with an owner address
-    @param _owner The address of the profile owner
-    @return Address of the profile contract for the given owner
-    """
-    return self.accountToProfile[_owner]
+def getProfileSocial(_user: address) -> address:
+    return self.userAddressToProfileSocial[_user]
 
 @view
 @external
 def hasProfile(_user: address) -> bool:
-    return self.accountToProfile[_user] != empty(address)
+    return self.userAddressToProfile[_user] != empty(address)
 
 @external
 def updateProfileTemplateContract(_new_template: address):
@@ -292,7 +290,7 @@ def getUserProfiles(_page_size: uint256, _page_number: uint256) -> DynArray[addr
             break
         user_idx: uint256 = start_idx - i
         user_address: address = self.latestUsers[user_idx]
-        profile_address: address = self.accountToProfile[user_address]
+        profile_address: address = self.userAddressToProfile[user_address]
         result.append(profile_address)
     
     return result
@@ -328,7 +326,7 @@ def createNewArtPieceAndRegisterProfile(
     @return Tuple of (profile_address, art_piece_address)
     """
     # Check if the user already has a profile
-    assert self.accountToProfile[msg.sender] == empty(address), "Profile already exists"
+    assert self.userAddressToProfile[msg.sender] == empty(address), "Profile already exists"
     
     # Create a new profile
     profile: address = create_minimal_proxy_to(self.profileTemplate)
@@ -360,7 +358,7 @@ def createNewArtPieceAndRegisterProfile(
     #     self.latestUsers.pop()
     #     self.latestUsers.append(msg.sender)
 
-    self.accountToProfile[msg.sender] = profile
+    self.userAddressToProfile[msg.sender] = profile
     self.userProfileCount += 1
     
     # Link any existing commission hubs from the ArtCommissionHubOwners
@@ -433,7 +431,7 @@ def createArtPieceForParty(
     assert _other_party != msg.sender, "Cannot create art piece for yourself"
     
     # Check if the caller has a profile, create one if not
-    caller_profile: address = self.accountToProfile[msg.sender]
+    caller_profile: address = self.userAddressToProfile[msg.sender]
     if caller_profile == empty(address):
         # Create a new profile for the caller
         caller_profile = create_minimal_proxy_to(self.profileTemplate)
@@ -456,7 +454,7 @@ def createArtPieceForParty(
             self.latestUsers.pop()
             self.latestUsers.append(msg.sender)
 
-        self.accountToProfile[msg.sender] = caller_profile
+        self.userAddressToProfile[msg.sender] = caller_profile
         self.userProfileCount += 1
         
         # Link any existing commission hubs from the ArtCommissionHubOwners
@@ -465,7 +463,7 @@ def createArtPieceForParty(
         log ProfileCreated(user=msg.sender, profile=caller_profile, social=caller_social)
     
     # Check if the other party has a profile, create one if not
-    other_profile: address = self.accountToProfile[_other_party]
+    other_profile: address = self.userAddressToProfile[_other_party]
     if other_profile == empty(address):
         # Create a new profile for the other party
         other_profile = create_minimal_proxy_to(self.profileTemplate)
@@ -488,7 +486,7 @@ def createArtPieceForParty(
             self.latestUsers.pop()
             self.latestUsers.append(_other_party)
 
-        self.accountToProfile[_other_party] = other_profile
+        self.userAddressToProfile[_other_party] = other_profile
         self.userProfileCount += 1
         
         # Link any existing commission hubs from the ArtCommissionHubOwners
@@ -578,7 +576,7 @@ def getRandomProfiles(_count: uint256, _seed: uint256) -> DynArray[address, 20]:
         
         # If not already added, add it and its profile
         if not already_added:
-            profile_address: address = self.accountToProfile[user_address]
+            profile_address: address = self.userAddressToProfile[user_address]
             if profile_address != empty(address):
                 result.append(profile_address)
     
@@ -610,7 +608,7 @@ def getProfilesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 
         if i >= count:
             break
         user_address: address = self.latestUsers[_offset + i]
-        profile_address: address = self.accountToProfile[user_address]
+        profile_address: address = self.userAddressToProfile[user_address]
         if profile_address != empty(address):
             result.append(profile_address)
     
@@ -645,7 +643,7 @@ def getLatestProfiles(_count: uint256) -> DynArray[address, 20]:
         user_address: address = self.latestUsers[idx]
         
         # Get the profile address
-        profile_address: address = self.accountToProfile[user_address]
+        profile_address: address = self.userAddressToProfile[user_address]
         if profile_address != empty(address):
             result.append(profile_address)
     
@@ -685,7 +683,7 @@ def getLatestProfilesPaginated(_page: uint256, _page_size: uint256) -> DynArray[
             user_address: address = self.latestUsers[idx]
             
             # Get the profile address
-            profile_address: address = self.accountToProfile[user_address]
+            profile_address: address = self.userAddressToProfile[user_address]
             if profile_address != empty(address):
                 result.append(profile_address)
     

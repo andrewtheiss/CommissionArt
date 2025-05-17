@@ -33,8 +33,8 @@ def setup():
     profile_factory.createProfile(sender=commissioner)
     
     # Get the created profiles
-    artist_profile = profile_factory.getProfileByOwner(artist.address)
-    commissioner_profile = profile_factory.getProfileByOwner(commissioner.address)
+    artist_profile = profile_factory.getProfile(artist.address)
+    commissioner_profile = profile_factory.getProfile(commissioner.address)
     
     # Set artist flag
     artist_profile_contract = project.Profile(artist_profile)

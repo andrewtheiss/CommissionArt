@@ -59,7 +59,7 @@ isArtist: public(bool)
 # Interface for ProfileFactoryAndRegistry
 interface ProfileFactoryAndRegistry:
     def artCommissionHubOwners() -> address: view
-    def getProfileByOwner(_owner: address) -> address: view
+    def getProfile(_owner: address) -> address: view
 
 # Interface for Profile (for cross-profile calls)
 interface Profile:
@@ -333,7 +333,7 @@ def verifyCommission(_commission_art_piece: address):
             if other_party != empty(address):
                 # Get the other party's profile from the hub
                 profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.hub)
-                other_profile: address = staticcall profile_factory.getProfileByOwner(other_party)
+                other_profile: address = staticcall profile_factory.getProfile(other_party)
                 
                 # If the other party has a profile, update their commission status
                 if other_profile != empty(address):

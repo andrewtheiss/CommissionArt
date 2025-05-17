@@ -16,10 +16,15 @@
 # Interface for ArtCommissionHub
 interface ArtCommissionHub:
     def owner() -> address: view
+    def submitCommission(art_piece: address) -> bool: nonpayable
 
 # Interface for ERC721Receiver
 interface ERC721Receiver:
     def onERC721Received(operator: address, sender: address, tokenId: uint256, data: Bytes[1024]) -> bytes4: view
+
+# Interface for Profile
+interface Profile:
+    def addCommission(art_piece: address): nonpayable
 
 # ERC721 Events
 event Transfer:
@@ -56,18 +61,15 @@ event AttachedToArtCommissionHub:
     commission_hub: indexed(address)
     attacher: indexed(address)
 
-# Add a new event for detachment from commission hub
 event DetachedFromArtCommissionHub:
     art_piece: indexed(address)
     commission_hub: indexed(address)
     detacher: indexed(address)
 
-# Add new events for commission verification
 event CommissionVerified:
     verifier: indexed(address)
     is_artist: bool
 
-# Add event for fully verified commission
 event CommissionfullyVerified:
     art_piece: indexed(address)
     artist: indexed(address)
@@ -76,68 +78,60 @@ event CommissionfullyVerified:
 # ERC721 Standard variables
 name: public(String[32])
 symbol: public(String[8])
-# Token ID to approved address mapping
 getApproved: public(HashMap[uint256, address])
-# Owner to operator approvals mapping
 isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
-# Interface IDs
+
+# Interface IDs and other constants
 INTERFACE_ID_ERC721: constant(bytes4) = 0x80ac58cd
 INTERFACE_ID_ERC165: constant(bytes4) = 0x01ffc9a7
-# Single token constant (this NFT has only one token)
-TOKEN_ID: constant(uint256) = 1
+TOKEN_ID: constant(uint256) = 1 # Single token constant (this NFT has only one token)
+IS_ON_CHAIN: public(constant(bool)) = True  # Constant to indicate this art piece is on-chain
 
 # ArtPiece variables
 tokenURI_data: Bytes[45000]  # Changed from imageData to tokenURI_data
 tokenURI_data_format: String[10]  # Format of the tokenURI_data   
 title: String[100]  # Title of the artwork
 description: String[200]  # Description with 200 byte limit
-artist: address
+artist: public(address)
+commissioner: public(address)  # Store the commissioner's address explicitly
+originalUploader: address  # Store the original uploader's address, do not need to expose
 aiGenerated: public(bool)
+
+# Contract state
 initialized: public(bool)  # Flag to track if the contract has been initialized
-attachedToArtCommissionHub: public(bool)  # Flag to track if attached to a ArtCommissionHub
 artCommissionHubAddress: public(address)  # Address of the ArtCommissionHub this piece is attached to
-IS_ON_CHAIN: public(constant(bool)) = True  # Constant to indicate this art piece is on-chain
 
-# New variables for permanent hub linkage
-everAttachedToHub: public(bool)  # Flag to track if this piece was ever attached to a hub
-permanentHubAddress: public(address)  # The address of the hub that will forever determine ownership
-
-# New variables for commission verification
-isPrivateOrNonCommissionPiece: public(bool)  # Flag to indicate if this is a private or non-commission piece (true if commissioner == artist)
 artistVerified: public(bool)  # Flag to indicate if the artist has verified this piece
 commissionerVerified: public(bool)  # Flag to indicate if the commissioner has verified this piece
 fullyVerifiedCommission: public(bool)  # Flag to indicate if both parties have verified this piece
-originalUploader: address  # Store the original uploader's address, do not need to expose
-commissioner: public(address)  # Store the commissioner's address explicitly
+isPrivateOrNonCommissionPiece: public(bool)  # Flag to indicate if this is a private or non-commission piece (true if commissioner == artist)
 
-# Mapping to store tags/associations with validation status
-# address => bool (validated status)
-taggedAddresses: public(HashMap[address, bool])
-
-# Mapping to track which addresses have been tagged
-# Used to enumerate all tagged addresses
+# Tagging
 isTagged: public(HashMap[address, bool])
+isTagValidated: public(HashMap[address, bool])
 taggedList: public(DynArray[address, 1000])  # List of all tagged addresses, max 1000
+taggedListCount: public(uint256)
 
-# Add commissionWhitelist mapping to track whitelisted commissioners
-commissionWhitelist: public(HashMap[address, bool])
 
+# Create minimal proxy to ArtPiece
 @deploy
 def __init__():
-    """
-    Empty constructor for create_minimal_proxy_to
-    """
     self.initialized = False
     self.name = ""
     self.symbol = ""
+    self.taggedListCount = 0
 
+# Initialize has a bunch of specific behaviors
+# #1. We need different commissioners and artist for every piece in order to be a proper commission
+# If you just want to upload art, you either don't set an artist / commissioner or set them the same
+# Any time in the future you can tag the artist or commissioner, this is to make workflows easier
 @external
 def initialize(
-    _token_uri_data: Bytes[45000],  # Changed parameter type and name
-    _token_uri_data_format: String[10],  # Format of the tokenURI_data
+    _token_uri_data: Bytes[45000],
+    _token_uri_data_format: String[10],  # Format of the tokenURI_data i.e. webp, avif, etc.
     _title_input: String[100], 
     _description_input: String[200], 
-    _commissioner_input: address, 
+    _commissioner_input: address,
     _artist_input: address, 
     _commission_hub: address, 
     _ai_generated: bool
@@ -154,53 +148,30 @@ def initialize(
     @param _ai_generated Flag indicating if the artwork was AI generated
     """
     assert not self.initialized, "Already initialized"
-    self.tokenURI_data = _token_uri_data  # Updated field name
-    self.tokenURI_data_format = _token_uri_data_format  # Updated field name
+    self.initialized = True
+    self.tokenURI_data = _token_uri_data
+    self.tokenURI_data_format = _token_uri_data_format
     self.title = _title_input
     self.description = _description_input
-    # self.owner = _owner_input  # Removed
     self.artist = _artist_input
+    self.commissioner = _commissioner_input
     self.aiGenerated = _ai_generated
-    self.initialized = True
-    
-    # Store the original uploader and commissioner
-    self.originalUploader = _commissioner_input
-    self.commissioner = _commissioner_input  # Initially set commissioner to the owner_input
-    
-    # Set commission hub information
-    if _commission_hub != empty(address):
-        self.attachedToArtCommissionHub = True
-        self.artCommissionHubAddress = _commission_hub
-        # Set permanent hub relationship
-        self.everAttachedToHub = True
-        self.permanentHubAddress = _commission_hub
-    else:
-        self.attachedToArtCommissionHub = False
-        self.artCommissionHubAddress = empty(address)
-        self.everAttachedToHub = False
-        self.permanentHubAddress = empty(address)
-    
-    # Initialize verification state
+    self.artCommissionHubAddress = _commission_hub
+    self.originalUploader = msg.sender
+
     # Determine if this is a private or non-commission piece based on commissioner and artist being the same
-    self.isPrivateOrNonCommissionPiece = _commissioner_input == _artist_input
-    
-    # The uploader implicitly verifies their side
-    if not self.isPrivateOrNonCommissionPiece:
-        if _commissioner_input == self.originalUploader:
-            # If the uploader is the commissioner, they've implicitly verified
-            self.artistVerified = False
-            self.commissionerVerified = True
-            self.fullyVerifiedCommission = False
-        else:
-            # If the uploader is the artist, they've implicitly verified
-            self.artistVerified = True
-            self.commissionerVerified = False
-            self.fullyVerifiedCommission = False
-    else:
-        # Non-commission pieces are always fully verified, but never attached to the hub
+    if _commissioner_input == _artist_input and _commissioner_input != empty(address) and _artist_input != empty(address):
         self.artistVerified = True
         self.commissionerVerified = True
         self.fullyVerifiedCommission = True
+        self.isPrivateOrNonCommissionPiece = True
+         
+    # The uploader implicitly verifies their side
+    if not self.isPrivateOrNonCommissionPiece:
+        if _commissioner_input == self.originalUploader:
+            self.commissionerVerified = True
+        elif _artist_input == self.originalUploader:
+            self.artistVerified = True
 
     # Set ERC721 metadata
     self.name = "ArtPiece"
@@ -231,7 +202,7 @@ def ownerOf(_tokenId: uint256) -> address:
     @param _tokenId The token ID
     @return The owner address
     """
-    assert _tokenId == TOKEN_ID, "Invalid token ID"
+    assert _tokenId == TOKEN_ID, "This NFT collection only has a single id: 1"
     return self._getEffectiveOwner()
 
 @external
@@ -263,27 +234,7 @@ def transferFrom(_from: address, _to: address, _tokenId: uint256):
     @param _to The address to transfer to
     @param _tokenId The token ID
     """
-    # First check if this piece has ever been attached to a hub
-    if self.everAttachedToHub:
-        assert False, "Transfers disabled for hub-attached art pieces"
-    
-    # Only allow transfers if this piece has never been attached to a hub
-    assert _tokenId == TOKEN_ID, "Invalid token ID"
-    current_owner: address = self._getEffectiveOwner()
-    assert _from == current_owner, "From address must be token owner"
-    assert _to != empty(address), "Cannot transfer to zero address"
-    assert msg.sender == current_owner, "Only direct owner can transfer"
-    
-    # Update ownership by updating the commissioner
-    old_owner: address = current_owner
-    self.commissioner = _to
-    
-    # Clear approvals
-    self.getApproved[_tokenId] = empty(address)
-    
-    # Emit events
-    log Transfer(sender=_from, receiver=_to, tokenId=_tokenId)
-    log OwnershipTransferred(from_owner=_from, to_owner=_to)
+    assert False, "Transfers disabled for hub-attached art pieces"
 
 @external
 def safeTransferFrom(_from: address, _to: address, _tokenId: uint256, _data: Bytes[1024]=b""):
@@ -295,30 +246,7 @@ def safeTransferFrom(_from: address, _to: address, _tokenId: uint256, _data: Byt
     @param _tokenId The token ID
     @param _data Optional data to send along with the transfer
     """
-    # First check if this piece has ever been attached to a hub
-    if self.everAttachedToHub:
-        assert False, "Transfers disabled for hub-attached art pieces"
-    
-    # Only allow transfers if this piece has never been attached to a hub
-    assert _tokenId == TOKEN_ID, "Invalid token ID"
-    current_owner: address = self._getEffectiveOwner()
-    assert _from == current_owner, "From address must be token owner"
-    assert _to != empty(address), "Cannot transfer to zero address"
-    assert msg.sender == current_owner, "Only direct owner can transfer"
-    
-    # Update ownership by updating the commissioner
-    old_owner: address = current_owner
-    self.commissioner = _to
-    
-    # Clear approvals
-    self.getApproved[_tokenId] = empty(address)
-    
-    # Check if recipient is a contract and call onERC721Received
-    # For simplicity in tests, we'll skip the actual receiver check
-    
-    # Emit events
-    log Transfer(sender=_from, receiver=_to, tokenId=_tokenId)
-    log OwnershipTransferred(from_owner=_from, to_owner=_to)
+    assert False, "Transfers disabled for hub-attached art pieces"
 
 @external
 @view
@@ -330,29 +258,16 @@ def supportsInterface(_interfaceId: bytes4) -> bool:
     """
     return _interfaceId == INTERFACE_ID_ERC721 or _interfaceId == INTERFACE_ID_ERC165
 
-@internal
-@view
-def _isContract(_addr: address) -> bool:
-    """
-    @notice Check if address is a contract
-    @param _addr The address to check
-    @return Whether the address is a contract
-    """
-    # Simple check: if it's not an empty address, assume it's a contract
-    # This is a simplification and in a production environment 
-    # should be replaced with a proper implementation
-    return _addr != empty(address)
-
 @external
 @view
-def tokenURI(_tokenId: uint256) -> String[100000]:  # Updated return type
+def tokenURI(_tokenId: uint256) -> String[1000]:  # Updated return type
     """
     @notice Get the URI for a token
     @param _tokenId The token ID
     @return The token URI
     """
-    assert _tokenId == TOKEN_ID, "Invalid token ID"
-    temp: String[100000] = ""
+    assert _tokenId == TOKEN_ID, "This NFT collection only has a single id: 1"
+    temp: String[1000] = ""
     return temp
 
 @external
@@ -399,13 +314,10 @@ def _getEffectiveOwner() -> address:
     @return The effective owner address
     """
     # If attached to a hub and fully verified, return the hub owner (which is set only by ArtCommissionHubOwners)
-    if self.attachedToArtCommissionHub and self.artCommissionHubAddress != empty(address) and self.fullyVerifiedCommission:
+    if self.artCommissionHubAddress != empty(address) and self.fullyVerifiedCommission:
         hub_owner: address = staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
         if hub_owner != empty(address):
-            return hub_owner
-    # If fully verified but not attached to hub, or hub owner is empty
-    if self.fullyVerifiedCommission:
-        return self.commissioner
+            return hub_owner     
     # Before verification, return the original uploader
     return self.originalUploader
 
@@ -445,7 +357,37 @@ def getArtCommissionHubAddress() -> address:
     """
     return self.artCommissionHubAddress
 
-# New verification methods
+@external
+def addArtCommissionHubDetails(_art_commission_hub_address: address, _commissioner: address, _artist: address):
+    """
+    @notice Add the details of the commission hub to the art piece
+    @param _art_commission_hub_address The address of the commission hub
+    @param _commissioner The address of the commissioner
+    @param _artist The address of the artist
+    """
+    assert self.initialized, "Contract not initialized"
+    assert msg.sender == self.originalUploader, "Only the original uploader can add art commission hub details"
+
+    if _art_commission_hub_address != empty(address) and self.artCommissionHubAddress == empty(address):
+        self.artCommissionHubAddress = _art_commission_hub_address
+        log AttachedToArtCommissionHub(art_piece=self, commission_hub=_art_commission_hub_address, attacher=msg.sender)
+
+    if _commissioner != empty(address) and self.commissioner == empty(address):
+        self.commissioner = _commissioner
+        if (_commissioner == _artist):
+            self.artistVerified = True
+            self.commissionerVerified = True
+            self.fullyVerifiedCommission = True
+            self.isPrivateOrNonCommissionPiece = True
+    if _artist != empty(address) and self.artist == empty(address):
+        self.artist = _artist
+        if (_artist == _commissioner):
+            self.artistVerified = True
+            self.commissionerVerified = True
+            self.fullyVerifiedCommission = True
+            self.isPrivateOrNonCommissionPiece = True
+
+# We need to have a connected artCommissionHub before verification
 @external
 def verifyAsArtist():
     """
@@ -456,15 +398,17 @@ def verifyAsArtist():
     assert not self.isPrivateOrNonCommissionPiece, "Not a commission piece"
     assert msg.sender == self.artist, "Only the artist can verify as artist"
     assert not self.artistVerified, "Already verified by artist"
+    assert not self.fullyVerifiedCommission, "Already fully verified"
+    assert self.artCommissionHubAddress != empty(address), "ArtPiece must be attached to a ArtCommissionHub to be fully verified"
     
     self.artistVerified = True
+    log CommissionVerified(verifier=msg.sender, is_artist=True)
     
     # Check if both parties have verified
     if self.commissionerVerified:
         self._completeVerification()
-    
-    log CommissionVerified(verifier=msg.sender, is_artist=True)
 
+# We need to have a connected artCommissionHub before verification
 @external
 def verifyAsCommissioner():
     """
@@ -475,15 +419,19 @@ def verifyAsCommissioner():
     assert not self.isPrivateOrNonCommissionPiece, "Not a commission piece"
     assert msg.sender == self.commissioner, "Only the commissioner can verify as commissioner"
     assert not self.commissionerVerified, "Already verified by commissioner"
+    assert not self.fullyVerifiedCommission, "Already fully verified"
+    assert self.artCommissionHubAddress != empty(address), "ArtPiece must be attached to a ArtCommissionHub to be fully verified"
     
     self.commissionerVerified = True
+    log CommissionVerified(verifier=msg.sender, is_artist=False)
     
     # Check if both parties have verified
     if self.artistVerified:
         self._completeVerification()
-    
-    log CommissionVerified(verifier=msg.sender, is_artist=False)
 
+# After completeVerification:
+# If attached to a hub, ownership will now be determined by the hub owner
+# No need to update any internal state since _getEffectiveOwner() will handle this
 @internal
 def _completeVerification():
     """
@@ -494,11 +442,15 @@ def _completeVerification():
     """
     self.fullyVerifiedCommission = True
     
-    ## TODO - attach this to a hub, or create a new hub if it's not attached to one
+    # Attach to the Profile of both the artist and commissioner as a commission
+    profile_interface: Profile = Profile(self.artist)
+    extcall profile_interface.addCommission(self)
+    profile_interface = Profile(self.commissioner)
+    extcall profile_interface.addCommission(self)
 
-
-    # If attached to a hub, ownership will now be determined by the hub owner
-    # No need to update any internal state since _getEffectiveOwner() will handle this
+    # After call submitCommission on the commission hub
+    commission_hub_interface: ArtCommissionHub = ArtCommissionHub(self.artCommissionHubAddress)
+    submitedComission: bool = extcall commission_hub_interface.submitCommission(self)
     
     # Emit verification complete event
     log CommissionfullyVerified(art_piece=self, artist=self.artist, commissioner=self.commissioner)
@@ -509,27 +461,9 @@ def transferOwnership(_new_owner: address):
     @notice Transfer ownership directly - always reverts if Art Piece is attached to a hub
     @dev Only the direct owner can transfer if the piece has never been attached to a hub
     """
-    # First check if this piece has ever been attached to a hub
-    if self.everAttachedToHub:
-        assert False, "Transfers disabled for hub-attached art pieces"
-    
-    current_owner: address = self._getEffectiveOwner()
-    # Only allow ownership transfer if this piece has never been attached to a hub
-    assert msg.sender == current_owner, "Only direct owner can transfer ownership"
-    assert _new_owner != empty(address), "Invalid new owner address"
-    
-    old_owner: address = current_owner
-    
-    # Clear approvals for token ID 1
-    self.getApproved[TOKEN_ID] = empty(address)
-    
-    # Update ownership
-    self.commissioner = _new_owner
-    
-    # Emit events
-    log Transfer(sender=old_owner, receiver=_new_owner, tokenId=TOKEN_ID)
-    log OwnershipTransferred(from_owner=old_owner, to_owner=_new_owner)
+    assert False, "Transfers disabled for hub-attached art pieces"
 
+# Phase 2 - Tagging TODO - After commissions works with UI
 @external
 @view
 def isTaggedValidated(_person: address) -> bool:
@@ -539,7 +473,7 @@ def isTaggedValidated(_person: address) -> bool:
     """
     if not self.isTagged[_person]:
         return False
-    return self.taggedAddresses[_person]
+    return self.isTagValidated[_person]
 
 @external
 @view
@@ -549,6 +483,7 @@ def getAllTaggedAddresses() -> DynArray[address, 1000]:
     """
     return self.taggedList
 
+# Phase 2 - Tagging TODO - After commissions works with UI
 @internal
 def _addTag(_person: address):
     """
@@ -556,11 +491,13 @@ def _addTag(_person: address):
     """
     if not self.isTagged[_person]:
         self.isTagged[_person] = True
-        self.taggedAddresses[_person] = False  # Initially unvalidated
+        self.isTagValidated[_person] = False  # Initially unvalidated
         self.taggedList.append(_person)
+        self.taggedListCount += 1
 
+# Phase 2 - Tagging TODO - After commissions works with UI
 @external
-def tagPerson(_person: address):
+def tagPerson(_person: address, _profile_factory_and_regsitry: address):
     """
     Tag a person as associated with this artwork
     Only owner or artist can tag people
@@ -571,21 +508,32 @@ def tagPerson(_person: address):
     assert len(self.taggedList) < 100, "Maximum number of tags reached"
     
     self._addTag(_person)
+
+    # # Get the profile of the person based on their address
+    # profile_factory_and_registry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_and_regsitry)
+    # profile_social: address = profile_factory_and_registry.getProfileSocial(_person)
+    # profile_social_interface: ProfileSocial = ProfileSocial(profile_social)
+    # staticcall profile_social_interface.addTag(self)
     
     # Emit event based on who is doing the tagging
     is_artist_tag: bool = msg.sender == self.artist
     log PersonTagged(tagger=msg.sender, tagged_person=_person, is_artist=is_artist_tag)
 
+# Phase 2 - Tagging TODO - After commissions works with UI
 @external
-def validateTag():
+def validateTag() -> bool:
     """
     Validate that you accept being tagged in this artwork
     Can only be called by the tagged person
     """
-    assert self.isTagged[msg.sender], "You are not tagged in this artwork"
-    self.taggedAddresses[msg.sender] = True
+    if self.isTagged[msg.sender] == False:
+        return False
+        
+    self.isTagValidated[msg.sender] = True
     log TagValidated(person=msg.sender, status=True)
+    return True
 
+# Phase 2 - Tagging TODO - After commissions works with UI
 @external
 def invalidateTag():
     """
@@ -593,9 +541,10 @@ def invalidateTag():
     Can only be called by the tagged person
     """
     assert self.isTagged[msg.sender], "You are not tagged in this artwork"
-    self.taggedAddresses[msg.sender] = False
+    self.isTagValidated[msg.sender] = False
     log TagValidated(person=msg.sender, status=False)
 
+# Phase 2 - Tagging TODO - After commissions works with UI
 @external
 @view
 def isPersonTagged(_person: address) -> bool:
@@ -603,23 +552,6 @@ def isPersonTagged(_person: address) -> bool:
     Check if a person is tagged in this artwork
     """
     return self.isTagged[_person]
-
-@external
-def setCommissionWhitelist(_commissioner: address, _status: bool):
-    """
-    Allow the owner to set a commissioner's whitelist status
-    """
-    current_owner: address = self._getEffectiveOwner()
-    assert msg.sender == current_owner or msg.sender == self.artist, "Only owner or artist can set commission whitelist"
-    self.commissionWhitelist[_commissioner] = _status
-    
-@view
-@external
-def isOnCommissionWhitelist(_commissioner: address) -> bool:
-    """
-    Check if an address is whitelisted for commissioning
-    """
-    return self.commissionWhitelist[_commissioner]
 
 @external
 @view
@@ -631,35 +563,25 @@ def getAIGenerated() -> bool:
 
 @external
 def attachToArtCommissionHub(_commission_hub: address):
-    self._attachToArtCommissionHub(_commission_hub, False)
+    self._attachToArtCommissionHub(_commission_hub)
+
 
 @internal
-def _attachToArtCommissionHub(_commission_hub: address, first_attachment: bool = False):
+def _attachToArtCommissionHub(_commission_hub: address):
     """
     Attach this ArtPiece to a ArtCommissionHub
     Can only be called if not currently attached to a hub
     """
-    assert not self.attachedToArtCommissionHub, "Already attached to a ArtCommissionHub"
+    assert self.artCommissionHubAddress == empty(address), "Already attached to a ArtCommissionHub"
     assert _commission_hub != empty(address), "Invalid ArtCommissionHub address"
+    assert not self.fullyVerifiedCommission, "ArtPiece must be fully verified to be attached to a ArtCommissionHub"
+    assert msg.sender == self.artist or msg.sender == self.commissioner, "Only artist or commissioner can attach to a ArtCommissionHub"
 
-    # If this is the first attachment, only the artist or commissioner can attach (implicitly on verification)
-    if first_attachment is not False:
-        assert msg.sender == self.artist or msg.sender == self.commissioner, "Only artist or commissioner can attach to a ArtCommissionHub"
-    else:
-        current_owner: address = self._getEffectiveOwner()
-        assert msg.sender == current_owner, "Only owner or artist can attach to a ArtCommissionHub"
+    # Artist or commissioner need to be the hub owner
+    hub_owner: address = staticcall ArtCommissionHub(_commission_hub).owner()
+    assert hub_owner == self.artist or hub_owner == self.commissioner, "Only artist, commissioner, or hub owner can attach to a ArtCommissionHub"
 
-    # Set attachment status
-    self.attachedToArtCommissionHub = True
     self.artCommissionHubAddress = _commission_hub
-    
-    # Record permanent hub relationship if this is the first attachment
-    if not self.everAttachedToHub:
-        self.everAttachedToHub = True
-        self.permanentHubAddress = _commission_hub
-    
-    # No need to update ownership as _getEffectiveOwner will handle this dynamically
-    
     log AttachedToArtCommissionHub(art_piece=self, commission_hub=_commission_hub, attacher=msg.sender)
 
 @external
@@ -669,18 +591,13 @@ def detachFromArtCommissionHub():
     @dev Only the hub owner can detach, but the permanent relationship remains
     @dev This only affects current attachment status, not ownership determination
     """
-    # Check that the art piece is actually attached to a hub
-    assert self.attachedToArtCommissionHub, "Not attached to a ArtCommissionHub"
+    assert self.artCommissionHubAddress != empty(address), "Not attached to a ArtCommissionHub"
     assert msg.sender == self._getEffectiveOwner(), "Only the hub owner can detach from ArtCommissionHub"
-    
-    # Store hub address for event logging before clearing
+    assert not self.fullyVerifiedCommission, "ArtPiece must be fully verified to be attached to a ArtCommissionHub"
+
     previous_hub: address = self.artCommissionHubAddress
-    
-    # Detach from hub (but permanent relationship remains)
-    self.attachedToArtCommissionHub = False
     self.artCommissionHubAddress = empty(address)
     
-    # Log the detachment
     log DetachedFromArtCommissionHub(art_piece=self, commission_hub=previous_hub, detacher=msg.sender)
 
 @external

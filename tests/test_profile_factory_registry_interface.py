@@ -30,8 +30,8 @@ def setup():
     profile_factory.createProfile(sender=user2)
     
     # Get the created profiles
-    user1_profile = profile_factory.getProfileByOwner(user1.address)
-    user2_profile = profile_factory.getProfileByOwner(user2.address)
+    user1_profile = profile_factory.getProfile(user1.address)
+    user2_profile = profile_factory.getProfile(user2.address)
     
     return {
         "deployer": deployer,
@@ -43,7 +43,7 @@ def setup():
     }
 
 def test_get_profile_by_owner(setup):
-    """Test that getProfileByOwner returns the correct profile address"""
+    """Test that getProfile returns the correct profile address"""
     # Arrange
     user1 = setup["user1"]
     user2 = setup["user2"]
@@ -52,19 +52,19 @@ def test_get_profile_by_owner(setup):
     user2_profile = setup["user2_profile"]
     
     # Act & Assert - Get profile for user1
-    retrieved_profile = profile_factory.getProfileByOwner(user1.address)
+    retrieved_profile = profile_factory.getProfile(user1.address)
     assert retrieved_profile == user1_profile, "Should return user1's profile"
     
     # Act & Assert - Get profile for user2
-    retrieved_profile = profile_factory.getProfileByOwner(user2.address)
+    retrieved_profile = profile_factory.getProfile(user2.address)
     assert retrieved_profile == user2_profile, "Should return user2's profile"
     
     # Act & Assert - Get profile for non-existent user
-    retrieved_profile = profile_factory.getProfileByOwner(setup["deployer"].address)
+    retrieved_profile = profile_factory.getProfile(setup["deployer"].address)
     assert retrieved_profile == "0x0000000000000000000000000000000000000000", "Should return zero address for non-existent profile"
 
 def test_get_profile_by_owner_in_profile_context(setup):
-    """Test that a Profile contract can use getProfileByOwner to find another profile"""
+    """Test that a Profile contract can use getProfile to find another profile"""
     # Arrange
     user1 = setup["user1"]
     user2 = setup["user2"]

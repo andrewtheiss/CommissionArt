@@ -187,7 +187,7 @@ def test_art_piece_interface_change(setup):
     profile_factory.createProfile(sender=artist)
     
     # Get the created profile
-    artist_profile = profile_factory.getProfileByOwner(artist.address)
+    artist_profile = profile_factory.getProfile(artist.address)
     artist_profile_contract = project.Profile.at(artist_profile)
     
     print(f"Created artist profile at {artist_profile}")

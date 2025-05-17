@@ -40,7 +40,6 @@ def setup():
     commission_hub = project.ArtCommissionHub.at(commission_hub_address)
     
     # Deploy Mock ArtPiece - To simplify testing, we'll use ArtPiece contracts
-    # but in a real test would be better to use a mock that implements isOnCommissionWhitelist
     art_piece_1 = project.ArtPiece.deploy(sender=deployer)
     art_piece_2 = project.ArtPiece.deploy(sender=deployer)
     art_piece_3 = project.ArtPiece.deploy(sender=deployer)

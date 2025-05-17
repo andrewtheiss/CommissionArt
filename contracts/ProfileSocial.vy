@@ -12,6 +12,8 @@ likedProfiles: public(DynArray[address, MAX_ITEMS])
 likedProfileCount: public(uint256)
 linkedProfiles: public(DynArray[address, MAX_ITEMS])
 linkedProfileCount: public(uint256)
+tags: public(DynArray[address, MAX_ITEMS])
+tagCount: public(uint256)
 
 @external
 def initialize(_owner: address, _profile: address):
@@ -166,3 +168,9 @@ def getRecentLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[add
     for i: uint256 in range(0, items, bound=100):
         result.append(self.linkedProfiles[start - i])
     return result
+
+# @external
+# def addTag(_art_piece_address: address):
+#     self.tags.append(_art_piece_address)
+#     self.tagCount += 1
+    

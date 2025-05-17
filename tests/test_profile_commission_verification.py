@@ -34,8 +34,8 @@ def setup():
     profile_factory.createProfile(sender=commissioner)
     
     # Get the created profiles
-    artist_profile = profile_factory.getProfileByOwner(artist.address)
-    commissioner_profile = profile_factory.getProfileByOwner(commissioner.address)
+    artist_profile = profile_factory.getProfile(artist.address)
+    commissioner_profile = profile_factory.getProfile(commissioner.address)
     
     # Deploy ArtCommissionHub
     commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
@@ -193,7 +193,7 @@ def test_update_commission_verification_status_non_involved_party(setup):
     # Create a new profile for a non-involved party
     profile_factory = setup["profile_factory"]
     profile_factory.createProfile(sender=deployer)
-    non_involved_profile = project.Profile(profile_factory.getProfileByOwner(deployer.address))
+    non_involved_profile = project.Profile(profile_factory.getProfile(deployer.address))
     
     # Act & Assert - Non-involved profile owner cannot update
     with pytest.raises(Exception) as excinfo:

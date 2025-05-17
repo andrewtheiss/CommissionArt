@@ -127,9 +127,6 @@ def test_submit_commission_with_approved_code_hash(setup):
     # The new art piece should be approved for submission
     assert commission_hub.isApprovedArtPieceType(new_art_piece.address), "New art piece should be approved"
     
-    # Test submitting the commission
-    # Note: In a real test we'd need to mock the isOnCommissionWhitelist function
-    # or ensure the ArtPiece contract is properly configured
     
     # For demonstration, we'll just verify the approval status
     assert commission_hub.isApprovedArtPieceType(new_art_piece.address), "Art piece should be approved for submission"

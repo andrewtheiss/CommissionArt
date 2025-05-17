@@ -247,7 +247,7 @@
         "type": "address"
       }
     ],
-    "name": "accountToProfile",
+    "name": "uesrAddressToProfile",
     "outputs": [
       {
         "name": "",

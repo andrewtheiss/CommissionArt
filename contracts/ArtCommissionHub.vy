@@ -22,7 +22,6 @@ GENERIC_ART_COMMISSION_HUB_CONTRACT: constant(address) = 0x100000000000000000000
 
 # Interface for ArtPiece contract
 interface ArtPiece:
-    def isOnCommissionWhitelist(_commissioner: address) -> bool: view
     def isFullyVerifiedCommission() -> bool: view
     def getArtist() -> address: view
     def getCommissioner() -> address: view

@@ -325,55 +325,6 @@ def test_invalidate_tag_requires_being_tagged(setup):
     assert "You are not tagged in this artwork" in str(excinfo.value)
 
 
-def test_commission_whitelist(setup):
-    """Test setting and checking commission whitelist"""
-    art_piece = setup["art_piece"]
-    owner = setup["owner"]
-    commissioner = setup["commissioner"]
-    
-    # Check initial whitelist status
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is False
-    
-    # Whitelist the commissioner
-    art_piece.setCommissionWhitelist(commissioner.address, True, sender=owner)
-    
-    # Check that the commissioner is now whitelisted
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is True
-    
-    # Remove the commissioner from the whitelist
-    art_piece.setCommissionWhitelist(commissioner.address, False, sender=owner)
-    
-    # Check that the commissioner is no longer whitelisted
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is False
-
-
-def test_commission_whitelist_by_artist(setup):
-    """Test that the artist can also manage the commission whitelist"""
-    art_piece = setup["art_piece"]
-    artist = setup["artist"]
-    commissioner = setup["commissioner"]
-    
-    # Whitelist the commissioner as the artist
-    art_piece.setCommissionWhitelist(commissioner.address, True, sender=artist)
-    
-    # Check that the commissioner is now whitelisted
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is True
-
-
-def test_commission_whitelist_unauthorized(setup):
-    """Test that only the owner or artist can manage the commission whitelist"""
-    art_piece = setup["art_piece"]
-    tagged_person = setup["tagged_person"]
-    commissioner = setup["commissioner"]
-    
-    # Try to whitelist the commissioner as an unauthorized account
-    with pytest.raises(Exception) as excinfo:
-        art_piece.setCommissionWhitelist(commissioner.address, True, sender=tagged_person)
-    
-    # Verify the error message
-    assert "Only owner or artist can set commission whitelist" in str(excinfo.value)
-
-
 def test_is_on_chain(setup):
     """Test that the IS_ON_CHAIN constant is set to True"""
     art_piece = setup["art_piece"]
