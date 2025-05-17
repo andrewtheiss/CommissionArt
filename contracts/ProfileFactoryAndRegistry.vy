@@ -47,6 +47,7 @@ accountToProfile: public(HashMap[address, address])  # Maps user address to prof
 userProfileCount: public(uint256)  # Total number of registered user profiles
 latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
 artCommissionHubOwners: public(address)  # Address of the ArtCommissionHubOwners contract
+commissionHubTemplate: public(address)  # Address of the commission hub contract template to clone
 
 # Events
 event ProfileCreated:
@@ -81,7 +82,7 @@ event ArtCommissionHubOwnersSet:
     registry: indexed(address)
 
 @deploy
-def __init__(_profile_template: address, _profile_social_template: address):
+def __init__(_profile_template: address, _profile_social_template: address, _commission_hub_template: address):
     self.owner = msg.sender
     # Verify the profile template was deployed by the same address
     template_deployer: address = staticcall Profile(_profile_template).deployer()
@@ -90,6 +91,7 @@ def __init__(_profile_template: address, _profile_social_template: address):
     self.profileSocialTemplate = _profile_social_template
     self.userProfileCount = 0
     self.artCommissionHubOwners = empty(address)
+    self.commissionHubTemplate = _commission_hub_template
 
 # Internal function to link existing commission hubs to a profile
 @internal

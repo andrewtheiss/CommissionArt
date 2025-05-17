@@ -23,10 +23,15 @@ GENERIC_ART_COMMISSION_HUB_CONTRACT: constant(address) = 0x100000000000000000000
 # Interface for ArtPiece contract
 interface ArtPiece:
     def isOnCommissionWhitelist(_commissioner: address) -> bool: view
+    def isFullyVerifiedCommission() -> bool: view
+    def getArtist() -> address: view
+    def getCommissioner() -> address: view
 
 # Interface for ArtCommissionHubOwners
 interface ArtCommissionHubOwners:
-    def lookupRegisteredOwner(_chain_id: uint256, _nft_contract: address, _token_id: uint256) -> address: view
+    def lookupRegisteredOwner(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256) -> address: view
+    def isAllowedToUpdateForAddress(_address: address) -> bool: view
+    def isApprovedArtPieceAddress(_art_piece: address) -> bool: view
 
 # Single owner for the whole collection
 # Can be updated by anyone via L1/L2 QueryOwnership relay
@@ -47,15 +52,27 @@ sourceChainContract: public(address)  # Address of the NFT contract on L1
 sourceChainTokenId: public(uint256) # Token ID of the NFT on L1
 sourceChainImageData: public(Bytes[45000]) # Address of the image data or image data contract
 
-# Track commissions
+# Verified Art Commissions
 latestVerifiedArtCommissions: public(address[100])
-verifiedArtComissions: public(DynArray[address, 10**8])
+verifiedArtCommissions: public(DynArray[address, 10**8])
 countVerifiedArtCommissions: public(uint256)
 verifiedArtCommissionsCountByUser: public(HashMap[address, uint256])
+verifiedArtCommissionsRegistry: public(HashMap[address, bool])
+
+# Unverified Art Commissions
 unverifiedArtCommissions: public(DynArray[address, 10**8]) 
 countUnverifiedArtCommissions: public(uint256)
 unverifiedArtCommissionsCountByUser: public(HashMap[address, uint256])  
 UNVERIFIED_ART_COMMISSIONS_PER_USER_LIMIT: constant(uint256) = 500
+unverifiedArtCommissionsRegistry: public(HashMap[address, bool])
+
+# Access lists
+whitelist: public(HashMap[address, bool])
+blacklist: public(HashMap[address, bool])
+
+# Getter index variables
+nextLatestVerifiedArtCommissionsIndex: public(uint256)
+nextLatestVerifiedArtIndex: public(uint256)
 
 event Initialized:
     chain_id: indexed(uint256)
@@ -69,7 +86,7 @@ event OwnershipUpdated:
     chain_id: indexed(uint256)
     nft_contract: indexed(address)
     token_id: indexed(uint256)
-    previous_owner: indexed(address)
+    previous_owner: address
     owner: address
 
 event CommissionSubmitted:
@@ -93,7 +110,7 @@ event CommissionerWhitelisted:
 @deploy
 def __init__():
     # Prevent direct deployment except by ArtCommissionHubOwners (enforced at initialize)
-    self.owner = empty(msg.sender)
+    self.owner = empty(address)
     self.isInitialized = False
     self.chainId = 1
     self.countVerifiedArtCommissions = 0
@@ -104,16 +121,18 @@ def __init__():
 def initializeParentCommissionHubOwnerContract(_art_commission_hub_owners: address):
     assert self.artCommissionHubOwners == empty(address), "Already set"
     assert _art_commission_hub_owners != empty(address), "Invalid address"
-    assert len(_art_commission_hub_owners.code) > 0, "Not a contract"
-    self.expectedArtCommissionHubOwnersHash = keccak256(_art_commission_hub_owners.code)
+    size: uint256 = 0
+    if len(slice(_art_commission_hub_owners.code, 0, 1)) > 0:
+        size = 1
+    assert size > 0, "Not a contract"
+    self.expectedArtCommissionHubOwnersHash = keccak256(_art_commission_hub_owners.codehash)
     self.artCommissionHubOwners = _art_commission_hub_owners
 
 @external
 def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256):
     assert not self.isInitialized, "Already initialized"
     assert self.artCommissionHubOwners != empty(address), "ArtCommissionHubOwners not set"
-    art_commission_hub_owners_code: bytes = self.artCommissionHubOwners.code
-    code_hash: bytes32 = keccak256(art_commission_hub_owners_code)
+    code_hash: bytes32 = keccak256(self.artCommissionHubOwners.codehash)
     assert code_hash == self.expectedArtCommissionHubOwnersHash, "ArtCommissionHubOwners code hash mismatch"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
@@ -143,12 +162,13 @@ def syncArtCommissionHubOwner(_chain_id: uint256, _nft_contract: address, _nft_t
     assert self.isInitialized, "Not initialized"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
-    
+    previous_owner: address = self.owner
+
     # For generic hubs, we only check chain ID
     if self.isGeneric:
         assert self.chainId == _chain_id, "Chain ID mismatch"
         self.owner = _owner
-        log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
+        log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_nft_token_id_or_generic_hub_account, previous_owner=previous_owner, owner=_owner)
         return
 
     # If the new owner is the empty address and the old owner isnt empty we need to burn the NFT
@@ -158,14 +178,13 @@ def syncArtCommissionHubOwner(_chain_id: uint256, _nft_contract: address, _nft_t
     # For NFT-based hubs, we check all parameters
     assert self.chainId == _chain_id, "Chain ID mismatch"
     assert self.nftContract == _nft_contract, "NFT contract mismatch"
-    assert self.nftTokenIdOrGenericHubAccount == _token_id, "Token ID mismatch"
+    assert self.nftTokenIdOrGenericHubAccount == _nft_token_id_or_generic_hub_account, "Token ID mismatch"
     
     # Always update the owner, even if it's the same as before
     # This ensures the owner is set correctly in all cases
     self.owner = _owner
     
-    log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
-can you check out the logic on this, and the syntax:
+    log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_nft_token_id_or_generic_hub_account, previous_owner=previous_owner, owner=_owner)
 
 
 # Commission Submission Overview:
@@ -188,44 +207,48 @@ def submitCommission(_art_piece: address):
     assert staticcall ArtPiece(_art_piece).isFullyVerifiedCommission(), "Art piece is not fully between Artist and Commissioner"
     
     # assert not already submitted or blacklisted artist or commissioner
-    assert not self.verifiedArtCommissionRegistry[_art_piece], "Art piece already verified"
+    assert not self.verifiedArtCommissionsRegistry[_art_piece], "Art piece already verified"
     assert not self.unverifiedArtCommissionsRegistry[_art_piece], "Art piece already unverified"
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getArtist()], "Artist is blacklisted"
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getCommissioner()], "Commissioner is blacklisted"
 
-    sender_has_permission: bool = art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender)
-    is_recent_art_hub_creation: bool = self.isBurned == False && self.owner == empty(address)
+    sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender)
+    is_recent_art_hub_creation: bool = self.isBurned == False and self.owner == empty(address)
     is_whitelisted_artist: bool = self.whitelist[staticcall ArtPiece(_art_piece).getArtist()]
     is_whitelisted_commissioner: bool = self.whitelist[staticcall ArtPiece(_art_piece).getCommissioner()]
 
     # Add to verified list
     if sender_has_permission or is_recent_art_hub_creation or is_whitelisted_artist or is_whitelisted_commissioner:
-        self.verifiedArt.append(_art_piece)
-        self.countVerifiedCommissions += 1
-        self.verifiedArtCommissionRegistry[_art_piece] = True
+        self.verifiedArtCommissions.append(_art_piece)
+        self.countVerifiedArtCommissions += 1
+        self.verifiedArtCommissionsRegistry[_art_piece] = True
         
         # Update latest verified art (circular buffer)
-        self.latestVerifiedArt[self.nextLatestVerifiedArtIndex] = _art_piece
-        self.nextLatestVerifiedArtIndex = (self.nextLatestVerifiedArtIndex + 1) % 100
+        self.latestVerifiedArtCommissions[self.nextLatestVerifiedArtCommissionsIndex] = _art_piece
+        self.nextLatestVerifiedArtCommissionsIndex = (self.nextLatestVerifiedArtCommissionsIndex + 1) % 100
     
         log CommissionSubmitted(art_piece=_art_piece, submitter=msg.sender, verified=True)
     else:
         # For unverified commissions, ensure user doesn't have too many
-        assert self.unverifiedCountByUser[msg.sender] < 500, "Please verify commissions. Unverified for this account exceeds 500 items"
+        assert self.unverifiedArtCommissionsCountByUser[msg.sender] < 500, "Please verify commissions. Unverified for this account exceeds 500 items"
         
         # Add to unverified list
-        self.unverifiedCountByUser[msg.sender] += 1
-        self.unverifiedArt.append(_art_piece)
-        self.countUnverifiedCommissions += 1
+        self.unverifiedArtCommissionsCountByUser[msg.sender] += 1
+        self.unverifiedArtCommissions.append(_art_piece)
+        self.countUnverifiedArtCommissions += 1
         self.unverifiedArtCommissionsRegistry[_art_piece] = True
         
         log CommissionSubmitted(art_piece=_art_piece, submitter=msg.sender, verified=False)
 
 @external
 def verifyCommission(_art_piece: address):
+    self._verifyCommission(_art_piece)
+
+@internal
+def _verifyCommission(_art_piece: address):
     
     # Bulk verify requires return immediately if already verified
-    already_verified: bool = self.verifiedArtCommissionRegistry[_art_piece]
+    already_verified: bool = self.verifiedArtCommissionsRegistry[_art_piece]
     if already_verified:
         return
         
@@ -234,81 +257,87 @@ def verifyCommission(_art_piece: address):
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getArtist()], "Artist is blacklisted"
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getCommissioner()], "Commissioner is blacklisted"
 
-    
-    sender_has_permission: bool = art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender)
-    is_recent_art_hub_creation: bool = self.isBurned == False && self.owner == empty(address)
+    art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
+    sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender)
+    is_recent_art_hub_creation: bool = self.isBurned == False and self.owner == empty(address)
     is_whitelisted_artist: bool = self.whitelist[staticcall ArtPiece(_art_piece).getArtist()]
     is_whitelisted_commissioner: bool = self.whitelist[staticcall ArtPiece(_art_piece).getCommissioner()]
     assert sender_has_permission or is_recent_art_hub_creation or is_whitelisted_artist or is_whitelisted_commissioner, "Not allowed to verify, must be whitelisted or owner"
     
     # Find the art piece in the unverified array
     found_index: int256 = -1
-    for i: uint256 in range(0, len(self.unverifiedArt), bound=MAX_UNVERIFIED_ART):
-        if self.unverifiedArt[i] == _art_piece:
+    for i: uint256 in range(0, len(self.unverifiedArtCommissions), bound=MAX_UNVERIFIED_ART):
+        if self.unverifiedArtCommissions[i] == _art_piece:
             found_index = convert(i, int256)
             break
     
     # If found, remove from unverified list by replacing with the last item
     if found_index >= 0:
         # Update user's unverified count
-        if self.unverifiedCountByUser[_submitter] > 0:
-            self.unverifiedCountByUser[_submitter] -= 1
+        if self.unverifiedArtCommissionsCountByUser[msg.sender] > 0:
+            self.unverifiedArtCommissionsCountByUser[msg.sender] -= 1
             
         # Remove from unverified array (replace with last element and pop)
-        last_index: uint256 = len(self.unverifiedArt) - 1
+        last_index: uint256 = len(self.unverifiedArtCommissions) - 1
         if convert(found_index, uint256) != last_index:  # If not already the last element
-            self.unverifiedArt[convert(found_index, uint256)] = self.unverifiedArt[last_index]
-        self.unverifiedArt.pop()  # Remove last element
-        self.countUnverifiedCommissions -= 1
+            self.unverifiedArtCommissions[convert(found_index, uint256)] = self.unverifiedArtCommissions[last_index]
+        self.unverifiedArtCommissions.pop()  # Remove last element
+        self.countUnverifiedArtCommissions -= 1
     else:
         # If not found in unverified array, just decrease the unverified count for the user
-        if self.unverifiedCountByUser[_submitter] > 0:
-            self.unverifiedCountByUser[_submitter] -= 1
+        if self.unverifiedArtCommissionsCountByUser[msg.sender] > 0:
+            self.unverifiedArtCommissionsCountByUser[msg.sender] -= 1
     
     # Add to verified list
-    self.verifiedArt.append(_art_piece)
-    self.countVerifiedCommissions += 1
+    self.verifiedArtCommissions.append(_art_piece)
+    self.countVerifiedArtCommissions += 1
     
     # Update latest verified art (circular buffer)
-    self.latestVerifiedArt[self.nextLatestVerifiedArtIndex] = _art_piece
-    self.nextLatestVerifiedArtIndex = (self.nextLatestVerifiedArtIndex + 1) % 100
+    self.latestVerifiedArtCommissions[self.nextLatestVerifiedArtCommissionsIndex] = _art_piece
+    self.nextLatestVerifiedArtCommissionsIndex = (self.nextLatestVerifiedArtCommissionsIndex + 1) % 100
     
     log CommissionVerified(art_piece=_art_piece, verifier=msg.sender)
 
+
 @external
 def unverifyCommission(_art_piece: address):
+    self._unverifyCommission(_art_piece)
+
+@internal
+def _unverifyCommission(_art_piece: address):
 
     # Bulk unverify requires return immediately if already unverified
-    unverified: bool = self.unverifiedArtCommissionsRegistry[_art_piece]
-    if unverified:
+    already_unverified: bool = self.unverifiedArtCommissionsRegistry[_art_piece]
+    if already_unverified:
         return
     
     # Check that its verified, otherwise it needs to be submitted 
-    assert self.verifiedArtCommissionRegistry[_art_piece], "Art piece is not even verified...  Nothing to worry about!"
-    assert art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to unverify"
+    assert self.verifiedArtCommissionsRegistry[_art_piece], "Art piece is not even verified...  Nothing to worry about!"
+    art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to unverify"
     
     # Find the art piece in the verified array
     found_index: int256 = -1
-    for i: uint256 in range(0, len(self.verifiedArt), bound=MAX_VERIFIED_ART):
-        if self.verifiedArt[i] == _art_piece:
+    for i: uint256 in range(0, len(self.verifiedArtCommissions), bound=MAX_VERIFIED_ART):
+        if self.verifiedArtCommissions[i] == _art_piece:
             found_index = convert(i, int256)
             break
     
     # If found, remove from verified list
     if found_index >= 0:
         # Remove from verified array (replace with last element and pop)
-        last_index: uint256 = len(self.verifiedArt) - 1
+        last_index: uint256 = len(self.verifiedArtCommissions) - 1
         if convert(found_index, uint256) != last_index:  # If not already the last element
-            self.verifiedArt[convert(found_index, uint256)] = self.verifiedArt[last_index]
-        self.verifiedArt.pop()  # Remove last element
-        self.countVerifiedCommissions -= 1
+            self.verifiedArtCommissions[convert(found_index, uint256)] = self.verifiedArtCommissions[last_index]
+        self.verifiedArtCommissions.pop()  # Remove last element
+        self.countVerifiedArtCommissions -= 1
         
         # Update the submitter's unverified count
-        self.unverifiedCountByUser[msg.sender] += 1
+        self.unverifiedArtCommissionsCountByUser[msg.sender] += 1
         
         # Add to unverified list
-        self.unverifiedArt.append(_art_piece)
-        self.countUnverifiedCommissions += 1
+        self.unverifiedArtCommissions.append(_art_piece)
+        self.countUnverifiedArtCommissions += 1
         
         log CommissionUnverified(art_piece=_art_piece, unverifier=msg.sender)
     else:
@@ -318,7 +347,7 @@ def unverifyCommission(_art_piece: address):
 @view
 @external
 def getUnverifiedCount(_user: address) -> uint256:
-    return self.unverifiedCountByUser[_user]
+    return self.unverifiedArtCommissionsCountByUser[_user]
 
 @view
 @external
@@ -326,11 +355,11 @@ def getLatestVerifiedArt(_count: uint256, _page: uint256 = 0) -> DynArray[addres
     result: DynArray[address, 10] = []
     
     # Early return if no verified art pieces
-    if self.countVerifiedCommissions == 0:
+    if self.countVerifiedArtCommissions == 0:
         return result
     
     # Limit to available pieces
-    available: uint256 = min(self.countVerifiedCommissions, 100)
+    available: uint256 = min(self.countVerifiedArtCommissions, 100)
     
     # Calculate start index based on page and count
     items_per_page: uint256 = min(_count, 10)
@@ -347,18 +376,18 @@ def getLatestVerifiedArt(_count: uint256, _page: uint256 = 0) -> DynArray[addres
     
     # Calculate buffer start differently based on fill level
     buffer_start: uint256 = 0
-    if self.countVerifiedCommissions >= 300:
+    if self.countVerifiedArtCommissions >= 100:
         # When buffer is full, use the next index as starting point
-        buffer_start = self.nextLatestVerifiedArtIndex
+        buffer_start = self.nextLatestVerifiedArtCommissionsIndex
     else:
         # When buffer is partially filled, start from the beginning
         buffer_start = 0
     
     # Populate result array
     for i: uint256 in range(0, count, bound=10):
-        idx: uint256 = (buffer_start + start_idx + i) % 300
-        if self.latestVerifiedArt[idx] != empty(address):
-            result.append(self.latestVerifiedArt[idx])
+        idx: uint256 = (buffer_start + start_idx + i) % 100
+        if self.latestVerifiedArtCommissions[idx] != empty(address):
+            result.append(self.latestVerifiedArtCommissions[idx])
     
     return result
 
@@ -368,16 +397,16 @@ def getVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[addre
     result: DynArray[address, 1000] = []
     
     # Early return if no verified art or start index is out of bounds
-    if self.countVerifiedCommissions == 0 or _start_idx >= self.countVerifiedCommissions:
+    if self.countVerifiedArtCommissions == 0 or _start_idx >= self.countVerifiedArtCommissions:
         return result
     
     # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.countVerifiedCommissions)
+    end_idx: uint256 = min(_start_idx + _count, self.countVerifiedArtCommissions)
     max_items: uint256 = min(end_idx - _start_idx, 1000)
     
     # Populate result array
     for i: uint256 in range(0, max_items, bound=1000):
-        result.append(self.verifiedArt[_start_idx + i])
+        result.append(self.verifiedArtCommissions[_start_idx + i])
     
     return result
 
@@ -387,16 +416,16 @@ def getUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[add
     result: DynArray[address, 50] = []
     
     # Early return if no unverified art or start index is out of bounds
-    if self.countUnverifiedCommissions == 0 or _start_idx >= self.countUnverifiedCommissions:
+    if self.countUnverifiedArtCommissions == 0 or _start_idx >= self.countUnverifiedArtCommissions:
         return result
     
     # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.countUnverifiedCommissions)
+    end_idx: uint256 = min(_start_idx + _count, self.countUnverifiedArtCommissions)
     max_items: uint256 = min(end_idx - _start_idx, 50)
     
     # Populate result array
     for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.unverifiedArt[_start_idx + i])
+        result.append(self.unverifiedArtCommissions[_start_idx + i])
     
     return result
 
@@ -415,16 +444,16 @@ def getBatchVerifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[
     result: DynArray[address, 50] = []
     
     # Early return if no verified art or start index is out of bounds
-    if self.countVerifiedCommissions == 0 or _start_idx >= self.countVerifiedCommissions:
+    if self.countVerifiedArtCommissions == 0 or _start_idx >= self.countVerifiedArtCommissions:
         return result
     
     # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.countVerifiedCommissions)
+    end_idx: uint256 = min(_start_idx + _count, self.countVerifiedArtCommissions)
     max_items: uint256 = min(end_idx - _start_idx, 50)
     
     # Populate result array
     for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.verifiedArt[_start_idx + i])
+        result.append(self.verifiedArtCommissions[_start_idx + i])
     
     return result
 
@@ -441,16 +470,16 @@ def getBatchUnverifiedArtPieces(_start_idx: uint256, _count: uint256) -> DynArra
     result: DynArray[address, 50] = []
     
     # Early return if no unverified art or start index is out of bounds
-    if self.countUnverifiedCommissions == 0 or _start_idx >= self.countUnverifiedCommissions:
+    if self.countUnverifiedArtCommissions == 0 or _start_idx >= self.countUnverifiedArtCommissions:
         return result
     
     # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.countUnverifiedCommissions)
+    end_idx: uint256 = min(_start_idx + _count, self.countUnverifiedArtCommissions)
     max_items: uint256 = min(end_idx - _start_idx, 50)
     
     # Populate result array
     for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.unverifiedArt[_start_idx + i])
+        result.append(self.unverifiedArtCommissions[_start_idx + i])
     
     return result
 
@@ -466,18 +495,18 @@ def getRecentVerifiedArtPieces(_count: uint256) -> DynArray[address, 50]:
     result: DynArray[address, 50] = []
     
     # Early return if no verified art
-    if self.countVerifiedCommissions == 0:
+    if self.countVerifiedArtCommissions == 0:
         return result
     
     # Calculate how many items to return, capped by array size and max return size
-    count: uint256 = min(min(_count, self.countVerifiedCommissions), 50)
+    count: uint256 = min(min(_count, self.countVerifiedArtCommissions), 50)
     
     # Start from the end of the array (most recent)
-    start_idx: uint256 = self.countVerifiedCommissions - count
+    start_idx: uint256 = self.countVerifiedArtCommissions - count
     
     # Populate result array
     for i: uint256 in range(0, count, bound=50):
-        result.append(self.verifiedArt[start_idx + i])
+        result.append(self.verifiedArtCommissions[start_idx + i])
     
     return result
 
@@ -493,18 +522,18 @@ def getRecentUnverifiedArtPieces(_count: uint256) -> DynArray[address, 50]:
     result: DynArray[address, 50] = []
     
     # Early return if no unverified art
-    if self.countUnverifiedCommissions == 0:
+    if self.countUnverifiedArtCommissions == 0:
         return result
     
     # Calculate how many items to return, capped by array size and max return size
-    count: uint256 = min(min(_count, self.countUnverifiedCommissions), 50)
+    count: uint256 = min(min(_count, self.countUnverifiedArtCommissions), 50)
     
     # Start from the end of the array (most recent)
-    start_idx: uint256 = self.countUnverifiedCommissions - count
+    start_idx: uint256 = self.countUnverifiedArtCommissions - count
     
     # Populate result array
     for i: uint256 in range(0, count, bound=50):
-        result.append(self.unverifiedArt[start_idx + i])
+        result.append(self.unverifiedArtCommissions[start_idx + i])
     
     return result
 
@@ -521,18 +550,18 @@ def getVerifiedArtPiecesByOffset(_offset: uint256, _count: uint256) -> DynArray[
     result: DynArray[address, 50] = []
     
     # Early return if no verified art or offset is out of bounds
-    if self.countVerifiedCommissions == 0 or _offset >= self.countVerifiedCommissions:
+    if self.countVerifiedArtCommissions == 0 or _offset >= self.countVerifiedArtCommissions:
         return result
     
     # Calculate how many items to return
-    available_items: uint256 = self.countVerifiedCommissions - _offset
+    available_items: uint256 = self.countVerifiedArtCommissions - _offset
     count: uint256 = min(min(_count, available_items), 50)
     
     # Populate result array
     for i: uint256 in range(50):
         if i >= count:
             break
-        result.append(self.verifiedArt[_offset + i])
+        result.append(self.verifiedArtCommissions[_offset + i])
     
     return result
 
@@ -549,18 +578,18 @@ def getUnverifiedArtPiecesByOffset(_offset: uint256, _count: uint256) -> DynArra
     result: DynArray[address, 50] = []
     
     # Early return if no unverified art or offset is out of bounds
-    if self.countUnverifiedCommissions == 0 or _offset >= self.countUnverifiedCommissions:
+    if self.countUnverifiedArtCommissions == 0 or _offset >= self.countUnverifiedArtCommissions:
         return result
     
     # Calculate how many items to return
-    available_items: uint256 = self.countUnverifiedCommissions - _offset
+    available_items: uint256 = self.countUnverifiedArtCommissions - _offset
     count: uint256 = min(min(_count, available_items), 50)
     
     # Populate result array
     for i: uint256 in range(50):
         if i >= count:
             break
-        result.append(self.unverifiedArt[_offset + i])
+        result.append(self.unverifiedArtCommissions[_offset + i])
     
     return result
 
@@ -575,35 +604,46 @@ def getArtPieceByIndex(_verified: bool, _index: uint256) -> address:
     @return The address of the art piece at the specified index
     """
     if _verified:
-        assert _index < self.countVerifiedCommissions, "Index out of bounds"
-        return self.verifiedArt[_index]
+        assert _index < self.countVerifiedArtCommissions, "Index out of bounds"
+        return self.verifiedArtCommissions[_index]
     else:
-        assert _index < self.countUnverifiedCommissions, "Index out of bounds"
-        return self.unverifiedArt[_index]
+        assert _index < self.countUnverifiedArtCommissions, "Index out of bounds"
+        return self.unverifiedArtCommissions[_index]
 
 @external
 def bulkVerifyCommissions(_commission_addresses: DynArray[address, 1000]):
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
     for i: uint256 in range(0, len(_commission_addresses), bound=1000):
-        self.verifyCommission(_commission_addresses[i])
+        self._verifyCommission(_commission_addresses[i])
         
 @external
 def bulkUnverifyCommissions(_commission_addresses: DynArray[address, 1000]):
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
     for i: uint256 in range(0, len(_commission_addresses), bound=1000):
-        self.unverifyCommission(_commission_addresses[i])
+        self._unverifyCommission(_commission_addresses[i])
 
 @external
-def updateWhitelistOrBlacklist(_address_to_list: address, _is_whitelist: bool, _list_status: bool, _reset_all: bool = False):
+def updateWhitelistOrBlacklist(_address_to_list: address, _is_whitelist: bool, _list_status: bool):
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
     if _is_whitelist:
         self.whitelist[_address_to_list] = _list_status
-        if _reset_all:
-            self.whitelist = []
+        if self.blacklist[_address_to_list]:
+            self.blacklist[_address_to_list] = False
     else:
         self.blacklist[_address_to_list] = _list_status
-        if _reset_all:
-            self.blacklist = []
+        if self.whitelist[_address_to_list]:
+            self.whitelist[_address_to_list] = False
+ 
+@external
+def clearAllUnverifiedArtCommissions():
+    art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    for i: uint256 in range(0, self.countUnverifiedArtCommissions, bound=10000):
+        if len(self.unverifiedArtCommissions) == 0:
+            break
+        art_piece: address = self.unverifiedArtCommissions.pop()
+        self.unverifiedArtCommissionsRegistry[art_piece] = False
+    self.countUnverifiedArtCommissions = 0

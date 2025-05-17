@@ -35,7 +35,7 @@ approvedArtPieceCodeHashes: public(HashMap[bytes32, bool])  # code_hash -> is_ap
 
 
 interface ArtCommissionHub:
-    def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256): nonpayable
+    def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
     def syncArtCommissionHubOwner(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
 
 interface ProfileFactoryAndRegistry:
@@ -95,8 +95,8 @@ def __init__(_initial_l2relay: address, _initial_commission_hub_template: addres
     self.owner = msg.sender
     self.profileFactoryAndRegistry = empty(address)
     code_hash: bytes32 = _art_piece_template.codehash
-    log CodeHashWhitelistUpdated(code_hash=_code_hash, status=True)
-    self.approvedArtPieceCodeHashes[_code_hash] = True
+    log CodeHashWhitelistUpdated(code_hash=code_hash, status=True)
+    self.approvedArtPieceCodeHashes[code_hash] = True
 
 @internal
 def _ensureProfileForAddress(_address: address) -> address:
@@ -261,7 +261,6 @@ def createGenericCommissionHub(_owner: address) -> address:
     @notice Creates a generic commission hub for non-NFT artCommissionHubOwners
     @dev This allows multisigs, DAOs, or individual wallets to have commission hubs
          without requiring them to own an NFT
-    @param _chain_id The chain ID where the hub will be registered
     @param _owner The address that will own this commission hub
     @return The address of the newly created commission hub
     """
@@ -558,8 +557,8 @@ def setApprovedArtPiece(_art_piece: address, _is_approved: bool):
     assert msg.sender == self.owner, "Only the owner can set approved art piece code hashes"
     assert self._isContract(_art_piece), "Art piece is not a contract"
     code_hash: bytes32 = _art_piece.codehash
-    log CodeHashWhitelistUpdated(code_hash=_code_hash, status=_is_approved)
-    self.approvedArtPieceCodeHashes[_code_hash] = _is_approved
+    log CodeHashWhitelistUpdated(code_hash=code_hash, status=_is_approved)
+    self.approvedArtPieceCodeHashes[code_hash] = _is_approved
 
 @external
 @view
@@ -576,5 +575,5 @@ def isApprovedArtPieceAddress(_art_piece: address) -> bool:
 @view
 def isAllowedToUpdateForAddress(_address: address) -> bool:
     # Either the owner or the L2OwnershipRelay or the address itself can update the owner
-    bool: allowed = (  msg.sender == self.owner or msg.sender == self.l2OwnershipRelay or msg.sender == _address)
+    allowed: bool = (  msg.sender == self.owner or msg.sender == self.l2OwnershipRelay or msg.sender == _address)
     return allowed
