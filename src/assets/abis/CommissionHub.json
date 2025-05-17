@@ -536,7 +536,7 @@
   },
   {
     "inputs": [],
-    "name": "countVerifiedCommissions",
+    "name": "countVerifiedArt",
     "outputs": [
       {
         "name": "",

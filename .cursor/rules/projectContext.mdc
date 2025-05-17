@@ -22,8 +22,13 @@ ArtCommissionHubOwners:
 - Updates owner based on L2OwnershipRelay: via registerNFTOwnerFromParentChain
 - Updates owner of non-nft collections via via _createOrUpdateCommissionHubAndOwner
 - Allows access to CommissionHubs for dynamic content on UIs
+- Permissionlessly query and update the ArtCommissionHub owner from L2/L1 owners of any NFT contract
+- Verifies ArtPiece code_hashes
 
-
+ArtCommissionHub:
+- Stores list of ArtPieces
+- Allows owners to manage art pieces (flag / whitelist / blacklist)
+- Owner of hub provides source of truth for all downstream items
 
 Profile Creation & Ownership
 Single Profile via Factory: Profiles must be created exclusively through the ProfileFactoryAndRegistry contract. Each user address can have at most one Profile (enforced by the factory). Direct deployment of Profile contracts is disallowed.
@@ -39,7 +44,6 @@ ArtPiece Creation & Commission Attachment
 Controlled ArtPiece Minting: All new art pieces (NFTs) are created through a user’s Profile contract using Profile.createArtPiece. This centralizes minting logic and ensures the platform can track and initialize art pieces correctly. Do not allow deploying or initializing ArtPiece contracts outside of the Profile context.
 Commission vs. Standard Pieces: Distinguish standard art pieces from commission-based pieces at creation. If a commission hub address is provided to createArtPiece (i.e., the art is a commissioned piece), the Profile contract must set the NFT’s initial owner and artist appropriately. In a commission scenario, the _owner_input should be the commission recipient (commissioner) and _artist_input the creator’s address, so the NFT is minted directly to the commissioner. For a regular art piece, the profile owner is typically the artist and owner by default.
 
-Hub-Attached Ownership: When an ArtPiece is attached to an ArtCommissionHub, treat the hub’s owner as the effective owner of the piece. The ArtPiece’s internal owner field is not authoritative in this case – once attached, the piece is essentially “locked” to the hub. The ArtPiece contract should prevent direct ownership transfers if attachedToArtCommissionHub is true. Never attempt to override an ArtPiece’s owner manually for hub-linked pieces; instead, rely on the hub (and cross-chain owner updates) to reflect the current owner.
 
 Commission Workflow (Unverified & Verified)
 Submission via Hub: Always use the ArtCommissionHub to handle commission piece submissions. When an artist verifies a commissioned piece, they must call ArtCommissionHub.submitCommission(artPiece) rather than adding it directly to any profile list. The hub will verify the ArtPiece contract type and emit a CommissionSubmitted event, adding the piece to the hub’s tracking list (verified or unverified) accordingly.

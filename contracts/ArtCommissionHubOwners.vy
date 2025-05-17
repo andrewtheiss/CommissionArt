@@ -8,11 +8,12 @@
 # provided that appropriate credit is given to the original author.
 # For commercial use, please contact the author for permission.
 
-# Function to handle owner verification on L3
-# This takes in messages from the L2 and updates a registry of nft/id pairs to their owner
-# This handles taking queries from other contracts on L3 and returning the owner of the NFT
+# Contract links
 l2OwnershipRelay: public(address)
-artCommissionHubTemplate: public(address)
+artCommissionHubTemplate: public(address) 
+profileFactoryAndRegistry: public(address)
+
+# Owner of the contract
 owner: public(address)
 ownerRevokedToDAO: public(bool)
 
@@ -29,12 +30,13 @@ artCommissionHubsByOwner: public(HashMap[address, DynArray[address, 10**8]])  # 
 # Track which commission hubs are generic (not tied to NFTs)
 isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
 
-# Profile-Factory-And-Registry contract address
-profileFactoryAndRegistry: public(address)
+# Track which art piece code hashes are approved
+approvedArtPieceCodeHashes: public(HashMap[bytes32, bool])  # code_hash -> is_approved
+
 
 interface ArtCommissionHub:
-    def initializeForOwner(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
-    def updateRegistration(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
+    def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256): nonpayable
+    def syncArtCommissionHubOwner(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
 
 interface ProfileFactoryAndRegistry:
     def hasProfile(_address: address) -> bool: view
@@ -81,20 +83,20 @@ event ProfileCreated:
 
 event L2OwnershipRelaySet:
     l2OwnershipRelay: address
+
+event CodeHashWhitelistUpdated:
+    code_hash: indexed(bytes32)
+    status: bool
    
 @deploy
-def __init__(_initial_l2relay: address, _initial_commission_hub_template: address):
+def __init__(_initial_l2relay: address, _initial_commission_hub_template: address, _art_piece_template: address):
     self.l2OwnershipRelay = _initial_l2relay
     self.artCommissionHubTemplate = _initial_commission_hub_template
     self.owner = msg.sender
     self.profileFactoryAndRegistry = empty(address)
-
-@external
-@view
-def isAllowedToUpdateForAddress(_address: address) -> bool:
-    # Either the owner or the L2OwnershipRelay or the address itself can update the owner
-    bool: allowed = (  msg.sender == self.owner or msg.sender == self.l2OwnershipRelay or msg.sender == _address)
-    return allowed
+    code_hash: bytes32 = _art_piece_template.codehash
+    log CodeHashWhitelistUpdated(code_hash=_code_hash, status=True)
+    self.approvedArtPieceCodeHashes[_code_hash] = True
 
 @internal
 def _ensureProfileForAddress(_address: address) -> address:
@@ -196,7 +198,7 @@ def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: addre
         #4. Add the commission hub to the new owner's list  
         commission_hub = create_minimal_proxy_to(self.artCommissionHubTemplate)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
-        extcall commission_hub_instance.initializeForOwner(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
+        extcall commission_hub_instance.initializeForArtCommissionHub(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
         self.artCommissionHubRegistry[_chain_id][_nft_contract][_nft_token_id_or_generic_hub_account] = commission_hub
         self.isGenericHub[commission_hub] = False
         log ArtCommissionHubCreated(chain_id=_chain_id, nft_contract=_nft_contract, nft_token_id_or_generic_hub_account=_nft_token_id_or_generic_hub_account, commission_hub=commission_hub, is_generic=False)
@@ -207,7 +209,7 @@ def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: addre
     elif previous_owner != _owner:
         commission_hub = self.artCommissionHubRegistry[_chain_id][_nft_contract][_nft_token_id_or_generic_hub_account]
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
-        extcall commission_hub_instance.updateRegistration(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
+        extcall commission_hub_instance.syncArtCommissionHubOwner(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
         
         # Remove the hub from the old owner's list
         if previous_owner != empty(address):
@@ -229,6 +231,21 @@ def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: addre
         timestamp=current_time,
         source=msg.sender
     )
+
+@internal
+@view
+def _isContract(_addr: address) -> bool:
+    """
+    @notice Check if an address is a contract
+    @param _addr The address to check
+    @return Whether the address is a contract
+    """
+    size: uint256 = 0
+    # Check code size at address
+    if _addr != empty(address):
+        if len(slice(_addr.code, 0, 1)) > 0:
+            size = 1
+    return size > 0
 
 #Called by L2OwnershipRelay when ownership is verified, including chain_id, nft_contract, nft_token_id_or_generic_hub_account, and owner as parameters.
 @external
@@ -271,7 +288,7 @@ def createGenericCommissionHub(_owner: address) -> address:
     commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
     
     # Initialize the generic hub
-    extcall commission_hub_instance.initializeForOwner(
+    extcall commission_hub_instance.initializeForArtCommissionHub(
         GENERIC_ART_COMMISSION_HUB_CHAIN_ID, 
         GENERIC_ART_COMMISSION_HUB_CONTRACT, 
         _nft_token_id_or_generic_hub_account, 
@@ -535,3 +552,29 @@ def revokeOwnershipToDAO(_dao_contract_address: address):
     assert msg.sender == self.owner, "Only the owner can revoke ownership to DAO"
     self.ownerRevokedToDAO = True
     self.owner = _dao_contract_address
+
+@external
+def setApprovedArtPiece(_art_piece: address, _is_approved: bool):
+    assert msg.sender == self.owner, "Only the owner can set approved art piece code hashes"
+    assert self._isContract(_art_piece), "Art piece is not a contract"
+    code_hash: bytes32 = _art_piece.codehash
+    log CodeHashWhitelistUpdated(code_hash=_code_hash, status=_is_approved)
+    self.approvedArtPieceCodeHashes[_code_hash] = _is_approved
+
+@external
+@view
+def isApprovedArtPiece(_code_hash: bytes32) -> bool:
+    return self.approvedArtPieceCodeHashes[_code_hash]
+
+@external
+@view
+def isApprovedArtPieceAddress(_art_piece: address) -> bool:
+    code_hash: bytes32 = _art_piece.codehash
+    return self.approvedArtPieceCodeHashes[code_hash]
+
+@external
+@view
+def isAllowedToUpdateForAddress(_address: address) -> bool:
+    # Either the owner or the L2OwnershipRelay or the address itself can update the owner
+    bool: allowed = (  msg.sender == self.owner or msg.sender == self.l2OwnershipRelay or msg.sender == _address)
+    return allowed
