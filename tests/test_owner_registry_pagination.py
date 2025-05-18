@@ -35,7 +35,7 @@ def setup():
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(l2_relay.address, commission_hub_template.address, sender=deployer)
     
     # Set ArtCommissionHubOwners in ProfileFactoryAndRegistry
-    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     
     # Set L2OwnershipRelay to the deployer for testing purposes
     art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)

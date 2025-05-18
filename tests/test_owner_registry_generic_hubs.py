@@ -36,7 +36,7 @@ def setup():
     
     # Link ArtCommissionHubOwners and ProfileFactoryAndRegistry
     art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     
     # Set L2OwnershipRelay to the deployer for testing purposes
     art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)
@@ -185,7 +185,7 @@ def test_link_hubs_to_profile(setup):
     
     # Reconnect ProfileFactoryAndRegistry to ArtCommissionHubOwners
     art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     
     # Link hubs to profile
     art_collection_ownership_registry.linkHubsToProfile(user1.address, sender=user1)
@@ -346,7 +346,7 @@ def test_full_profile_verification(setup):
     assert user_profile_from_hub == profile_address, "Profile address mismatch in ProfileFactoryAndRegistry"
     
     # Verify user is in the latest users list
-    latest_user_index = profile_factory_and_regsitry.userProfileCount() - 1
+    latest_user_index = profile_factory_and_regsitry.allUsersProfileCount() - 1
     if latest_user_index < 1000:  # Only check if within bounds of latestUsers array
         latest_user = profile_factory_and_regsitry.getLatestUserAtIndex(latest_user_index)
         assert latest_user == new_user.address, "User not found in latest users list"

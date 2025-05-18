@@ -116,7 +116,7 @@ def test_create_profile_already_exists(setup):
     assert "Profile already exists" in str(excinfo.value)
 
 def test_get_user_profiles_pagination(setup):
-    """Test getUserProfiles pagination"""
+    """Test getRecentUserProfiles pagination"""
     test_users = setup["test_users"]
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
@@ -129,7 +129,7 @@ def test_get_user_profiles_pagination(setup):
         profile_factory_and_regsitry.createProfile(sender=test_users[i])
     
     # Check that the profiles were created
-    user_count = profile_factory_and_regsitry.userProfileCount()
+    user_count = profile_factory_and_regsitry.allUsersProfileCount()
     print(f"Profile count after creation: {user_count}")
     
     # Debug: Print the first few users from latestUsers
@@ -150,7 +150,7 @@ def test_get_user_profiles_pagination(setup):
     page_size = min(3, user_count)
     
     # Test first page
-    first_page = profile_factory_and_regsitry.getUserProfiles(page_size, 0)
+    first_page = profile_factory_and_regsitry.getRecentUserProfiles(page_size, 0)
     
     # Check if we got any profiles
     print(f"First page length: {len(first_page)}")
@@ -164,19 +164,19 @@ def test_get_user_profiles_pagination(setup):
     if len(first_page) == 0 and user_count > 0:
         print("Warning: No profiles returned but user count is > 0")
         # Try a very large page size to see if we can get anything
-        first_page = profile_factory_and_regsitry.getUserProfiles(100, 0)
+        first_page = profile_factory_and_regsitry.getRecentUserProfiles(100, 0)
         print(f"Retry with larger page size: {len(first_page)}")
     
     # If we still don't have any profiles, skip remaining assertions
     if len(first_page) == 0:
-        pytest.skip("No profiles returned from getUserProfiles")
+        pytest.skip("No profiles returned from getRecentUserProfiles")
     
     # For the remaining assertions, use the actual length we got
     actual_page_size = len(first_page)
     
     # Test second page if we have enough profiles
     if user_count > actual_page_size:
-        second_page = profile_factory_and_regsitry.getUserProfiles(actual_page_size, 1)
+        second_page = profile_factory_and_regsitry.getRecentUserProfiles(actual_page_size, 1)
         
         # Check if we got any profiles on the second page
         if len(second_page) > 0:
@@ -187,5 +187,5 @@ def test_get_user_profiles_pagination(setup):
             assert not first_page_set.intersection(second_page_set)
     
     # Test empty page (beyond available data)
-    empty_page = profile_factory_and_regsitry.getUserProfiles(page_size, 100)
+    empty_page = profile_factory_and_regsitry.getRecentUserProfiles(page_size, 100)
     assert len(empty_page) == 0 

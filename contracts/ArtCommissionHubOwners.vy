@@ -37,13 +37,13 @@ approvedArtPieceCodeHashes: public(HashMap[bytes32, bool])  # code_hash -> is_ap
 interface ArtCommissionHub:
     def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
     def syncArtCommissionHubOwner(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
+    def getOwner() -> address: view
 
 interface ProfileFactoryAndRegistry:
     def hasProfile(_address: address) -> bool: view
     def getProfile(_address: address) -> address: view
     def createProfile(_address: address) -> address: nonpayable
-    def setArtCommissionHubOwners(_registry: address): nonpayable
-    def createProfileFor(_address: address) -> address: nonpayable
+    def linkArtCommissionHubOwnersContract(_registry: address): nonpayable
 
 interface Profile:
     def addCommissionHub(_hub: address): nonpayable
@@ -115,8 +115,8 @@ def _ensureProfileForAddress(_address: address) -> address:
     if staticcall profile_factory_and_regsitry.hasProfile(_address):
         return staticcall profile_factory_and_regsitry.getProfile(_address)
     
-    # Create a new profile for the user using the createProfileFor function
-    profile_address: address = extcall profile_factory_and_regsitry.createProfileFor(_address)
+    # Create a new profile for the user using the createProfile function
+    profile_address: address = extcall profile_factory_and_regsitry.createProfile(_address)
     return profile_address
 
 @internal
@@ -275,8 +275,8 @@ def createGenericCommissionHub(_owner: address) -> address:
     # Create a profile for the owner if the owner doesn't have a profile yet
     profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
     if not staticcall profile_factory_and_regsitry.hasProfile(_owner):
-        # Create a profile for the owner using createProfileFor
-        profile_address: address = extcall profile_factory_and_regsitry.createProfileFor(_owner)
+        # Create a profile for the owner using createProfile
+        profile_address: address = extcall profile_factory_and_regsitry.createProfile(_owner)
         # Log profile creation
         log ProfileCreated(owner=_owner, profile=profile_address)
     
@@ -410,7 +410,7 @@ def linkProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
     # Inform the ProfileFactoryAndRegistry about this registry to establish bidirectional connection
     if _profile_factory_and_regsitry != empty(address):
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_and_regsitry)
-        extcall profile_factory_and_regsitry_interface.setArtCommissionHubOwners(self)
+        extcall profile_factory_and_regsitry_interface.linkArtCommissionHubOwnersContract(self)
 
 # Get commission hubs for an owner with pagination
 @view
@@ -573,7 +573,16 @@ def isApprovedArtPieceAddress(_art_piece: address) -> bool:
 
 @external
 @view
-def isAllowedToUpdateForAddress(_address: address) -> bool:
+def isAllowedToUpdateHubForAddress(_commission_hub: address, _user: address) -> bool:
+    commission_hub: ArtCommissionHub = ArtCommissionHub(_commission_hub)
+    if commission_hub.address == empty(address):
+        return False
+    owner: address = staticcall commission_hub.getOwner()
+    return _user == owner
+
+@external
+@view
+def isSystemAllowed(_address: address) -> bool:
     # Either the owner or the L2OwnershipRelay or the address itself can update the owner
-    allowed: bool = (  msg.sender == self.owner or msg.sender == self.l2OwnershipRelay or msg.sender == _address)
+    allowed: bool = (_address == self.owner or  _address == self.l2OwnershipRelay)
     return allowed

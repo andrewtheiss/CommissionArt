@@ -144,7 +144,7 @@ def test_create_generic_commission_hub(art_collection_ownership_registry, user1)
 def test_profile_integration(art_collection_ownership_registry, profile_factory_and_regsitry, deployer, user1):
     # Set the profile-factory-and-registry
     art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     assert art_collection_ownership_registry.profileFactoryAndRegistry() == profile_factory_and_regsitry.address
     
     # Create a profile for user1
@@ -172,7 +172,7 @@ def test_profile_integration(art_collection_ownership_registry, profile_factory_
 def test_profile_creation(art_collection_ownership_registry, profile_factory_and_regsitry, deployer, user1):
     # Set the profile-factory-and-registry
     art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     
     # Set L2OwnershipRelay to the deployer for testing purposes
     art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)
@@ -218,7 +218,7 @@ def test_link_hubs_to_profile(art_collection_ownership_registry, profile_factory
     
     # Set the profile-factory-and-registry
     art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
-    profile_factory_and_regsitry.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     
     # Create a profile for user1
     profile_factory_and_regsitry.createProfile(sender=user1)

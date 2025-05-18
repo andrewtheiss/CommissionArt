@@ -75,7 +75,7 @@ def test_user_first_upload_creates_profile_and_art(setup):
     
     try:
         # Act - Create profile and art piece in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -143,7 +143,7 @@ def test_commissioner_creates_profile_and_commission(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -210,7 +210,7 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
     
     try:
         # Create profile and portfolio piece in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -283,7 +283,7 @@ def test_multiple_users_create_profiles_with_art(setup):
             token_uri_data = f'data:application/json;base64,{base64.b64encode(json.dumps({"name": titles[i], "description": f"Description for {titles[i]}", "image": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAA3NCSVQICAjb4U/gAAAAKElEQVQImWP8//8/AwMDAwMDI1DSWTCCTGJ8zPjI+JjxK+M3RkYmJiYA1QwJBvakF/MAAAAASUVORK5CYII="}).encode("utf-8")).decode("utf-8")}'.encode('utf-8')
             
             # Create profile and art
-            profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+            profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
                 art_piece_template.address,
                 token_uri_data,
                 "avif",
@@ -336,7 +336,7 @@ def test_edge_case_max_size_art(setup):
     
     try:
         # Create the art piece with max size
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             large_token_uri_data,
             "avif",
@@ -388,7 +388,7 @@ def test_ai_generated_art_flag(setup):
     
     try:
         # Create profile and AI art
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -440,7 +440,7 @@ def test_error_profile_exists_already(setup):
         # Attempt to create profile and commission when profile already exists
         # This should fail (and we're testing that it fails properly)
         with pytest.raises(Exception):
-            profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+            profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
                 art_piece_template.address,
                 token_uri_data,
                 "avif",
@@ -523,7 +523,7 @@ def test_create_profile_with_empty_description(setup):
     
     try:
         # Create profile and art with empty description
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             token_uri_data,
             "avif",

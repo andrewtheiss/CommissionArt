@@ -87,7 +87,7 @@ def test_artist_creates_art_for_new_commissioner(setup):
     is_artist = True  # Artist is creating the art
     
     # Act - Create art piece for commissioner
-    profile_factory_and_regsitry.createArtPieceForParty(
+    profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -166,7 +166,7 @@ def test_commissioner_creates_art_for_existing_artist(setup):
     is_artist = False  # Commissioner is not the artist
     
     # Act - Create art piece for artist
-    result = profile_factory_and_regsitry.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -232,7 +232,7 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
     is_artist = True
     
     # Act - Create art piece for blacklister
-    result = profile_factory_and_regsitry.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -296,7 +296,7 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     is_artist = True
     
     # Act - Create art piece for whitelister
-    result = profile_factory_and_regsitry.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -381,7 +381,7 @@ def test_unverified_commissions_disabled(setup):
     is_artist = False  # Commissioner is not the artist
     
     # Act - Create art piece for artist
-    result = profile_factory_and_regsitry.createArtPieceForParty(
+    result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -429,7 +429,7 @@ def test_ai_generated_flag_set_correctly(setup):
     is_artist = True
     
     # Act - Create AI generated art piece
-    profile_factory_and_regsitry.createArtPieceForParty(
+    profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -461,7 +461,7 @@ def test_ai_generated_flag_set_correctly(setup):
 
 def test_cannot_create_art_for_self(setup):
     """
-    Test that a user cannot create art for themselves using createArtPieceForParty.
+    Test that a user cannot create art for themselves using createProfilesAndArtPieceWithBothProfilesLinked.
     """
     # Arrange
     artist = setup["artist"]
@@ -476,7 +476,7 @@ def test_cannot_create_art_for_self(setup):
     
     # Act & Assert - Attempt to create art for self should fail
     with pytest.raises(Exception):
-        profile_factory_and_regsitry.createArtPieceForParty(
+        profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -506,7 +506,7 @@ def test_events_emitted_correctly(setup):
     is_artist = True
     
     # Act - Create art piece and capture events
-    tx = profile_factory_and_regsitry.createArtPieceForParty(
+    tx = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         token_uri_data,
         "avif",
@@ -527,11 +527,11 @@ def test_events_emitted_correctly(setup):
     art_piece_created_events = [e for e in tx.decode_logs() if e.event_name == "ArtPieceCreated"]
     assert len(art_piece_created_events) == 1
     
-    # Check for ArtPieceCreatedForParty event
-    art_piece_for_party_events = [e for e in tx.decode_logs() if e.event_name == "ArtPieceCreatedForParty"]
+    # Check for ArtPieceCreatedForOtherParty event
+    art_piece_for_party_events = [e for e in tx.decode_logs() if e.event_name == "ArtPieceCreatedForOtherParty"]
     assert len(art_piece_for_party_events) == 1
     
-    # Verify ArtPieceCreatedForParty event data - access event data properly
+    # Verify ArtPieceCreatedForOtherParty event data - access event data properly
     event = art_piece_for_party_events[0]
     assert event.creator == artist.address
     assert event.other_party == commissioner.address

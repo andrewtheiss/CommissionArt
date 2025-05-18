@@ -339,7 +339,7 @@ def test_update_profile_template_invalid_address(setup):
         profile_factory_and_regsitry.updateProfileTemplateContract("0x0000000000000000000000000000000000000000", sender=deployer)
 
 def test_get_user_profiles(setup):
-    """Test the getUserProfiles pagination functionality"""
+    """Test the getRecentUserProfiles pagination functionality"""
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
     # Create multiple user accounts and keep track of them in order
@@ -353,14 +353,14 @@ def test_get_user_profiles(setup):
         profile_addresses.append(profile_factory_and_regsitry.getProfile(user.address))
     
     # Check the user count
-    assert profile_factory_and_regsitry.userProfileCount() == 5
+    assert profile_factory_and_regsitry.allUsersProfileCount() == 5
     
     # Test with page size 0 (should return empty array)
-    zero_page = profile_factory_and_regsitry.getUserProfiles(0, 0)
+    zero_page = profile_factory_and_regsitry.getRecentUserProfiles(0, 0)
     assert len(zero_page) == 0
     
     # Test with page size larger than users
-    all_users = profile_factory_and_regsitry.getUserProfiles(10, 0)
+    all_users = profile_factory_and_regsitry.getRecentUserProfiles(10, 0)
     assert len(all_users) <= 5  # Should return all users or empty if implementation doesn't work as expected
     
     if len(all_users) > 0:
@@ -369,18 +369,18 @@ def test_get_user_profiles(setup):
             assert addr in profile_addresses
     
     # Test with small page size to test pagination
-    small_page = profile_factory_and_regsitry.getUserProfiles(2, 0)
+    small_page = profile_factory_and_regsitry.getRecentUserProfiles(2, 0)
     # If our implementation returns results, verify they're valid profile addresses
     if len(small_page) > 0:
         for addr in small_page:
             assert addr in profile_addresses
 
 def test_get_user_profiles_empty(setup):
-    """Test getUserProfiles with no users"""
+    """Test getRecentUserProfiles with no users"""
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
     # No profiles created yet
-    empty_result = profile_factory_and_regsitry.getUserProfiles(10, 0)
+    empty_result = profile_factory_and_regsitry.getRecentUserProfiles(10, 0)
     assert len(empty_result) == 0
 
 def test_create_new_commission_and_register_profile(setup):
@@ -401,7 +401,7 @@ def test_create_new_commission_and_register_profile(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             image_data,
             "avif",
@@ -476,7 +476,7 @@ def test_create_art_piece_permission_check(setup):
         )
 
 def test_combined_profile_method_with_existing_profile(setup):
-    """Test that createNewArtPieceAndRegisterProfile fails with existing profile"""
+    """Test that createNewArtPieceAndRegisterProfileAndAttachToHub fails with existing profile"""
     profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user1 = setup["user1"]
     artist = setup["artist"]
@@ -494,7 +494,7 @@ def test_combined_profile_method_with_existing_profile(setup):
     
     # Attempt to create profile and commission when profile already exists
     with pytest.raises(Exception):
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             token_uri_data,
             "avif",
@@ -525,7 +525,7 @@ def test_combined_profile_and_commission_creation(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             image_data,
             "avif",

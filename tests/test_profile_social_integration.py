@@ -94,7 +94,7 @@ def test_profile_creation_for_other(setup):
     user2 = setup["user2"]
     
     # First establish deployer as owner registry to allow using createProfileFor
-    profile_factory.setArtCommissionHubOwners(deployer.address, sender=deployer)
+    profile_factory.linkArtCommissionHubOwnersContract(deployer.address, sender=deployer)
     
     # Act - Create profile for user2
     profile_factory.createProfileFor(user2.address, sender=deployer)
@@ -129,7 +129,7 @@ def test_create_art_piece_and_register_profile(setup):
     assert profile_factory.hasProfile(user3.address) is False, "User3 should not have a profile yet"
     
     # Act - Create art piece and register profile
-    result = profile_factory.createNewArtPieceAndRegisterProfile(
+    result = profile_factory.createNewArtPieceAndRegisterProfileAndAttachToHub(
         art_piece_template.address,
         b"test_data",
         "avif",
@@ -194,7 +194,7 @@ def test_create_art_piece_for_party(setup):
     assert not (profile_factory.hasProfile(user1.address) and profile_factory.hasProfile(user2.address)), "At least one user should not have a profile"
     
     # Act - Create art piece for party
-    result = profile_factory.createArtPieceForParty(
+    result = profile_factory.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
         b"test_data",
         "avif",

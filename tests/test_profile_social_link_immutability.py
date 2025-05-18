@@ -123,7 +123,7 @@ def test_factory_created_profile_social_link(setup):
     )
     # Link ArtCommissionHubOwners and ProfileFactoryAndRegistry
     art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
-    profile_factory.setArtCommissionHubOwners(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     # Set L2OwnershipRelay to the deployer for testing
     art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)
 

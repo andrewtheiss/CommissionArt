@@ -29,8 +29,9 @@ interface ArtPiece:
 # Interface for ArtCommissionHubOwners
 interface ArtCommissionHubOwners:
     def lookupRegisteredOwner(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256) -> address: view
-    def isAllowedToUpdateForAddress(_address: address) -> bool: view
+    def isAllowedToUpdateHubForAddress(_commission_hub: address, _user: address) -> bool: view
     def isApprovedArtPieceAddress(_art_piece: address) -> bool: view
+    def isSystemAllowed(_address: address) -> bool: view
 
 # Single owner for the whole collection
 # Can be updated by anyone via L1/L2 QueryOwnership relay
@@ -134,7 +135,7 @@ def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _n
     code_hash: bytes32 = keccak256(self.artCommissionHubOwners.codehash)
     assert code_hash == self.expectedArtCommissionHubOwnersHash, "ArtCommissionHubOwners code hash mismatch"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    assert staticcall art_commission_hub_owners_interface.isSystemAllowed(msg.sender), "Not allowed to update"
 
     # Set the owner of the commission hub
     if (_nft_contract == GENERIC_ART_COMMISSION_HUB_CONTRACT):
@@ -160,7 +161,7 @@ def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _n
 def syncArtCommissionHubOwner(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256, _owner: address):
     assert self.isInitialized, "Not initialized"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    assert staticcall art_commission_hub_owners_interface.isSystemAllowed(msg.sender), "Not allowed to update directly, please query the owner on the L1"
     previous_owner: address = self.owner
 
     # For generic hubs, we only check chain ID
@@ -211,7 +212,7 @@ def submitCommission(_art_piece: address):
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getArtist()], "Artist is blacklisted"
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getCommissioner()], "Commissioner is blacklisted"
 
-    sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender)
+    sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender)
     is_recent_art_hub_creation: bool = self.isBurned == False and self.owner == empty(address)
     is_whitelisted_artist: bool = self.whitelist[staticcall ArtPiece(_art_piece).getArtist()]
     is_whitelisted_commissioner: bool = self.whitelist[staticcall ArtPiece(_art_piece).getCommissioner()]
@@ -257,7 +258,7 @@ def _verifyCommission(_art_piece: address):
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getCommissioner()], "Commissioner is blacklisted"
 
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender)
+    sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender)
     is_recent_art_hub_creation: bool = self.isBurned == False and self.owner == empty(address)
     is_whitelisted_artist: bool = self.whitelist[staticcall ArtPiece(_art_piece).getArtist()]
     is_whitelisted_commissioner: bool = self.whitelist[staticcall ArtPiece(_art_piece).getCommissioner()]
@@ -313,7 +314,7 @@ def _unverifyCommission(_art_piece: address):
     # Check that its verified, otherwise it needs to be submitted 
     assert self.verifiedArtCommissionsRegistry[_art_piece], "Art piece is not even verified...  Nothing to worry about!"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to unverify"
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender), "Not allowed to unverify"
     
     # Find the art piece in the verified array
     found_index: int256 = -1
@@ -612,21 +613,21 @@ def getArtPieceByIndex(_verified: bool, _index: uint256) -> address:
 @external
 def bulkVerifyCommissions(_commission_addresses: DynArray[address, 1000]):
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender), "Not allowed to update"
     for i: uint256 in range(0, len(_commission_addresses), bound=1000):
         self._verifyCommission(_commission_addresses[i])
         
 @external
 def bulkUnverifyCommissions(_commission_addresses: DynArray[address, 1000]):
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender), "Not allowed to update"
     for i: uint256 in range(0, len(_commission_addresses), bound=1000):
         self._unverifyCommission(_commission_addresses[i])
 
 @external
 def updateWhitelistOrBlacklist(_address_to_list: address, _is_whitelist: bool, _list_status: bool):
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender), "Not allowed to update"
     if _is_whitelist:
         self.whitelist[_address_to_list] = _list_status
         if self.blacklist[_address_to_list]:
@@ -639,10 +640,15 @@ def updateWhitelistOrBlacklist(_address_to_list: address, _is_whitelist: bool, _
 @external
 def clearAllUnverifiedArtCommissions():
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateForAddress(msg.sender), "Not allowed to update"
+    assert staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender), "Not allowed to update"
     for i: uint256 in range(0, self.countUnverifiedArtCommissions, bound=10000):
         if len(self.unverifiedArtCommissions) == 0:
             break
         art_piece: address = self.unverifiedArtCommissions.pop()
         self.unverifiedArtCommissionsRegistry[art_piece] = False
     self.countUnverifiedArtCommissions = 0
+
+@external
+@view
+def getOwner() -> address:
+    return self.owner

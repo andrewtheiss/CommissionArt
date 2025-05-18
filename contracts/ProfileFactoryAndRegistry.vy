@@ -36,19 +36,32 @@ interface Profile:
 interface ProfileSocial:
     def initialize(_owner: address, _profile: address): nonpayable
 
+interface ArtCommissionHub:
+    def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256): nonpayable
+
 interface ArtCommissionHubOwners:
     def getCommissionHubsByOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
     def getCommissionHubCountByOwner(_owner: address) -> uint256: view
+    def isSystemAllowed(_address: address) -> bool: view
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
 profileSocialTemplate: public(address)  # Address of the profile social contract template to clone
 userAddressToProfile: public(HashMap[address, address])  # Maps user address to profile contract
 userAddressToProfileSocial: public(HashMap[address, address])  # Maps user address to profile social contract
-userProfileCount: public(uint256)  # Total number of registered user profiles
-latestUsers: public(DynArray[address, 1000])  # List of registered users for easy querying
 artCommissionHubOwners: public(address)  # Address of the ArtCommissionHubOwners contract
 commissionHubTemplate: public(address)  # Address of the commission hub contract template to clone
+
+# Profile variables
+latestUsers: public(address[100])  # List of registered users for easy querying
+allUserProfiles: public(DynArray[address,10**9])  # List of all users for easy querying
+allUsersProfileCount: public(uint256)  # Total number of registered user profiles
+activeUsersWithCommissionsCount: public(uint256)  # Total number of registered user profiles
+activeUsersWithCommissions: public(DynArray[address,10**9])  # List of all users for easy querying
+activeUsersWithCommissionsRegistry: public(HashMap[address, bool])  # Maps user address to profile contract
+
+GENERIC_ART_COMMISSION_HUB_CONTRACT: constant(address) = 0x1000000000000000000000000000000000000001
+GENERIC_ART_COMMISSION_HUB_CHAIN_ID: constant(uint256) = 1
 
 # Events
 event ProfileCreated:
@@ -73,7 +86,7 @@ event ArtPieceCreated:
     art_piece: indexed(address)
     user: indexed(address)
 
-event ArtPieceCreatedForParty:
+event ArtPieceCreatedForOtherParty:
     creator: indexed(address)
     other_party: indexed(address)
     art_piece: indexed(address)
@@ -81,6 +94,9 @@ event ArtPieceCreatedForParty:
 
 event ArtCommissionHubOwnersSet:
     registry: indexed(address)
+
+event ActiveUserProfileAdded:
+    user: indexed(address)
 
 @deploy
 def __init__(_profile_template: address, _profile_social_template: address, _commission_hub_template: address):
@@ -90,9 +106,53 @@ def __init__(_profile_template: address, _profile_social_template: address, _com
     assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
     self.profileSocialTemplate = _profile_social_template
-    self.userProfileCount = 0
+    self.allUsersProfileCount = 0
     self.artCommissionHubOwners = empty(address)
     self.commissionHubTemplate = _commission_hub_template
+
+@internal
+def _addNewUserAndProfileAndSocial(_user: address, _profile: address, _social: address):
+    # Update latest users now that its an array in a rotating way
+    index: uint256 = self.allUsersProfileCount % 100
+    self.latestUsers[index] = _user
+    self.allUserProfiles.append(_user)
+    self.userAddressToProfile[_user] = _profile
+    self.userAddressToProfileSocial[_user] = _social
+    self.allUsersProfileCount += 1
+    
+# Its true, anyone can create a profile for anyone else!
+# returns the profile and profile social addresses
+@internal
+def _createProfile(_new_profile_address: address) -> (address, address):
+    # Check if the caller has a profile, create one if not
+    assert _new_profile_address != empty(address), "Invalid profile address"
+    caller_profile: address = self.userAddressToProfile[_new_profile_address]
+    caller_profile_social: address = self.userAddressToProfileSocial[_new_profile_address]
+    
+    caller_profile_instance: Profile = Profile(empty(address))
+    caller_profile_social_instance: ProfileSocial = ProfileSocial(empty(address))
+
+    if caller_profile == empty(address):
+        # Create a new profile for the caller
+        caller_profile = create_minimal_proxy_to(self.profileTemplate)
+        caller_profile_instance = Profile(caller_profile)
+        
+        # Create a new profile social contract for the caller
+        caller_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+        caller_profile_social_instance = ProfileSocial(caller_social)
+        
+        # Initialize the profile with the caller as the owner
+        extcall caller_profile_instance.initialize(_new_profile_address, caller_social)
+        extcall caller_profile_social_instance.initialize(_new_profile_address, caller_profile)
+        
+        self._addNewUserAndProfileAndSocial(_new_profile_address, caller_profile, caller_social)
+        self._linkExistingHubs(_new_profile_address, caller_profile)
+        log ProfileCreated(user=_new_profile_address, profile=caller_profile, social=caller_social)
+    else:
+        caller_profile_instance = Profile(caller_profile)
+        caller_profile_social_instance = ProfileSocial(caller_profile_social)
+
+    return (caller_profile_instance.address, caller_profile_social_instance.address)
 
 # Internal function to link existing commission hubs to a profile
 @internal
@@ -110,7 +170,7 @@ def _linkExistingHubs(_user: address, _profile: address):
     
     @dev This function is called internally during all profile creation flows:
          - createProfile
-         - createNewArtPieceAndRegisterProfile
+         - createNewArtPieceAndRegisterProfileAndAttachToHub
     
     @dev It queries the ArtCommissionHubOwners for all hubs owned by the user and adds them
          to the user's profile in batches to handle gas limits efficiently
@@ -150,153 +210,16 @@ def _linkExistingHubs(_user: address, _profile: address):
                 break
             extcall profile_instance.addCommissionHub(hubs[i])
 
+# Optionally on behalf of another user
 @external
-def createProfile():
-    assert self.userAddressToProfile[msg.sender] == empty(address), "Profile already exists"
-    
-    # Create a new profile contract for the user
-    profile: address = create_minimal_proxy_to(self.profileTemplate)
-    profile_instance: Profile = Profile(profile)
-    
-    # Create a new profile social contract for the user
-    profile_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
-    profile_social_instance: ProfileSocial = ProfileSocial(profile_social)
-    
-    # Initialize the profile with the user as the owner
-    extcall profile_instance.initialize(msg.sender, profile_social)
-    
-    # Initialize the profile social with the user and profile
-    extcall profile_social_instance.initialize(msg.sender, profile)
-    
-    # Update our records
-    # TODO - actuall save the latest 10 even if we max out
-    if (self.userProfileCount < 1000):
-        self.latestUsers.append(msg.sender)
-    else:
-        self.latestUsers.pop()
-        self.latestUsers.append(msg.sender)
-
-    self.userAddressToProfile[msg.sender] = profile
-    self.userAddressToProfileSocial[msg.sender] = profile_social
-    self.userProfileCount += 1
-    
-    # Link any existing commission hubs from the ArtCommissionHubOwners
-    self._linkExistingHubs(msg.sender, profile)
-    
-    log ProfileCreated(user=msg.sender, profile=profile, social=profile_social)
+def createProfile(_owner: address = empty(address)):
+    owner: address = _owner
+    if (owner == empty(address)):
+        owner = msg.sender
+    self._createProfile(owner)
 
 @external
-def createProfileFor(_user: address) -> address:
-    """
-    @notice Creates a new profile for a specific user, only callable by the ArtCommissionHubOwners
-    @dev This enables automatic profile creation when a user gets a commission hub
-         but doesn't have a profile yet
-    @param _user The address of the user to create a profile for
-    @return The address of the newly created profile
-    """
-    # Only allow the ArtCommissionHubOwners to call this function
-    assert msg.sender == self.artCommissionHubOwners, "Only ArtCommissionHubOwners can call this function"
-    
-    # Ensure the user doesn't already have a profile
-    assert self.userAddressToProfile[_user] == empty(address), "Profile already exists"
-    
-    # Create a new profile contract for the user
-    profile: address = create_minimal_proxy_to(self.profileTemplate)
-    profile_instance: Profile = Profile(profile)
-    
-    # Create a new profile social contract for the user
-    profile_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
-    profile_social_instance: ProfileSocial = ProfileSocial(profile_social)
-    
-    # Initialize the profile with the specified user as the owner
-    extcall profile_instance.initialize(_user, profile_social)
-    
-    # Initialize the profile social with the user and profile
-    extcall profile_social_instance.initialize(_user, profile)
-    
-    # Update our records
-    if (self.userProfileCount < 1000):
-        self.latestUsers.append(_user)
-    else:
-        self.latestUsers.pop()
-        self.latestUsers.append(_user)
-
-    self.userAddressToProfile[_user] = profile
-    self.userAddressToProfileSocial[_user] = profile_social
-    self.userProfileCount += 1
-    
-    # Link any existing commission hubs from the ArtCommissionHubOwners
-    self._linkExistingHubs(_user, profile)
-    
-    log ProfileCreated(user=_user, profile=profile, social=profile_social)
-    
-    return profile
-
-@view
-@external
-def getProfile(_user: address) -> address:
-    return self.userAddressToProfile[_user]
-
-@view
-@external
-def getProfileSocial(_user: address) -> address:
-    return self.userAddressToProfileSocial[_user]
-
-@view
-@external
-def hasProfile(_user: address) -> bool:
-    return self.userAddressToProfile[_user] != empty(address)
-
-@external
-def updateProfileTemplateContract(_new_template: address):
-    assert msg.sender == self.owner, "Only owner can update template"
-    assert _new_template != empty(address), "Invalid template address"
-    
-    log ProfileTemplateUpdated(previous_template=self.profileTemplate, new_template=_new_template)
-    self.profileTemplate = _new_template
-
-@external
-def setArtCommissionHubOwners(_registry: address):
-    # Allow the owner or the owner registry itself to set this relationship
-    # This modification enables bidirectional connection setup from either side
-    assert msg.sender == self.owner or msg.sender == _registry, "Only owner or registry can set owner registry"
-    self.artCommissionHubOwners = _registry
-    log ArtCommissionHubOwnersSet(registry=_registry)
-    
-@view
-@external
-def getUserProfiles(_page_size: uint256, _page_number: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    
-    # Get total number of users
-    total_users: uint256 = len(self.latestUsers)
-    if total_users == 0:
-        return result
-    
-    # Check if the requested page is beyond the total number of users
-    if _page_size * _page_number >= total_users:
-        return result
-    
-    # Calculate start index from the end (most recent users)
-    start_idx: uint256 = total_users - 1 - (_page_number * _page_size)
-    
-    # Calculate how many items to return
-    items_to_return: uint256 = min(_page_size, start_idx + 1)
-    items_to_return = min(items_to_return, 100)  # Cap at DynArray size
-    
-    # Populate result array with profile addresses in reverse order
-    for i: uint256 in range(100):
-        if i >= items_to_return:
-            break
-        user_idx: uint256 = start_idx - i
-        user_address: address = self.latestUsers[user_idx]
-        profile_address: address = self.userAddressToProfile[user_address]
-        result.append(profile_address)
-    
-    return result
-
-@external
-def createNewArtPieceAndRegisterProfile(
+def createNewArtPieceAndRegisterProfileAndAttachToHub(
     _art_piece_template: address,
     _token_uri_data: Bytes[45000],
     _token_uri_data_format: String[10],
@@ -306,8 +229,9 @@ def createNewArtPieceAndRegisterProfile(
     _other_party: address,
     _commission_hub: address,
     _ai_generated: bool,
-    _linked_to_art_commission_hub_chain_id: uint256,
-    _linked_to_art_commission_hub_address: address
+    _linked_to_art_commission_hub_chain_id: uint256,  # use generic addresses for generic entry
+    _linked_to_art_commission_hub_address: address,
+    _linked_to_art_commission_hub_token_id_or_generic_hub_account: uint256
 ) -> (address, address):
     """
     @notice Creates a new profile for the caller if needed, then creates a new art piece
@@ -318,55 +242,45 @@ def createNewArtPieceAndRegisterProfile(
     @param _description The description of the art piece
     @param _is_artist Whether the caller is the artist
     @param _other_party The address of the other party (artist or commissioner)
-    @param _commission_hub The commission hub address
+    @param _commission_hub The art commission hub address, or empty address if you want to create a new one
     @param _ai_generated Whether the art is AI generated
     @param _linked_to_art_commission_hub_chain_id The chain ID of the ArtCommissionHub this piece is linked to
     @param _linked_to_art_commission_hub_address The address of the ArtCommissionHub this piece is linked to
         ** Note - if Address is 
     @return Tuple of (profile_address, art_piece_address)
+    @dev When creating a generic hub (not tied to an NFT), you'd use:
+        _linked_to_art_commission_hub_address = GENERIC_ART_COMMISSION_HUB_CONTRACT (which is the constant address 0x1000000000000000000000000000000000000001)
+        _linked_to_art_commission_hub_chain_id = 1 (or whatever chain ID is appropriate for generic hubs)
     """
-    # Check if the user already has a profile
-    assert self.userAddressToProfile[msg.sender] == empty(address), "Profile already exists"
-    
-    # Create a new profile
-    profile: address = create_minimal_proxy_to(self.profileTemplate)
-    profile_instance: Profile = Profile(profile)
-    
-    # Create a new profile social contract for the user
-    profile_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
-    profile_social_instance: ProfileSocial = ProfileSocial(profile_social)
-    
-    # Initialize the profile
-    extcall profile_instance.initialize(msg.sender, profile_social)
-    
-    # Initialize the profile social with the user and profile
-    extcall profile_social_instance.initialize(msg.sender, profile)
-    
+
+    # Create profile
+    profile: address = empty(address)
+    profile_social: address = empty(address)
+    (profile, profile_social) = self._createProfile(msg.sender)
+
     # If there is no commission hub address AND we have details to create one, do so
     if empty(address) == _commission_hub:
         # Create a new commission hub
         commission_hub: address = create_minimal_proxy_to(self.commissionHubTemplate)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
-        extcall commission_hub_instance.initialize(_linked_to_art_commission_hub_chain_id, _linked_to_art_commission_hub_address)
 
+        # /initialize as either generic hub for individual account or NFT hub
+        if _linked_to_art_commission_hub_address == GENERIC_ART_COMMISSION_HUB_CONTRACT:
+            nft_token_id_or_generic_hub_account: uint256 = convert(msg.sender, uint256)
+            extcall commission_hub_instance.initializeForArtCommissionHub(
+                GENERIC_ART_COMMISSION_HUB_CHAIN_ID, 
+                GENERIC_ART_COMMISSION_HUB_CONTRACT, 
+                nft_token_id_or_generic_hub_account
+                )
+        else:
+            extcall commission_hub_instance.initializeForArtCommissionHub(
+                _linked_to_art_commission_hub_chain_id, 
+                _linked_to_art_commission_hub_address, 
+                _linked_to_art_commission_hub_token_id_or_generic_hub_account
+                )
 
-    # Submit profile recort to latest... 
-    # # Update profile records
-    # if (self.userProfileCount < 1000):
-    #     self.latestUsers.append(msg.sender)
-    # else:
-    #     self.latestUsers.pop()
-    #     self.latestUsers.append(msg.sender)
-
-    self.userAddressToProfile[msg.sender] = profile
-    self.userProfileCount += 1
-    
-    # Link any existing commission hubs from the ArtCommissionHubOwners
-    self._linkExistingHubs(msg.sender, profile)
-    
-    log ProfileCreated(user=msg.sender, profile=profile, social=profile_social)
-    
     # Create the art piece on the profile
+    profile_instance: Profile = Profile(profile)
     art_piece: address = extcall profile_instance.createArtPiece(
         _art_piece_template,
         _token_uri_data,
@@ -380,23 +294,11 @@ def createNewArtPieceAndRegisterProfile(
     )
     
     log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
-    
     # Explicitly create and return the tuple
     return (profile, art_piece)
 
-@view
 @external
-def getLatestUserAtIndex(_index: uint256) -> address:
-    """
-    @notice Debug function to get a user address at a specific index from the latestUsers array
-    @param _index The index to get the user address from
-    @return The user address at the specified index
-    """
-    assert _index < len(self.latestUsers), "Index out of bounds"
-    return self.latestUsers[_index]
-
-@external
-def createArtPieceForParty(
+def createProfilesAndArtPieceWithBothProfilesLinked(
     _art_piece_template: address,
     _token_uri_data: Bytes[45000],
     _token_uri_data_format: String[10],
@@ -430,75 +332,15 @@ def createArtPieceForParty(
     assert _other_party != empty(address), "Other party address cannot be empty"
     assert _other_party != msg.sender, "Cannot create art piece for yourself"
     
-    # Check if the caller has a profile, create one if not
-    caller_profile: address = self.userAddressToProfile[msg.sender]
-    if caller_profile == empty(address):
-        # Create a new profile for the caller
-        caller_profile = create_minimal_proxy_to(self.profileTemplate)
-        caller_profile_instance: Profile = Profile(caller_profile)
-        
-        # Create a new profile social contract for the caller
-        caller_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
-        caller_social_instance: ProfileSocial = ProfileSocial(caller_social)
-        
-        # Initialize the profile with the caller as the owner
-        extcall caller_profile_instance.initialize(msg.sender, caller_social)
-        
-        # Initialize the profile social with the caller and profile
-        extcall caller_social_instance.initialize(msg.sender, caller_profile)
-        
-        # Update our records
-        if (self.userProfileCount < 1000):
-            self.latestUsers.append(msg.sender)
-        else:
-            self.latestUsers.pop()
-            self.latestUsers.append(msg.sender)
-
-        self.userAddressToProfile[msg.sender] = caller_profile
-        self.userProfileCount += 1
-        
-        # Link any existing commission hubs from the ArtCommissionHubOwners
-        self._linkExistingHubs(msg.sender, caller_profile)
-        
-        log ProfileCreated(user=msg.sender, profile=caller_profile, social=caller_social)
-    
-    # Check if the other party has a profile, create one if not
-    other_profile: address = self.userAddressToProfile[_other_party]
-    if other_profile == empty(address):
-        # Create a new profile for the other party
-        other_profile = create_minimal_proxy_to(self.profileTemplate)
-        other_profile_instance: Profile = Profile(other_profile)
-        
-        # Create a new profile social contract for the other party
-        other_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
-        other_social_instance: ProfileSocial = ProfileSocial(other_social)
-        
-        # Initialize the profile with the other party as the owner
-        extcall other_profile_instance.initialize(_other_party, other_social)
-        
-        # Initialize the profile social with the other party and profile
-        extcall other_social_instance.initialize(_other_party, other_profile)
-        
-        # Update our records
-        if (self.userProfileCount < 1000):
-            self.latestUsers.append(_other_party)
-        else:
-            self.latestUsers.pop()
-            self.latestUsers.append(_other_party)
-
-        self.userAddressToProfile[_other_party] = other_profile
-        self.userProfileCount += 1
-        
-        # Link any existing commission hubs from the ArtCommissionHubOwners
-        self._linkExistingHubs(_other_party, other_profile)
-        
-        log ProfileCreated(user=_other_party, profile=other_profile, social=other_social)
-    
-    # Get the profile instances
-    caller_profile_instance: Profile = Profile(caller_profile)
-    other_profile_instance: Profile = Profile(other_profile)
+    caller_profile: address = empty(address)
+    caller_profile_social: address = empty(address)
+    other_profile: address = empty(address)
+    other_profile_social: address = empty(address)
+    (caller_profile, caller_profile_social) = self._createProfile(msg.sender)
+    (other_profile, other_profile_social) = self._createProfile(_other_party)
     
     # Create the art piece on the caller's profile
+    caller_profile_instance: Profile = Profile(caller_profile)
     art_piece: address = extcall caller_profile_instance.createArtPiece(
         _art_piece_template,
         _token_uri_data,
@@ -512,9 +354,12 @@ def createArtPieceForParty(
     )
     
     log ArtPieceCreated(profile=caller_profile, art_piece=art_piece, user=msg.sender)
-    log ArtPieceCreatedForParty(creator=msg.sender, other_party=_other_party, art_piece=art_piece, is_artist=_is_artist)
+    log ArtPieceCreatedForOtherParty(creator=msg.sender, other_party=_other_party, art_piece=art_piece, is_artist=_is_artist)
     
+    # NOTE: all these are called on the other_profile_instance which might have been recently created
+    # and not have any of these set
     # Check if the other party has blacklisted the caller
+    other_profile_instance: Profile = Profile(other_profile)
     if staticcall other_profile_instance.blacklist(msg.sender):
         # Just return without adding to unverified commissions
         # This silently fails to add to unverified commissions, but the art piece is still created
@@ -529,165 +374,25 @@ def createArtPieceForParty(
     
     return (caller_profile, other_profile, art_piece, _commission_hub)
 
-@view
 @external
-def getRandomProfiles(_count: uint256, _seed: uint256) -> DynArray[address, 20]:
-    """
-    @notice Returns a set of random user profiles for discovery
-    @dev Uses the provided seed combined with block timestamp for randomness
-    @param _count The number of random profiles to return (capped at 20)
-    @param _seed A seed value to influence the randomness
-    @return A list of random profile addresses
-    """
-    result: DynArray[address, 20] = []
-    
-    # Early return if no profiles
-    if self.userProfileCount == 0:
-        return result
-    
-    # Get the latest users array length
-    latest_users_len: uint256 = len(self.latestUsers)
-    if latest_users_len == 0:
-        return result
-    
-    # Cap the count at 20 or the total number of users, whichever is smaller
-    count: uint256 = min(min(_count, latest_users_len), 20)
-    
-    # Use a simple pseudo-random approach
-    random_seed: uint256 = block.timestamp + _seed
-    
-    # Track indices we've already used with a simple array search
-    for i: uint256 in range(20):  # Fixed bound as required by Vyper
-        if i >= count:
-            break
-        
-        # Generate a random index
-        random_index: uint256 = (random_seed + i * 17) % latest_users_len
-        user_address: address = self.latestUsers[random_index]
-        
-        # Check if this profile is already in our result
-        already_added: bool = False
-        for j: uint256 in range(20):
-            if j >= i:  # Only check up to our current position in the result array
-                break
-            if result[j] == user_address:
-                already_added = True
-                break
-        
-        # If not already added, add it and its profile
-        if not already_added:
-            profile_address: address = self.userAddressToProfile[user_address]
-            if profile_address != empty(address):
-                result.append(profile_address)
-    
-    return result
+def linkExistingHubs(_user: address, _profile: address):
+    self._linkExistingHubs(_user, _profile)
 
-@view
 @external
-def getProfilesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 20]:
-    """
-    @notice Returns a paginated list of profiles using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _offset The starting index in the users array
-    @param _count The number of profiles to return (capped at 20)
-    @return A list of profile addresses
-    """
-    result: DynArray[address, 20] = []
-    
-    # Get the latest users array length
-    latest_users_len: uint256 = len(self.latestUsers)
-    if latest_users_len == 0 or _offset >= latest_users_len:
-        return result
-    
-    # Calculate how many items to return
-    available_items: uint256 = latest_users_len - _offset
-    count: uint256 = min(min(_count, available_items), 20)
-    
-    # Populate result array
-    for i: uint256 in range(20):
-        if i >= count:
-            break
-        user_address: address = self.latestUsers[_offset + i]
-        profile_address: address = self.userAddressToProfile[user_address]
-        if profile_address != empty(address):
-            result.append(profile_address)
-    
-    return result
+def linkArtCommissionHubOwnersContract(_art_commission_hub_owners: address):
+    # Allow the owner or the owner registry itself to set this relationship
+    # This modification enables bidirectional connection setup from either side
+    assert msg.sender == self.owner or msg.sender == _art_commission_hub_owners, "Only owner or registry can set owner registry"
+    self.artCommissionHubOwners = _art_commission_hub_owners
+    log ArtCommissionHubOwnersSet(registry=_art_commission_hub_owners)
 
-@view
 @external
-def getLatestProfiles(_count: uint256) -> DynArray[address, 20]:
-    """
-    @notice Returns the most recently created profiles
-    @dev Returns profiles from the end of the latestUsers array (most recently added)
-    @param _count The number of recent profiles to retrieve
-    @return Array of recent profile addresses, up to 20
-    """
-    result: DynArray[address, 20] = []
+def updateProfileTemplateContract(_new_template: address):
+    assert msg.sender == self.owner, "Only owner can update template"
+    assert _new_template != empty(address), "Invalid template address"
     
-    # Get the latest users array length
-    latest_users_len: uint256 = len(self.latestUsers)
-    if latest_users_len == 0:
-        return result
-    
-    # Calculate how many items to return, capped by array size and max return size
-    count: uint256 = min(min(_count, latest_users_len), 20)
-    
-    # Start from the end of the array (most recent)
-    for i: uint256 in range(20):
-        if i >= count:
-            break
-        
-        # Get user from the end of the array (most recent first)
-        idx: uint256 = latest_users_len - 1 - i
-        user_address: address = self.latestUsers[idx]
-        
-        # Get the profile address
-        profile_address: address = self.userAddressToProfile[user_address]
-        if profile_address != empty(address):
-            result.append(profile_address)
-    
-    return result
-
-@view
-@external
-def getLatestProfilesPaginated(_page: uint256, _page_size: uint256) -> DynArray[address, 20]:
-    """
-    @notice Returns a paginated list of the most recently created profiles
-    @dev Provides efficient pagination for frontend queries
-    @param _page The page number (0-indexed)
-    @param _page_size The number of profiles per page
-    @return Array of profile addresses, up to 20 per page
-    """
-    result: DynArray[address, 20] = []
-    
-    # Get the latest users array length
-    latest_users_len: uint256 = len(self.latestUsers)
-    if latest_users_len == 0 or _page * _page_size >= latest_users_len:
-        return result
-    
-    # Calculate start index from the end of the array
-    start_idx: uint256 = latest_users_len - 1 - (_page * _page_size)
-    
-    # Calculate how many items to return, capped by array size and max return size
-    count: uint256 = min(min(_page_size, start_idx + 1), 20)
-    
-    # Populate result array in reverse order (newest first)
-    for i: uint256 in range(20):
-        if i >= count:
-            break
-        
-        # Check bounds to prevent underflow
-        if start_idx >= i:
-            idx: uint256 = start_idx - i
-            user_address: address = self.latestUsers[idx]
-            
-            # Get the profile address
-            profile_address: address = self.userAddressToProfile[user_address]
-            if profile_address != empty(address):
-                result.append(profile_address)
-    
-    return result
+    log ProfileTemplateUpdated(previous_template=self.profileTemplate, new_template=_new_template)
+    self.profileTemplate = _new_template
 
 @external
 def updateProfileSocialTemplateContract(_new_template: address):
@@ -700,3 +405,179 @@ def updateProfileSocialTemplateContract(_new_template: address):
     
     log ProfileSocialTemplateUpdated(previous_template=self.profileSocialTemplate, new_template=_new_template)
     self.profileSocialTemplate = _new_template
+
+# Store active users with commissions so that spamming new accounts with
+# no commissions doesn't show up on the homepage
+@external 
+def addActiveUserProfile(_user: address):
+    if (self.activeUsersWithCommissionsRegistry[_user]):
+        self.activeUsersWithCommissions.append(_user)
+        self.activeUsersWithCommissionsCount += 1
+        self.activeUsersWithCommissionsRegistry[_user] = True
+        log ActiveUserProfileAdded(user=_user)
+
+@external
+@view
+def getProfile(_user: address) -> address:
+    return self.userAddressToProfile[_user]
+
+@external
+@view
+def getProfileSocial(_user: address) -> address:
+    return self.userAddressToProfileSocial[_user]
+
+@external
+@view
+def hasProfile(_user: address) -> bool:
+    return self.userAddressToProfile[_user] != empty(address)
+
+@external
+@view
+def getLatestUserProfiles() -> address[100]:
+    user_profiles: address[100] = empty(address[100])
+    
+    # Cap at total number of users or array size
+    count: uint256 = min(self.allUsersProfileCount, 100)
+    if count == 0:
+        return user_profiles
+        
+    # Calculate the starting index (oldest entry in the circular buffer)
+    start_index: uint256 = 0
+
+    # If we wrapped around, start at the position after the most recently added user
+    if self.allUsersProfileCount > 100:
+        start_index = (self.allUsersProfileCount % 100)
+    
+    # Copy users in chronological order (oldest to newest)
+    for i: uint256 in range(100):
+        if i >= count:
+            break
+        # Calculate current position in the circular buffer
+        pos: uint256 = (start_index + i) % 100
+        user_profiles[i] = self.latestUsers[pos]
+    return user_profiles
+
+@external
+@view
+def getActiveUserProfileAtIndex(_index: uint256) -> address:
+    assert _index < self.activeUsersWithCommissionsCount, "Index out of bounds"
+    return self.activeUsersWithCommissions[_index]
+
+@external
+@view
+def getRandomActiveUserProfiles(_count: uint256, _seed: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns a set of random user profiles for discovery
+    @dev Uses the provided seed combined with block timestamp for randomness
+    @param _count The number of random profiles to return (capped at 20)
+    @param _seed A seed value to influence the randomness
+    @return A list of random profile addresses
+    """
+    result: DynArray[address, 20] = []
+    
+    # Early return if no profiles
+    if self.allUsersProfileCount == 0:
+        return result
+    
+    # Get the latest users array length
+    if self.activeUsersWithCommissionsCount == 0:
+        return result
+    
+    # Cap the count at 20 or the total number of users, whichever is smaller
+    count: uint256 = min(min(_count, self.activeUsersWithCommissionsCount), 20)
+    
+    # Use a simple pseudo-random approach
+    random_seed: uint256 = block.timestamp + _seed
+    
+    # Track indices we've already used with a simple array search
+    for i: uint256 in range(20):  # Fixed bound as required by Vyper
+        if i >= count:
+            break
+        
+        # Generate a random index
+        random_index: uint256 = (random_seed + i * 17) % self.activeUsersWithCommissionsCount
+        user_address: address = self.activeUsersWithCommissions[random_index]
+        
+        # Check if this profile address is already in our result
+        already_added: bool = False
+        for j: uint256 in range(20):
+            if j >= i:  # Only check up to our current position in the result array
+                break
+            if result[j] == self.userAddressToProfile[user_address]:
+                already_added = True
+                break
+        
+        # If not already added, add it and its profile
+        if not already_added:
+            profile_address: address = self.userAddressToProfile[user_address]
+            if profile_address != empty(address):
+                result.append(profile_address)
+    
+    return result
+
+@external
+@view
+def getActiveUserProfilesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns a paginated list of profiles using offset-based pagination
+    @dev This allows the UI to implement its own randomization by fetching different pages
+    @param _offset The starting index in the users array
+    @param _count The number of profiles to return (capped at 20)
+    @return A list of profile addresses
+    """
+    result: DynArray[address, 20] = []
+    
+    # Check if there are active users with commissions and if the offset is within bounds
+    if self.activeUsersWithCommissionsCount == 0 or _offset >= self.activeUsersWithCommissionsCount:
+        return result
+    
+    # Calculate how many items are available after the given offset
+    available_items: uint256 = self.activeUsersWithCommissionsCount - _offset
+    # Determine the number of items to return, capped at 20, available items, or requested count
+    count: uint256 = min(min(_count, available_items), 20)
+    
+    # Populate the result array with profile addresses
+    for i: uint256 in range(20):
+        if i >= count:
+            break
+        # Retrieve the user address from the active users array
+        user_address: address = self.activeUsersWithCommissions[_offset + i]
+        # Map the user address to its corresponding profile address
+        profile_address: address = self.userAddressToProfile[user_address]
+        # Only include valid (non-empty) profile addresses in the result
+        if profile_address != empty(address):
+            result.append(profile_address)
+    
+    return result
+
+@external
+@view
+def getLatestActiveUserProfiles(_count: uint256) -> DynArray[address, 20]:
+    """
+    @notice Returns the most recently active profiles
+    @dev Returns profiles from the end of the activeUsersWithCommissions array (most recently active)
+    @param _count The number of recent profiles to retrieve
+    @return Array of recent profile addresses, up to 20
+    """
+    result: DynArray[address, 20] = []
+    if self.activeUsersWithCommissionsCount == 0:
+        return result
+    
+    # Calculate how many items to return, capped by array size and max return size
+    count: uint256 = min(min(_count, self.activeUsersWithCommissionsCount), 20)
+    
+    # Start from the end of the array (most recent first)
+    for i: uint256 in range(20):
+        if i >= count:
+            break
+        
+        # Get user from the end of the activeUsersWithCommissions array
+        idx: uint256 = self.activeUsersWithCommissionsCount - 1 - i
+        user_address: address = self.activeUsersWithCommissions[idx]
+        
+        # Get the profile address
+        profile_address: address = self.userAddressToProfile[user_address]
+        if profile_address != empty(address):
+            result.append(profile_address)
+    
+    return result

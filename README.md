@@ -43,7 +43,7 @@ The ProfileFactoryAndRegistry contract serves as the central entry point for use
 
 ```python
 # Create a profile and art piece in one transaction
-profile_address, art_piece_address = profile_factory_and_regsitry.createNewArtPieceAndRegisterProfile(
+profile_address, art_piece_address = profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
     art_piece_template.address,
     image_data,
     title,

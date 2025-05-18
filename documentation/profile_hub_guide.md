@@ -42,7 +42,7 @@ Artists can upload their first portfolio piece and create their profile simultan
 
 ### Technical Details
 
-Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile` method on the ProfileFactoryAndRegistry contract, which:
+Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfileAndAttachToHub` method on the ProfileFactoryAndRegistry contract, which:
 
 - Verifies you don't already have a profile
 - Creates a new Profile contract instance for you
@@ -65,10 +65,10 @@ Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile
 
 ### For Developers
 
-The `createNewArtPieceAndRegisterProfile` function in the ProfileFactoryAndRegistry contract accepts these parameters:
+The `createNewArtPieceAndRegisterProfileAndAttachToHub` function in the ProfileFactoryAndRegistry contract accepts these parameters:
 
 ```solidity
-function createNewArtPieceAndRegisterProfile(
+function createNewArtPieceAndRegisterProfileAndAttachToHub(
     address _art_piece_template,
     bytes _image_data,
     string _title,
