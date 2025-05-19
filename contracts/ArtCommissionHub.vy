@@ -204,7 +204,7 @@ def submitCommission(_art_piece: address):
     assert not self.isBurned, "Art piece has been burned"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isApprovedArtPieceAddress(_art_piece), "Not allowed to update.  Unknwon art type"
-    assert staticcall ArtPiece(_art_piece).isFullyVerifiedCommission(), "Art piece is not fully between Artist and Commissioner"
+    assert staticcall ArtPiece(_art_piece).isFullyVerifiedCommission(), "Art piece is not fully linked between Artist and Commissioner"
     
     # assert not already submitted or blacklisted artist or commissioner
     assert not self.verifiedArtCommissionsRegistry[_art_piece], "Art piece already verified"

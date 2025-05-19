@@ -15,7 +15,7 @@
 
 interface Profile:
     def deployer() -> address: view
-    def initialize(_owner: address, _profile_social: address): nonpayable
+    def initialize(_owner: address, _profile_social: address, _is_artist: bool): nonpayable
     def createArtPiece(
         _art_piece_template: address, 
         _token_uri_data: Bytes[45000], 
@@ -123,7 +123,7 @@ def _addNewUserAndProfileAndSocial(_user: address, _profile: address, _social: a
 # Its true, anyone can create a profile for anyone else!
 # returns the profile and profile social addresses
 @internal
-def _createProfile(_new_profile_address: address) -> (address, address):
+def _createProfile(_new_profile_address: address, _is_artist: bool = False) -> (address, address):
     # Check if the caller has a profile, create one if not
     assert _new_profile_address != empty(address), "Invalid profile address"
     caller_profile: address = self.userAddressToProfile[_new_profile_address]
@@ -142,7 +142,7 @@ def _createProfile(_new_profile_address: address) -> (address, address):
         caller_profile_social_instance = ProfileSocial(caller_social)
         
         # Initialize the profile with the caller as the owner
-        extcall caller_profile_instance.initialize(_new_profile_address, caller_social)
+        extcall caller_profile_instance.initialize(_new_profile_address, caller_social, _is_artist)
         extcall caller_profile_social_instance.initialize(_new_profile_address, caller_profile)
         
         self._addNewUserAndProfileAndSocial(_new_profile_address, caller_profile, caller_social)
@@ -410,7 +410,7 @@ def updateProfileSocialTemplateContract(_new_template: address):
 # no commissions doesn't show up on the homepage
 @external 
 def addActiveUserProfile(_user: address):
-    if (self.activeUsersWithCommissionsRegistry[_user]):
+    if not self.activeUsersWithCommissionsRegistry[_user]:
         self.activeUsersWithCommissions.append(_user)
         self.activeUsersWithCommissionsCount += 1
         self.activeUsersWithCommissionsRegistry[_user] = True
