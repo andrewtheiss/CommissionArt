@@ -191,11 +191,17 @@ def setProfileImage(_profile_image: address):
 
 # linkArtPieceAsMyCommission
 # -------------
-# Links a myCommission to this profile, always to the myUnverified list until both parties verify it
+# Links a art piece to this profile, always to the myUnverified list until both parties verify it
 # Use case:
-# - If the profile is an artist, this is a piece of work they created for someone else (they are the artist).
+# - If the profile is an artist, this is a piece of work they draw/paint/etc for someone else (they are the artist).
 # - If the profile is a non-artist (commissioner/curator), this is a piece of work they commissioned from an artist (they are the client).
 # - The contract records the user's role at the time of upload in myCommissionRole.
+# Linked pieces have the following preconditions:
+# - The piece must not be a private/non-commission piece (commissioner == artist)
+# - The piece must be owned by the profile owner, profile factory, artist ,or artist/commissioner profile
+# - The piece must be a commission (commissioner != artist)
+# - The piece cannot be on the blacklist
+# - The piece CAN bypass permissions if on the whitelist
 #
 @external
 def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
@@ -253,7 +259,7 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     if is_verified_by_both:
         self.myCommissions.append(_art_piece)
         self.myCommissionCount += 1
-        self.myCommissionRole[_art_piece] = self.isArtist
+        self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
         self.myCommissionExists[_art_piece] = True
         log CommissionLinked(profile=self, art_piece=_art_piece, is_artist=self.isArtist)
 
@@ -269,7 +275,7 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
         # Add to myUnverified list
         self.myUnverifiedCommissions.append(_art_piece)
         self.myUnverifiedCommissionCount += 1
-        self.myCommissionRole[_art_piece] = self.isArtist
+        self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
         self.myUnverifiedCommissionsExists[_art_piece] = True
         log UnverifiedCommissionLinked(profile=self, art_piece=_art_piece)
 
@@ -402,6 +408,17 @@ def removeArtLinkToMyCommission(_my_commission: address):
 
     # See if this is already a verified commission or linked as verified
     assert self.myCommissionExists[_my_commission] or self.myUnverifiedCommissionsExists[_my_commission], "No commission to unlink"
+    
+    
+    # art_piece: ArtPiece = ArtPiece(_art_piece)
+    # effective_owner: address = staticcall art_piece.getOwner()
+    # art_artist: address = staticcall art_piece.getArtist()
+    # commissioner: address = staticcall art_piece.getCommissioner()
+    # is_potential_commission: bool = commissioner != art_artist
+    
+    # # Check who the sender is  
+    # is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner
+
     art_piece: ArtPiece = ArtPiece(_my_commission)
 
     # Get the art piece details to check permissions
@@ -703,13 +720,12 @@ def addArtPiece(_art_piece: address):
     
     # Get the art piece owner and artist
     art_piece: ArtPiece = ArtPiece(_art_piece)
-    effective_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
     is_myCommission: bool = staticcall art_piece.isFullyVerifiedCommission()
     
     # Verify the profile owner is either the art piece owner or artist
-    assert self.owner == effective_owner or self.owner == art_artist, "Can only add art you own or created"
+    assert self.owner == art_artist or self.owner == commissioner, "Can only add art you own or created"
     
     # First, add to myArt if not already there
     if _art_piece not in self.myArt:
