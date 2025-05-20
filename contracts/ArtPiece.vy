@@ -675,3 +675,5 @@ def isFullyVerifiedCommission() -> bool:
 @view
 def getProfileFactoryAndRegistry() -> address:
     return self.profileFactoryAndRegistry
+
+

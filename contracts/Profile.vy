@@ -16,6 +16,7 @@
 event CommissionLinked:
     profile: indexed(address)
     art_piece: indexed(address)
+    is_artist: bool
 
 event UnverifiedCommissionLinked:
     profile: indexed(address)
@@ -285,7 +286,7 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
     """
     @notice Verifies half of a myCommission piece (either as artist or as commissioner) based on the profile owner's role
     @dev Only the profile owner can call this
-    @param _myCommission_art_piece The address of the myCommission art piece to verify
+    @param _art_piece The address of the myCommission art piece to verify
     """
     assert msg.sender == self.owner, "Only profile owner can verify myCommission"
     assert self.myUnverifiedCommissionsExists[_art_piece], "Unverified myCommission not found"
@@ -385,8 +386,7 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
 # Use case:
 # - If a myCommission is no longer relevant, or was added in error, it can be removed.
 # - This also removes the recorded role for that myCommission.
-# Example:
-# - Alice accidentally adds the wrong myCommission: removeCommission(myCommissionAddress).
+# - If you remove a commission from your myCommissions list, it will REMOVE itself ONLY from unverified ArtCommissionHubs
 #
 @external
 def removeArtLinkToMyCommission(_my_commission: address):
@@ -397,13 +397,12 @@ def removeArtLinkToMyCommission(_my_commission: address):
          - self.profileFactoryAndRegistry: The ProfileFactoryAndRegistry contract can remove myCommissions on behalf of users
          - Art piece artist: Can remove myUnverified myCommissions they created
          - ArtCommissionHub owner: Can remove myCommissions from the hub
-    @param _myCommission The address of the myCommission to remove
+    @param _my_commission The address of the myCommission to remove
     """
 
     # See if this is already a verified commission or linked as verified
     assert self.myCommissionExists[_my_commission] or self.myUnverifiedCommissionsExists[_my_commission], "No commission to unlink"
     art_piece: ArtPiece = ArtPiece(_my_commission)
-    
 
     # Get the art piece details to check permissions
     art_artist: address = staticcall art_piece.getArtist()
@@ -411,71 +410,33 @@ def removeArtLinkToMyCommission(_my_commission: address):
     
     is_art_artist: bool = msg.sender == art_artist
     is_commissioner: bool = msg.sender == commissioner
-    
-    # Check if sender is the hub
     is_profile_factory_and_registry: bool = msg.sender == self.profileFactoryAndRegistry
     
-    # Check if sender is the artist of the art piece
-    
-    # Check if sender is the owner of the myCommission hub
-    is_my_commission_hub_owner: bool = False
-    if _my_commission != empty(address):
-        commission_hub_interface: ArtCommissionHub = ArtCommissionHub(myCommission_hub)
-        hub_owner: address = staticcall commission_hub_interface.owner()
-        is_my_commission_hub_owner = (hub_owner == msg.sender)
-    
-    # First check if the myCommission is in the verified list
-    found_verified: bool = False
-    verified_index: uint256 = 0
-    
-    for i: uint256 in range(0, len(self.myCommissions), bound=1000):
-        if i >= len(self.myCommissions):
-            break
-        if self.myCommissions[i] == _myCommission:
-            verified_index = i
-            found_verified = True
-            break
-    
-    # Then check if it's in the myUnverified list
-    found_myUnverified: bool = False
-    myUnverified_index: uint256 = 0
-    
-    for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=1000):
-        if i >= len(self.myUnverifiedCommissions):
-            break
-        if self.myUnverifiedCommissions[i] == _myCommission:
-            myUnverified_index = i
-            found_myUnverified = True
-            break
-    
-    # Verify permissions based on which list the myCommission is in
-    if found_verified:
-        # For verified myCommissions, only profile owner, hub, or myCommission hub owner can remove
-        assert is_profile_owner or is_profile_factory_and_registry or is_my_commission_hub_owner, "No permission to remove verified myCommission"
-        
-        # Remove from verified list
-        if verified_index < len(self.myCommissions) - 1:
-            last_item: address = self.myCommissions[len(self.myCommissions) - 1]
-            self.myCommissions[verified_index] = last_item
-        self.myCommissions.pop()
-        self.myCommissionCount -= 1
-        
-    elif found_myUnverified:
-        # For myUnverified myCommissions, profile owner, hub, art artist, or myCommission hub owner can remove
-        assert is_profile_owner or is_profile_factory_and_registry or is_art_artist or is_my_commission_hub_owner, "No permission to remove myUnverified myCommission"
-        
-        # Remove from myUnverified list
-        if myUnverified_index < len(self.myUnverifiedCommissions) - 1:
-            last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
-            self.myUnverifiedCommissions[myUnverified_index] = last_item
-        self.myUnverifiedCommissions.pop()
-        self.myUnverifiedCommissionCount -= 1
-        
-    else:
-        assert False, "Commission not found"
-    
-    # Clear role data (optional)
-    self.myCommissionRole[_myCommission] = False
+    # Check if unverified.  If so, its not in any ArtCommissionHubs
+    if (self.myUnverifiedCommissionsExists[_my_commission]):
+        for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=10000):
+            if i >= self.myUnverifiedCommissionCount:
+                break
+            if self.myUnverifiedCommissions[i] == _my_commission:
+                last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
+                self.myUnverifiedCommissions[i] = last_item
+                self.myUnverifiedCommissions.pop()
+                self.myUnverifiedCommissionCount -= 1
+                break
+        self.myUnverifiedCommissionsExists[_my_commission] = False
+
+    elif (self.myCommissionExists[_my_commission]):
+        for i: uint256 in range(0, len(self.myCommissions), bound=10000):
+            if i >= self.myCommissionCount:
+                break
+            if self.myCommissions[i] == _my_commission:
+                last_item: address = self.myCommissions[len(self.myCommissions) - 1]
+                self.myCommissions[i] = last_item
+                self.myCommissions.pop()
+                self.myCommissionCount -= 1
+                break
+        self.myCommissionExists[_my_commission] = False
+
 
 #
 # getCommissions
@@ -1262,17 +1223,17 @@ def getCommissionHubsByOffset(_offset: uint256, _count: uint256) -> DynArray[add
     return result
 
 @external
-def updateCommissionVerificationStatus(_myCommission_art_piece: address):
+def updateCommissionVerificationStatus(_commission_art_piece: address):
     """
     @notice Updates the verification status of a myCommission in this profile
     @dev Access control:
          - self.owner: The owner of the profile can update verification status
          - The commissioner or artist of the art piece can update status
          - The hub owner can update status
-    @param _myCommission_art_piece The address of the myCommission art piece
+    @param _commission_art_piece The address of the myCommission art piece
     """
     # Get the art piece details
-    art_piece: ArtPiece = ArtPiece(_myCommission_art_piece)
+    art_piece: ArtPiece = ArtPiece(_commission_art_piece)
     effective_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
@@ -1312,7 +1273,7 @@ def updateCommissionVerificationStatus(_myCommission_art_piece: address):
         for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=1000):
             if i >= len(self.myUnverifiedCommissions):
                 break
-            if self.myUnverifiedCommissions[i] == _myCommission_art_piece:
+            if self.myUnverifiedCommissions[i] == _commission_art_piece:
                 myUnverified_index = i
                 found_myUnverified = True
                 break
@@ -1326,13 +1287,13 @@ def updateCommissionVerificationStatus(_myCommission_art_piece: address):
             self.myUnverifiedCommissionCount -= 1
             
             # Add to verified list if not already there
-            if _myCommission_art_piece not in self.myCommissions:
-                self.myCommissions.append(_myCommission_art_piece)
+            if _commission_art_piece not in self.myCommissions:
+                self.myCommissions.append(_commission_art_piece)
                 self.myCommissionCount += 1
         
         # If this profile owner is the commissioner, also add to myArt if not already there
-        if is_commissioner and _myCommission_art_piece not in self.myArt:
-            self.myArt.append(_myCommission_art_piece)
+        if is_commissioner and _commission_art_piece not in self.myArt:
+            self.myArt.append(_commission_art_piece)
             self.myArtCount += 1
 
 # NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.
