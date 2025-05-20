@@ -581,3 +581,8 @@ def getLatestActiveUserProfiles(_count: uint256) -> DynArray[address, 20]:
             result.append(profile_address)
     
     return result
+
+@external
+@view
+def getOwner() -> address:
+    return self.owner

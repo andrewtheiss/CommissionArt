@@ -39,7 +39,6 @@ PAGE_SIZE: constant(uint256) = 20
 MAX_ITEMS: constant(uint256) = 10**8  # unified max length for all item lists (adjusted if needed to original limits)
 
 # Owner of the profile (user address)
-#deployer: public(address)  # New variable to store the deployer's address
 profileFactoryAndRegistry: public(address)  # Address of the hub that created this profile
 owner: public(address)
 profileImage: public(address)  # Changed from Bytes[45000] to address
@@ -81,10 +80,13 @@ isArtist: public(bool)
 interface ProfileFactoryAndRegistry:
     def artCommissionHubOwners() -> address: view
     def getProfile(_owner: address) -> address: view
+    def getOwner() -> address: view
 
 # Interface for Profile (for cross-profile calls)
 interface Profile:
     def updateCommissionVerificationStatus(_commission_art_piece: address): nonpayable
+    def getOwner() -> address: view
+    def linkArtPieceAsMyCommission(_art_piece: address) -> bool: nonpayable
 
 # Interface for ArtPiece contract - updated with new verification methods
 interface ArtPiece:
@@ -92,7 +94,7 @@ interface ArtPiece:
     def getArtist() -> address: view
     def getCommissioner() -> address: view
     def getArtCommissionHubAddress() -> address: view
-    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool, _profile_factory_address: address): nonpayable
     def verifyAsArtist(): nonpayable
     def verifyAsCommissioner(): nonpayable
     def isFullyVerifiedCommission() -> bool: view # returns true if the art piece is a VERIFIED commissioner != artist AND fully verified)
@@ -139,6 +141,12 @@ def initialize(_owner: address, _profile_social: address, _is_artist: bool = Fal
     self.myUnverifiedCommissionCount = 0
     self.myArtCount = 0
     self.myCommissionHubCount = 0
+
+@internal
+@view
+def _getDeployer() -> address:
+    profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+    return staticcall profile_factory.getOwner()
 
 
 # Toggle allowing new myCommissions
@@ -189,7 +197,7 @@ def setProfileImage(_profile_image: address):
 # - The contract records the user's role at the time of upload in myCommissionRole.
 #
 @external
-def linkArtPieceAsMyCommission(_art_piece: address):
+def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     """
     @notice Adds an ArtPiece to this profile, to myCommissions or myUnverified list based on verification status
     @dev Access control:
@@ -208,12 +216,13 @@ def linkArtPieceAsMyCommission(_art_piece: address):
     # Check who the sender is
     is_profile_owner: bool = msg.sender == self.owner
     is_profile_factory_and_registry: bool = msg.sender == self.profileFactoryAndRegistry
-    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner
+    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner or staticcall Profile(commissioner).getOwner() == art_artist or staticcall Profile(art_artist).getOwner() == commissioner
+    is_art_creator_profile: bool = staticcall ProfileFactoryAndRegistry(self.profileFactoryAndRegistry).getProfile(art_artist) == msg.sender or staticcall ProfileFactoryAndRegistry(self.profileFactoryAndRegistry).getProfile(commissioner) == msg.sender
     
     # Check to make sure its a valid commission and function caller has permission to add it
     # The rest of these gracefully return, however this should hard fail because noone else 
     #   should be calling this
-    assert is_profile_owner or is_profile_factory_and_registry or is_art_creator, "No permission to add myCommission"
+    assert is_profile_owner or is_profile_factory_and_registry or is_art_creator or is_art_creator_profile, "No permission to add myCommission"
 
     if self.myCommissionExists[_art_piece]:
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added")
@@ -226,6 +235,11 @@ def linkArtPieceAsMyCommission(_art_piece: address):
     # If artist/commissioner are blacklisted by THIS profile, reject the myCommission
     if (self.blacklist[commissioner] or self.blacklist[art_artist]):
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is on blacklist")
+        return False
+
+    # Inside creating a ArtPiece from Profile, the artist or commissioner can be whiltelisted
+    if (is_art_creator_profile and not (self.whitelist[commissioner] or self.whitelist[art_artist])):
+        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is not whitelisted")
         return False
     
     # Determine if this should be added to verified or myUnverified list
@@ -274,10 +288,10 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
     @param _myCommission_art_piece The address of the myCommission art piece to verify
     """
     assert msg.sender == self.owner, "Only profile owner can verify myCommission"
-    assert self.myUnverifiedCommissionsExists[_myCommission_art_piece], "Unverified myCommission not found"
+    assert self.myUnverifiedCommissionsExists[_art_piece], "Unverified myCommission not found"
     
     # Get the art piece details
-    art_piece: ArtPiece = ArtPiece(_myCommission_art_piece)
+    art_piece: ArtPiece = ArtPiece(_art_piece)
     effective_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
@@ -315,7 +329,7 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
         for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=1000):
             if i >= len(self.myUnverifiedCommissions):
                 break
-            if self.myUnverifiedCommissions[i] == _myCommission_art_piece:
+            if self.myUnverifiedCommissions[i] == _art_piece:
                 myUnverified_index = i
                 found_myUnverified = True
                 break
@@ -329,13 +343,13 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
             self.myUnverifiedCommissionCount -= 1
         
         # Add to verified list if not already there
-        if _myCommission_art_piece not in self.myCommissions:
-            self.myCommissions.append(_myCommission_art_piece)
+        if _art_piece not in self.myCommissions:
+            self.myCommissions.append(_art_piece)
             self.myCommissionCount += 1
         
         # If this profile owner is the commissioner, also add to myArt if not already there
-        if is_commissioner and _myCommission_art_piece not in self.myArt:
-            self.myArt.append(_myCommission_art_piece)
+        if is_commissioner and _art_piece not in self.myArt:
+            self.myArt.append(_art_piece)
             self.myArtCount += 1
         
         # Now we need to update the other party's profile as well
@@ -360,9 +374,9 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
                 if other_profile != empty(address):
                     # Call the updateCommissionVerificationStatus method on the other profile
                     profile_interface: Profile = Profile(other_profile)
-                    extcall profile_interface.updateCommissionVerificationStatus(_myCommission_art_piece)
+                    extcall profile_interface.updateCommissionVerificationStatus(_art_piece)
     
-    log CommissionVerifiedInProfile(profile=self, art_piece=_myCommission_art_piece, is_artist=is_artist)
+    log CommissionVerifiedInProfile(profile=self, art_piece=_art_piece, is_artist=is_artist)
 
 #
 # removeArtLinkToMyCommission
@@ -386,11 +400,11 @@ def removeArtLinkToMyCommission(_my_commission: address):
     @param _myCommission The address of the myCommission to remove
     """
 
+    # See if this is already a verified commission or linked as verified
+    assert self.myCommissionExists[_my_commission] or self.myUnverifiedCommissionsExists[_my_commission], "No commission to unlink"
     art_piece: ArtPiece = ArtPiece(_my_commission)
     
 
-    # See if this is already a verified commission or linked as verified
-    assert myCommissionExists[address] or , "No commission to unlink"
     # Get the art piece details to check permissions
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
@@ -405,9 +419,9 @@ def removeArtLinkToMyCommission(_my_commission: address):
     
     # Check if sender is the owner of the myCommission hub
     is_my_commission_hub_owner: bool = False
-    if myCommission_hub != empty(address):
-        myCommission_hub_interface: ArtCommissionHub = ArtCommissionHub(myCommission_hub)
-        hub_owner: address = staticcall myCommission_hub_interface.owner()
+    if _my_commission != empty(address):
+        commission_hub_interface: ArtCommissionHub = ArtCommissionHub(myCommission_hub)
+        hub_owner: address = staticcall commission_hub_interface.owner()
         is_my_commission_hub_owner = (hub_owner == msg.sender)
     
     # First check if the myCommission is in the verified list
@@ -584,8 +598,10 @@ def getProfileErc1155sForSale(_page: uint256, _page_size: uint256) -> DynArray[a
 
 # Three types of art pieces can be created:
 # #1 - Personal Art Piece (non-myCommission)
-# #2 - Commission Art Piece
-# #3 - Profile Art Piece (special case for profile image)
+# #2 - Profile Art Piece (special case for profile image) 
+# #3 - Commission Art Piece
+#
+# #3 is the only one which takes considerable extra work as it requires linking the profile back to the ArtPiece
 @external
 def createArtPiece(
     _art_piece_template: address,
@@ -593,10 +609,10 @@ def createArtPiece(
     _token_uri_data_format: String[10],
     _title: String[100],
     _description: String[200],
-    _is_artist: bool,
+    _as_artist: bool,
     _other_party: address,
     _ai_generated: bool,
-    _art_myCommission_hub: address = empty(address),  # Register with art myCommission hub
+    _art_commission_hub: address = empty(address),  # Register with art myCommission hub
     _is_profile_art: bool = False
 ) -> address:
     """
@@ -607,58 +623,60 @@ def createArtPiece(
     @param _token_uri_data_format Format of the art data
     @param _title Title of the art piece
     @param _description Description of the art piece
-    @param _is_artist Flag indicating if the uploader is the artist (or commissioner)
+    @param _as_artist Flag indicating if the uploader is the artist (or commissioner)
     @param _other_party Address of the other party (artist if uploader is commissioner, vice versa)
     @param _ai_generated Flag indicating if the art was AI-generated
-    @param _art_myCommission_hub Optional hub address to register myCommission with
+    @param _art_commission_hub Optional hub address to register myCommission with
     @param _is_profile_art Flag indicating if this is a profile image
     @return The address of the created art piece
     """
-    # Determine permissions
-    if _is_profile_art:
-        assert msg.sender == self.owner, "Only profile owner can create profile art"
-    if _art_myCommission_hub != empty(address):
-        assert msg.sender == self.owner or msg.sender == self.profileFactoryAndRegistry, "Only profile owner can create profile art or register with myCommission hub"
+
+    # Who can call this?  
+    #        - Profile owner: (create profile art, personal art piece)...  direct call from user ONLY
+    #        - Profile owner or ProfileFactoryAndRegistry or Deployer: (register potential commission hub)
+    # Check for personal piece or commission art piece
+    personal_piece: bool = _is_profile_art or (_other_party == self.owner)
+    indirect_creation_call: bool = msg.sender == self._getDeployer() or msg.sender == self.profileFactoryAndRegistry
+    if personal_piece:
+        assert msg.sender == self.owner, "Only profile owner can create personal art piece"
     else:
-        assert msg.sender == self.owner or msg.sender == self.profileFactoryAndRegistry or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
+        assert msg.sender == self.owner or indirect_creation_call, "Only profile owner or deployer can create commission art piece"
+   
+    # Variables for ArtPiece initialization
+    artist: address = empty(address)
+    commissioner: address = empty(address)
+    art_commission_hub: address = _art_commission_hub  #overwrite to empty if personal piece...
 
-    # Adjust parameters for profile art
-    is_artist: bool = _is_artist
-    other_party: address = _other_party
-    art_myCommission_hub: address = _art_myCommission_hub
+    # If a Personal piece, it can be 1 of 2 options:
+    # #1 - Profile owner creating profile art
+    # #2 - Profile owner uploading to MyArt
+    if personal_piece:
+        art_commission_hub = empty(address)
+        artist = self.owner
+        commissioner = self.owner
 
-    # If this art piece is your profile, flag as not myCommissionable
-    if _is_profile_art:
-        is_artist = True
-        other_party = self.owner
-        art_myCommission_hub = empty(address)
-
-    # Calculate owner_input and artist_input
-    # NEW WORKFLOW: The uploader (profile owner) is always the initial owner
-    owner_input: address = self.owner
-    artist_input: address = empty(address)
-    
-    # Set artist based on uploader's role
-    if is_artist:
-        artist_input = self.owner
+    # if we are the artist, 
+    elif _as_artist:
+        commissioner = _other_party
+        artist = self.owner
     else:
-        # If uploader is commissioner, other party is artist
-        artist_input = other_party if other_party != empty(address) else self.owner
+        artist = _other_party
+        commissioner = self.owner
 
-    # Create minimal proxy to the ArtPiece template
+    # Create ArtPiece template and initialize
+    # ArtPiece will link all parameters to this profile
     art_piece_address: address = create_minimal_proxy_to(_art_piece_template)
-
-    # Initialize the art piece proxy
     art_piece: ArtPiece = ArtPiece(art_piece_address)
     extcall art_piece.initialize(
         _token_uri_data,
         _token_uri_data_format,
         _title,
         _description,
-        owner_input,
-        artist_input,
-        art_myCommission_hub,
-        _ai_generated
+        commissioner,
+        artist,
+        art_commission_hub,
+        _ai_generated,
+        self.profileFactoryAndRegistry
     )
         
     # If profile art, set as profile image
@@ -669,11 +687,30 @@ def createArtPiece(
     self.myArt.append(art_piece_address)
     self.myArtCount += 1
 
-    # If this is a myCommission, add to myUnverified myCommissions
-    if is_artist != (other_party == empty(address)) and not _is_profile_art:
+    # If this is a commission, we need to link the profile back to the ArtPiece
+    # If we are whitelisted by the other party, we can verify by both immediately and turn into 
+    #        a commissioned art piece!
+    if not personal_piece:
+
+        # Record uploader as commissioner or artist (verifyAsArtist or verifyAsCommissioner)
+        self.myCommissionRole[art_piece_address] = _as_artist
+        if artist == self.owner:
+            extcall art_piece.verifyAsArtist()
+        else:
+            extcall art_piece.verifyAsCommissioner()
+        
+        # Need to try and verify on the other Profile as we might be whitelisted
+        # Since we are the Artist, the other party is the commissioner
+        # If we are the Commissioner, the other party is the artist
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        other_profile_address: address = staticcall profile_factory.getProfile(_other_party)
+        other_profile_instance: Profile = Profile(other_profile_address)
+        linked_other_profile: bool = extcall other_profile_instance.linkArtPieceAsMyCommission(art_piece_address)  
+                
+        # Flag as verified by this account as its the uploader
+        # If the other party is set, check if they are whitelisted... if so, verify by both
         # Check if already fully verified (could happen in some edge cases)
         is_verified_by_both: bool = staticcall art_piece.isFullyVerifiedCommission()
-        
         if is_verified_by_both:
             # Add to verified myCommissions
             self.myCommissions.append(art_piece_address)
@@ -683,13 +720,13 @@ def createArtPiece(
             self.myUnverifiedCommissions.append(art_piece_address)
             self.myUnverifiedCommissionCount += 1
             
-        # Record myCommission role
-        self.myCommissionRole[art_piece_address] = is_artist
 
-    # If myCommission hub is provided, register with it
-    if art_myCommission_hub != empty(address):
-        _art_myCommission_hub_link: ArtCommissionHub = ArtCommissionHub(art_myCommission_hub)
-        extcall _art_myCommission_hub_link.submitCommission(art_piece_address)
+    # If this art is a potential commission, ArtCommissionHub is provided
+    # in this case, we submitCommission to the ArtCommissionHub.. 
+    # WE SHOULD NOT DO THIS AS WE JUST WANT VERIFIED PIECES TO BE SUBMITTED
+    if art_commission_hub != empty(address):
+        _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
+        extcall _art_commission_hub_link.submitCommission(art_piece_address)
 
     return art_piece_address
 
@@ -893,7 +930,7 @@ def addCommissionHub(_hub: address):
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
         registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
     
-    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can add myCommission hub"
+    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self._getDeployer() or msg.sender == registry_address, "Only hub or registry can add myCommission hub"
     
     # Check if hub is already in the list
     hubs_len: uint256 = len(self.myCommissionHubs)
@@ -927,7 +964,7 @@ def removeCommissionHub(_hub: address):
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
         registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
     
-    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self.deployer or msg.sender == registry_address, "Only hub or registry can remove myCommission hub"
+    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self._getDeployer() or msg.sender == registry_address, "Only hub or registry can remove myCommission hub"
     
     # Find the index of the hub to remove
     index: uint256 = 0
@@ -1299,3 +1336,7 @@ def updateCommissionVerificationStatus(_myCommission_art_piece: address):
             self.myArtCount += 1
 
 # NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.
+
+@external
+def getOwner() -> address:
+    return self.owner

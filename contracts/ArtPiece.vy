@@ -25,6 +25,12 @@ interface ERC721Receiver:
 # Interface for Profile
 interface Profile:
     def addCommission(art_piece: address): nonpayable
+    def getOwner() -> address: view
+
+# Interface for ProfileFactoryAndRegistry
+interface ProfileFactoryAndRegistry:
+    def getProfile(_user: address) -> address: view
+    def hasProfile(_user: address) -> bool: view
 
 # ERC721 Events
 event Transfer:
@@ -80,6 +86,7 @@ name: public(String[32])
 symbol: public(String[8])
 getApproved: public(HashMap[uint256, address])
 isApprovedForAll: public(HashMap[address, HashMap[address, bool]])
+profileFactoryAndRegistry: public(address)
 
 # Interface IDs and other constants
 INTERFACE_ID_ERC721: constant(bytes4) = 0x80ac58cd
@@ -121,10 +128,29 @@ def __init__():
     self.symbol = ""
     self.taggedListCount = 0
 
+
+@internal
+@view
+def _isContract(_addr: address) -> bool:
+    """
+    @notice Check if an address is a contract
+    @param _addr The address to check
+    @return Whether the address is a contract
+    """
+    size: uint256 = 0
+    # Check code size at address
+    if _addr != empty(address):
+        if len(slice(_addr.code, 0, 1)) > 0:
+            size = 1
+    return size > 0
+
 # Initialize has a bunch of specific behaviors
 # #1. We need different commissioners and artist for every piece in order to be a proper commission
 # If you just want to upload art, you either don't set an artist / commissioner or set them the same
 # Any time in the future you can tag the artist or commissioner, this is to make workflows easier
+#
+# Note: ProfileFactoryAndRegistry is a security feature to ensure that all Profiles are linked through the same factory
+#
 @external
 def initialize(
     _token_uri_data: Bytes[45000],
@@ -134,7 +160,9 @@ def initialize(
     _commissioner_input: address,
     _artist_input: address, 
     _commission_hub: address, 
-    _ai_generated: bool
+    _ai_generated: bool,
+    _original_uploader: address,
+    _profile_factory_address: address
 ):
     """
     @notice Initialize the ArtPiece contract, can only be called once
@@ -148,6 +176,12 @@ def initialize(
     @param _ai_generated Flag indicating if the artwork was AI generated
     """
     assert not self.initialized, "Already initialized"
+
+    # SECURITY FEATURE FOR ART CREATION
+    # Use ProfileFactoryAndRegistry to link the Profiles
+    profile_factory_and_registry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_address)
+    assert staticcall profile_factory_and_registry.hasProfile(_original_uploader), "Original uploader must be a Profile"
+
     self.initialized = True
     self.tokenURI_data = _token_uri_data
     self.tokenURI_data_format = _token_uri_data_format
@@ -157,7 +191,8 @@ def initialize(
     self.commissioner = _commissioner_input
     self.aiGenerated = _ai_generated
     self.artCommissionHubAddress = _commission_hub
-    self.originalUploader = msg.sender
+    self.profileFactoryAndRegistry = _profile_factory_address
+    self.originalUploader = _original_uploader
 
     # Determine if this is a private or non-commission piece based on commissioner and artist being the same
     if _commissioner_input == _artist_input and _commissioner_input != empty(address) and _artist_input != empty(address):
@@ -165,14 +200,7 @@ def initialize(
         self.commissionerVerified = True
         self.fullyVerifiedCommission = True
         self.isPrivateOrNonCommissionPiece = True
-         
-    # The uploader implicitly verifies their side
-    if not self.isPrivateOrNonCommissionPiece:
-        if _commissioner_input == self.originalUploader:
-            self.commissionerVerified = True
-        elif _artist_input == self.originalUploader:
-            self.artistVerified = True
-
+        
     # Set ERC721 metadata
     self.name = "ArtPiece"
     self.symbol = "ART"
@@ -396,11 +424,16 @@ def verifyAsArtist():
     """
     assert self.initialized, "Contract not initialized"
     assert not self.isPrivateOrNonCommissionPiece, "Not a commission piece"
-    assert msg.sender == self.artist, "Only the artist can verify as artist"
     assert not self.artistVerified, "Already verified by artist"
     assert not self.fullyVerifiedCommission, "Already fully verified"
     assert self.artCommissionHubAddress != empty(address), "ArtPiece must be attached to a ArtCommissionHub to be fully verified"
-    
+
+    # If this is a contract, we need to get the owner from the Profile
+    potential_artist: address = msg.sender
+    if self._isContract(msg.sender):
+        potential_artist = staticcall Profile(msg.sender).getOwner()
+    assert potential_artist == self.artist, "Only the artist can verify as artist"
+
     self.artistVerified = True
     log CommissionVerified(verifier=msg.sender, is_artist=True)
     
@@ -417,11 +450,16 @@ def verifyAsCommissioner():
     """
     assert self.initialized, "Contract not initialized"
     assert not self.isPrivateOrNonCommissionPiece, "Not a commission piece"
-    assert msg.sender == self.commissioner, "Only the commissioner can verify as commissioner"
     assert not self.commissionerVerified, "Already verified by commissioner"
     assert not self.fullyVerifiedCommission, "Already fully verified"
     assert self.artCommissionHubAddress != empty(address), "ArtPiece must be attached to a ArtCommissionHub to be fully verified"
-    
+
+    # If this is a contract, we need to get the owner from the Profile
+    potential_commissioner: address = msg.sender
+    if self._isContract(msg.sender):
+        potential_commissioner = staticcall Profile(msg.sender).getOwner()
+    assert potential_commissioner == self.commissioner, "Only the commissioner can verify as commissioner"
+
     self.commissionerVerified = True
     log CommissionVerified(verifier=msg.sender, is_artist=False)
     
@@ -631,3 +669,9 @@ def isFullyVerifiedCommission() -> bool:
     @return Whether the art piece is fully verified
     """
     return self.fullyVerifiedCommission
+
+# Used for security checks to ensure the profile is linked through the same factory
+@external
+@view
+def getProfileFactoryAndRegistry() -> address:
+    return self.profileFactoryAndRegistry
