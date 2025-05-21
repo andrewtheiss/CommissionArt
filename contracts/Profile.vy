@@ -46,12 +46,19 @@ profileImage: public(address)  # Changed from Bytes[45000] to address
 
 # Commissions and counters
 myCommissions: public(DynArray[address, MAX_ITEMS])
-myCommissionExists: public(HashMap[address, bool])
 myCommissionCount: public(uint256)
 myUnverifiedCommissions: public(DynArray[address, MAX_ITEMS])
-myUnverifiedCommissionsExists: public(HashMap[address, bool])
 myUnverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
+
+# Wtf is going on with this hideous variable name?  
+# We can actually absolutely SLAUGHTER 2 birds with one stone here!  
+# We NEED to know if a commission exists, and we NEED to know the position of the commission
+#   in the list.  So we can remove it.  So we can do both with one variable.
+#   We're going to use the offset by one so that the 0 index can be used to check if the commission
+#   exists.  This is a hack, but it works.  And saves considerable gas.
+myCommissionExistsAndPositionOffsetByOne: public(HashMap[address, uint256])
+myUnverifiedCommissionsExistsAndPositionOffsetByOne : public(HashMap[address, uint256])
 
 # Add myCommissionRole mapping to track role at time of myCommission upload
 myCommissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
@@ -231,7 +238,7 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     #   should be calling this
     assert is_profile_owner or is_profile_factory_and_registry or is_art_creator or is_art_creator_profile, "No permission to add myCommission"
 
-    if self.myCommissionExists[_art_piece]:
+    if self.myCommissionExistsAndPositionOffsetByOne[_art_piece] != 0:
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added")
         return False
 
@@ -257,29 +264,37 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     
     # Add to verified list
     if is_verified_by_both:
-        self.myCommissions.append(_art_piece)
-        self.myCommissionCount += 1
-        self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
-        self.myCommissionExists[_art_piece] = True
-        log CommissionLinked(profile=self, art_piece=_art_piece, is_artist=self.isArtist)
+        self._addToVerifiedList(_art_piece)
 
     # Add to myUnverified list
     else:
         if not self.allowUnverifiedCommissions:
             log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Unverified myCommissions are disallowed by this Profile.")
             return False
-        if self.myUnverifiedCommissionsExists[_art_piece]:
+        if self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] != 0:
             log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added, but myUnverified.  Please verify.")
             return False
-
-        # Add to myUnverified list
-        self.myUnverifiedCommissions.append(_art_piece)
-        self.myUnverifiedCommissionCount += 1
-        self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
-        self.myUnverifiedCommissionsExists[_art_piece] = True
-        log UnverifiedCommissionLinked(profile=self, art_piece=_art_piece)
+        self._addToUnverifiedList(_art_piece)
 
     return True
+
+@internal
+def _addToUnverifiedList(_art_piece: address):
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    self.myUnverifiedCommissions.append(_art_piece)
+    self.myUnverifiedCommissionCount += 1
+    self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
+    self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = self.myUnverifiedCommissionCount
+    log UnverifiedCommissionLinked(profile=self, art_piece=_art_piece)
+
+@internal
+def _addToVerifiedList(_art_piece: address):
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    self.myCommissions.append(_art_piece)
+    self.myCommissionCount += 1
+    self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
+    self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = self.myCommissionCount
+    log CommissionLinked(profile=self, art_piece=_art_piece, is_artist=self.isArtist)
 
 #
 # verifyArtLinkedToMyCommission
@@ -295,7 +310,7 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
     @param _art_piece The address of the myCommission art piece to verify
     """
     assert msg.sender == self.owner, "Only profile owner can verify myCommission"
-    assert self.myUnverifiedCommissionsExists[_art_piece], "Unverified myCommission not found"
+    assert self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] != 0, "Unverified myCommission not found"
     
     # Get the art piece details
     art_piece: ArtPiece = ArtPiece(_art_piece)
@@ -407,96 +422,108 @@ def removeArtLinkToMyCommission(_my_commission: address):
     """
 
     # See if this is already a verified commission or linked as verified
-    assert self.myCommissionExists[_my_commission] or self.myUnverifiedCommissionsExists[_my_commission], "No commission to unlink"
+    assert msg.sender == self.owner or msg.sender == self.profileFactoryAndRegistry, "Only the owner or ProfileFactoryAndRegistry can remove a myCommission"
+    assert self.myCommissionExistsAndPositionOffsetByOne[_my_commission] != 0 or self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] != 0, "No commission to unlink"
     
-    
-    # art_piece: ArtPiece = ArtPiece(_art_piece)
-    # effective_owner: address = staticcall art_piece.getOwner()
-    # art_artist: address = staticcall art_piece.getArtist()
-    # commissioner: address = staticcall art_piece.getCommissioner()
-    # is_potential_commission: bool = commissioner != art_artist
-    
-    # # Check who the sender is  
-    # is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner
-
     art_piece: ArtPiece = ArtPiece(_my_commission)
-
-    # Get the art piece details to check permissions
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
+    assert msg.sender == art_artist or msg.sender == commissioner, "Only the artist or commissioner can remove a myCommission"
     
-    is_art_artist: bool = msg.sender == art_artist
-    is_commissioner: bool = msg.sender == commissioner
     is_profile_factory_and_registry: bool = msg.sender == self.profileFactoryAndRegistry
     
-    # Check if unverified.  If so, its not in any ArtCommissionHubs
-    if (self.myUnverifiedCommissionsExists[_my_commission]):
-        for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=10000):
-            if i >= self.myUnverifiedCommissionCount:
-                break
-            if self.myUnverifiedCommissions[i] == _my_commission:
-                last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
-                self.myUnverifiedCommissions[i] = last_item
-                self.myUnverifiedCommissions.pop()
-                self.myUnverifiedCommissionCount -= 1
-                break
-        self.myUnverifiedCommissionsExists[_my_commission] = False
+    # Remove from correct list
+    if (self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] != 0):
+        last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
+        self.myUnverifiedCommissions[self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] - 1] = last_item #offset by 1 so indices are 0 when absent
+        self.myUnverifiedCommissions.pop()
+        self.myUnverifiedCommissionCount -= 1
+        self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] = 0
 
-    elif (self.myCommissionExists[_my_commission]):
-        for i: uint256 in range(0, len(self.myCommissions), bound=10000):
-            if i >= self.myCommissionCount:
-                break
-            if self.myCommissions[i] == _my_commission:
-                last_item: address = self.myCommissions[len(self.myCommissions) - 1]
-                self.myCommissions[i] = last_item
-                self.myCommissions.pop()
-                self.myCommissionCount -= 1
-                break
-        self.myCommissionExists[_my_commission] = False
+    elif (self.myCommissionExistsAndPositionOffsetByOne[_my_commission] != 0):
+        last_item: address = self.myCommissions[len(self.myCommissions) - 1]
+        self.myCommissions[self.myCommissionExistsAndPositionOffsetByOne[_my_commission] - 1] = last_item #offset by 1 so indices are 0 when absent
+        self.myCommissions.pop()
+        self.myCommissionCount -= 1
+        self.myCommissionExistsAndPositionOffsetByOne[_my_commission] = 0
 
 
+## get Commissions
 #
-# getCommissions
-# ---------------
-# Returns a paginated list of myCommissions (verified or myUnverified) for this profile.
+# getCommissionsByOffset
+# -------------------------
+# Returns a paginated list of myUnverified myCommissions for this profile.
 # Use case:
-# - Used by the frontend to display all myCommissions associated with this profile, either as artist or commissioner.
-# - The frontend can also query myCommissionRole to determine the user's role at the time of upload for each myCommission.
+# - Used by the frontend to display all myUnverified myCommissions associated with this profile.
 # Example:
-# - Alice wants to see all her myCommissions (as artist or as commissioner): getCommissions(page, pageSize).
+# - Alice wants to see all her myUnverified myCommissions: getUnverifiedCommissions(page, pageSize).
 #
 @view
 @external
-def getCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myCommissions)
-    if arr_len == 0 or _page * _page_size >= arr_len:
+def getCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of unverified commissions using offset-based pagination.
+    @dev This function supports fetching commissions from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` commissions starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` commissions starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
+
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `myUnverifiedCommissions` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of commissions to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 unverified commission addresses.
+    """
+    result: DynArray[address, 50] = []
+    offset: uint256 = _offset
+    # Early return if no commissions exist
+    if self.myCommissionCount == 0:
         return result
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myCommissions[start + i])
+    
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.myCommissionCount:
+            return result
+        available_items: uint256 = self.myCommissionCount - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.myCommissions[offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.myCommissionCount:
+            offset = self.myCommissionCount - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.myCommissions[index])
+    
     return result
 
-@view
-@external
-def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myCommissions)
-    
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    # Calculate start index from the end and how many items to return
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myCommissions[start - i])
-    
-    return result
 
 ## Unverified Commissions
 #
@@ -510,36 +537,70 @@ def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[addres
 #
 @view
 @external
-def getUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myUnverifiedCommissions)
-    if arr_len == 0 or _page * _page_size >= arr_len:
+def getUnverifiedCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of unverified commissions using offset-based pagination.
+    @dev This function supports fetching commissions from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` commissions starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` commissions starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
+
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `myUnverifiedCommissions` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of commissions to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 unverified commission addresses.
+    """
+    result: DynArray[address, 50] = []
+    offset: uint256 = _offset
+    # Early return if no commissions exist
+    if self.myUnverifiedCommissionCount == 0:
         return result
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myUnverifiedCommissions[start + i])
+    
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.myUnverifiedCommissionCount:
+            return result
+        available_items: uint256 = self.myUnverifiedCommissionCount - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.myUnverifiedCommissions[offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.myUnverifiedCommissionCount:
+            offset = self.myUnverifiedCommissionCount - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.myUnverifiedCommissions[index])
+    
     return result
 
-@view
-@external
-def getRecentUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myUnverifiedCommissions)
-    
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    # Calculate start index from the end and how many items to return
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myUnverifiedCommissions[start - i])
-    
-    return result
 
 @external
 def clearUnverifiedCommissions():
@@ -813,60 +874,79 @@ def removeArtPiece(_art_piece: address):
             self.myCommissionRole[_art_piece] = False
             break
 
+## Get Art Pieces
+#
+# getArtPiecesByOffset
+# -------------------------
+# Returns a paginated list of myArt for this profile.
+# Use case:
+# - Used by the frontend to display all myArt associated with this profile.
+# Example:
+# - Alice wants to see all her myArt: getArtPiecesByOffset(page, pageSize).
+#
 @view
 @external
-def getArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myArt)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myArt[start + i])
-    
-    return result
-    
-@view
-@external
-def getRecentArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myArt)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myArt[start - i])
-    
-    return result
+def getArtPiecesByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of art pieces using offset-based pagination.
+    @dev This function supports fetching art pieces from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` art pieces starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` art pieces starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
 
-@view
-@external
-def getLatestArtPieces() -> DynArray[address, 5]:
-    result: DynArray[address, 5] = []
-    
-    # If no art pieces exist, return empty array
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `myArt` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of art pieces to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 art piece addresses.
+    """
+    result: DynArray[address, 50] = []
+    offset: uint256 = _offset
+    # Early return if no art pieces exist
     if self.myArtCount == 0:
         return result
     
-    # Get minimum of 5 or available art pieces
-    items_to_return: uint256 = min(5, self.myArtCount)
-    
-    # Start from the last (most recent) item and work backwards
-    # Using safe indexing to prevent underflow
-    for i: uint256 in range(0, items_to_return, bound=5):
-        if i < self.myArtCount:  # Safety check
-            idx: uint256 = self.myArtCount - 1 - i
-            result.append(self.myArt[idx])
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.myArtCount:
+            return result
+        available_items: uint256 = self.myArtCount - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.myArt[offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.myArtCount:
+            offset = self.myArtCount - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.myArt[index])
     
     return result
 
@@ -965,278 +1045,83 @@ def removeCommissionHub(_hub: address):
         self.myCommissionHubs.pop()
         self.myCommissionHubCount -= 1
 
+
+## get Commission Hub By Offset
 #
-# getCommissionHubs
-# ----------------
-# Returns a paginated list of myCommission hubs for this profile.
+# getCommissionHubsByOffset
+# -------------------------
+# Returns a paginated list of myCommissionHubs for this profile.
 # Use case:
-# - Used by the frontend to display all myCommission hubs associated with this profile.
+# - Used by the frontend to display all myCommissionHubs associated with this profile.
 # Example:
-# - Alice wants to see all her myCommission hubs: getCommissionHubs(page, pageSize).
+# - Alice wants to see all her myCommissionHubs: getCommissionHubsByOffset(page, pageSize).
 #
 @view
 @external
-def getCommissionHubs(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myCommissionHubs)
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    for i: uint256 in range(100):  # Fixed upper bound
-        if i >= items:
-            break
-        result.append(self.myCommissionHubs[start + i])
-    return result
-
-#
-# getRecentCommissionHubs
-# ----------------------
-# Returns a paginated list of myCommission hubs for this profile, starting from the most recent.
-# Use case:
-# - Used by the frontend to display the most recent myCommission hubs associated with this profile.
-# Example:
-# - Alice wants to see her most recent myCommission hubs: getRecentCommissionHubs(page, pageSize).
-#
-@view
-@external
-def getRecentCommissionHubs(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myCommissionHubs)
-    
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    # Calculate start index from the end and how many items to return
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(100):  # Fixed upper bound
-        if i >= items:
-            break
-        result.append(self.myCommissionHubs[start - i])
-    
-    return result
-
-# Enhanced batch loading functions for efficient frontend queries
-
-@view
-@external
-def getBatchArtPieces(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
+def getCommissionHubsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    @notice Returns a batch of art pieces with improved capacity
-    @dev Allows retrieving up to 50 art pieces at once for efficient frontend loading
-    @param _start_idx The starting index in the art array
-    @param _count The number of art pieces to retrieve
-    @return Array of art piece addresses, up to 50
+    @notice Returns a paginated list of commission hubs using offset-based pagination.
+    @dev This function supports fetching commission hubs from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` commission hubs starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` commission hubs starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
+
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `myCommissionHubs` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of commission hubs to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 commission hub addresses.
     """
     result: DynArray[address, 50] = []
-    
-    # Early return if no art pieces or start index is out of bounds
-    if self.myArtCount == 0 or _start_idx >= self.myArtCount:
+    offset: uint256 = _offset
+    # Early return if no commission hubs exist
+    if self.myCommissionHubCount == 0:
         return result
     
-    # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.myArtCount)
-    max_items: uint256 = min(end_idx - _start_idx, 50)
-    
-    # Populate result array
-    for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.myArt[_start_idx + i])
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.myCommissionHubCount:
+            return result
+        available_items: uint256 = self.myCommissionHubCount - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.myCommissionHubs[offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.myCommissionHubCount:
+            offset = self.myCommissionHubCount - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.myCommissionHubs[index])
     
     return result
 
-@view
-@external
-def getBatchCommissions(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a batch of verified myCommissions with improved capacity
-    @dev Allows retrieving up to 50 myCommissions at once for efficient frontend loading
-    @param _start_idx The starting index in the myCommissions array
-    @param _count The number of myCommissions to retrieve
-    @return Array of myCommission addresses, up to 50
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no myCommissions or start index is out of bounds
-    if self.myCommissionCount == 0 or _start_idx >= self.myCommissionCount:
-        return result
-    
-    # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.myCommissionCount)
-    max_items: uint256 = min(end_idx - _start_idx, 50)
-    
-    # Populate result array
-    for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.myCommissions[_start_idx + i])
-    
-    return result
-
-@view
-@external
-def getBatchUnverifiedCommissions(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a batch of myUnverified myCommissions with improved capacity
-    @dev Allows retrieving up to 50 myUnverified myCommissions at once for efficient frontend loading
-    @param _start_idx The starting index in the myUnverified myCommissions array
-    @param _count The number of myUnverified myCommissions to retrieve
-    @return Array of myUnverified myCommission addresses, up to 50
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no myUnverified myCommissions or start index is out of bounds
-    if self.myUnverifiedCommissionCount == 0 or _start_idx >= self.myUnverifiedCommissionCount:
-        return result
-    
-    # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.myUnverifiedCommissionCount)
-    max_items: uint256 = min(end_idx - _start_idx, 50)
-    
-    # Populate result array
-    for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.myUnverifiedCommissions[_start_idx + i])
-    
-    return result
-
-@view
-@external
-def getBatchCommissionHubs(_start_idx: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a batch of myCommission hubs with improved capacity
-    @dev Allows retrieving up to 50 myCommission hubs at once for efficient frontend loading
-    @param _start_idx The starting index in the myCommission hubs array
-    @param _count The number of myCommission hubs to retrieve
-    @return Array of myCommission hub addresses, up to 50
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no myCommission hubs or start index is out of bounds
-    if self.myCommissionHubCount == 0 or _start_idx >= self.myCommissionHubCount:
-        return result
-    
-    # Calculate end index, capped by array size and max return size
-    end_idx: uint256 = min(_start_idx + _count, self.myCommissionHubCount)
-    max_items: uint256 = min(end_idx - _start_idx, 50)
-    
-    # Populate result array
-    for i: uint256 in range(0, max_items, bound=50):
-        result.append(self.myCommissionHubs[_start_idx + i])
-    
-    return result
-
-@view
-@external
-def getArtPiecesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a paginated list of art pieces using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _offset The starting index in the art pieces array
-    @param _count The number of art pieces to return (capped at 50)
-    @return A list of art piece addresses
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no art pieces or offset is out of bounds
-    if self.myArtCount == 0 or _offset >= self.myArtCount:
-        return result
-    
-    # Calculate how many items to return
-    available_items: uint256 = self.myArtCount - _offset
-    count: uint256 = min(min(_count, available_items), 50)
-    
-    # Populate result array
-    for i: uint256 in range(50):
-        if i >= count:
-            break
-        result.append(self.myArt[_offset + i])
-    
-    return result
-
-@view
-@external
-def getCommissionsByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a paginated list of verified myCommissions using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _offset The starting index in the myCommissions array
-    @param _count The number of myCommissions to return (capped at 50)
-    @return A list of myCommission addresses
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no myCommissions or offset is out of bounds
-    if self.myCommissionCount == 0 or _offset >= self.myCommissionCount:
-        return result
-    
-    # Calculate how many items to return
-    available_items: uint256 = self.myCommissionCount - _offset
-    count: uint256 = min(min(_count, available_items), 50)
-    
-    # Populate result array
-    for i: uint256 in range(50):
-        if i >= count:
-            break
-        result.append(self.myCommissions[_offset + i])
-    
-    return result
-
-@view
-@external
-def getUnverifiedCommissionsByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a paginated list of myUnverified myCommissions using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _offset The starting index in the myUnverified myCommissions array
-    @param _count The number of myUnverified myCommissions to return (capped at 50)
-    @return A list of myUnverified myCommission addresses
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no myUnverified myCommissions or offset is out of bounds
-    if self.myUnverifiedCommissionCount == 0 or _offset >= self.myUnverifiedCommissionCount:
-        return result
-    
-    # Calculate how many items to return
-    available_items: uint256 = self.myUnverifiedCommissionCount - _offset
-    count: uint256 = min(min(_count, available_items), 50)
-    
-    # Populate result array
-    for i: uint256 in range(50):
-        if i >= count:
-            break
-        result.append(self.myUnverifiedCommissions[_offset + i])
-    
-    return result
-
-@view
-@external
-def getCommissionHubsByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 50]:
-    """
-    @notice Returns a paginated list of myCommission hubs using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _offset The starting index in the myCommission hubs array
-    @param _count The number of myCommission hubs to return (capped at 50)
-    @return A list of myCommission hub addresses
-    """
-    result: DynArray[address, 50] = []
-    
-    # Early return if no myCommission hubs or offset is out of bounds
-    if self.myCommissionHubCount == 0 or _offset >= self.myCommissionHubCount:
-        return result
-    
-    # Calculate how many items to return
-    available_items: uint256 = self.myCommissionHubCount - _offset
-    count: uint256 = min(min(_count, available_items), 50)
-    
-    # Populate result array
-    for i: uint256 in range(50):
-        if i >= count:
-            break
-        result.append(self.myCommissionHubs[_offset + i])
-    
-    return result
 
 @external
 def updateCommissionVerificationStatus(_commission_art_piece: address):

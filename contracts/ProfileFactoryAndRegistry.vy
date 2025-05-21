@@ -586,3 +586,8 @@ def getLatestActiveUserProfiles(_count: uint256) -> DynArray[address, 20]:
 @view
 def getOwner() -> address:
     return self.owner
+
+
+# Bulk remove from profile
+# removeArtLinkToMyCommission
+#     assert msg.sender == self.owner or msg.sender == self.profileFactoryAndRegistry, "Only the owner or ProfileFactoryAndRegistry can remove a myCommission"
