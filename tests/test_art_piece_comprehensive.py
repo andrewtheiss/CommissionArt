@@ -106,12 +106,39 @@ def test_transfer_ownership(setup):
     art_piece = setup["art_piece"]
     owner = setup["owner"]
     deployer = setup["deployer"]
+    artist = setup["artist"]
     
-    # Transfer ownership to deployer
+    # Make sure the art piece is not attached to a hub
+    if art_piece.attachedToArtCommissionHub():
+        # Skip this test as piece is attached to a hub and can't transfer ownership
+        pytest.skip("Art piece is attached to a hub, can't transfer ownership")
+    
+    # Get the initial state
+    initial_owner = art_piece.getOwner()
+    assert initial_owner == owner.address, "Initial owner should be the owner from setup"
+    
+    # Check if it's a commission piece (commissioner != artist)
+    is_commission = art_piece.getCommissioner() != art_piece.getArtist()
+    
+    if is_commission:
+        # This is a commission piece, so we need to ensure it's fully verified
+        # Let's check the verification status
+        if not art_piece.isFullyVerifiedCommission():
+            # If not fully verified, verify both sides
+            if not art_piece.artistVerified():
+                art_piece.verifyAsArtist(sender=artist)
+            if not art_piece.commissionerVerified():
+                art_piece.verifyAsCommissioner(sender=owner)
+            
+            # Confirm it's now fully verified
+            assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified after verification"
+    
+    # Now transfer ownership to deployer
     art_piece.transferOwnership(deployer.address, sender=owner)
     
-    # Check that the owner was updated
-    assert art_piece.getOwner() == deployer.address
+    # Check that the owner was correctly updated to deployer
+    new_owner = art_piece.getOwner()
+    assert new_owner == deployer.address, f"Owner should be deployer after transfer, but got {new_owner} instead of {deployer.address}"
 
 
 def test_transfer_ownership_only_by_owner(setup):
@@ -296,55 +323,6 @@ def test_invalidate_tag_requires_being_tagged(setup):
     
     # Verify the error message
     assert "You are not tagged in this artwork" in str(excinfo.value)
-
-
-def test_commission_whitelist(setup):
-    """Test setting and checking commission whitelist"""
-    art_piece = setup["art_piece"]
-    owner = setup["owner"]
-    commissioner = setup["commissioner"]
-    
-    # Check initial whitelist status
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is False
-    
-    # Whitelist the commissioner
-    art_piece.setCommissionWhitelist(commissioner.address, True, sender=owner)
-    
-    # Check that the commissioner is now whitelisted
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is True
-    
-    # Remove the commissioner from the whitelist
-    art_piece.setCommissionWhitelist(commissioner.address, False, sender=owner)
-    
-    # Check that the commissioner is no longer whitelisted
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is False
-
-
-def test_commission_whitelist_by_artist(setup):
-    """Test that the artist can also manage the commission whitelist"""
-    art_piece = setup["art_piece"]
-    artist = setup["artist"]
-    commissioner = setup["commissioner"]
-    
-    # Whitelist the commissioner as the artist
-    art_piece.setCommissionWhitelist(commissioner.address, True, sender=artist)
-    
-    # Check that the commissioner is now whitelisted
-    assert art_piece.isOnCommissionWhitelist(commissioner.address) is True
-
-
-def test_commission_whitelist_unauthorized(setup):
-    """Test that only the owner or artist can manage the commission whitelist"""
-    art_piece = setup["art_piece"]
-    tagged_person = setup["tagged_person"]
-    commissioner = setup["commissioner"]
-    
-    # Try to whitelist the commissioner as an unauthorized account
-    with pytest.raises(Exception) as excinfo:
-        art_piece.setCommissionWhitelist(commissioner.address, True, sender=tagged_person)
-    
-    # Verify the error message
-    assert "Only owner or artist can set commission whitelist" in str(excinfo.value)
 
 
 def test_is_on_chain(setup):

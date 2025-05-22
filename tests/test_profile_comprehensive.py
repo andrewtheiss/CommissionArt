@@ -18,8 +18,17 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+
+
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtPiece template for art piece creation
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -34,22 +43,22 @@ def setup():
         "commissioner": commissioner,
         "other_user": other_user,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template,
         "commission_hub": commission_hub
     }
 
 def test_profile_creation(setup):
-    """Test creating a profile through the profile hub"""
-    profile_hub = setup["profile_hub"]
+    """Test creating a profile through the profile-factory-and-registry"""
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     
     # Create a profile for the user
-    tx = profile_hub.createProfile(sender=user)
+    tx = profile_factory_and_regsitry.createProfile(sender=user)
     
     # Verify profile was created
-    assert profile_hub.hasProfile(user.address) is True
-    profile_address = profile_hub.getProfile(user.address)
+    assert profile_factory_and_regsitry.hasProfile(user.address) is True
+    profile_address = profile_factory_and_regsitry.getProfile(user.address)
     assert profile_address != "0x0000000000000000000000000000000000000000"
     
     # Verify profile initialization
@@ -61,11 +70,11 @@ def test_profile_creation(setup):
 
 def test_create_artist_profile(setup):
     """Test creating an artist profile"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     artist = setup["artist"]
     # Create a profile for the artist
-    profile_hub.createProfile(sender=artist)
-    profile_address = profile_hub.getProfile(artist.address)
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     profile = project.Profile.at(profile_address)
     # Initial profile state
     assert profile.isArtist() is False
@@ -75,15 +84,15 @@ def test_create_artist_profile(setup):
 
 def test_update_artist_profile(setup):
     """Test updating artist profile settings"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     artist = setup["artist"]
     other_user = setup["other_user"]
     deployer = setup["deployer"]
     art_piece_template = setup["art_piece_template"]
     
     # Create a profile for the artist
-    profile_hub.createProfile(sender=artist)
-    profile_address = profile_hub.getProfile(artist.address)
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     profile = project.Profile.at(profile_address)
     
     # Check if artSales1155 is already set
@@ -157,13 +166,13 @@ def test_update_artist_profile(setup):
 
 def test_profile_permission_restrictions(setup):
     """Test that profile functions have proper permission restrictions"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     other_user = setup["other_user"]
     
     # Create a profile for the user
-    profile_hub.createProfile(sender=user)
-    profile_address = profile_hub.getProfile(user.address)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_address = profile_factory_and_regsitry.getProfile(user.address)
     profile = project.Profile.at(profile_address)
     
     # Attempt operations with non-owner account
@@ -189,19 +198,19 @@ def test_profile_permission_restrictions(setup):
 
 def test_profile_social_features(setup):
     """Test profile social features like liking and linking other profiles"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     other_user = setup["other_user"]
     artist = setup["artist"]
     
     # Create profiles
-    profile_hub.createProfile(sender=user)
-    profile_hub.createProfile(sender=other_user)
-    profile_hub.createProfile(sender=artist)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_factory_and_regsitry.createProfile(sender=other_user)
+    profile_factory_and_regsitry.createProfile(sender=artist)
     
-    user_profile = project.Profile.at(profile_hub.getProfile(user.address))
-    other_profile_address = profile_hub.getProfile(other_user.address)
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    user_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
+    other_profile_address = profile_factory_and_regsitry.getProfile(other_user.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     
     # Like other profiles
     user_profile.addLikedProfile(other_profile_address, sender=user)
@@ -238,14 +247,14 @@ def test_profile_social_features(setup):
 
 def test_create_art_piece_on_profile(setup):
     """Test creating an art piece through a profile"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     # Create a profile for the user
-    profile_hub.createProfile(sender=user)
-    profile_address = profile_hub.getProfile(user.address)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_address = profile_factory_and_regsitry.getProfile(user.address)
     profile = project.Profile.at(profile_address)
     # Test data for art piece
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -285,15 +294,15 @@ def test_create_art_piece_on_profile(setup):
 
 def test_create_art_piece_as_artist(setup):
     """Test creating an art piece as an artist through a profile"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     artist = setup["artist"]
     commissioner = setup["commissioner"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Create a profile for the artist
-    profile_hub.createProfile(sender=artist)
-    profile_address = profile_hub.getProfile(artist.address)
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     profile = project.Profile.at(profile_address)
     
     # Set as artist
@@ -344,18 +353,18 @@ def test_create_art_piece_as_artist(setup):
 
 def test_add_existing_art_piece_to_profile(setup):
     """Test adding an existing art piece to a profile"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Create profiles
-    profile_hub.createProfile(sender=user)
-    profile_hub.createProfile(sender=artist)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_factory_and_regsitry.createProfile(sender=artist)
     
-    user_profile = project.Profile.at(profile_hub.getProfile(user.address))
-    artist_profile = project.Profile.at(profile_hub.getProfile(artist.address))
+    user_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
+    artist_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(artist.address))
     
     # Set artist status
     artist_profile.setIsArtist(True, sender=artist)
@@ -409,13 +418,13 @@ def test_add_existing_art_piece_to_profile(setup):
 
 def test_remove_art_piece_from_profile(setup):
     """Test removing an art piece from a profile"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     # Create a profile
-    profile_hub.createProfile(sender=user)
-    profile = project.Profile.at(profile_hub.getProfile(user.address))
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
     # Create first art piece
     first_image = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     first_title = "First Art"
@@ -463,20 +472,20 @@ def test_remove_art_piece_from_profile(setup):
     assert remaining_art_piece_addr == art_piece2_addr
     assert remaining_art_piece_addr != art_piece1_addr
 
-def test_profile_hub_combined_creation(setup):
+def test_profile_factory_and_regsitry_combined_creation(setup):
     """Test creating a profile and art piece in a workflow similar to the combined creation method"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     # Initially user has no profile
-    assert profile_hub.hasProfile(user.address) is False
+    assert profile_factory_and_regsitry.hasProfile(user.address) is False
     # First create a profile
-    profile_hub.createProfile(sender=user)
-    profile_address = profile_hub.getProfile(user.address)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_address = profile_factory_and_regsitry.getProfile(user.address)
     profile = project.Profile.at(profile_address)
-    assert profile_hub.hasProfile(user.address) is True
+    assert profile_factory_and_regsitry.hasProfile(user.address) is True
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBDb21taXNzaW9uIiwiZGVzY3JpcHRpb24iOiJUZXN0IGNvbW1pc3Npb24gZGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Combined Creation"
     description = "Created in a workflow"
@@ -505,14 +514,14 @@ def test_profile_hub_combined_creation(setup):
 
 def test_set_profile_picture(setup):
     """Test setting a profile picture with valid and invalid permissions"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     user = setup["user"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     
     # Create a profile for the user
-    profile_hub.createProfile(sender=user)
-    profile_address = profile_hub.getProfile(user.address)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_address = profile_factory_and_regsitry.getProfile(user.address)
     profile = project.Profile.at(profile_address)
     
     # Create test data for art piece

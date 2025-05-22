@@ -7,7 +7,7 @@ import ErrorBoundary from './ErrorBoundary';
 import NFTRegistration from './NFTRegistration';
 import ArtCommissionHub from './ArtCommissionHub';
 import Account from './Account';
-import L2RelayTester from './L2RelayTester';
+import L2OwnershipRelayTester from './L2OwnershipRelayTester';
 import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
@@ -339,7 +339,7 @@ const MainTab: React.FC = () => {
               <p>Please check the console for more details.</p>
             </div>
           }>
-            <L2RelayTester />
+            <L2OwnershipRelayTester />
           </ErrorBoundary>
         ) : activeTab === 'viewer' ? (
           <>

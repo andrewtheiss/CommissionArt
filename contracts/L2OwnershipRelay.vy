@@ -11,7 +11,7 @@
 interface ArbSys:
     def sendTxToL1(destination: address, calldataForL1: Bytes[1024]) -> uint256: payable
 
-interface L3OwnerRegistry:
+interface L3ArtCommissionHubOwners:
     def registerNFTOwnerFromParentChain(chain_id: uint256, nft_contract: address, token_id: uint256, owner: address): nonpayable
 
 interface L3Inbox:
@@ -123,7 +123,7 @@ def relayToL3(_chain_id: uint256, _nft_contract: address, _token_id: uint256, _o
     # We trust the caller, but log the relay event
     log RelayToL3Initiated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_token_id, owner=_owner)
     
-    # Compute the correct selector for the L3 OwnerRegistry function
+    # Compute the correct selector for the L3 ArtCommissionHubOwners function
     selector: Bytes[4] = slice(keccak256("registerNFTOwnerFromParentChain(uint256,address,uint256,address)"), 0, 4)
 
     # Encode parameters

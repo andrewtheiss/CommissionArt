@@ -218,8 +218,8 @@ const Account: React.FC = () => {
         }
       } catch (err: any) {
         console.error("Error checking profile:", err);
-        if (err.message?.includes("ProfileHub address not configured")) {
-          setConfigError("ProfileHub contract is not properly configured for this network. Please contact the administrator.");
+        if (err.message?.includes("ProfileFactoryAndRegistry address not configured")) {
+          setConfigError("ProfileFactoryAndRegistry contract is not properly configured for this network. Please contact the administrator.");
         } else if (err.message?.includes("ABI not found")) {
           setConfigError("Contract ABI configuration error. Please contact the administrator.");
         } else {
@@ -475,7 +475,7 @@ const Account: React.FC = () => {
       setCreatingProfile(true);
       setError(null);
       
-      // Create profile via the ProfileHub
+      // Create profile via the ProfileFactoryAndRegistry
       const newProfileAddress = await profileService.createProfile();
       console.log("Profile created at address:", newProfileAddress);
       
@@ -492,8 +492,8 @@ const Account: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Error creating profile:", err);
-      if (err.message?.includes("ProfileHub address not configured")) {
-        setConfigError("ProfileHub contract is not properly configured for this network. Please contact the administrator.");
+      if (err.message?.includes("ProfileFactoryAndRegistry address not configured")) {
+        setConfigError("ProfileFactoryAndRegistry contract is not properly configured for this network. Please contact the administrator.");
       } else if (err.message?.includes("ABI not found")) {
         setConfigError("Contract ABI configuration error. Please contact the administrator.");
       } else {

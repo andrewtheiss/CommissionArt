@@ -3,15 +3,15 @@
     "testnet": {
       "l1": {
         "address": "0xDdc84E4CF833b5AE92A2aA7F4edc59bdcB4b6F0F",
-        "contract": "L1QueryOwner"
+        "contract": "L1QueryOwnership"
       },
       "l2": {
         "address": "0x32BFa3AD2408821FA1631681F81603a84612687c",
-        "contract": "L2Relay"
+        "contract": "L2OwnershipRelay"
       },
       "l3": {
         "address": "0x89244283543881Af0E005AE6B4eb713d3603974c",
-        "contract": "OwnerRegistry"
+        "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
         "address": "0x78c39bB3072b43D9B7A4B9116E7A87FbE19A69ef",
@@ -25,31 +25,31 @@
         "address": "0xCB5ba99bAECb67F8282426d2d993888975af6d8E",
         "contract": "Profile"
       },
-      "profileHub": {
+      "profileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       },
-      "l2ProfileHub": {
+      "l2ProfileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
-        "contract": "ProfileHub" 
+        "contract": "ProfileFactoryAndRegistry" 
       },
-      "l3ProfileHub": {
+      "l3ProfileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169", 
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       }
     },
     "mainnet": {
       "l1": {
         "address": "0x9Ff3BE6A1f0aa275c61cD231eC3C4469730CC3FD",
-        "contract": "L1QueryOwner"
+        "contract": "L1QueryOwnership"
       },
       "l2": {
         "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
-        "contract": "L2Relay"
+        "contract": "L2OwnershipRelay"
       },
       "l3": {
         "address": "0x51C11796198289c3e3e3AD6e11B137e94ed2e793",
-        "contract": "OwnerRegistry"
+        "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
         "address": "0x09517E1e6eA9803f8AB5Ba608d5985D098CdBdd8",
@@ -63,17 +63,17 @@
         "address": "0xD1B46FB543f2A15560eD835857c7e90b43f66617",
         "contract": "Profile"
       },
-      "profileHub": {
+      "profileFactoryAndRegistry": {
         "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       },
-      "l2ProfileHub": {
+      "l2ProfileFactoryAndRegistry": {
         "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       },
-      "l3ProfileHub": {
+      "l3ProfileFactoryAndRegistry": {
         "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
-        "contract": "ProfileHub"
+        "contract": "ProfileFactoryAndRegistry"
       }
     }
   },

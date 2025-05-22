@@ -93,10 +93,10 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
     if (isListening) return; // Already listening
     
     try {
-      // Get the L2Relay contract address for current environment
+      // Get the L2OwnershipRelay contract address for current environment
       const l2Address = contractConfig.addresses.l2[environment];
       if (!l2Address) {
-        setBridgeStatus('Error: L2Relay contract address not set');
+        setBridgeStatus('Error: L2OwnershipRelay contract address not set');
         return;
       }
       
@@ -120,15 +120,15 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
         setBridgeStatus(prev => `${prev}\nFallback: Using public RPC for event listening: ${rpcUrl}`);
       }
       
-      // Load the L2Relay ABI
-      const l2RelayABI = abiLoader.loadABI('L2Relay');
-      if (!l2RelayABI) {
-        setBridgeStatus('Error: Could not load L2Relay ABI');
+      // Load the L2OwnershipRelay ABI
+      const l2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
+      if (!l2OwnershipRelayABI) {
+        setBridgeStatus('Error: Could not load L2OwnershipRelay ABI');
         return;
       }
       
       // Create contract instance
-      const contract = new ethers.Contract(l2Address, l2RelayABI, provider);
+      const contract = new ethers.Contract(l2Address, l2OwnershipRelayABI, provider);
       
       // Clear previous listeners
       try {
@@ -220,14 +220,14 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
       }
       
       setIsListening(true);
-      setBridgeStatus(prev => `${prev}\n\nListening for L2Relay events...`);
+      setBridgeStatus(prev => `${prev}\n\nListening for L2OwnershipRelay events...`);
     } catch (error) {
       console.error('Error setting up event listeners:', error);
       setBridgeStatus(prev => `${prev}\n\nError setting up event listeners: ${error}`);
     }
   };
   
-  // Submit NFT query to the L2Relay contract
+  // Submit NFT query to the L2OwnershipRelay contract
   const submitNftQuery = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -254,10 +254,10 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
     try {
       setNftQuery(prev => ({ ...prev, isSubmitting: true }));
       
-      // Get the L2Relay contract address for current environment
+      // Get the L2OwnershipRelay contract address for current environment
       const l2Address = contractConfig.addresses.l2[environment];
       if (!l2Address) {
-        setBridgeStatus('Error: L2Relay contract address not set');
+        setBridgeStatus('Error: L2OwnershipRelay contract address not set');
         setNftQuery(prev => ({ ...prev, isSubmitting: false }));
         return;
       }
@@ -266,16 +266,16 @@ const NFTOwnershipQuery: React.FC<NFTOwnershipQueryProps> = ({
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
-      // Load the L2Relay ABI
-      const l2RelayABI = abiLoader.loadABI('L2Relay');
-      if (!l2RelayABI) {
-        setBridgeStatus('Error: Could not load L2Relay ABI');
+      // Load the L2OwnershipRelay ABI
+      const l2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
+      if (!l2OwnershipRelayABI) {
+        setBridgeStatus('Error: Could not load L2OwnershipRelay ABI');
         setNftQuery(prev => ({ ...prev, isSubmitting: false }));
         return;
       }
       
       // Create contract instance with signer
-      const contract = new ethers.Contract(l2Address, l2RelayABI, signer);
+      const contract = new ethers.Contract(l2Address, l2OwnershipRelayABI, signer);
       
       // Validate inputs
       if (!ethers.isAddress(nftQuery.contractAddress)) {

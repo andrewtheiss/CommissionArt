@@ -20,15 +20,15 @@ def get_default_config():
             "testnet": {
                 "l1": {
                     "address": "",
-                    "contract": "L1QueryOwner"
+                    "contract": "L1QueryOwnership"
                 },
                 "l2": {
                     "address": "",
-                    "contract": "L2Relay"
+                    "contract": "L2OwnershipRelay"
                 },
                 "l3": {
                     "address": "",
-                    "contract": "OwnerRegistry"
+                    "contract": "ArtCommissionHubOwners"
                 },
                 "artCommissionHub": {
                     "address": "",
@@ -42,23 +42,23 @@ def get_default_config():
                     "address": "",
                     "contract": "Profile"
                 },
-                "profileHub": {
+                "profileFactoryAndRegistry": {
                     "address": "",
-                    "contract": "ProfileHub"
+                    "contract": "ProfileFactoryAndRegistry"
                 }
             },
             "mainnet": {
                 "l1": {
                     "address": "",
-                    "contract": "L1QueryOwner"
+                    "contract": "L1QueryOwnership"
                 },
                 "l2": {
                     "address": "",
-                    "contract": "L2Relay"
+                    "contract": "L2OwnershipRelay"
                 },
                 "l3": {
                     "address": "",
-                    "contract": "OwnerRegistry"
+                    "contract": "ArtCommissionHubOwners"
                 },
                 "artCommissionHub": {
                     "address": "",
@@ -72,9 +72,9 @@ def get_default_config():
                     "address": "",
                     "contract": "Profile"
                 },
-                "profileHub": {
+                "profileFactoryAndRegistry": {
                     "address": "",
-                    "contract": "ProfileHub"
+                    "contract": "ProfileFactoryAndRegistry"
                 }
             }
         },
@@ -108,7 +108,7 @@ def validate_config(config):
             print(f"Added missing network '{network}' to configuration")
         else:
             # Check for required layers in each network
-            required_layers = ["l1", "l2", "l3", "artCommissionHub", "artPiece", "profileTemplate", "profileHub"]
+            required_layers = ["l1", "l2", "l3", "artCommissionHub", "artPiece", "profileTemplate", "profileFactoryAndRegistry"]
             for layer in required_layers:
                 if layer not in config["networks"][network]:
                     config["networks"][network][layer] = default_config["networks"][network][layer]
