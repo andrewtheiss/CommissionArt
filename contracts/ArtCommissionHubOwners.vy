@@ -25,7 +25,21 @@ GENERIC_ART_COMMISSION_HUB_CHAIN_ID: constant(uint256) = 1
 artCommissionHubRegistry: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> nft_token_id_or_generic_hub_account -> commission_hub
 artCommissionHubOwners: public(HashMap[uint256, HashMap[address, HashMap[uint256, address]]])  # chain_id -> nft_contract -> nft_token_id_or_generic_hub_account -> owner
 artCommissionHubLastUpdated: public(HashMap[uint256, HashMap[address, HashMap[uint256, uint256]]])  # chain_id -> nft_contract -> nft_token_id_or_generic_hub_account -> timestamp
+
+# We can access all ArtCommissionHubs in BigO(1) including add/delete/update/pagination if we store this celeverly...
+# Container for ArtCommissionHubs by owner [owner -> [commission_hub.address, commission_hub.address, .... ]]
 artCommissionHubsByOwner: public(HashMap[address, DynArray[address, 10**8]])  # owner -> list of commission hubs
+# Container for the count of ArtCommissionHubs by owner [owner -> count of commission hubs] 
+artCommissionHubsByOwnerCount: public(HashMap[address, uint256])  # owner -> count of commission hubs
+# Container for the index of ArtCommissionHubs by owner [owner -> [commission    _hub -> index]    ... 0 index is used to signal one doesnt exist
+# So for a given owner they have:  HashMap[commission_hub -> index]
+# Ex:  Owner has 3 commission hubs:  [hub1, hub2, hub3]
+#      Then they have:  HashMap[hub1 -> 1, hub2 -> 2, hub3 -> 3]
+#      If they lose hub2, they now have:  HashMap[hub1 -> 1, hub3 -> 2]
+#      If hub3 is lost, they now have:  HashMap[hub1 -> 1]
+#      If hub1 is lost, they now have:  HashMap[]
+# The array is stored above in artCommissionHubsByOwner
+artCommissionHubsByOwnerIndexOffsetByOne: public(HashMap[address, HashMap[address, uint256]])  # owner -> commission_hub -> index    ... 0 index is used to signal one doesnt exist
 
 # Track which commission hubs are generic (not tied to NFTs)
 isGenericHub: public(HashMap[address, bool])  # commission_hub -> is_generic
@@ -121,17 +135,17 @@ def _ensureProfileForAddress(_address: address) -> address:
 
 @internal
 def _appendHubToOwner(_owner: address, _hub: address):
-    # Check if hub is already in the owner's list
-    hubs_len: uint256 = len(self.artCommissionHubsByOwner[_owner])
-    for i:uint256 in range(10**8):
-        if i >= hubs_len:
-            break
-        if self.artCommissionHubsByOwner[_owner][i] == _hub:
-            return  # Hub already exists, nothing to do
+    # Check if hub is already in the owner's list by checking hashmap
+    existing_position: uint256 = self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][_hub]
+    if existing_position == 0:
+        return  # Hub already exists, nothing to do
     
     # Add the hub to the owner's list
+    # The position index should always be one greater so that 0 index is used to signal one doesnt exist
     self.artCommissionHubsByOwner[_owner].append(_hub)
-    
+    self.artCommissionHubsByOwnerCount[_owner] += 1
+    self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][_hub] = self.artCommissionHubsByOwnerCount[_owner]
+
     # Emit event for tracking
     log HubLinkedToOwner(owner=_owner, hub=_hub)
     
@@ -145,37 +159,32 @@ def _appendHubToOwner(_owner: address, _hub: address):
 
 @internal
 def _removeHubFromOwner(_owner: address, _hub: address):
-    # Find the hub in the owner's list
-    hub_index: int256 = -1
-    hubs_len: uint256 = len(self.artCommissionHubsByOwner[_owner])
-    for i:uint256 in range(10**8):
-        if i >= hubs_len:
-            break
-        if self.artCommissionHubsByOwner[_owner][i] == _hub:
-            hub_index = convert(i, int256)
-            break
     
-    # If hub found, remove it using swap and pop
-    if hub_index >= 0:
-        # Convert back to uint256 for array operations
-        idx: uint256 = convert(hub_index, uint256)
-        # If not the last element, swap with the last element
-        if idx < len(self.artCommissionHubsByOwner[_owner]) - 1:
-            last_hub: address = self.artCommissionHubsByOwner[_owner][len(self.artCommissionHubsByOwner[_owner]) - 1]
-            self.artCommissionHubsByOwner[_owner][idx] = last_hub
-        # Remove the last element
-        self.artCommissionHubsByOwner[_owner].pop()
-        
-        # Emit event for tracking
-        log HubUnlinkedFromOwner(owner=_owner, hub=_hub)
-        
-        # If the owner has a profile, remove the hub from their profile
-        if self.profileFactoryAndRegistry != empty(address):
-            profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
-            if staticcall profile_factory_and_regsitry.hasProfile(_owner):
-                profile_address: address = staticcall profile_factory_and_regsitry.getProfile(_owner)
-                profile: Profile = Profile(profile_address)
-                extcall profile.removeCommissionHub(_hub)
+    # Check if hub is already in the owner's list by checking hashmap
+    existing_position: uint256 = self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][_hub]
+    if existing_position != 0:
+        return  # Hub already removed, nothing to do
+
+    # Find the last hub in the owner's list
+    last_hub: address = self.artCommissionHubsByOwner[_owner][len(self.artCommissionHubsByOwner[_owner]) - 1]
+    position_to_remove: uint256 = self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][_hub] - 1
+
+    # Swap the last hub with the hub to remove
+    self.artCommissionHubsByOwner[_owner][position_to_remove] = last_hub
+    self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][last_hub] = position_to_remove + 1
+    self.artCommissionHubsByOwner[_owner].pop()
+    self.artCommissionHubsByOwnerCount[_owner] -= 1
+
+    # Emit event for tracking
+    log HubUnlinkedFromOwner(owner=_owner, hub=_hub)
+    
+    # If the owner has a profile, remove the hub from their profile
+    if self.profileFactoryAndRegistry != empty(address):
+        profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        if staticcall profile_factory_and_regsitry.hasProfile(_owner):
+            profile_address: address = staticcall profile_factory_and_regsitry.getProfile(_owner)
+            profile: Profile = Profile(profile_address)
+            extcall profile.removeCommissionHub(_hub)
 
 @internal
 def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: address,_nft_token_id_or_generic_hub_account: uint256, _owner: address):
@@ -412,54 +421,78 @@ def linkProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
         profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_and_regsitry)
         extcall profile_factory_and_regsitry_interface.linkArtCommissionHubOwnersContract(self)
 
-# Get commission hubs for an owner with pagination
+#
+# getCommissionHubsByOwnerWithOffset
+# -------------------------
+# Returns a paginated list of all artCommissionHubs by owner
+# Use case:
+# - Used by the frontend to display all artCommissionHubs by owner.
+# Example:
+# - Alice wants to see all artCommissionHubs by owner: getCommissionHubsByOwnerWithOffset(owner, offset, count, reverse).
+#
 @view
 @external
-def getCommissionHubsByOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    
-    total_hubs: uint256 = len(self.artCommissionHubsByOwner[_owner])
-    if total_hubs == 0 or _page * _page_size >= total_hubs:
-        return result
-    
-    start: uint256 = _page * _page_size
-    count: uint256 = min(min(_page_size, total_hubs - start), 100)  # Cap at 100 due to return type
-    
-    for i: uint256 in range(100):
-        if i >= count:
-            break
-        if start + i < total_hubs:  # Safety check
-            result.append(self.artCommissionHubsByOwner[_owner][start + i])
-    
-    return result
-
-# Get commission hubs for an owner with offset-based pagination
-@view
-@external
-def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256) -> DynArray[address, 50]:
+def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    @notice Returns a paginated list of commission hubs owned by a specific address using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _owner The address whose commission hubs to query
-    @param _offset The starting index in the commission hubs array
-    @param _count The number of hubs to return (capped at 50)
-    @return A list of commission hub addresses
+    @notice Returns a paginated list of all artCommissionHubs by owner using offset-based pagination.
+    @dev This function supports fetching artCommissionHubs by owner from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` artCommissionHubs by owner starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` artCommissionHubs by owner starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
+
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `artCommissionHubsByOwner` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of artCommissionHubs by owner to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 artCommissionHubs by owner.
     """
     result: DynArray[address, 50] = []
-    
-    total_hubs: uint256 = len(self.artCommissionHubsByOwner[_owner])
-    if total_hubs == 0 or _offset >= total_hubs:
+    offset: uint256 = _offset
+    # Early return if no artCommissionHubs by owner exist
+    if self.artCommissionHubsByOwnerCount[_owner] == 0:
         return result
     
-    # Calculate how many items to return
-    available_items: uint256 = total_hubs - _offset
-    count: uint256 = min(min(_count, available_items), 50)
-    
-    # Populate result array
-    for i: uint256 in range(50):
-        if i >= count:
-            break
-        result.append(self.artCommissionHubsByOwner[_owner][_offset + i])
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.artCommissionHubsByOwnerCount[_owner]:
+            return result
+        available_items: uint256 = self.artCommissionHubsByOwnerCount[_owner] - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.artCommissionHubsByOwner[_owner][offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.artCommissionHubsByOwnerCount[_owner]:
+            offset = self.artCommissionHubsByOwnerCount[_owner] - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.artCommissionHubsByOwner[_owner][index])
     
     return result
 
@@ -467,7 +500,7 @@ def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count
 @view
 @external
 def getCommissionHubCountByOwner(_owner: address) -> uint256:
-    return len(self.artCommissionHubsByOwner[_owner])
+    return self.artCommissionHubsByOwnerCount[_owner]
 
 # Get random commission hubs for an owner
 @view
