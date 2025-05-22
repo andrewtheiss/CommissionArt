@@ -1,7 +1,20 @@
 # @version 0.4.1
 
+# Copyright (c) 2025 Andrew Theiss
+# This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0).
+# To view a copy of this license, visit https://creativecommons.org/licenses/by-nc/4.0/
+# 
+# Permission is hereby granted to use, share, and modify this code for non-commercial purposes only,
+# provided that appropriate credit is given to the original author.
+# For commercial use, please contact the author for permission.
+
+
 # ProfileSocial Contract
 # Handles social features (liked profiles, linked profiles) for a Profile
+
+# Interface for Profile
+interface Profile:
+    def deployer() -> address: view
 
 PAGE_SIZE: constant(uint256) = 20
 MAX_ITEMS: constant(uint256) = 10**8
@@ -16,14 +29,19 @@ tags: public(DynArray[address, MAX_ITEMS])
 tagCount: public(uint256)
 
 @external
-def initialize(_owner: address, _profile: address):
+def initialize(_owner: address, _profile: address, _profile_factory_and_registry: address):
     """
     @notice Initialize the ProfileSocial contract with the owner and profile addresses
     @param _owner The address to set as the owner
     @param _profile The address of the linked Profile contract
+    @param _profile_factory_and_registry The address of the ProfileFactoryAndRegistry contract
     """
-    assert self.owner == empty(address), "Already initialized"
     assert _profile != empty(address), "Profile address cannot be empty"
+    assert self.owner == empty(address), "Already initialized"
+    assert _profile_factory_and_registry != empty(address), "Profile factory and registry address cannot be empty"
+    assert _profile_factory_and_registry == msg.sender, "Profile factory and registry address cannot be empty"
+    profile: Profile = Profile(_profile)
+    assert staticcall profile.deployer() == msg.sender, "Profile address cannot be empty"
     self.owner = _owner
     self.profile = _profile
     self.likedProfileCount = 0

@@ -96,9 +96,9 @@ IS_ON_CHAIN: public(constant(bool)) = True  # Constant to indicate this art piec
 
 # ArtPiece variables
 tokenURI_data: Bytes[45000]  # Changed from imageData to tokenURI_data
-tokenURI_data_format: String[10]  # Format of the tokenURI_data   
-title: String[100]  # Title of the artwork
-description: String[200]  # Description with 200 byte limit
+tokenURI_data_format: public(String[10])  # Format of the tokenURI_data   
+title: public(String[100])  # Title of the artwork
+description: public(String[200])  # Description with 200 byte limit
 artist: public(address)
 commissioner: public(address)  # Store the commissioner's address explicitly
 originalUploader: address  # Store the original uploader's address, do not need to expose
@@ -123,11 +123,7 @@ taggedListCount: public(uint256)
 # Create minimal proxy to ArtPiece
 @deploy
 def __init__():
-    self.initialized = False
-    self.name = ""
-    self.symbol = ""
-    self.taggedListCount = 0
-
+    pass
 
 @internal
 @view

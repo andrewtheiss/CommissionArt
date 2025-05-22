@@ -131,16 +131,17 @@ event CommissionVerifiedInProfile:
 # Constructor
 @deploy
 def __init__():
-    self.deployer = msg.sender
-    self.profileFactoryAndRegistry = msg.sender  # Set deployer to msg.sender during deployment
+    pass
 
 # Initialization Function
 @external
-def initialize(_owner: address, _profile_social: address, _is_artist: bool = False):
+def initialize(_owner: address, _profile_social: address, _profile_factory_and_registry: address, _is_artist: bool = False):
     assert self.owner == empty(address), "Already initialized"
-    assert self.profileFactoryAndRegistry == msg.sender  # Set the hub to be the contract that called initialize
+    assert _profile_factory_and_registry == msg.sender, "Profile factory and registry address cannot be empty"
     assert _profile_social != empty(address), "Profile social address cannot be empty"
 
+    self.profileFactoryAndRegistry = _profile_factory_and_registry  # Set the hub to be the contract that called initialize
+    self.deployer = msg.sender
     self.owner = _owner
     self.isArtist = _is_artist 
     self.profileSocial = _profile_social

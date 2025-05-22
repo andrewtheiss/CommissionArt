@@ -109,13 +109,7 @@ event CommissionerWhitelisted:
 
 @deploy
 def __init__():
-    # Prevent direct deployment except by ArtCommissionHubOwners (enforced at initialize)
-    self.owner = empty(address)
-    self.isInitialized = False
-    self.chainId = 1
-    self.countVerifiedArtCommissions = 0
-    self.countUnverifiedArtCommissions = 0
-    self.isBurned = False
+    pass
 
 @external
 def initializeParentCommissionHubOwnerContract(_art_commission_hub_owners: address):

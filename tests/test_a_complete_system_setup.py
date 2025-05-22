@@ -27,7 +27,6 @@ def test_01_deploy_profile_template():
     profile_template = project.Profile.deploy(sender=deployer)
     
     assert profile_template.address != ZERO_ADDRESS
-    assert profile_template.deployer() == deployer.address
 
 
 def test_02_deploy_profile_social_template():
@@ -199,6 +198,23 @@ def test_10_initialize_art_piece():
     artist = accounts.test_accounts[1]
     owner = accounts.test_accounts[2]
     
+    # Deploy necessary templates
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+    
+    # Deploy factory registry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
+    
+    # Create profile for deployer
+    profile_factory.createProfile(deployer.address, sender=deployer)
+    profile_factory.createProfile(owner.address, sender=deployer)
+    
     # Deploy ArtPiece
     art_piece = project.ArtPiece.deploy(sender=deployer)
     
@@ -212,13 +228,13 @@ def test_10_initialize_art_piece():
         artist.address,
         ZERO_ADDRESS,  # No commission hub needed for this test
         TEST_AI_GENERATED,
-        deployer.address,  # original uploader
-        ZERO_ADDRESS,  # No profile factory needed for this test
+        owner.address,  # original uploader
+        profile_factory.address,  # Now we provide the profile factory address
         sender=deployer
     )
     
     # Verify initialization
-    assert art_piece.owner() == owner.address
+    assert art_piece.getOwner() == owner.address
     assert art_piece.artist() == artist.address
     assert art_piece.title() == TEST_TITLE
     assert art_piece.description() == TEST_DESCRIPTION

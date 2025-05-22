@@ -15,7 +15,7 @@
 
 interface Profile:
     def deployer() -> address: view
-    def initialize(_owner: address, _profile_social: address, _is_artist: bool): nonpayable
+    def initialize(_owner: address, _profile_social: address, _profile_factory_and_registry: address, _is_artist: bool): nonpayable
     def createArtPiece(
         _art_piece_template: address, 
         _token_uri_data: Bytes[45000], 
@@ -35,7 +35,7 @@ interface Profile:
     def myCommissionCount() -> uint256: view
 
 interface ProfileSocial:
-    def initialize(_owner: address, _profile: address): nonpayable
+    def initialize(_owner: address, _profile: address, _profile_factory_and_registry: address): nonpayable
 
 interface ArtCommissionHub:
     def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256): nonpayable
@@ -99,12 +99,10 @@ event ArtCommissionHubOwnersSet:
 event ActiveUserProfileAdded:
     user: indexed(address)
 
+# Called once on deployment.  There's only one ProfileFactoryAndRegistry for all time!  Dayummm
 @deploy
 def __init__(_profile_template: address, _profile_social_template: address, _commission_hub_template: address):
     self.owner = msg.sender
-    # Verify the profile template was deployed by the same address
-    template_deployer: address = staticcall Profile(_profile_template).deployer()
-    assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
     self.profileSocialTemplate = _profile_social_template
     self.allUserProfilesCount = 0
@@ -143,8 +141,8 @@ def _createProfile(_new_profile_address: address, _is_artist: bool = False) -> (
         caller_profile_social_instance = ProfileSocial(caller_social)
         
         # Initialize the profile with the caller as the owner
-        extcall caller_profile_instance.initialize(_new_profile_address, caller_social, _is_artist)
-        extcall caller_profile_social_instance.initialize(_new_profile_address, caller_profile)
+        extcall caller_profile_instance.initialize(_new_profile_address, caller_social, self, _is_artist)
+        extcall caller_profile_social_instance.initialize(_new_profile_address, caller_profile, self)
         
         self._addNewUserAndProfileAndSocial(_new_profile_address, caller_profile, caller_social)
         self._linkExistingHubs(_new_profile_address, caller_profile)
@@ -524,14 +522,13 @@ def getRandomActiveUserProfiles(_count: uint256, _seed: uint256) -> DynArray[add
     return result
 
 
-## Get  Active Users
+## Get Active Users
 #
 # getActiveUsersByOffset
 # -------------------------
 # Returns a paginated list of active users with commissions
 # Use case:
 # - Used by the frontend to display all active users.
-# Example:
 #
 @view
 @external
