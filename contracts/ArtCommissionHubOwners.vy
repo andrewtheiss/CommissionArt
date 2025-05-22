@@ -37,7 +37,7 @@ approvedArtPieceCodeHashes: public(HashMap[bytes32, bool])  # code_hash -> is_ap
 interface ArtCommissionHub:
     def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
     def syncArtCommissionHubOwner(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
-    def getOwner() -> address: view
+    def owner() -> address: view
 
 interface ProfileFactoryAndRegistry:
     def hasProfile(_address: address) -> bool: view
@@ -577,7 +577,7 @@ def isAllowedToUpdateHubForAddress(_commission_hub: address, _user: address) -> 
     commission_hub: ArtCommissionHub = ArtCommissionHub(_commission_hub)
     if commission_hub.address == empty(address):
         return False
-    owner: address = staticcall commission_hub.getOwner()
+    owner: address = staticcall commission_hub.owner()
     return _user == owner
 
 @external

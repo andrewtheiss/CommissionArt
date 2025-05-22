@@ -346,7 +346,7 @@ def test_full_profile_verification(setup):
     assert user_profile_from_hub == profile_address, "Profile address mismatch in ProfileFactoryAndRegistry"
     
     # Verify user is in the latest users list
-    latest_user_index = profile_factory_and_regsitry.allUsersProfileCount() - 1
+    latest_user_index = profile_factory_and_regsitry.allUserProfilesCount() - 1
     if latest_user_index < 1000:  # Only check if within bounds of latestUsers array
         latest_user = profile_factory_and_regsitry.getLatestUserAtIndex(latest_user_index)
         assert latest_user == new_user.address, "User not found in latest users list"

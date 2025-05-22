@@ -40,6 +40,7 @@ PAGE_SIZE: constant(uint256) = 20
 MAX_ITEMS: constant(uint256) = 10**8  # unified max length for all item lists (adjusted if needed to original limits)
 
 # Owner of the profile (user address)
+deployer: public(address)
 profileFactoryAndRegistry: public(address)  # Address of the hub that created this profile
 owner: public(address)
 profileImage: public(address)  # Changed from Bytes[45000] to address
@@ -88,12 +89,12 @@ isArtist: public(bool)
 interface ProfileFactoryAndRegistry:
     def artCommissionHubOwners() -> address: view
     def getProfile(_owner: address) -> address: view
-    def getOwner() -> address: view
+    def owner() -> address: view
 
 # Interface for Profile (for cross-profile calls)
 interface Profile:
     def updateCommissionVerificationStatus(_commission_art_piece: address): nonpayable
-    def getOwner() -> address: view
+    def owner() -> address: view
     def linkArtPieceAsMyCommission(_art_piece: address) -> bool: nonpayable
 
 # Interface for ArtPiece contract - updated with new verification methods
@@ -130,6 +131,7 @@ event CommissionVerifiedInProfile:
 # Constructor
 @deploy
 def __init__():
+    self.deployer = msg.sender
     self.profileFactoryAndRegistry = msg.sender  # Set deployer to msg.sender during deployment
 
 # Initialization Function
@@ -150,12 +152,12 @@ def initialize(_owner: address, _profile_social: address, _is_artist: bool = Fal
     self.myArtCount = 0
     self.myCommissionHubCount = 0
 
+# Internal function to get deployer address
 @internal
 @view
 def _getDeployer() -> address:
     profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
-    return staticcall profile_factory.getOwner()
-
+    return staticcall profile_factory.owner()
 
 # Toggle allowing new myCommissions
 @external
@@ -230,7 +232,7 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     # Check who the sender is
     is_profile_owner: bool = msg.sender == self.owner
     is_profile_factory_and_registry: bool = msg.sender == self.profileFactoryAndRegistry
-    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner or staticcall Profile(commissioner).getOwner() == art_artist or staticcall Profile(art_artist).getOwner() == commissioner
+    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner or staticcall Profile(commissioner).owner() == art_artist or staticcall Profile(art_artist).owner() == commissioner
     is_art_creator_profile: bool = staticcall ProfileFactoryAndRegistry(self.profileFactoryAndRegistry).getProfile(art_artist) == msg.sender or staticcall ProfileFactoryAndRegistry(self.profileFactoryAndRegistry).getProfile(commissioner) == msg.sender
     
     # Check to make sure its a valid commission and function caller has permission to add it
@@ -1198,7 +1200,3 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
             self.myArtCount += 1
 
 # NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.
-
-@external
-def getOwner() -> address:
-    return self.owner

@@ -32,6 +32,7 @@ interface Profile:
     def whitelist(_address: address) -> bool: view
     def allowUnverifiedCommissions() -> bool: view
     def addCommission(_commission: address): nonpayable
+    def myCommissionCount() -> uint256: view
 
 interface ProfileSocial:
     def initialize(_owner: address, _profile: address): nonpayable
@@ -55,7 +56,7 @@ commissionHubTemplate: public(address)  # Address of the commission hub contract
 # Profile variables
 latestUsers: public(address[100])  # List of registered users for easy querying
 allUserProfiles: public(DynArray[address,10**9])  # List of all users for easy querying
-allUsersProfileCount: public(uint256)  # Total number of registered user profiles
+allUserProfilesCount: public(uint256)  # Total number of registered user profiles
 activeUsersWithCommissionsCount: public(uint256)  # Total number of registered user profiles
 activeUsersWithCommissions: public(DynArray[address,10**9])  # List of all users for easy querying
 activeUsersWithCommissionsRegistry: public(HashMap[address, bool])  # Maps user address to profile contract
@@ -106,19 +107,19 @@ def __init__(_profile_template: address, _profile_social_template: address, _com
     assert template_deployer == msg.sender, "Profile template must be deployed by the same address"
     self.profileTemplate = _profile_template
     self.profileSocialTemplate = _profile_social_template
-    self.allUsersProfileCount = 0
+    self.allUserProfilesCount = 0
     self.artCommissionHubOwners = empty(address)
     self.commissionHubTemplate = _commission_hub_template
 
 @internal
 def _addNewUserAndProfileAndSocial(_user: address, _profile: address, _social: address):
     # Update latest users now that its an array in a rotating way
-    index: uint256 = self.allUsersProfileCount % 100
+    index: uint256 = self.allUserProfilesCount % 100
     self.latestUsers[index] = _user
     self.allUserProfiles.append(_user)
     self.userAddressToProfile[_user] = _profile
     self.userAddressToProfileSocial[_user] = _social
-    self.allUsersProfileCount += 1
+    self.allUserProfilesCount += 1
     
 # Its true, anyone can create a profile for anyone else!
 # returns the profile and profile social addresses
@@ -410,6 +411,13 @@ def updateProfileSocialTemplateContract(_new_template: address):
 # no commissions doesn't show up on the homepage
 @external 
 def addActiveUserProfile(_user: address):
+    # Check if user has profile
+    # Check if user has commissions
+    profile: address = self.userAddressToProfile[_user]
+    assert profile != empty(address), "User does not have a profile"
+    profile_instance: Profile = Profile(profile)
+    if not staticcall profile_instance.myCommissionCount() > 0:
+        return
     if not self.activeUsersWithCommissionsRegistry[_user]:
         self.activeUsersWithCommissions.append(_user)
         self.activeUsersWithCommissionsCount += 1
@@ -437,7 +445,7 @@ def getLatestUserProfiles() -> address[100]:
     user_profiles: address[100] = empty(address[100])
     
     # Cap at total number of users or array size
-    count: uint256 = min(self.allUsersProfileCount, 100)
+    count: uint256 = min(self.allUserProfilesCount, 100)
     if count == 0:
         return user_profiles
         
@@ -445,8 +453,8 @@ def getLatestUserProfiles() -> address[100]:
     start_index: uint256 = 0
 
     # If we wrapped around, start at the position after the most recently added user
-    if self.allUsersProfileCount > 100:
-        start_index = (self.allUsersProfileCount % 100)
+    if self.allUserProfilesCount > 100:
+        start_index = (self.allUserProfilesCount % 100)
     
     # Copy users in chronological order (oldest to newest)
     for i: uint256 in range(100):
@@ -476,7 +484,7 @@ def getRandomActiveUserProfiles(_count: uint256, _seed: uint256) -> DynArray[add
     result: DynArray[address, 20] = []
     
     # Early return if no profiles
-    if self.allUsersProfileCount == 0:
+    if self.allUserProfilesCount == 0:
         return result
     
     # Get the latest users array length
@@ -515,78 +523,159 @@ def getRandomActiveUserProfiles(_count: uint256, _seed: uint256) -> DynArray[add
     
     return result
 
-@external
-@view
-def getActiveUserProfilesByOffset(_offset: uint256, _count: uint256) -> DynArray[address, 20]:
-    """
-    @notice Returns a paginated list of profiles using offset-based pagination
-    @dev This allows the UI to implement its own randomization by fetching different pages
-    @param _offset The starting index in the users array
-    @param _count The number of profiles to return (capped at 20)
-    @return A list of profile addresses
-    """
-    result: DynArray[address, 20] = []
-    
-    # Check if there are active users with commissions and if the offset is within bounds
-    if self.activeUsersWithCommissionsCount == 0 or _offset >= self.activeUsersWithCommissionsCount:
-        return result
-    
-    # Calculate how many items are available after the given offset
-    available_items: uint256 = self.activeUsersWithCommissionsCount - _offset
-    # Determine the number of items to return, capped at 20, available items, or requested count
-    count: uint256 = min(min(_count, available_items), 20)
-    
-    # Populate the result array with profile addresses
-    for i: uint256 in range(20):
-        if i >= count:
-            break
-        # Retrieve the user address from the active users array
-        user_address: address = self.activeUsersWithCommissions[_offset + i]
-        # Map the user address to its corresponding profile address
-        profile_address: address = self.userAddressToProfile[user_address]
-        # Only include valid (non-empty) profile addresses in the result
-        if profile_address != empty(address):
-            result.append(profile_address)
-    
-    return result
 
-@external
+## Get  Active Users
+#
+# getActiveUsersByOffset
+# -------------------------
+# Returns a paginated list of active users with commissions
+# Use case:
+# - Used by the frontend to display all active users.
+# Example:
+#
 @view
-def getLatestActiveUserProfiles(_count: uint256) -> DynArray[address, 20]:
+@external
+def getActiveUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    @notice Returns the most recently active profiles
-    @dev Returns profiles from the end of the activeUsersWithCommissions array (most recently active)
-    @param _count The number of recent profiles to retrieve
-    @return Array of recent profile addresses, up to 20
+    @notice Returns a paginated list of active users using offset-based pagination.
+    @dev This function supports fetching users from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` users starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` users starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
+
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `latestActiveUsers` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of users to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 latest active user addresses.
     """
-    result: DynArray[address, 20] = []
+    result: DynArray[address, 50] = []
+    offset: uint256 = _offset
+    # Early return if no users exist
     if self.activeUsersWithCommissionsCount == 0:
         return result
     
-    # Calculate how many items to return, capped by array size and max return size
-    count: uint256 = min(min(_count, self.activeUsersWithCommissionsCount), 20)
-    
-    # Start from the end of the array (most recent first)
-    for i: uint256 in range(20):
-        if i >= count:
-            break
-        
-        # Get user from the end of the activeUsersWithCommissions array
-        idx: uint256 = self.activeUsersWithCommissionsCount - 1 - i
-        user_address: address = self.activeUsersWithCommissions[idx]
-        
-        # Get the profile address
-        profile_address: address = self.userAddressToProfile[user_address]
-        if profile_address != empty(address):
-            result.append(profile_address)
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.activeUsersWithCommissionsCount:
+            return result
+        available_items: uint256 = self.activeUsersWithCommissionsCount - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.activeUsersWithCommissions[offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.activeUsersWithCommissionsCount:
+            offset = self.activeUsersWithCommissionsCount - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.activeUsersWithCommissions[index])
     
     return result
 
-@external
-@view
-def getOwner() -> address:
-    return self.owner
 
+
+## Get All Users By Offset
+#
+# getAllUsersByOffset
+# -------------------------
+# Returns a paginated list of all users with commissions
+# Use case:
+# - Used by the frontend to display all users.
+# Example:
+# - Alice wants to see all users: getAllUsersByOffset(page, pageSize).
+#
+@view
+@external
+def getAllUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of all users using offset-based pagination.
+    @dev This function supports fetching users from either the front or back of the array:
+         - **Front Pagination (reverse = False)**: Fetches `_count` users starting from `_offset` in stored order (oldest first).
+         - **Back Pagination (reverse = True)**: Fetches `_count` users starting from `_offset` and moving backwards (newest first).
+         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
+
+         **To Mimic Page-Based Pagination:**
+         - **For `recent = False` (oldest first, ascending order):**
+           - Set `_offset = _page * _page_size`
+           - Set `_count = _page_size`
+           - Set `reverse = False`
+           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
+           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
+         - **For `recent = True` (newest first, descending order):**
+           - Calculate `start = array_length - 1 - (_page * _page_size)`
+           - Calculate `items = min(_page_size, start + 1)`
+           - Set `_offset = start`
+           - Set `_count = items`
+           - Set `reverse = True`
+           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
+           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
+
+    @param _offset The starting index in the `latestActiveUsers` array.
+                   - If `reverse = False`: Index from the start (0-based).
+                   - If `reverse = True`: Index from which to start moving backwards.
+    @param _count The number of users to return (capped at 50).
+    @param reverse Boolean flag to control fetch direction:
+                   - `False`: Forward from `_offset` (ascending).
+                   - `True`: Backward from `_offset` (descending).
+    @return A list of up to 50 latest active user addresses.
+    """
+    result: DynArray[address, 50] = []
+    offset: uint256 = _offset
+    # Early return if no users exist
+    if self.allUserProfilesCount == 0:
+        return result
+    
+    if not reverse:
+        # Front pagination: Fetch from offset forward
+        if offset >= self.allUserProfilesCount:
+            return result
+        available_items: uint256 = self.allUserProfilesCount - offset
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            result.append(self.allUserProfiles[offset + i])
+    else:
+        # Back pagination: Fetch from offset backward
+        if offset >= self.allUserProfilesCount:
+            offset = self.allUserProfilesCount - 1  # Adjust to last valid index
+        start: uint256 = offset
+        available_items: uint256 = start + 1  # Items available from start to index 0
+        count: uint256 = min(min(_count, available_items), 50)
+        for i: uint256 in range(50):
+            if i >= count:
+                break
+            index: uint256 = start - i
+            result.append(self.allUserProfiles[index])
+    
+    return result
 
 # Bulk remove from profile
 # removeArtLinkToMyCommission

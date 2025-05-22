@@ -353,7 +353,7 @@ def test_get_user_profiles(setup):
         profile_addresses.append(profile_factory_and_regsitry.getProfile(user.address))
     
     # Check the user count
-    assert profile_factory_and_regsitry.allUsersProfileCount() == 5
+    assert profile_factory_and_regsitry.allUserProfilesCount() == 5
     
     # Test with page size 0 (should return empty array)
     zero_page = profile_factory_and_regsitry.getRecentUserProfiles(0, 0)

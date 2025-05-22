@@ -25,7 +25,7 @@ interface ERC721Receiver:
 # Interface for Profile
 interface Profile:
     def addCommission(art_piece: address): nonpayable
-    def getOwner() -> address: view
+    def owner() -> address: view
 
 # Interface for ProfileFactoryAndRegistry
 interface ProfileFactoryAndRegistry:
@@ -161,7 +161,7 @@ def initialize(
     _artist_input: address, 
     _commission_hub: address, 
     _ai_generated: bool,
-    _original_uploader: address,
+    _original_uploader: address,  # MUST already be a profile
     _profile_factory_address: address
 ):
     """
@@ -431,7 +431,7 @@ def verifyAsArtist():
     # If this is a contract, we need to get the owner from the Profile
     potential_artist: address = msg.sender
     if self._isContract(msg.sender):
-        potential_artist = staticcall Profile(msg.sender).getOwner()
+        potential_artist = staticcall Profile(msg.sender).owner()
     assert potential_artist == self.artist, "Only the artist can verify as artist"
 
     self.artistVerified = True
@@ -457,7 +457,7 @@ def verifyAsCommissioner():
     # If this is a contract, we need to get the owner from the Profile
     potential_commissioner: address = msg.sender
     if self._isContract(msg.sender):
-        potential_commissioner = staticcall Profile(msg.sender).getOwner()
+        potential_commissioner = staticcall Profile(msg.sender).owner()
     assert potential_commissioner == self.commissioner, "Only the commissioner can verify as commissioner"
 
     self.commissionerVerified = True

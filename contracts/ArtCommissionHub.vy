@@ -647,8 +647,3 @@ def clearAllUnverifiedArtCommissions():
         art_piece: address = self.unverifiedArtCommissions.pop()
         self.unverifiedArtCommissionsRegistry[art_piece] = False
     self.countUnverifiedArtCommissions = 0
-
-@external
-@view
-def getOwner() -> address:
-    return self.owner

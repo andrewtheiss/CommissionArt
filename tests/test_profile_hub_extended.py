@@ -129,7 +129,7 @@ def test_get_user_profiles_pagination(setup):
         profile_factory_and_regsitry.createProfile(sender=test_users[i])
     
     # Check that the profiles were created
-    user_count = profile_factory_and_regsitry.allUsersProfileCount()
+    user_count = profile_factory_and_regsitry.allUserProfilesCount()
     print(f"Profile count after creation: {user_count}")
     
     # Debug: Print the first few users from latestUsers
