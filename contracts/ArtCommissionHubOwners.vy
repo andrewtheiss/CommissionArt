@@ -49,14 +49,15 @@ approvedArtPieceCodeHashes: public(HashMap[bytes32, bool])  # code_hash -> is_ap
 
 
 interface ArtCommissionHub:
-    def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
+    def initializeParentCommissionHubOwnerContract(_art_commission_hub_owners: address): nonpayable
+    def initializeForArtCommissionHub(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256): nonpayable
     def syncArtCommissionHubOwner(chain_id: uint256, nft_contract: address, nft_token_id_or_generic_hub_account: uint256, owner: address): nonpayable
     def owner() -> address: view
 
 interface ProfileFactoryAndRegistry:
     def hasProfile(_address: address) -> bool: view
     def getProfile(_address: address) -> address: view
-    def createProfile(_address: address) -> address: nonpayable
+    def createProfile(_owner: address): nonpayable
     def linkArtCommissionHubOwnersContract(_registry: address): nonpayable
 
 interface Profile:
@@ -130,14 +131,14 @@ def _ensureProfileForAddress(_address: address) -> address:
         return staticcall profile_factory_and_regsitry.getProfile(_address)
     
     # Create a new profile for the user using the createProfile function
-    profile_address: address = extcall profile_factory_and_regsitry.createProfile(_address)
-    return profile_address
+    extcall profile_factory_and_regsitry.createProfile(_address)
+    return staticcall profile_factory_and_regsitry.getProfile(_address)
 
 @internal
 def _appendHubToOwner(_owner: address, _hub: address):
     # Check if hub is already in the owner's list by checking hashmap
     existing_position: uint256 = self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][_hub]
-    if existing_position == 0:
+    if existing_position != 0:
         return  # Hub already exists, nothing to do
     
     # Add the hub to the owner's list
@@ -162,7 +163,7 @@ def _removeHubFromOwner(_owner: address, _hub: address):
     
     # Check if hub is already in the owner's list by checking hashmap
     existing_position: uint256 = self.artCommissionHubsByOwnerIndexOffsetByOne[_owner][_hub]
-    if existing_position != 0:
+    if existing_position == 0:
         return  # Hub already removed, nothing to do
 
     # Find the last hub in the owner's list
@@ -207,7 +208,9 @@ def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: addre
         #4. Add the commission hub to the new owner's list  
         commission_hub = create_minimal_proxy_to(self.artCommissionHubTemplate)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
-        extcall commission_hub_instance.initializeForArtCommissionHub(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
+        extcall commission_hub_instance.initializeParentCommissionHubOwnerContract(self)
+        extcall commission_hub_instance.initializeForArtCommissionHub(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account)
+        extcall commission_hub_instance.syncArtCommissionHubOwner(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
         self.artCommissionHubRegistry[_chain_id][_nft_contract][_nft_token_id_or_generic_hub_account] = commission_hub
         self.isGenericHub[commission_hub] = False
         log ArtCommissionHubCreated(chain_id=_chain_id, nft_contract=_nft_contract, nft_token_id_or_generic_hub_account=_nft_token_id_or_generic_hub_account, commission_hub=commission_hub, is_generic=False)
@@ -285,9 +288,9 @@ def createGenericCommissionHub(_owner: address) -> address:
     profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
     if not staticcall profile_factory_and_regsitry.hasProfile(_owner):
         # Create a profile for the owner using createProfile
-        profile_address: address = extcall profile_factory_and_regsitry.createProfile(_owner)
+        extcall profile_factory_and_regsitry.createProfile(_owner)
         # Log profile creation
-        log ProfileCreated(owner=_owner, profile=profile_address)
+        log ProfileCreated(owner=_owner, profile=staticcall profile_factory_and_regsitry.getProfile(_owner))
     
     _nft_token_id_or_generic_hub_account: uint256 = convert(_owner, uint256)
 
@@ -295,13 +298,26 @@ def createGenericCommissionHub(_owner: address) -> address:
     commission_hub: address = create_minimal_proxy_to(self.artCommissionHubTemplate)
     commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
     
+    # Initialize the parent contract reference first
+    extcall commission_hub_instance.initializeParentCommissionHubOwnerContract(self)
+    
     # Initialize the generic hub
     extcall commission_hub_instance.initializeForArtCommissionHub(
         GENERIC_ART_COMMISSION_HUB_CHAIN_ID, 
         GENERIC_ART_COMMISSION_HUB_CONTRACT, 
-        _nft_token_id_or_generic_hub_account, 
+        _nft_token_id_or_generic_hub_account)
+    
+    # Set the owner in the hub
+    extcall commission_hub_instance.syncArtCommissionHubOwner(
+        GENERIC_ART_COMMISSION_HUB_CHAIN_ID,
+        GENERIC_ART_COMMISSION_HUB_CONTRACT,
+        _nft_token_id_or_generic_hub_account,
         _owner)
     
+    # Register the hub in the registry
+    self.artCommissionHubRegistry[GENERIC_ART_COMMISSION_HUB_CHAIN_ID][GENERIC_ART_COMMISSION_HUB_CONTRACT][_nft_token_id_or_generic_hub_account] = commission_hub
+    self.artCommissionHubOwners[GENERIC_ART_COMMISSION_HUB_CHAIN_ID][GENERIC_ART_COMMISSION_HUB_CONTRACT][_nft_token_id_or_generic_hub_account] = _owner
+    self.artCommissionHubLastUpdated[GENERIC_ART_COMMISSION_HUB_CHAIN_ID][GENERIC_ART_COMMISSION_HUB_CONTRACT][_nft_token_id_or_generic_hub_account] = block.timestamp
     self.isGenericHub[commission_hub] = True
     self._appendHubToOwner(_owner, commission_hub)
     log GenericCommissionHubCreated(owner=_owner, commission_hub=commission_hub)
@@ -616,6 +632,6 @@ def isAllowedToUpdateHubForAddress(_commission_hub: address, _user: address) -> 
 @external
 @view
 def isSystemAllowed(_address: address) -> bool:
-    # Either the owner or the L2OwnershipRelay or the address itself can update the owner
-    allowed: bool = (_address == self.owner or  _address == self.l2OwnershipRelay)
+    # Either the owner or the L2OwnershipRelay or the ArtCommissionHubOwners contract itself can update
+    allowed: bool = (_address == self.owner or _address == self.l2OwnershipRelay or _address == self)
     return allowed

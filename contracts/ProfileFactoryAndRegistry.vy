@@ -44,6 +44,8 @@ interface ArtCommissionHubOwners:
     def getCommissionHubsByOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
     def getCommissionHubCountByOwner(_owner: address) -> uint256: view
     def isSystemAllowed(_address: address) -> bool: view
+    def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]: view    
+
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
@@ -144,8 +146,8 @@ def _createProfile(_new_profile_address: address, _is_artist: bool = False) -> (
         extcall caller_profile_instance.initialize(_new_profile_address, caller_social, self, _is_artist)
         extcall caller_profile_social_instance.initialize(_new_profile_address, caller_profile, self)
         
-        self._addNewUserAndProfileAndSocial(_new_profile_address, caller_profile, caller_social)
-        self._linkExistingHubs(_new_profile_address, caller_profile)
+        self._addNewUserAndProfileAndSocial(_new_profile_address, caller_profile, caller_social)        
+        self._linkExistingHubs(_new_profile_address, caller_profile)        
         log ProfileCreated(user=_new_profile_address, profile=caller_profile, social=caller_social)
     else:
         caller_profile_instance = Profile(caller_profile)

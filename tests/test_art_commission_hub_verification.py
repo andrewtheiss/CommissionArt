@@ -210,8 +210,18 @@ def test_03_create_generic_commission_hub():
     user = accounts.test_accounts[1]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -220,6 +230,10 @@ def test_03_create_generic_commission_hub():
         art_piece_template.address,
         sender=deployer
     )
+    
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
     
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
@@ -232,7 +246,7 @@ def test_03_create_generic_commission_hub():
     assert hub_count == 1, "User should have one commission hub"
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     assert hub_address != ZERO_ADDRESS, "Hub address should not be zero"
     
     # Create a reference to the hub
@@ -248,8 +262,18 @@ def test_04_register_nft_owner_and_create_hub():
     deployer = accounts.test_accounts[0]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -259,13 +283,17 @@ def test_04_register_nft_owner_and_create_hub():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
     # Set test parameters
     chain_id = 1
     nft_contract = "0x1234567890123456789012345678901234567890"
     token_id = 123
     owner = accounts.test_accounts[3]
     
-    # Register NFT owner
+    # Register NFT owner - this should work since deployer is set as L2OwnershipRelay
     art_commission_hub_owners.registerNFTOwnerFromParentChain(
         chain_id, 
         nft_contract, 
@@ -293,8 +321,18 @@ def test_05_submit_commission():
     artist = accounts.test_accounts[2]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -304,6 +342,14 @@ def test_05_submit_commission():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
+    # Create profiles for users
+    profile_factory.createProfile(user.address, sender=deployer)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
         user.address,  # Owner
@@ -311,25 +357,56 @@ def test_05_submit_commission():
     )
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
-    # Deploy an art piece for testing
+    # Deploy and initialize an art piece directly with correct parameters
     art_piece = project.ArtPiece.deploy(sender=deployer)
     
-    # Approve the ArtPiece template's code hash
-    commission_hub.approveArtPieceCodeHash(art_piece.address, True, sender=user)
+    # Initialize as a commission piece with hub attached and artist as original uploader
+    art_piece.initialize(
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        TEST_TITLE,
+        TEST_DESCRIPTION,
+        user.address,  # commissioner
+        artist.address,  # artist  
+        hub_address,  # commission hub attached
+        TEST_AI_GENERATED,
+        artist.address,  # original uploader (artist)
+        profile_factory.address,  # profile factory address
+        sender=deployer
+    )
     
-    # Submit a commission
-    commission_hub.submitCommission(art_piece.address, sender=artist)
+    # Approve the ArtPiece instance in ArtCommissionHubOwners
+    art_commission_hub_owners.setApprovedArtPiece(art_piece.address, True, sender=deployer)
     
-    # Verify submission
-    assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
-    assert commission_hub.getUnverifiedCount(artist.address) == 1, "Artist should have 1 unverified commission"
+    # At this point: no parties are verified yet (direct initialization doesn't auto-verify)
+    # The art piece should be unverified commission initially
+    assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
+    assert not art_piece.artistVerified(), "Artist should not be verified yet"
+    assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
     
-    unverified_art_pieces = commission_hub.getUnverifiedArtPieces(0, 10)
-    assert len(unverified_art_pieces) == 1, "Should have 1 art piece in unverified list"
-    assert unverified_art_pieces[0] == art_piece.address, "Art piece should be in unverified list"
+    # Artist verifies first
+    art_piece.verifyAsArtist(sender=artist)
+    
+    # Check state after artist verification
+    assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
+    assert art_piece.artistVerified(), "Artist should be verified"
+    assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
+    
+    # Commissioner verifies to complete the verification
+    art_piece.verifyAsCommissioner(sender=user)
+    
+    # Now the art piece should be fully verified and automatically submitted to hub
+    assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
+    
+    # Check that it was automatically submitted to verified list
+    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    
+    verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
+    assert len(verified_art_pieces) == 1, "Should have 1 art piece in verified list"
+    assert verified_art_pieces[0] == art_piece.address, "Art piece should be in verified list"
 
 
 def test_06_verify_commission():
@@ -339,8 +416,18 @@ def test_06_verify_commission():
     artist = accounts.test_accounts[2]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -350,6 +437,14 @@ def test_06_verify_commission():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
+    # Create profiles for users
+    profile_factory.createProfile(user.address, sender=deployer)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
         user.address,  # Owner
@@ -357,29 +452,50 @@ def test_06_verify_commission():
     )
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
-    # Deploy an art piece for testing
-    art_piece = project.ArtPiece.deploy(sender=deployer)
+    # Get the artist profile to create the art piece properly
+    artist_profile_address = profile_factory.getProfile(artist.address)
+    artist_profile = project.Profile.at(artist_profile_address)
     
-    # Approve the ArtPiece template's code hash
-    commission_hub.approveArtPieceCodeHash(art_piece.address, True, sender=user)
+    # Create art piece through the Profile (this will automatically verify the artist)
+    art_piece_address = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        TEST_TITLE,
+        TEST_DESCRIPTION,
+        True,  # as_artist
+        user.address,  # other_party (commissioner)
+        TEST_AI_GENERATED,
+        hub_address,  # commission hub
+        False,  # is_profile_art
+        sender=artist
+    )
     
-    # Submit a commission
-    commission_hub.submitCommission(art_piece.address, sender=artist)
+    art_piece = project.ArtPiece.at(art_piece_address)
     
-    # Verify the commission
-    commission_hub.verifyCommission(art_piece.address, artist.address, sender=user)
+    # Approve the ArtPiece instance in ArtCommissionHubOwners
+    art_commission_hub_owners.setApprovedArtPiece(art_piece.address, True, sender=deployer)
     
-    # Check state after verification
+    # At this point: artist is verified (uploader), commissioner is not yet verified
+    # The art piece should be in an unverified state initially
+    assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
+    assert art_piece.artistVerified(), "Artist should be verified (uploader)"
+    assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
+    
+    # Check initial hub state - should have no commissions yet
+    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
+    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions initially"
+    
+    # Verify the commission by having commissioner verify (which will complete verification and auto-submit)
+    art_piece.verifyAsCommissioner(sender=user)
+    
+    # After verification, the commission should be automatically submitted and moved to verified
+    assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
-    assert commission_hub.getUnverifiedCount(artist.address) == 0, "Artist should have 0 unverified commissions"
-    
-    # Check unverified list - should be empty
-    unverified_art_pieces = commission_hub.getUnverifiedArtPieces(0, 10)
-    assert len(unverified_art_pieces) == 0, "Unverified list should be empty"
     
     # Check verified list - should contain the art piece
     verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
@@ -399,8 +515,18 @@ def test_07_verify_multiple_commissions():
     artist = accounts.test_accounts[2]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -410,6 +536,14 @@ def test_07_verify_multiple_commissions():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
+    # Create profiles for users
+    profile_factory.createProfile(user.address, sender=deployer)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
         user.address,  # Owner
@@ -417,44 +551,78 @@ def test_07_verify_multiple_commissions():
     )
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
-    # Deploy art pieces for testing
-    art_piece_1 = project.ArtPiece.deploy(sender=deployer)
-    art_piece_2 = project.ArtPiece.deploy(sender=deployer)
+    # Get the artist profile to create art pieces properly
+    artist_profile_address = profile_factory.getProfile(artist.address)
+    artist_profile = project.Profile.at(artist_profile_address)
     
-    # Approve the ArtPiece template's code hash
-    commission_hub.approveArtPieceCodeHash(art_piece_1.address, True, sender=user)
+    # Create two art pieces through the Profile (this will automatically verify the artist for both)
+    art_piece_1_address = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Test Title 1",
+        TEST_DESCRIPTION,
+        True,  # as_artist
+        user.address,  # other_party (commissioner)
+        TEST_AI_GENERATED,
+        hub_address,  # commission hub
+        False,  # is_profile_art
+        sender=artist
+    )
     
-    # Submit two unverified commissions
-    commission_hub.submitCommission(art_piece_1.address, sender=artist)
-    commission_hub.submitCommission(art_piece_2.address, sender=artist)
+    art_piece_2_address = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Test Title 2",
+        TEST_DESCRIPTION,
+        True,  # as_artist
+        user.address,  # other_party (commissioner)
+        TEST_AI_GENERATED,
+        hub_address,  # commission hub
+        False,  # is_profile_art
+        sender=artist
+    )
     
-    # Check initial state
-    assert commission_hub.countUnverifiedCommissions() == 2, "Should have 2 unverified commissions"
-    assert commission_hub.getUnverifiedCount(artist.address) == 2, "Artist should have 2 unverified commissions"
+    art_piece_1 = project.ArtPiece.at(art_piece_1_address)
+    art_piece_2 = project.ArtPiece.at(art_piece_2_address)
+    
+    # Approve the ArtPiece instances in ArtCommissionHubOwners
+    art_commission_hub_owners.setApprovedArtPiece(art_piece_1.address, True, sender=deployer)
+    art_commission_hub_owners.setApprovedArtPiece(art_piece_2.address, True, sender=deployer)
+    
+    # Check initial state - both should be partially verified (artist verified, commissioner not)
+    assert not art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should not be fully verified yet"
+    assert not art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should not be fully verified yet"
+    assert art_piece_1.artistVerified(), "Artist should be verified for piece 1"
+    assert art_piece_2.artistVerified(), "Artist should be verified for piece 2"
+    assert not art_piece_1.commissionerVerified(), "Commissioner should not be verified for piece 1"
+    assert not art_piece_2.commissionerVerified(), "Commissioner should not be verified for piece 2"
+    
+    # Check initial hub state
+    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
+    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions initially"
     
     # Verify the first commission
-    commission_hub.verifyCommission(art_piece_1.address, artist.address, sender=user)
+    art_piece_1.verifyAsCommissioner(sender=user)
     
     # Check state after first verification
-    assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
+    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
-    assert commission_hub.getUnverifiedCount(artist.address) == 1, "Artist should have 1 unverified commission"
-    
-    # Check unverified list - should contain second art piece only
-    unverified_art_pieces = commission_hub.getUnverifiedArtPieces(0, 10)
-    assert len(unverified_art_pieces) == 1, "Should have 1 art piece in unverified list"
-    assert unverified_art_pieces[0] == art_piece_2.address, "Art piece 2 should be in unverified list"
+    assert art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should be fully verified"
+    assert not art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should still not be fully verified"
     
     # Verify the second commission
-    commission_hub.verifyCommission(art_piece_2.address, artist.address, sender=user)
+    art_piece_2.verifyAsCommissioner(sender=user)
     
     # Check state after second verification
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedCommissions() == 2, "Should have 2 verified commissions"
-    assert commission_hub.getUnverifiedCount(artist.address) == 0, "Artist should have 0 unverified commissions"
+    assert art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should still be fully verified"
+    assert art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should now be fully verified"
 
 
 def test_08_unverify_commission():
@@ -464,8 +632,18 @@ def test_08_unverify_commission():
     artist = accounts.test_accounts[2]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -475,6 +653,14 @@ def test_08_unverify_commission():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
+    # Create profiles for users
+    profile_factory.createProfile(user.address, sender=deployer)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
         user.address,  # Owner
@@ -482,32 +668,48 @@ def test_08_unverify_commission():
     )
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
-    # Deploy an art piece for testing
-    art_piece = project.ArtPiece.deploy(sender=deployer)
+    # Get the artist profile to create the art piece properly
+    artist_profile_address = profile_factory.getProfile(artist.address)
+    artist_profile = project.Profile.at(artist_profile_address)
     
-    # Approve the ArtPiece template's code hash
-    commission_hub.approveArtPieceCodeHash(art_piece.address, True, sender=user)
+    # Create and fully verify a commission piece
+    art_piece_address = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        TEST_TITLE,
+        TEST_DESCRIPTION,
+        True,  # as_artist
+        user.address,  # other_party (commissioner)
+        TEST_AI_GENERATED,
+        hub_address,  # commission hub
+        False,  # is_profile_art
+        sender=artist
+    )
     
-    # Submit a commission
-    commission_hub.submitCommission(art_piece.address, sender=artist)
+    art_piece = project.ArtPiece.at(art_piece_address)
     
-    # Verify the commission
-    commission_hub.verifyCommission(art_piece.address, artist.address, sender=user)
+    # Approve the ArtPiece instance in ArtCommissionHubOwners
+    art_commission_hub_owners.setApprovedArtPiece(art_piece.address, True, sender=deployer)
     
-    # Check initial state
+    # Complete verification by having commissioner verify
+    art_piece.verifyAsCommissioner(sender=user)
+    
+    # Check initial state - should be verified and in hub
+    assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
     
     # Unverify the commission
-    commission_hub.unverifyCommission(art_piece.address, artist.address, sender=user)
+    commission_hub.unverifyCommission(art_piece.address, sender=user)
     
     # Check state after unverification
     assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
     assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions"
-    assert commission_hub.getUnverifiedCount(artist.address) == 1, "Artist should have 1 unverified commission"
+    assert commission_hub.getUnverifiedCount(user.address) == 1, "User should have 1 unverified commission"
     
     # Check unverified list - should contain the art piece
     unverified_art_pieces = commission_hub.getUnverifiedArtPieces(0, 10)
@@ -527,8 +729,18 @@ def test_09_unverify_commission_permissions():
     non_owner = accounts.test_accounts[3]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -538,6 +750,14 @@ def test_09_unverify_commission_permissions():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
+    # Create profiles for users
+    profile_factory.createProfile(user.address, sender=deployer)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
         user.address,  # Owner
@@ -545,26 +765,47 @@ def test_09_unverify_commission_permissions():
     )
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
-    # Deploy an art piece for testing
-    art_piece = project.ArtPiece.deploy(sender=deployer)
+    # Get the artist profile to create the art piece properly
+    artist_profile_address = profile_factory.getProfile(artist.address)
+    artist_profile = project.Profile.at(artist_profile_address)
     
-    # Approve the ArtPiece template's code hash
-    commission_hub.approveArtPieceCodeHash(art_piece.address, True, sender=user)
+    # Create and fully verify a commission piece
+    art_piece_address = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        TEST_TITLE,
+        TEST_DESCRIPTION,
+        True,  # as_artist
+        user.address,  # other_party (commissioner)
+        TEST_AI_GENERATED,
+        hub_address,  # commission hub
+        False,  # is_profile_art
+        sender=artist
+    )
     
-    # Submit and verify a commission
-    commission_hub.submitCommission(art_piece.address, sender=artist)
-    commission_hub.verifyCommission(art_piece.address, artist.address, sender=user)
+    art_piece = project.ArtPiece.at(art_piece_address)
+    
+    # Approve the ArtPiece instance in ArtCommissionHubOwners
+    art_commission_hub_owners.setApprovedArtPiece(art_piece.address, True, sender=deployer)
+    
+    # Complete verification
+    art_piece.verifyAsCommissioner(sender=user)
+    
+    # Verify it's in verified state
+    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     
     # Non-owner tries to unverify - should fail
     with pytest.raises(Exception) as excinfo:
-        commission_hub.unverifyCommission(art_piece.address, artist.address, sender=non_owner)
+        commission_hub.unverifyCommission(art_piece.address, sender=non_owner)
     
     # Check error message
     error_message = str(excinfo.value).lower()
-    assert "not authorized" in error_message or "auth" in error_message, "Error should mention authorization"
+    assert "not allowed" in error_message or "auth" in error_message, "Error should mention authorization"
     
     # State should remain unchanged
     assert commission_hub.countVerifiedCommissions() == 1, "Should still have 1 verified commission"
@@ -578,8 +819,18 @@ def test_10_verify_unverify_cycle():
     artist = accounts.test_accounts[2]
     
     # Deploy templates first
+    profile_template = project.Profile.deploy(sender=deployer)
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry
+    profile_factory = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        commission_hub_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtCommissionHubOwners
     art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
@@ -589,6 +840,14 @@ def test_10_verify_unverify_cycle():
         sender=deployer
     )
     
+    # Link ProfileFactoryAndRegistry and ArtCommissionHubOwners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
+    
+    # Create profiles for users
+    profile_factory.createProfile(user.address, sender=deployer)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    
     # Create a generic commission hub for the user
     art_commission_hub_owners.createGenericCommissionHub(
         user.address,  # Owner
@@ -596,38 +855,55 @@ def test_10_verify_unverify_cycle():
     )
     
     # Get the hub address
-    hub_address = art_commission_hub_owners.getCommissionHubsByOwner(user.address, 0, 1)[0]
+    hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
-    # Deploy an art piece for testing
-    art_piece = project.ArtPiece.deploy(sender=deployer)
+    # Get the artist profile to create the art piece properly
+    artist_profile_address = profile_factory.getProfile(artist.address)
+    artist_profile = project.Profile.at(artist_profile_address)
     
-    # Approve the ArtPiece template's code hash
-    commission_hub.approveArtPieceCodeHash(art_piece.address, True, sender=user)
+    # Create art piece through the Profile (this will automatically verify the artist)
+    art_piece_address = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        TEST_TITLE,
+        TEST_DESCRIPTION,
+        True,  # as_artist
+        user.address,  # other_party (commissioner)
+        TEST_AI_GENERATED,
+        hub_address,  # commission hub
+        False,  # is_profile_art
+        sender=artist
+    )
     
-    # Submit as unverified
-    commission_hub.submitCommission(art_piece.address, sender=artist)
+    art_piece = project.ArtPiece.at(art_piece_address)
     
-    # Initial state
-    assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
-    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions"
+    # Approve the ArtPiece instance in ArtCommissionHubOwners
+    art_commission_hub_owners.setApprovedArtPiece(art_piece.address, True, sender=deployer)
     
-    # Step 1: Verify the commission
-    commission_hub.verifyCommission(art_piece.address, artist.address, sender=user)
+    # Initial state - not fully verified yet
+    assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
+    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
+    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions initially"
+    
+    # Step 1: Verify the commission (complete verification and auto-submit)
+    art_piece.verifyAsCommissioner(sender=user)
     
     # Check state after verification
+    assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
     
     # Step 2: Unverify the commission
-    commission_hub.unverifyCommission(art_piece.address, artist.address, sender=user)
+    commission_hub.unverifyCommission(art_piece.address, sender=user)
     
     # Check state after unverification
     assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
     assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions"
     
     # Step 3: Verify the commission again
-    commission_hub.verifyCommission(art_piece.address, artist.address, sender=user)
+    commission_hub.verifyCommission(art_piece.address, sender=user)
     
     # Check final state
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
