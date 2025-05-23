@@ -99,7 +99,7 @@ interface ArtPiece:
     def getArtist() -> address: view
     def getCommissioner() -> address: view
     def getArtCommissionHubAddress() -> address: view
-    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool, _profile_factory_address: address): nonpayable
+    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool, _original_uploader: address, _profile_factory_address: address): nonpayable
     def verifyAsArtist(): nonpayable
     def verifyAsCommissioner(): nonpayable
     def isFullyVerifiedCommission() -> bool: view # returns true if the art piece is a VERIFIED commissioner != artist AND fully verified)
@@ -710,6 +710,7 @@ def createArtPiece(
         artist,
         art_commission_hub,
         _ai_generated,
+        self.owner,  # _original_uploader
         self.profileFactoryAndRegistry
     )
         
@@ -749,18 +750,15 @@ def createArtPiece(
             # Add to verified myCommissions
             self.myCommissions.append(art_piece_address)
             self.myCommissionCount += 1
+            
+            # If both parties are whitelisted, we can have an already-verified piece
+            if art_commission_hub != empty(address):
+                _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
+                extcall _art_commission_hub_link.submitCommission(art_piece_address)
         else:
             # Add to myUnverified myCommissions
             self.myUnverifiedCommissions.append(art_piece_address)
             self.myUnverifiedCommissionCount += 1
-            
-
-    # If this art is a potential commission, ArtCommissionHub is provided
-    # in this case, we submitCommission to the ArtCommissionHub.. 
-    # WE SHOULD NOT DO THIS AS WE JUST WANT VERIFIED PIECES TO BE SUBMITTED
-    if art_commission_hub != empty(address):
-        _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
-        extcall _art_commission_hub_link.submitCommission(art_piece_address)
 
     return art_piece_address
 

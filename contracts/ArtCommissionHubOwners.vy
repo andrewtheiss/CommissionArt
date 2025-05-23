@@ -559,6 +559,7 @@ def setApprovedArtPiece(_art_piece: address, _is_approved: bool):
     assert msg.sender == self.owner, "Only the owner can set approved art piece code hashes"
     assert self._isContract(_art_piece), "Art piece is not a contract"
     code_hash: bytes32 = _art_piece.codehash
+    assert code_hash != empty(bytes32), "Art piece is not a contract"
     log CodeHashWhitelistUpdated(code_hash=code_hash, status=_is_approved)
     self.approvedArtPieceCodeHashes[code_hash] = _is_approved
 

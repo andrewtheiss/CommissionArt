@@ -1,4 +1,5 @@
 import pytest
+import ape
 from ape import accounts, project
 from eth_utils import to_checksum_address
 
@@ -466,8 +467,11 @@ def test_06_submit_commission():
     artist_profile_address = profile_factory.getProfile(artist.address)
     artist_profile = project.Profile.at(artist_profile_address)
     
+    # Does profile exist?
+    assert artist_profile.owner() == artist.address, "Artist profile should exist"
+    
     # Create art piece through the Profile (this will automatically verify the artist)
-    art_piece_address = artist_profile.createArtPiece(
+    tx_receipt = artist_profile.createArtPiece(
         art_piece_template.address,  # _art_piece_template
         TEST_TOKEN_URI_DATA,         # _token_uri_data
         TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
@@ -480,9 +484,17 @@ def test_06_submit_commission():
         False,                       # _is_profile_art
         sender=artist
     )
-    
+
+    # Get the art piece address from the artist's recent art pieces instead of from return_value
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 1, True)
+    assert len(art_pieces) > 0, "No art pieces found in the artist's profile"
+    art_piece_address = art_pieces[0]
+
     art_piece = project.ArtPiece.at(art_piece_address)
-    
+
+    # For Ape:
+    ape.chain.mine(1)
+
     # Approve the ArtPiece instance in ArtCommissionHubOwners
     art_commission_hub_owners.setApprovedArtPiece(art_piece.address, True, sender=deployer)
     
@@ -493,28 +505,26 @@ def test_06_submit_commission():
     assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
     
     # Check initial hub state - should have no commissions yet
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions initially"
     assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions initially"
     
     # Verify the commission by having commissioner verify (which will complete verification and auto-submit)
     art_piece.verifyAsCommissioner(sender=user)
     
+    # Is not the hub owner (no sender_has_permission)
+    # Is not a whitelisted artist
+    # Is not a whitelisted commissioner
+    # So it goes to the unverified list, not the verified list.
     # After verification, the commission should be automatically submitted and moved to verified
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countUnverifiedArtCommissions() == 1, "Should have 1 unverified commissions"
+    assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commission"
     
     # Check verified list - should contain the art piece
-    verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
-    assert len(verified_art_pieces) == 1, "Should have 1 art piece in verified list"
-    assert verified_art_pieces[0] == art_piece.address, "Art piece should be in verified list"
+    unverified_art_pieces = commission_hub.getUnverifiedArtPieces(0, 10)
+    assert len(unverified_art_pieces) == 1, "Should have 1 art piece in unverified list"
+    assert unverified_art_pieces[0] == art_piece.address, "Art piece should be in unverified list"
     
-    # Check latest verified art
-    latest_verified = commission_hub.getLatestVerifiedArt(1)
-    assert len(latest_verified) == 1, "Should have 1 art piece in latest verified"
-    assert latest_verified[0] == art_piece.address, "Art piece should be in latest verified"
-
-
 def test_07_verify_multiple_commissions():
     """Test verifying multiple commissions from the same submitter"""
     deployer = accounts.test_accounts[0]
@@ -561,12 +571,15 @@ def test_07_verify_multiple_commissions():
     hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
+    # Whitelist the artist so their commissions go directly to verified list when auto-submitted
+    commission_hub.updateWhitelistOrBlacklist(artist.address, True, True, sender=user)
+    
     # Get the artist profile to create art pieces properly
     artist_profile_address = profile_factory.getProfile(artist.address)
     artist_profile = project.Profile.at(artist_profile_address)
     
     # Create two art pieces through the Profile (this will automatically verify the artist for both)
-    art_piece_1_address = artist_profile.createArtPiece(
+    tx_receipt_1 = artist_profile.createArtPiece(
         art_piece_template.address,  # _art_piece_template
         TEST_TOKEN_URI_DATA,         # _token_uri_data
         TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
@@ -580,7 +593,7 @@ def test_07_verify_multiple_commissions():
         sender=artist
     )
     
-    art_piece_2_address = artist_profile.createArtPiece(
+    tx_receipt_2 = artist_profile.createArtPiece(
         art_piece_template.address,  # _art_piece_template
         TEST_TOKEN_URI_DATA,         # _token_uri_data
         TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
@@ -594,6 +607,13 @@ def test_07_verify_multiple_commissions():
         sender=artist
     )
     
+    # Get the art piece addresses from the artist's recent art pieces instead of from return_value
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 2, True)
+    assert len(art_pieces) >= 2, "Should have at least 2 art pieces in the artist's profile"
+    # Recent art pieces are returned in reverse order (newest first), so:
+    art_piece_2_address = art_pieces[0]  # Most recent (second created)
+    art_piece_1_address = art_pieces[1]  # Second most recent (first created)
+
     art_piece_1 = project.ArtPiece.at(art_piece_1_address)
     art_piece_2 = project.ArtPiece.at(art_piece_2_address)
     
@@ -610,14 +630,15 @@ def test_07_verify_multiple_commissions():
     assert not art_piece_2.commissionerVerified(), "Commissioner should not be verified for piece 2"
     
     # Check initial hub state
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions initially"
     assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions initially"
     
+    # 
     # Verify the first commission
     art_piece_1.verifyAsCommissioner(sender=user)
     
     # Check state after first verification
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     assert art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should be fully verified"
     assert not art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should still not be fully verified"
@@ -626,7 +647,7 @@ def test_07_verify_multiple_commissions():
     art_piece_2.verifyAsCommissioner(sender=user)
     
     # Check state after second verification
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedArtCommissions() == 2, "Should have 2 verified commissions"
     assert art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should still be fully verified"
     assert art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should now be fully verified"
@@ -678,12 +699,15 @@ def test_08_unverify_commission():
     hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
+    # Whitelist the artist so their commissions go directly to verified list when auto-submitted
+    commission_hub.updateWhitelistOrBlacklist(artist.address, True, True, sender=user)
+    
     # Get the artist profile to create the art piece properly
     artist_profile_address = profile_factory.getProfile(artist.address)
     artist_profile = project.Profile.at(artist_profile_address)
     
     # Create and fully verify a commission piece
-    art_piece_address = artist_profile.createArtPiece(
+    tx_receipt = artist_profile.createArtPiece(
         art_piece_template.address,  # _art_piece_template
         TEST_TOKEN_URI_DATA,         # _token_uri_data
         TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
@@ -697,6 +721,11 @@ def test_08_unverify_commission():
         sender=artist
     )
     
+    # Get the art piece address from the artist's recent art pieces instead of from return_value
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 1, True)
+    assert len(art_pieces) > 0, "No art pieces found in the artist's profile"
+    art_piece_address = art_pieces[0]
+
     art_piece = project.ArtPiece.at(art_piece_address)
     
     # Approve the ArtPiece instance in ArtCommissionHubOwners
@@ -707,14 +736,14 @@ def test_08_unverify_commission():
     
     # Check initial state - should be verified and in hub
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Unverify the commission
     commission_hub.unverifyCommission(art_piece.address, sender=user)
     
     # Check state after unverification
-    assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
+    assert commission_hub.countUnverifiedArtCommissions() == 1, "Should have 1 unverified commission"
     assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions"
     assert commission_hub.getUnverifiedCount(user.address) == 1, "User should have 1 unverified commission"
     
@@ -775,12 +804,15 @@ def test_09_unverify_commission_permissions():
     hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
+    # Whitelist the artist so their commissions go directly to verified list when auto-submitted
+    commission_hub.updateWhitelistOrBlacklist(artist.address, True, True, sender=user)
+    
     # Get the artist profile to create the art piece properly
     artist_profile_address = profile_factory.getProfile(artist.address)
     artist_profile = project.Profile.at(artist_profile_address)
     
     # Create and fully verify a commission piece
-    art_piece_address = artist_profile.createArtPiece(
+    tx_receipt = artist_profile.createArtPiece(
         art_piece_template.address,  # _art_piece_template
         TEST_TOKEN_URI_DATA,         # _token_uri_data
         TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
@@ -794,6 +826,11 @@ def test_09_unverify_commission_permissions():
         sender=artist
     )
     
+    # Get the art piece address from the artist's recent art pieces instead of from return_value
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 1, True)
+    assert len(art_pieces) > 0, "No art pieces found in the artist's profile"
+    art_piece_address = art_pieces[0]
+
     art_piece = project.ArtPiece.at(art_piece_address)
     
     # Approve the ArtPiece instance in ArtCommissionHubOwners
@@ -804,7 +841,7 @@ def test_09_unverify_commission_permissions():
     
     # Verify it's in verified state
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions"
     
     # Non-owner tries to unverify - should fail
     with pytest.raises(Exception) as excinfo:
@@ -816,7 +853,7 @@ def test_09_unverify_commission_permissions():
     
     # State should remain unchanged
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should still have 1 verified commission"
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should still have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should still have 0 unverified commissions"
 
 
 def test_10_verify_unverify_cycle():
@@ -865,12 +902,15 @@ def test_10_verify_unverify_cycle():
     hub_address = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(user.address, 0, 1, False)[0]
     commission_hub = project.ArtCommissionHub.at(hub_address)
     
+    # Whitelist the artist so their commissions go directly to verified list when auto-submitted
+    commission_hub.updateWhitelistOrBlacklist(artist.address, True, True, sender=user)
+    
     # Get the artist profile to create the art piece properly
     artist_profile_address = profile_factory.getProfile(artist.address)
     artist_profile = project.Profile.at(artist_profile_address)
     
     # Create art piece through the Profile (this will automatically verify the artist)
-    art_piece_address = artist_profile.createArtPiece(
+    tx_receipt = artist_profile.createArtPiece(
         art_piece_template.address,  # _art_piece_template
         TEST_TOKEN_URI_DATA,         # _token_uri_data
         TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
@@ -883,7 +923,12 @@ def test_10_verify_unverify_cycle():
         False,                       # _is_profile_art
         sender=artist
     )
-    
+
+    # Get the art piece address from the artist's recent art pieces instead of from return_value
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 1, True)
+    assert len(art_pieces) > 0, "No art pieces found in the artist's profile"
+    art_piece_address = art_pieces[0]
+
     art_piece = project.ArtPiece.at(art_piece_address)
     
     # Approve the ArtPiece instance in ArtCommissionHubOwners
@@ -891,7 +936,7 @@ def test_10_verify_unverify_cycle():
     
     # Initial state - not fully verified yet
     assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions initially"
     assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions initially"
     
     # Step 1: Verify the commission (complete verification and auto-submit)
@@ -899,21 +944,21 @@ def test_10_verify_unverify_cycle():
     
     # Check state after verification
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Step 2: Unverify the commission
     commission_hub.unverifyCommission(art_piece.address, sender=user)
     
     # Check state after unverification
-    assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
+    assert commission_hub.countUnverifiedArtCommissions() == 1, "Should have 1 unverified commission"
     assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions"
     
     # Step 3: Verify the commission again
     commission_hub.verifyCommission(art_piece.address, sender=user)
     
     # Check final state
-    assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
+    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should have 0 unverified commissions"
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Get the art piece from verified list
