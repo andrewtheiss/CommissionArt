@@ -64,10 +64,6 @@ myUnverifiedCommissionsExistsAndPositionOffsetByOne : public(HashMap[address, ui
 # Add myCommissionRole mapping to track role at time of myCommission upload
 myCommissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
 
-# Commission hubs owned by this profile
-myCommissionHubs: public(DynArray[address, 10**8])
-myCommissionHubCount: public(uint256)
-
 # Art pieces collection
 myArt: public(DynArray[address, MAX_ITEMS])
 myArtCount: public(uint256)
@@ -122,6 +118,13 @@ interface ArtCommissionHub:
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
 
+# Add this interface at the top
+interface ArtCommissionHubOwners:
+    def getCommissionHubCountByOwner(_owner: address) -> uint256: view
+    def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]: view
+    def artCommissionHubsByOwnerIndexOffsetByOne(_owner: address, _hub: address) -> uint256: view
+
+
 # Event for myCommission verification in profile context
 event CommissionVerifiedInProfile:
     profile: indexed(address)
@@ -151,7 +154,6 @@ def initialize(_owner: address, _profile_social: address, _profile_factory_and_r
     self.myCommissionCount = 0
     self.myUnverifiedCommissionCount = 0
     self.myArtCount = 0
-    self.myCommissionHubCount = 0
 
 # Internal function to get deployer address
 @internal
@@ -937,136 +939,6 @@ def setIsArtist(_is_artist: bool):
     assert msg.sender == self.owner, "Only owner can set artist status"
     self.isArtist = _is_artist
 
-## Commission Hubs
-#
-# addCommissionHub
-# ----------------
-# Adds a myCommission hub to this profile.
-# Use case:
-# - When a user becomes the owner of an ArtCommissionHub (either via NFT ownership or generic hub creation),
-#   the hub is added to their profile for tracking.
-# - Only the hub or owner registry can add hubs to ensure proper ownership tracking.
-# Example:
-# - When Alice buys an NFT, the ArtCommissionHubOwners calls addCommissionHub to link the hub to Alice's profile.
-#
-@external
-def addCommissionHub(_hub: address):
-    # Allow the hub (ProfileFactoryAndRegistry), owner registry, or original deployer to add myCommission hubs
-    # Check if we have an owner registry first
-    registry_address: address = empty(address)
-    if self.profileFactoryAndRegistry != empty(address):
-        # Try to get the owner registry from the profile-factory-and-registry
-        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
-        registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
-    
-    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self._getDeployer() or msg.sender == registry_address, "Only hub or registry can add myCommission hub"
-    
-    # Check if hub is already in the list
-    hubs_len: uint256 = len(self.myCommissionHubs)
-    for i: uint256 in range(10**8):  # Use a large fixed bound
-        if i >= hubs_len:
-            break
-        if self.myCommissionHubs[i] == _hub:
-            return  # Hub already exists, nothing to do
-    
-    # Add the hub to the list
-    self.myCommissionHubs.append(_hub)
-    self.myCommissionHubCount += 1
-
-#
-# removeCommissionHub
-# -------------------
-# Removes a myCommission hub from this profile's list.
-# Use case:
-# - When a user transfers ownership of an NFT, the associated hub is removed from their profile.
-# - Only the hub or owner registry can remove hubs to ensure proper ownership tracking.
-# Example:
-# - When Alice sells her NFT to Bob, the ArtCommissionHubOwners calls removeCommissionHub to unlink the hub from Alice's profile.
-#
-@external
-def removeCommissionHub(_hub: address):
-    # Allow the hub (ProfileFactoryAndRegistry), owner registry, or original deployer to remove myCommission hubs
-    # Check if we have an owner registry first
-    registry_address: address = empty(address)
-    if self.profileFactoryAndRegistry != empty(address):
-        # Try to get the owner registry from the profile-factory-and-registry
-        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
-        registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
-    
-    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self._getDeployer() or msg.sender == registry_address, "Only hub or registry can remove myCommission hub"
-    
-    # Find the index of the hub to remove
-    index: uint256 = 0
-    found: bool = False
-    hubs_len: uint256 = len(self.myCommissionHubs)
-    for i: uint256 in range(10**8):  # Use a large fixed bound
-        if i >= hubs_len:
-            break
-        if self.myCommissionHubs[i] == _hub:
-            index = i
-            found = True
-            break
-    
-    # If hub found, remove it using swap and pop
-    if found:
-        # If not the last element, swap with the last element
-        if index < len(self.myCommissionHubs) - 1:
-            last_hub: address = self.myCommissionHubs[len(self.myCommissionHubs) - 1]
-            self.myCommissionHubs[index] = last_hub
-        # Remove the last element
-        self.myCommissionHubs.pop()
-        self.myCommissionHubCount -= 1
-
-
-## get Commission Hub By Offset
-#
-# getCommissionHubsByOffset
-# -------------------------
-# Returns a paginated list of myCommissionHubs for this profile.
-# Use case:
-# - Used by the frontend to display all myCommissionHubs associated with this profile.
-# Example:
-# - Alice wants to see all her myCommissionHubs: getCommissionHubsByOffset(page, pageSize).
-#
-@view
-@external
-def getCommissionHubsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
-    """
-    Returns a paginated list of commission hubs using offset-based pagination.
-    """
-    result: DynArray[address, 50] = []
-    
-    # Handle empty array case first
-    if self.myCommissionHubCount == 0:
-        return result
-    
-    if not reverse:
-        # Forward pagination
-        if _offset >= self.myCommissionHubCount:
-            return result
-        
-        available_items: uint256 = self.myCommissionHubCount - _offset
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            result.append(self.myCommissionHubs[_offset + i])
-    else:
-        # Reverse pagination
-        max_valid_offset: uint256 = self.myCommissionHubCount - 1
-        actual_offset: uint256 = min(_offset, max_valid_offset)
-        
-        available_items: uint256 = actual_offset + 1
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            result.append(self.myCommissionHubs[actual_offset - i])
-    
-    return result
-
 
 @external
 def updateCommissionVerificationStatus(_commission_art_piece: address):
@@ -1147,5 +1019,38 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
         if is_commissioner and _commission_art_piece not in self.myArt:
             self.myArt.append(_commission_art_piece)
             self.myArtCount += 1
+
+
+# NEW: Helper to get registry
+@internal
+@view
+def _getArtCommissionHubOwners() -> address:
+    """Get the ArtCommissionHubOwners registry address"""
+    if self.profileFactoryAndRegistry == empty(address):
+        return empty(address)
+    profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+    return staticcall profile_factory.artCommissionHubOwners()
+
+@view
+@external
+def getCommissionHubsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """Query commission hubs directly from ArtCommissionHubOwners"""
+    registry_addr: address = self._getArtCommissionHubOwners()
+    if registry_addr == empty(address):
+        return []
+    
+    registry: ArtCommissionHubOwners = ArtCommissionHubOwners(registry_addr)
+    return staticcall registry.getCommissionHubsByOwnerWithOffset(self.owner, _offset, _count, reverse)
+
+@external
+@view
+def getCommissionHubCount() -> uint256:
+    """Get count of commission hubs from the registry"""
+    registry_addr: address = self._getArtCommissionHubOwners()
+    if registry_addr == empty(address):
+        return 0
+    
+    registry: ArtCommissionHubOwners = ArtCommissionHubOwners(registry_addr)
+    return staticcall registry.getCommissionHubCountByOwner(self.owner)
 
 # NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.

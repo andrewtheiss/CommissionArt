@@ -130,7 +130,7 @@ def _ensureProfileForAddress(_address: address) -> address:
     if staticcall profile_factory_and_regsitry.hasProfile(_address):
         return staticcall profile_factory_and_regsitry.getProfile(_address)
     
-    # Create a new profile for the user using the createProfile function
+    # # Create a new profile for the user using the createProfile function
     extcall profile_factory_and_regsitry.createProfile(_address)
     return staticcall profile_factory_and_regsitry.getProfile(_address)
 
@@ -149,14 +149,6 @@ def _appendHubToOwner(_owner: address, _hub: address):
 
     # Emit event for tracking
     log HubLinkedToOwner(owner=_owner, hub=_hub)
-    
-    # Ensure the owner has a profile and link the hub to it, but only if profile-factory-and-registry is set
-    if self.profileFactoryAndRegistry != empty(address):
-        # This will create a profile if one doesn't exist
-        profile_address: address = self._ensureProfileForAddress(_owner)
-        if profile_address != empty(address):
-            profile: Profile = Profile(profile_address)
-            extcall profile.addCommissionHub(_hub)
 
 @internal
 def _removeHubFromOwner(_owner: address, _hub: address):
@@ -179,14 +171,6 @@ def _removeHubFromOwner(_owner: address, _hub: address):
     # Emit event for tracking
     log HubUnlinkedFromOwner(owner=_owner, hub=_hub)
     
-    # If the owner has a profile, remove the hub from their profile
-    if self.profileFactoryAndRegistry != empty(address):
-        profile_factory_and_regsitry: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
-        if staticcall profile_factory_and_regsitry.hasProfile(_owner):
-            profile_address: address = staticcall profile_factory_and_regsitry.getProfile(_owner)
-            profile: Profile = Profile(profile_address)
-            extcall profile.removeCommissionHub(_hub)
-
 @internal
 def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: address,_nft_token_id_or_generic_hub_account: uint256, _owner: address):
     
