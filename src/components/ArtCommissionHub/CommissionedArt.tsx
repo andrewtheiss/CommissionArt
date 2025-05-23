@@ -4,14 +4,14 @@ import { useBlockchain } from '../../utils/BlockchainContext';
 import ArtCommissionHubModal from './ArtCommissionHubModal';
 import './CommissionedArt.css';
 
-// ABI fragment for OwnerRegistry contract functions
+// ABI fragment for ArtCommissionHubOwners contract functions
 const OWNER_REGISTRY_ABI = [
   'function lookupRegisteredOwner(uint256, address, uint256) view returns (address)',
   'function getLastUpdated(uint256, address, uint256) view returns (uint256)',
   'function getArtCommissionHubByOwner(uint256, address, uint256) view returns (address)'
 ];
 
-interface OwnerRegistryResult {
+interface ArtCommissionHubOwnersResult {
   owner: string;
   lastUpdated: string;
   artCommissionHub: string;
@@ -25,7 +25,7 @@ const CommissionedArt: React.FC = () => {
   const [tokenId, setTokenId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<OwnerRegistryResult | null>(null);
+  const [result, setResult] = useState<ArtCommissionHubOwnersResult | null>(null);
   const [registryAddress, setRegistryAddress] = useState<string>('0x4904FA96366e15c66C21a2aE8D4a7D605089d5Da'); // Default address from contract_config.json
   
   // For ArtCommissionHub modal
@@ -65,7 +65,7 @@ const CommissionedArt: React.FC = () => {
 
     try {
       setLoading(true);
-      await queryOwnerRegistry();
+      await queryArtCommissionHubOwners();
     } catch (err: any) {
       console.error('Error querying owner registry:', err);
       setError(err.message || 'An error occurred while querying the owner registry');
@@ -74,7 +74,7 @@ const CommissionedArt: React.FC = () => {
     }
   };
 
-  const queryOwnerRegistry = async () => {
+  const queryArtCommissionHubOwners = async () => {
     if (!isConnected) {
       await connectWallet();
     }
@@ -84,7 +84,7 @@ const CommissionedArt: React.FC = () => {
     }
 
     const provider = new ethers.BrowserProvider(window.ethereum);
-    const ownerRegistry = new ethers.Contract(
+    const artCommissionHubOwners = new ethers.Contract(
       registryAddress,
       OWNER_REGISTRY_ABI,
       provider
@@ -94,14 +94,14 @@ const CommissionedArt: React.FC = () => {
     const tokenIdNum = parseInt(tokenId);
 
     // Query the owner registry
-    const owner = await ownerRegistry.lookupRegisteredOwner(chainIdNum, contractAddress, tokenIdNum);
+    const owner = await artCommissionHubOwners.lookupRegisteredOwner(chainIdNum, contractAddress, tokenIdNum);
     
     // Only proceed if we found an owner
     if (owner && owner !== ethers.ZeroAddress) {
-      const lastUpdatedBN = await ownerRegistry.getLastUpdated(chainIdNum, contractAddress, tokenIdNum);
+      const lastUpdatedBN = await artCommissionHubOwners.getLastUpdated(chainIdNum, contractAddress, tokenIdNum);
       const lastUpdated = new Date(Number(lastUpdatedBN) * 1000).toLocaleString();
       
-      const artCommissionHub = await ownerRegistry.getArtCommissionHubByOwner(chainIdNum, contractAddress, tokenIdNum);
+      const artCommissionHub = await artCommissionHubOwners.getArtCommissionHubByOwner(chainIdNum, contractAddress, tokenIdNum);
       
       setResult({
         owner,

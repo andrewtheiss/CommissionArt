@@ -16,16 +16,16 @@ declare global {
   }
 }
 
-interface L2RelayManagerProps {
+interface L2OwnershipRelayManagerProps {
   setBridgeStatus: (status: string | ((prev: string) => string)) => void;
 }
 
-const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
+const L2OwnershipRelayManager: React.FC<L2OwnershipRelayManagerProps> = ({ setBridgeStatus }) => {
   const { isConnected, walletAddress, networkType, switchNetwork, switchToLayer, connectWallet } = useBlockchain();
   const { getContract, loading: configLoading } = useContractConfig();
 
   // State variables
-  const [l2RelayAddress, setL2RelayAddress] = useState<string>("");
+  const [l2OwnershipRelayAddress, setL2OwnershipRelayAddress] = useState<string>("");
   const [l1ContractAddress, setL1ContractAddress] = useState<string>("");
   const [aliasedAddress, setAliasedAddress] = useState<string>("");
   const [ownerAddress, setOwnerAddress] = useState<string>("");
@@ -52,7 +52,7 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
   // Reset isDataLoadedRef only when switching to a network we haven't loaded data for yet
   useEffect(() => {
     if (networkType && isCurrentNetworkLoadedRef.current !== networkType) {
-      console.log(`[L2RelayManager] Network changed to ${networkType}, resetting loaded state`);
+      console.log(`[L2OwnershipRelayManager] Network changed to ${networkType}, resetting loaded state`);
       isDataLoadedRef.current = false;
     }
   }, [networkType]);
@@ -86,22 +86,22 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
   // Function to fetch contract data based on current chain ID
   const fetchContractData = async (chainId: number) => {
     try {
-      console.log(`[L2RelayManager] Fetching contract data for chain ID ${chainId}...`);
-      if (isConnected && l2RelayAddress && ethers.isAddress(l2RelayAddress) && window.ethereum) {
+      console.log(`[L2OwnershipRelayManager] Fetching contract data for chain ID ${chainId}...`);
+      if (isConnected && l2OwnershipRelayAddress && ethers.isAddress(l2OwnershipRelayAddress) && window.ethereum) {
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const L2RelayABI = abiLoader.loadABI('L2Relay');
-        if (!L2RelayABI) {
-          throw new Error('Failed to load L2Relay ABI');
+        const L2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
+        if (!L2OwnershipRelayABI) {
+          throw new Error('Failed to load L2OwnershipRelay ABI');
         }
-        const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, provider);
+        const contract = new ethers.Contract(l2OwnershipRelayAddress, L2OwnershipRelayABI, provider);
 
         const sender = await contract.crossChainRegistryAddressByChainId(chainId);
         setCurrentSender(sender);
         setCurrentL1ChainId(chainId);
-        console.log(`[L2RelayManager] Data fetch complete for chain ID ${chainId}. Sender: ${sender}`);
+        console.log(`[L2OwnershipRelayManager] Data fetch complete for chain ID ${chainId}. Sender: ${sender}`);
       }
     } catch (error) {
-      console.error(`[L2RelayManager] Error fetching sender for chain ID ${chainId}:`, error);
+      console.error(`[L2OwnershipRelayManager] Error fetching sender for chain ID ${chainId}:`, error);
     }
   };
 
@@ -110,77 +110,77 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
     const loadAllData = async () => {
       // Skip if data is already loaded for this network
       if (isDataLoadedRef.current && isCurrentNetworkLoadedRef.current === networkType) {
-        console.log(`[L2RelayManager] Data already loaded for ${networkType}, skipping load`);
+        console.log(`[L2OwnershipRelayManager] Data already loaded for ${networkType}, skipping load`);
         return;
       }
 
       try {
-        console.log('[L2RelayManager] Loading all contract data...');
+        console.log('[L2OwnershipRelayManager] Loading all contract data...');
         setIsLoading(true);
 
         // Step 1: Load contract addresses from config
         if (configLoading) {
-          console.log('[L2RelayManager] Config still loading, waiting...');
+          console.log('[L2OwnershipRelayManager] Config still loading, waiting...');
           return; // Wait for config to load
         }
 
         // Set environment based on network type
         const currentEnv = networkType.includes('mainnet') ? 'mainnet' : 'testnet';
         setEnvironment(currentEnv);
-        console.log(`[L2RelayManager] Environment set to: ${currentEnv}`);
+        console.log(`[L2OwnershipRelayManager] Environment set to: ${currentEnv}`);
 
         const l2Contract = getContract(currentEnv, 'l2');
         const relayAddress = l2Contract?.address || '';
         if (!relayAddress) {
-          console.error("[L2RelayManager] L2 relay address not found in configuration");
+          console.error("[L2OwnershipRelayManager] L2 relay address not found in configuration");
           toast.error("L2 relay address not configured");
           return;
         }
-        setL2RelayAddress(relayAddress);
-        console.log(`[L2RelayManager] L2 relay address: ${relayAddress}`);
+        setL2OwnershipRelayAddress(relayAddress);
+        console.log(`[L2OwnershipRelayManager] L2 relay address: ${relayAddress}`);
 
         const l1Contract = getContract(currentEnv, 'l1');
         const l1Address = l1Contract?.address || '';
         if (!l1Address) {
-          console.error("[L2RelayManager] L1 contract address not found in configuration");
+          console.error("[L2OwnershipRelayManager] L1 contract address not found in configuration");
           toast.error("L1 contract address not configured");
           return;
         }
         setL1ContractAddress(l1Address);
-        console.log(`[L2RelayManager] L1 contract address: ${l1Address}`);
+        console.log(`[L2OwnershipRelayManager] L1 contract address: ${l1Address}`);
 
         const l3Contract = getContract(currentEnv, 'l3');
         const l3Address = l3Contract?.address || '';
         setL3ContractAddress(l3Address);
-        console.log(`[L2RelayManager] L3 contract address: ${l3Address || 'not set'}`);
+        console.log(`[L2OwnershipRelayManager] L3 contract address: ${l3Address || 'not set'}`);
 
         if (l1Address) {
           const aliased = computeAliasedAddress(l1Address);
           setAliasedAddress(aliased);
-          console.log(`[L2RelayManager] Computed aliased address: ${aliased}`);
+          console.log(`[L2OwnershipRelayManager] Computed aliased address: ${aliased}`);
         }
 
         // Step 2: Fetch contract data if connected
         if (isConnected && relayAddress && ethers.isAddress(relayAddress) && window.ethereum) {
-          console.log('[L2RelayManager] Connected to wallet, fetching contract details...');
+          console.log('[L2OwnershipRelayManager] Connected to wallet, fetching contract details...');
           const provider = new ethers.BrowserProvider(window.ethereum);
-          const L2RelayABI = abiLoader.loadABI('L2Relay');
-          if (!L2RelayABI) {
-            throw new Error('Failed to load L2Relay ABI');
+          const L2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
+          if (!L2OwnershipRelayABI) {
+            throw new Error('Failed to load L2OwnershipRelay ABI');
           }
-          const contract = new ethers.Contract(relayAddress, L2RelayABI, provider);
+          const contract = new ethers.Contract(relayAddress, L2OwnershipRelayABI, provider);
 
           const owner = await contract.owner();
           setOwnerAddress(owner);
-          console.log(`[L2RelayManager] Contract owner: ${owner}`);
+          console.log(`[L2OwnershipRelayManager] Contract owner: ${owner}`);
 
           const revoked = await contract.isOwnerRevoked();
           setIsOwnerRevoked(revoked);
-          console.log(`[L2RelayManager] Owner revoked: ${revoked}`);
+          console.log(`[L2OwnershipRelayManager] Owner revoked: ${revoked}`);
 
           const l3ContractAddr = await contract.l3Contract();
           setL3ContractAddress(l3ContractAddr);
-          console.log(`[L2RelayManager] L3 contract from contract: ${l3ContractAddr}`);
+          console.log(`[L2OwnershipRelayManager] L3 contract from contract: ${l3ContractAddr}`);
           if (!isDataLoadedRef.current) {
             setNewL3ContractAddress(l3ContractAddr);
           }
@@ -191,25 +191,25 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
           // Mark data as loaded for this network
           isDataLoadedRef.current = true;
           isCurrentNetworkLoadedRef.current = networkType;
-          console.log(`[L2RelayManager] Initial data load complete for network ${networkType}`);
+          console.log(`[L2OwnershipRelayManager] Initial data load complete for network ${networkType}`);
         } else {
-          console.log('[L2RelayManager] Not connected to wallet or missing relay address, skipping contract detail fetching');
+          console.log('[L2OwnershipRelayManager] Not connected to wallet or missing relay address, skipping contract detail fetching');
           
           // Even if we couldn't get contract details, mark basic config as loaded
           if (relayAddress && l1Address) {
             isDataLoadedRef.current = true;
             isCurrentNetworkLoadedRef.current = networkType;
-            console.log(`[L2RelayManager] Basic configuration loaded for network ${networkType}`);
+            console.log(`[L2OwnershipRelayManager] Basic configuration loaded for network ${networkType}`);
           }
         }
       } catch (error) {
-        console.error("[L2RelayManager] Error loading data:", error);
+        console.error("[L2OwnershipRelayManager] Error loading data:", error);
         if (ownerAddress || currentSender) {
           toast.error("Failed to load L2 Relay contract information");
         }
       } finally {
         setIsLoading(false);
-        console.log('[L2RelayManager] Loading complete');
+        console.log('[L2OwnershipRelayManager] Loading complete');
       }
     };
 
@@ -223,7 +223,7 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
     
     if (value && !isNaN(Number(value))) {
       const chainId = Number(value);
-      console.log(`[L2RelayManager] Chain ID changed to ${chainId}, fetching data...`);
+      console.log(`[L2OwnershipRelayManager] Chain ID changed to ${chainId}, fetching data...`);
       fetchContractData(chainId);
     }
   };
@@ -293,12 +293,12 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
         const signer = await provider.getSigner();
 
         // Load ABI and create contract instance
-        const L2RelayABI = abiLoader.loadABI('L2Relay');
-        if (!L2RelayABI) {
-          throw new Error('Failed to load L2Relay ABI');
+        const L2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
+        if (!L2OwnershipRelayABI) {
+          throw new Error('Failed to load L2OwnershipRelay ABI');
         }
 
-        const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, signer);
+        const contract = new ethers.Contract(l2OwnershipRelayAddress, L2OwnershipRelayABI, signer);
 
         // Check if they really want to update the config
         const chainId = Number(newChainId);
@@ -403,12 +403,12 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
         const signer = await provider.getSigner();
 
         // Load ABI and create contract instance
-        const L2RelayABI = abiLoader.loadABI('L2Relay');
-        if (!L2RelayABI) {
-          throw new Error('Failed to load L2Relay ABI');
+        const L2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
+        if (!L2OwnershipRelayABI) {
+          throw new Error('Failed to load L2OwnershipRelay ABI');
         }
 
-        const contract = new ethers.Contract(l2RelayAddress, L2RelayABI, signer);
+        const contract = new ethers.Contract(l2OwnershipRelayAddress, L2OwnershipRelayABI, signer);
 
         // Check if they really want to update the L3 contract
         let needsConfirmation = false;
@@ -455,14 +455,14 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
   const handleSwitchNetwork = async () => {
     try {
       if (environment === 'testnet') {
-        setBridgeStatus('Switching to Arbitrum Sepolia for L2Relay contract...');
+        setBridgeStatus('Switching to Arbitrum Sepolia for L2OwnershipRelay contract...');
         await switchToLayer('l2', 'testnet');
       } else {
-        setBridgeStatus('Switching to Arbitrum mainnet for L2Relay contract...');
+        setBridgeStatus('Switching to Arbitrum mainnet for L2OwnershipRelay contract...');
         await switchToLayer('l2', 'mainnet');
       }
     } catch (error) {
-      console.error('[L2RelayManager] Error switching network:', error);
+      console.error('[L2OwnershipRelayManager] Error switching network:', error);
       toast.error('Failed to switch network. Please try manually in MetaMask.');
     }
   };
@@ -481,17 +481,17 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
           ) : (
             <div className="contract-info">
               <div className="info-group">
-                <p className="info-label">L2Relay Contract Address:</p>
-                <p className="info-value">{l2RelayAddress}</p>
+                <p className="info-label">L2OwnershipRelay Contract Address:</p>
+                <p className="info-value">{l2OwnershipRelayAddress}</p>
               </div>
               <div className="info-group">
-                <p className="info-label">L2Relay Owner:</p>
+                <p className="info-label">L2OwnershipRelay Owner:</p>
                 <p className="info-value">{ownerAddress || 'Not found'}</p>
                 {isOwnerRevoked && <span className="revoked-badge">Revoked</span>}
               </div>
               <br />
               <div className="info-group">
-                <p className="info-label">OwnerRegistry (L3 -  Relay Destination):</p>
+                <p className="info-label">ArtCommissionHubOwners (L3 -  Relay Destination):</p>
                 <p className="info-value">{l3ContractAddress || 'Not set'}</p>
               </div>
               <div className="info-group">
@@ -516,10 +516,10 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
         <div className="forms-container">
           {/* L3 Contract Update Form - Always visible */}
           <div className="form-section">
-            <h4>L2Relay - Update L3 Contract Address</h4>
+            <h4>L2OwnershipRelay - Update L3 Contract Address</h4>
             <form onSubmit={handleUpdateL3Contract}>
               <div className="form-group">
-                <label htmlFor="newL3ContractAddress">OwnerRegistry (L3 - Relay Destination):</label>
+                <label htmlFor="newL3ContractAddress">ArtCommissionHubOwners (L3 - Relay Destination):</label>
                 <input
                   id="newL3ContractAddress"
                   type="text"
@@ -540,7 +540,7 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
                 </button>
               </div>
               <div className="info-note small">
-                <p>This updates the L1QueryOwner Cross-Chain (L1 - Aliased Origin) for Chain ID {currentL1ChainId}.</p>
+                <p>This updates the L1QueryOwnership Cross-Chain (L1 - Aliased Origin) for Chain ID {currentL1ChainId}.</p>
               </div>
             </form>
           </div>
@@ -593,4 +593,4 @@ const L2RelayManager: React.FC<L2RelayManagerProps> = ({ setBridgeStatus }) => {
   );
 };
 
-export default L2RelayManager;
+export default L2OwnershipRelayManager;

@@ -601,15 +601,15 @@ const ArtistForm: React.FC<{
           throw new Error("Failed to load ArtPiece ABI");
         }
         
-        // Get the ProfileHub contract
-        const profileHubAddress = contractConfig.networks.mainnet.profileHub.address;
-        const profileHubAbi = abiLoader.loadABI('ProfileHub');
+        // Get the ProfileFactoryAndRegistry contract
+        const profileFactoryAndRegistryAddress = contractConfig.networks.mainnet.profileFactoryAndRegistry.address;
+        const profileFactoryAndRegistryAbi = abiLoader.loadABI('ProfileFactoryAndRegistry');
         
-        if (!profileHubAddress || !profileHubAbi) {
-          throw new Error("ProfileHub configuration not found");
+        if (!profileFactoryAndRegistryAddress || !profileFactoryAndRegistryAbi) {
+          throw new Error("ProfileFactoryAndRegistry configuration not found");
         }
         
-        const profileHub = new ethers.Contract(profileHubAddress, profileHubAbi, signer);
+        const profileFactoryAndRegistry = new ethers.Contract(profileFactoryAndRegistryAddress, profileFactoryAndRegistryAbi, signer);
         
         // Get the template ArtPiece address
         const artPieceTemplateAddress = contractConfig.networks.mainnet.artPiece.address;
@@ -628,17 +628,17 @@ const ArtistForm: React.FC<{
         console.log(`Commission Hub address: ${artCommissionHubAddress}`);
 
         // Debug: log contract address and ABI
-        console.log(`ProfileHub contract address: ${profileHub.target}`);
+        console.log(`ProfileFactoryAndRegistry contract address: ${profileFactoryAndRegistry.target}`);
         try {
-          const fragment = profileHub.interface.getFunction('createNewArtPieceAndRegisterProfile');
-          console.log(`Found createNewArtPieceAndRegisterProfile fragment:`, fragment);
+          const fragment = profileFactoryAndRegistry.interface.getFunction('createNewArtPieceAndRegisterProfileAndAttachToHub');
+          console.log(`Found createNewArtPieceAndRegisterProfileAndAttachToHub fragment:`, fragment);
         } catch (e) {
-          console.error(`Could not find createNewArtPieceAndRegisterProfile in ABI:`, e);
+          console.error(`Could not find createNewArtPieceAndRegisterProfileAndAttachToHub in ABI:`, e);
         }
 
         try {
           // Create profile and register artwork with raw image data
-          console.log("Attempting to call createNewArtPieceAndRegisterProfile...");
+          console.log("Attempting to call createNewArtPieceAndRegisterProfileAndAttachToHub...");
 
           // Try to ensure proper serialization by converting to BytesLike
           const bytesData2 = ethers.hexlify(ethers.concat([imageDataArray]));
@@ -651,7 +651,7 @@ const ArtistForm: React.FC<{
             throw new Error(`Image size (${dataSize2} bytes) exceeds the contract limit of 45000 bytes. Please use a smaller image.`);
           }
 
-          const tx = await profileHub.createNewArtPieceAndRegisterProfile(
+          const tx = await profileFactoryAndRegistry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             artPieceTemplateAddress,
             bytesData2, // Send as hex string using ethers.js utilities
             mimeType, // Just the format part (jpeg, avif, webp)
@@ -675,7 +675,7 @@ const ArtistForm: React.FC<{
           
           for (const log of receipt.logs) {
             try {
-              const parsedLog = profileHub.interface.parseLog(log);
+              const parsedLog = profileFactoryAndRegistry.interface.parseLog(log);
               if (parsedLog && parsedLog.name === "ProfileCreated") {
                 profileAddress = parsedLog.args.profile;
               } else if (parsedLog && parsedLog.name === "ArtPieceCreated") {
@@ -704,7 +704,7 @@ const ArtistForm: React.FC<{
             dimensions: compressedResult?.dimensions || { width: 0, height: 0 },
           });
         } catch (error: any) {
-          console.error("Error in createNewArtPieceAndRegisterProfile:", error);
+          console.error("Error in createNewArtPieceAndRegisterProfileAndAttachToHub:", error);
           // Try to get more detailed error information
           if (error.reason) console.error("Error reason:", error.reason);
           if (error.code) console.error("Error code:", error.code);

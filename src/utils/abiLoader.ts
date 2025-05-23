@@ -3,11 +3,11 @@ import ArrayManagerABI from '../assets/abis/ArrayManager.json';
 import ArtPieceABI from '../assets/abis/ArtPiece.json';
 import ArtPieceOffChainABI from '../assets/abis/ArtPieceOffChain.json';
 import ArtCommissionHubABI from '../assets/abis/ArtCommissionHub.json';
-import L1QueryOwnerABI from '../assets/abis/L1QueryOwner.json';
-import L2RelayABI from '../assets/abis/L2Relay.json';
-import OwnerRegistryABI from '../assets/abis/OwnerRegistry.json';
+import L1QueryOwnershipABI from '../assets/abis/L1QueryOwnership.json';
+import L2OwnershipRelayABI from '../assets/abis/L2OwnershipRelay.json';
+import ArtCommissionHubOwnersABI from '../assets/abis/ArtCommissionHubOwners.json';
 import ProfileABI from '../assets/abis/Profile.json';
-import ProfileHubABI from '../assets/abis/ProfileHub.json';
+import ProfileFactoryAndRegistryABI from '../assets/abis/ProfileFactoryAndRegistry.json';
 import SimpleERC721ABI from '../assets/abis/SimpleERC721.json';
 
 // Map of ABI names to their actual content
@@ -16,11 +16,11 @@ const abiMap: { [key: string]: any } = {
   'ArtPiece': ArtPieceABI,
   'ArtPieceOffChain': ArtPieceOffChainABI,
   'ArtCommissionHub': ArtCommissionHubABI,
-  'L1QueryOwner': L1QueryOwnerABI,
-  'L2Relay': L2RelayABI,
-  'OwnerRegistry': OwnerRegistryABI,
+  'L1QueryOwnership': L1QueryOwnershipABI,
+  'L2OwnershipRelay': L2OwnershipRelayABI,
+  'ArtCommissionHubOwners': ArtCommissionHubOwnersABI,
   'Profile': ProfileABI,
-  'ProfileHub': ProfileHubABI,
+  'ProfileFactoryAndRegistry': ProfileFactoryAndRegistryABI,
   'SimpleERC721': SimpleERC721ABI,
 };
 

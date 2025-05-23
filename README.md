@@ -14,7 +14,7 @@ This project stores Azuki NFT images as on-chain data on AnimeChain L3 using Vyp
 - **Registry.vy**: Main contract that maps Azuki IDs to their respective image contracts
 - **CommissionedArt.vy**: Contract for storing a single image's data on-chain
 - **Profile.vy**: User profile contract for artists and collectors
-- **ProfileHub.vy**: Central registry that manages user profiles
+- **ProfileFactoryAndRegistry.vy**: Central registry that manages user profiles
 - **ArtPiece.vy**: Contract for storing artwork and commission metadata
 - **Deployment scripts**: Scripts for deploying contracts and uploading images
 
@@ -33,9 +33,9 @@ cp .env.example .env
 
 ## Using the Contracts
 
-### ProfileHub Contract
+### ProfileFactoryAndRegistry Contract
 
-The ProfileHub contract serves as the central entry point for users. Key features:
+The ProfileFactoryAndRegistry contract serves as the central entry point for users. Key features:
 
 - **Single-Transaction Profile & Art Creation**: New users can create a profile and upload their first art piece in a single transaction, simplifying onboarding and saving gas
 - **Profile Management**: Tracks all user profiles in the system
@@ -43,7 +43,7 @@ The ProfileHub contract serves as the central entry point for users. Key feature
 
 ```python
 # Create a profile and art piece in one transaction
-profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterProfile(
+profile_address, art_piece_address = profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
     art_piece_template.address,
     image_data,
     title,
@@ -56,7 +56,7 @@ profile_address, art_piece_address = profile_hub.createNewArtPieceAndRegisterPro
 )
 ```
 
-For more details on this feature, see [profile_hub_guide.md](documentation/profile_hub_guide.md).
+For more details on this feature, see [profile_factory_and_regsitry_guide.md](documentation/profile_factory_and_regsitry_guide.md).
 
 ### Registry Contract
 
@@ -146,7 +146,18 @@ Once ownership is rescinded, no more images can be added to the Registry.
 # pip install pipx
 # pipx install eth-ape  (pipx installs everything in a venv system wide!)
 # Install plugins
-pip install eth-ape
+brew install pyenv
+pyenv install 3.13.3
+pyenv global 3.13.3
+
+python3 --version (should be 3.13.3)
+
+make a venv
+python3 -m venv vyperenv
+source ./vyperenv/bin/activate
+
+pip install vyper==0.4.1
+pip3 install eth-ape
 ape plugins install .
 pip install --upgrade eth-ape
 # (ape plugins install vyper alchemy -y)
@@ -161,11 +172,12 @@ ape accounts list
 
 ## Running tests:
 ape test tests/deploy_L1_L2.py --verbose
-ape test tests/test_L1QueryOwner_testnet.py
+ape test tests/test_L1QueryOwnership_testnet.py
 
 # Plans for ROADMAP
 - Create a way for artists to offer commissions to artists
 
+## ATTENTION PLEASE USE PYTHON 3.13 for 100x faster compiling and testing
 ## Windows installation (Power Shell)
 After installing 
 pip install -r ./requirements.txt
@@ -210,12 +222,12 @@ As of commit e84f4ff you can compile the contract code and get the back end link
 
  - Verify L1 Contract Settings match the contract_config.json settings
    -  (Note: This should be updated and show all the L1,L2,L3 contracts under this section)
- - Verify L3 OwnerRegistry Contract settings match the contract_config.json settings
+ - Verify L3 ArtCommissionHubOwners Contract settings match the contract_config.json settings
    -  (Note: This should be updated and show all the L1,L2,L3 contracts under this section)
 
  - UPDATE L2 Contract Settings:
    - The L2 Links to L1 and the L3
-- Please register the L1QueryOwner ALIASED address to whitelist its abiliaty to update NFT contract owners
+- Please register the L1QueryOwnership ALIASED address to whitelist its abiliaty to update NFT contract owners
     on the L1.  The aliased address for the above example is:
      0xED5AF388653567Af2F388E6224dC7C4b3241C544 and chain ID 1 (to be testnet)
 - Please register the L3 contract address so that the L2 knows how to Relay the owners to the L3

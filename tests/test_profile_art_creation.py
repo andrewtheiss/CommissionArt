@@ -14,8 +14,17 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+
+
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtPiece template for createArtPiece tests
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -24,11 +33,11 @@ def setup():
     commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
     
     # Create profiles for the user and artist
-    profile_hub.createProfile(sender=user)
-    profile_hub.createProfile(sender=artist)
+    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_factory_and_regsitry.createProfile(sender=artist)
     
-    user_profile_address = profile_hub.getProfile(user.address)
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    user_profile_address = profile_factory_and_regsitry.getProfile(user.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     
     user_profile = project.Profile.at(user_profile_address)
     artist_profile = project.Profile.at(artist_profile_address)
@@ -41,7 +50,7 @@ def setup():
         "user": user,
         "artist": artist,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template,
         "commission_hub": commission_hub,
         "user_profile": user_profile,

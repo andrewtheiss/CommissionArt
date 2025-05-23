@@ -57,14 +57,14 @@ def deployed_contracts(setup):
         # Previous hardcoded contract address (keeping as reference)
         # l1_contract_address = "0x6E28577074170227E7D3C646D840514e9BE0333C"
         
-        # Deploy a new L1QueryOwner contract for testing
-        print(f"Deploying new L1QueryOwner contract with Inbox address: {arbitrum_inbox_address}")
+        # Deploy a new L1QueryOwnership contract for testing
+        print(f"Deploying new L1QueryOwnership contract with Inbox address: {arbitrum_inbox_address}")
         l1_contract = deployer.deploy(
-            project.L1QueryOwner,
+            project.L1QueryOwnership,
             arbitrum_inbox_address,
             required_confirmations=1
         )
-        print(f"Deployed new L1QueryOwner at: {l1_contract.address}")
+        print(f"Deployed new L1QueryOwnership at: {l1_contract.address}")
         
         yield erc721, l1_contract, token_id, deployer
 
@@ -82,8 +82,8 @@ def test_verify_erc721_ownership(deployed_contracts):
     # Verify the correct owner
     assert owner == deployer.address
     
-    # Log L1QueryOwner info
-    print(f"Using L1QueryOwner at: {l1_contract.address}")
+    # Log L1QueryOwnership info
+    print(f"Using L1QueryOwnership at: {l1_contract.address}")
 
 def test_transfer_and_verify_ownership(deployed_contracts):
     """Test ownership verification after transferring the NFT to another address"""
@@ -146,7 +146,7 @@ def test_verify_nft_events(deployed_contracts):
         pytest.skip(f"Event test failed: {str(e)}")
 
 def test_existing_contract_connection(setup):
-    """Test that we can connect to the existing deployed L1QueryOwner contract"""
+    """Test that we can connect to the existing deployed L1QueryOwnership contract"""
     deployer, network_choice = setup
     
     with networks.parse_network_choice(network_choice):
@@ -154,8 +154,8 @@ def test_existing_contract_connection(setup):
         existing_address = "0x6E28577074170227E7D3C646D840514e9BE0333C"
         
         try:
-            l1_contract = project.L1QueryOwner.at(existing_address)
-            print(f"Successfully connected to L1QueryOwner at {existing_address}")
+            l1_contract = project.L1QueryOwnership.at(existing_address)
+            print(f"Successfully connected to L1QueryOwnership at {existing_address}")
             
             # Check contract bytecode exists (basic verification that it's a contract)
             bytecode_len = len(l1_contract.address.code)

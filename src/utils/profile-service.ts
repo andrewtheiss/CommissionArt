@@ -16,17 +16,17 @@ class ProfileService {
       }
 
       const userAddress = await signer.getAddress();
-      const hubAddress = this.getProfileHubAddress();
+      const hubAddress = this.getProfileFactoryAndRegistryAddress();
       
       if (!hubAddress) {
-        console.error("ProfileHub address not configured");
+        console.error("ProfileFactoryAndRegistry address not configured");
         return false;
       }
       
-      const hubAbi = abiLoader.loadABI('ProfileHub');
+      const hubAbi = abiLoader.loadABI('ProfileFactoryAndRegistry');
       
       if (!hubAbi) {
-        console.error("ProfileHub ABI not found");
+        console.error("ProfileFactoryAndRegistry ABI not found");
         return false;
       }
 
@@ -49,20 +49,20 @@ class ProfileService {
         throw new Error("Wallet not connected");
       }
 
-      const hubAddress = this.getProfileHubAddress();
+      const hubAddress = this.getProfileFactoryAndRegistryAddress();
       
       if (!hubAddress) {
-        throw new Error("ProfileHub address not configured in contract_config.json");
+        throw new Error("ProfileFactoryAndRegistry address not configured in contract_config.json");
       }
       
-      const hubAbi = abiLoader.loadABI('ProfileHub');
+      const hubAbi = abiLoader.loadABI('ProfileFactoryAndRegistry');
       
       if (!hubAbi) {
-        throw new Error("ProfileHub ABI not found");
+        throw new Error("ProfileFactoryAndRegistry ABI not found");
       }
 
       const hubContract = new ethers.Contract(hubAddress, hubAbi, signer);
-      console.log("Creating profile via ProfileHub at:", hubAddress);
+      console.log("Creating profile via ProfileFactoryAndRegistry at:", hubAddress);
       const tx = await hubContract.createProfile();
       await tx.wait();
 
@@ -101,17 +101,17 @@ class ProfileService {
    */
   public async getProfileAddress(userAddress: string): Promise<string | null> {
     try {
-      const hubAddress = this.getProfileHubAddress();
+      const hubAddress = this.getProfileFactoryAndRegistryAddress();
       
       if (!hubAddress) {
-        console.error("ProfileHub address not configured");
+        console.error("ProfileFactoryAndRegistry address not configured");
         return null;
       }
       
-      const hubAbi = abiLoader.loadABI('ProfileHub');
+      const hubAbi = abiLoader.loadABI('ProfileFactoryAndRegistry');
       
       if (!hubAbi) {
-        console.error("ProfileHub ABI not found");
+        console.error("ProfileFactoryAndRegistry ABI not found");
         return null;
       }
 
@@ -189,10 +189,10 @@ class ProfileService {
   }
 
   /**
-   * Get the ProfileHub contract address from config
-   * @returns string The ProfileHub contract address
+   * Get the ProfileFactoryAndRegistry contract address from config
+   * @returns string The ProfileFactoryAndRegistry contract address
    */
-  private getProfileHubAddress(): string {
+  private getProfileFactoryAndRegistryAddress(): string {
     const network = ethersService.getNetwork();
     // Use the toggle preference from localStorage to determine which layer to use
     const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
@@ -207,21 +207,21 @@ class ProfileService {
       let address;
       if (useL2Testnet) {
         // Use L2 testnet contract for profiles
-        address = contractConfig.networks[environment].l2ProfileHub.address;
-        console.log(`Using L2 testnet ProfileHub at: ${address}`);
+        address = contractConfig.networks[environment].l2ProfileFactoryAndRegistry.address;
+        console.log(`Using L2 testnet ProfileFactoryAndRegistry at: ${address}`);
       } else {
         // Use L3 animechain contract (previous default behavior)
-        address = contractConfig.networks[environment].l3ProfileHub.address;
-        console.log(`Using L3 AnimeChain ProfileHub at: ${address}`);
+        address = contractConfig.networks[environment].l3ProfileFactoryAndRegistry.address;
+        console.log(`Using L3 AnimeChain ProfileFactoryAndRegistry at: ${address}`);
       }
     
       if (!address) {
-        console.warn(`ProfileHub address for ${environment} is not configured in contract_config.json`);
+        console.warn(`ProfileFactoryAndRegistry address for ${environment} is not configured in contract_config.json`);
       }
       
       return address;
     } catch (error) {
-      console.error("Error getting ProfileHub address:", error);
+      console.error("Error getting ProfileFactoryAndRegistry address:", error);
       return "";
     }
   }

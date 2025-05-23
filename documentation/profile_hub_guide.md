@@ -1,4 +1,4 @@
-# ProfileHub User Guide
+# ProfileFactoryAndRegistry User Guide
 
 ## Creating a Profile with Art in One Transaction
 
@@ -42,7 +42,7 @@ Artists can upload their first portfolio piece and create their profile simultan
 
 ### Technical Details
 
-Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile` method on the ProfileHub contract, which:
+Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfileAndAttachToHub` method on the ProfileFactoryAndRegistry contract, which:
 
 - Verifies you don't already have a profile
 - Creates a new Profile contract instance for you
@@ -65,10 +65,10 @@ Under the hood, this functionality uses the `createNewArtPieceAndRegisterProfile
 
 ### For Developers
 
-The `createNewArtPieceAndRegisterProfile` function in the ProfileHub contract accepts these parameters:
+The `createNewArtPieceAndRegisterProfileAndAttachToHub` function in the ProfileFactoryAndRegistry contract accepts these parameters:
 
 ```solidity
-function createNewArtPieceAndRegisterProfile(
+function createNewArtPieceAndRegisterProfileAndAttachToHub(
     address _art_piece_template,
     bytes _image_data,
     string _title,
@@ -115,7 +115,7 @@ Link Art to NFT/CommissionHub
 Profile Metadata Management
 D. Methods to Strip/Move
 Direct ERC1155 Sale/Transfer: Move to sales contract/profile.
-Ownership Transfer Logic for Linked Art: Should be handled by the ArtCommissionHub and OwnerRegistry, not Profile.
+Ownership Transfer Logic for Linked Art: Should be handled by the ArtCommissionHub and ArtCommissionHubOwners, not Profile.
 Complex Removal Methods: If you have many similar "removeX" methods, consider a single generic method with an enum/int parameter (as you noted in your drawio comment).
 3. Profile: Clear Behavior Flow
 A. Uploading Art
@@ -131,7 +131,7 @@ E. Linking to NFT/CommissionHub
 Art is linked to an ArtCommissionHub (NFT collection).
 Ownership and sale logic for the art is now managed by the hub and not the profile.
 F. Ownership Propagation
-If the NFT is sold/transferred, the OwnerRegistry and ArtCommissionHub update the owner for all linked art.
+If the NFT is sold/transferred, the ArtCommissionHubOwners and ArtCommissionHub update the owner for all linked art.
 4. Are You Missing Anything?
 Sale Approval/Permissions: Make sure both artist and curator can put art for sale, but only if they have the right (e.g., original uploader or current owner).
 Event Emissions: For all state changes (upload, tag, sale, verification), emit events for off-chain tracking.

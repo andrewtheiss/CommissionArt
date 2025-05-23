@@ -27,20 +27,29 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileHub with the template
-    profile_hub = project.ProfileHub.deploy(profile_template.address, sender=deployer)
+    # Deploy ProfileFactoryAndRegistry with the template
+    # Deploy ProfileSocial template
+    profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+
+
+    # Deploy ProfileFactoryAndRegistry with both templates
+    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address,
+        profile_social_template.address,
+        sender=deployer
+    )
     
     # Deploy ArtPiece template
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Create a profile for the owner
-    profile_hub.createProfile(sender=owner)
-    owner_profile_address = profile_hub.getProfile(owner.address)
+    profile_factory_and_regsitry.createProfile(sender=owner)
+    owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
     owner_profile = project.Profile.at(owner_profile_address)
     
     # Create a profile for the artist
-    profile_hub.createProfile(sender=artist)
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    profile_factory_and_regsitry.createProfile(sender=artist)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     artist_profile = project.Profile.at(artist_profile_address)
     
     # Set artist status for the artist profile
@@ -54,7 +63,7 @@ def setup():
         "commissioner": commissioner,
         "commission_hub": commission_hub,
         "profile_template": profile_template,
-        "profile_hub": profile_hub,
+        "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "art_piece_template": art_piece_template,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
@@ -87,10 +96,10 @@ def test_profile_social_features_simple(setup):
     owner_profile = setup["owner_profile"]
     owner = setup["owner"]
     artist = setup["artist"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     
     # Get artist profile address
-    artist_profile_address = profile_hub.getProfile(artist.address)
+    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
     
     # Owner likes artist profile
     owner_profile.addLikedProfile(artist_profile_address, sender=owner)
@@ -202,23 +211,23 @@ def test_create_art_piece_artist(setup):
 
 def test_direct_profile_creation_and_art(setup):
     """Test creating a new profile directly and then creating art piece"""
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     commissioner = setup["commissioner"]
     artist = setup["artist"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
     
     # Initially commissioner has no profile
-    assert profile_hub.hasProfile(commissioner.address) is False
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) is False
     
     # First create a profile for the commissioner
-    profile_hub.createProfile(sender=commissioner)
+    profile_factory_and_regsitry.createProfile(sender=commissioner)
     
     # Verify profile was created
-    assert profile_hub.hasProfile(commissioner.address) is True
+    assert profile_factory_and_regsitry.hasProfile(commissioner.address) is True
     
     # Get the profile address and interface
-    profile_address = profile_hub.getProfile(commissioner.address)
+    profile_address = profile_factory_and_regsitry.getProfile(commissioner.address)
     profile = project.Profile.at(profile_address)
     
     # Now create an art piece through the profile
@@ -362,7 +371,7 @@ def test_get_art_piece_at_index_multiple(setup):
 def test_array_slice_functionality(setup):
     """Test the _getArraySlice functionality through liked profiles"""
     owner = setup["owner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     owner_profile = setup["owner_profile"]
     xtra1 = setup["xtra1"]
     xtra2 = setup["xtra2"]
@@ -376,12 +385,12 @@ def test_array_slice_functionality(setup):
     
     profiles_to_like = []
     # First add the existing artist profile
-    profiles_to_like.append(profile_hub.getProfile(artist.address))
+    profiles_to_like.append(profile_factory_and_regsitry.getProfile(artist.address))
     
     # Then add the test accounts' profiles
     for account in test_accounts:
-        profile_hub.createProfile(sender=account)
-        profile_address = profile_hub.getProfile(account.address)
+        profile_factory_and_regsitry.createProfile(sender=account)
+        profile_address = profile_factory_and_regsitry.getProfile(account.address)
         profiles_to_like.append(profile_address)
     
     # Like all the profiles
@@ -427,7 +436,7 @@ def test_array_slice_functionality(setup):
 def test_array_slice_reverse_functionality(setup):
     """Test the _getArraySliceReverse functionality through liked profiles"""
     owner = setup["owner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     owner_profile = setup["owner_profile"]
     xtra1 = setup["xtra1"]
     xtra2 = setup["xtra2"]
@@ -440,8 +449,8 @@ def test_array_slice_reverse_functionality(setup):
     
     profiles_to_like = []
     for account in test_accounts:
-        profile_hub.createProfile(sender=account)
-        profile_address = profile_hub.getProfile(account.address)
+        profile_factory_and_regsitry.createProfile(sender=account)
+        profile_address = profile_factory_and_regsitry.getProfile(account.address)
         profiles_to_like.append(profile_address)
     
     # Like all the profiles
@@ -481,7 +490,7 @@ def test_array_slice_reverse_functionality(setup):
 def test_remove_from_array_functionality(setup):
     """Test the _removeFromArray functionality through liked profiles"""
     owner = setup["owner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     owner_profile = setup["owner_profile"]
     xtra1 = setup["xtra1"]
     xtra2 = setup["xtra2"]
@@ -493,8 +502,8 @@ def test_remove_from_array_functionality(setup):
     # Create profiles to like
     profiles_to_like = []
     for account in test_accounts:
-        profile_hub.createProfile(sender=account)
-        profile_address = profile_hub.getProfile(account.address)
+        profile_factory_and_regsitry.createProfile(sender=account)
+        profile_address = profile_factory_and_regsitry.getProfile(account.address)
         profiles_to_like.append(profile_address)
     
     # Like all the profiles
@@ -548,7 +557,7 @@ def test_remove_from_array_functionality(setup):
 def test_complex_array_operations(setup):
     """Test a combination of array operations in sequence"""
     owner = setup["owner"]
-    profile_hub = setup["profile_hub"]
+    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
     owner_profile = setup["owner_profile"]
     xtra1 = setup["xtra1"]
     xtra2 = setup["xtra2"]
@@ -573,8 +582,8 @@ def test_complex_array_operations(setup):
     # Create profiles
     profiles = []
     for account in test_accounts:
-        profile_hub.createProfile(sender=account)
-        profile_address = profile_hub.getProfile(account.address)
+        profile_factory_and_regsitry.createProfile(sender=account)
+        profile_address = profile_factory_and_regsitry.getProfile(account.address)
         profiles.append(profile_address)
     
     # Phase 1: Add first 3 profiles

@@ -5,7 +5,7 @@ import abiLoader from '../../utils/abiLoader';
 import NFTOwnershipQuery from './NFTOwnershipQuery';
 import L3OwnerLookup from './L3OwnerLookup';
 import L1OwnerUpdateRequest from './L1OwnerUpdateRequest';
-import L2RelayManager from './L2RelayManager';
+import L2OwnershipRelayManager from './L2OwnershipRelayManager';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
 import { NodeInterface__factory } from '@arbitrum/sdk/dist/lib/abi/factories/NodeInterface__factory';
@@ -175,11 +175,11 @@ const BridgeTestContainer: React.FC = () => {
       testnet: {
         l1: {
           address: contractsConfig?.networks?.testnet?.l1?.address || '',
-          contract: contractsConfig?.networks?.testnet?.l1?.contract || 'L1QueryOwner'
+          contract: contractsConfig?.networks?.testnet?.l1?.contract || 'L1QueryOwnership'
         },
         l2: {
           address: contractsConfig?.networks?.testnet?.l2?.address || '',
-          contract: contractsConfig?.networks?.testnet?.l2?.contract || 'L2Relay'
+          contract: contractsConfig?.networks?.testnet?.l2?.contract || 'L2OwnershipRelay'
         },
         l3: {
           address: contractsConfig?.networks?.testnet?.l3?.address || '',
@@ -189,11 +189,11 @@ const BridgeTestContainer: React.FC = () => {
       mainnet: {
         l1: {
           address: contractsConfig?.networks?.mainnet?.l1?.address || '',
-          contract: contractsConfig?.networks?.mainnet?.l1?.contract || 'L1QueryOwner'
+          contract: contractsConfig?.networks?.mainnet?.l1?.contract || 'L1QueryOwnership'
         },
         l2: {
           address: contractsConfig?.networks?.mainnet?.l2?.address || '',
-          contract: contractsConfig?.networks?.mainnet?.l2?.contract || 'L2Relay'
+          contract: contractsConfig?.networks?.mainnet?.l2?.contract || 'L2OwnershipRelay'
         },
         l3: {
           address: contractsConfig?.networks?.mainnet?.l3?.address || '',
@@ -226,15 +226,15 @@ const BridgeTestContainer: React.FC = () => {
         l3: { testnet: '', mainnet: '' }
       },
       abiFiles: {
-        l1: 'L1QueryOwner',
-        l2: 'L2Relay',
+        l1: 'L1QueryOwnership',
+        l2: 'L2OwnershipRelay',
         l3: 'L3QueryOwner'
       }
     };
   });
   
   // Selected ABI objects based on contract type
-  const [selectedABI, setSelectedABI] = useState<any>(abiLoader.loadABI('L1QueryOwner'));
+  const [selectedABI, setSelectedABI] = useState<any>(abiLoader.loadABI('L1QueryOwnership'));
   
   // Available ABI names
   const [availableAbis, setAvailableAbis] = useState<string[]>(abiLoader.getAvailableABIs());
@@ -292,8 +292,8 @@ const BridgeTestContainer: React.FC = () => {
         
         // Update contract ABIs based on configuration
         const newAbiFiles = {
-          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwner',
-          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2Relay',
+          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwnership',
+          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2OwnershipRelay',
           l3: safeContractsConfig.networks.testnet.l3.contract || 'L3QueryOwner'
         };
         
@@ -349,7 +349,7 @@ const BridgeTestContainer: React.FC = () => {
   useEffect(() => {
     try {
       // Safely access the ABI file name with fallbacks
-      const abiFileName = contractConfig?.abiFiles?.[layer] || 'L1QueryOwner';
+      const abiFileName = contractConfig?.abiFiles?.[layer] || 'L1QueryOwnership';
       
       console.log(`Loading ABI for ${layer}: ${abiFileName}`);
       const abi = abiLoader.loadABI(abiFileName);
@@ -425,8 +425,8 @@ const BridgeTestContainer: React.FC = () => {
           l3: { testnet: '', mainnet: '' }
         },
         abiFiles: {
-          l1: 'L1QueryOwner',
-          l2: 'L2Relay',
+          l1: 'L1QueryOwnership',
+          l2: 'L2OwnershipRelay',
           l3: 'L3QueryOwner'
         }
       });
@@ -461,8 +461,8 @@ const BridgeTestContainer: React.FC = () => {
         
         // Update contract ABIs based on configuration
         const newAbiFiles = {
-          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwner',
-          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2Relay',
+          l1: safeContractsConfig.networks.testnet.l1.contract || 'L1QueryOwnership',
+          l2: safeContractsConfig.networks.testnet.l2.contract || 'L2OwnershipRelay',
           l3: safeContractsConfig.networks.testnet.l3.contract || 'L3QueryOwner'
         };
         
@@ -719,7 +719,7 @@ const BridgeTestContainer: React.FC = () => {
         return;
       }
 
-      // L1QueryOwner contract ABI with all parameters 
+      // L1QueryOwnership contract ABI with all parameters 
       const l1QueryOwnerABI = [
         "function queryNFTAndSendBack(address nftContract, uint256 tokenId, address l2Receiver, uint256 maxSubmissionCost, uint256 gasLimit, uint256 maxFeePerGas) external payable",
         "event OwnerQueried(address indexed nftContract, uint256 indexed tokenId, address owner, uint256 ticketId)"
@@ -837,7 +837,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
         return;
       }
 
-      // L1QueryOwner contract ABI with the full function signature including all parameters
+      // L1QueryOwnership contract ABI with the full function signature including all parameters
       const l1QueryOwnerABI = [
         "function queryNFTAndSendBack(address nftContract, uint256 tokenId, address l2Receiver, uint256 maxSubmissionCost, uint256 gasLimit, uint256 maxFeePerGas) external payable",
         "event OwnerQueried(address indexed nftContract, uint256 indexed tokenId, address owner, uint256 ticketId)"
@@ -978,7 +978,7 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
             {/* L2 Relay Manager Component - Now always visible */}
             <div className="component-section">
               <h3>L2 Relay Manager ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'})</h3>
-              <L2RelayManager 
+              <L2OwnershipRelayManager 
                 setBridgeStatus={setBridgeStatus}
               />
             </div>

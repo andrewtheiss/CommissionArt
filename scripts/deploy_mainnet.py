@@ -91,47 +91,47 @@ def get_optimized_gas_params(provider):
             return {}
 
 def deploy_l1_query_owner(deployer, network_type="mainnet"):
-    print("\n--- L1QueryOwner Setup ---")
+    print("\n--- L1QueryOwnership Setup ---")
     
     l1_network = "ethereum:mainnet:alchemy"
     inbox_address = "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f"  # Mainnet Inbox
     
     existing_l1_address = get_contract_address(network_type, "l1")
     if existing_l1_address:
-        print(f"Found existing L1QueryOwner in config: {existing_l1_address}")
-        use_existing = input("Use existing L1QueryOwner? (y/n) [y]: ").strip().lower() or "y"
+        print(f"Found existing L1QueryOwnership in config: {existing_l1_address}")
+        use_existing = input("Use existing L1QueryOwnership? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.L1QueryOwner.at(existing_l1_address)
+            return project.L1QueryOwnership.at(existing_l1_address)
     
-    print(f"Deploying new L1QueryOwner on {l1_network}...")
+    print(f"Deploying new L1QueryOwnership on {l1_network}...")
     
     with networks.parse_network_choice(l1_network) as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 1}
         deploy_kwargs.update(gas_params)
-        l1_contract = deployer.deploy(project.L1QueryOwner, inbox_address, **deploy_kwargs)
-        print(f"L1QueryOwner deployed at: {l1_contract.address}")
-        update_contract_address(network_type, "l1", l1_contract.address, "L1QueryOwner")
+        l1_contract = deployer.deploy(project.L1QueryOwnership, inbox_address, **deploy_kwargs)
+        print(f"L1QueryOwnership deployed at: {l1_contract.address}")
+        update_contract_address(network_type, "l1", l1_contract.address, "L1QueryOwnership")
         return l1_contract
 
 def deploy_l2_relay(deployer, network_type="mainnet"):
-    print("\n--- L2Relay Setup ---")
+    print("\n--- L2OwnershipRelay Setup ---")
     
     existing_l2_address = get_contract_address(network_type, "l2")
     if existing_l2_address:
-        print(f"Found existing L2Relay in config: {existing_l2_address}")
-        use_existing = input("Use existing L2Relay? (y/n) [y]: ").strip().lower() or "y"
+        print(f"Found existing L2OwnershipRelay in config: {existing_l2_address}")
+        use_existing = input("Use existing L2OwnershipRelay? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.L2Relay.at(existing_l2_address)
+            return project.L2OwnershipRelay.at(existing_l2_address)
     
-    print("Deploying new L2Relay on Arbitrum Mainnet...")
+    print("Deploying new L2OwnershipRelay on Arbitrum Mainnet...")
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 1}
         deploy_kwargs.update(gas_params)
-        l2_relay = deployer.deploy(project.L2Relay, **deploy_kwargs)
-        print(f"L2Relay deployed at: {l2_relay.address}")
-        update_contract_address(network_type, "l2", l2_relay.address, "L2Relay")
+        l2_relay = deployer.deploy(project.L2OwnershipRelay, **deploy_kwargs)
+        print(f"L2OwnershipRelay deployed at: {l2_relay.address}")
+        update_contract_address(network_type, "l2", l2_relay.address, "L2OwnershipRelay")
         return l2_relay
 
 def deploy_art_piece_stencil(deployer, network_type="mainnet"):
@@ -193,35 +193,35 @@ def deploy_commission_hub_template(deployer, art_piece_stencil_address=None, net
             
         return commission_hub_template
 
-def deploy_owner_registry(deployer, l2_relay_address, commission_hub_template_address, network_type="mainnet"):
-    print("\n--- OwnerRegistry Setup ---")
+def deploy_art_collection_ownership_registry(deployer, l2_relay_address, commission_hub_template_address, network_type="mainnet"):
+    print("\n--- ArtCommissionHubOwners Setup ---")
     
     existing_l3_address = get_contract_address(network_type, "l3")
     if existing_l3_address:
-        print(f"Found existing OwnerRegistry in config: {existing_l3_address}")
-        use_existing = input("Use existing OwnerRegistry? (y/n) [y]: ").strip().lower() or "y"
+        print(f"Found existing ArtCommissionHubOwners in config: {existing_l3_address}")
+        use_existing = input("Use existing ArtCommissionHubOwners? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.OwnerRegistry.at(existing_l3_address)
+            return project.ArtCommissionHubOwners.at(existing_l3_address)
     
-    print("Deploying new OwnerRegistry on Animechain L3...")
+    print("Deploying new ArtCommissionHubOwners on Animechain L3...")
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
         deploy_kwargs.update(gas_params)
-        owner_registry = deployer.deploy(project.OwnerRegistry, l2_relay_address, commission_hub_template_address, **deploy_kwargs)
-        print(f"OwnerRegistry deployed at: {owner_registry.address}")
-        update_contract_address(network_type, "l3", owner_registry.address, "OwnerRegistry")
-        return owner_registry
+        art_collection_ownership_registry = deployer.deploy(project.ArtCommissionHubOwners, l2_relay_address, commission_hub_template_address, **deploy_kwargs)
+        print(f"ArtCommissionHubOwners deployed at: {art_collection_ownership_registry.address}")
+        update_contract_address(network_type, "l3", art_collection_ownership_registry.address, "ArtCommissionHubOwners")
+        return art_collection_ownership_registry
 
-def update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry):
-    print("\n--- Updating L2Relay with L3 OwnerRegistry Address ---")
+def update_l2_relay_with_l3_contract(deployer, l2_relay, art_collection_ownership_registry):
+    print("\n--- Updating L2OwnershipRelay with L3 ArtCommissionHubOwners Address ---")
     with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
         gas_params = get_optimized_gas_params(provider)
         tx_kwargs = {}
         tx_kwargs.update(gas_params)
         print(f"Using transaction parameters: {tx_kwargs}")
-        tx = l2_relay.setL3Contract(owner_registry.address, sender=deployer, **tx_kwargs)
-        print("L2Relay successfully updated with L3 OwnerRegistry address")
+        tx = l2_relay.setL3Contract(art_collection_ownership_registry.address, sender=deployer, **tx_kwargs)
+        print("L2OwnershipRelay successfully updated with L3 ArtCommissionHubOwners address")
 
 def deploy_profile_template(deployer, network_type="mainnet"):
     print("\n--- Profile Template Setup ---")
@@ -249,29 +249,29 @@ def deploy_profile_template(deployer, network_type="mainnet"):
         
         return profile_template
 
-def deploy_profile_hub(deployer, profile_template_address, network_type="mainnet"):
-    print("\n--- ProfileHub Setup ---")
+def deploy_profile_factory_and_regsitry(deployer, profile_template_address, network_type="mainnet"):
+    print("\n--- ProfileFactoryAndRegistry Setup ---")
     
-    existing_profile_hub_address = get_contract_address(network_type, "profileHub")
-    if existing_profile_hub_address:
-        print(f"Found existing ProfileHub in config: {existing_profile_hub_address}")
-        use_existing = input("Use existing ProfileHub? (y/n) [y]: ").strip().lower() or "y"
+    existing_profile_factory_and_regsitry_address = get_contract_address(network_type, "profileFactoryAndRegistry")
+    if existing_profile_factory_and_regsitry_address:
+        print(f"Found existing ProfileFactoryAndRegistry in config: {existing_profile_factory_and_regsitry_address}")
+        use_existing = input("Use existing ProfileFactoryAndRegistry? (y/n) [y]: ").strip().lower() or "y"
         if use_existing == "y":
-            return project.ProfileHub.at(existing_profile_hub_address)
+            return project.ProfileFactoryAndRegistry.at(existing_profile_factory_and_regsitry_address)
     
-    print("Deploying new ProfileHub on Animechain L3...")
+    print("Deploying new ProfileFactoryAndRegistry on Animechain L3...")
     with networks.parse_network_choice("ethereum:animechain") as provider:
         gas_params = get_optimized_gas_params(provider)
         deploy_kwargs = {"required_confirmations": 0}
         deploy_kwargs.update(gas_params)
-        profile_hub = deployer.deploy(project.ProfileHub, profile_template_address, **deploy_kwargs)
-        print(f"ProfileHub deployed at: {profile_hub.address}")
+        profile_factory_and_regsitry = deployer.deploy(project.ProfileFactoryAndRegistry, profile_template_address, **deploy_kwargs)
+        print(f"ProfileFactoryAndRegistry deployed at: {profile_factory_and_regsitry.address}")
         
         # Update the contract address in the configuration
-        update_contract_address(network_type, "profileHub", profile_hub.address, "ProfileHub")
-        print(f"Updated profileHub address in configuration")
+        update_contract_address(network_type, "profileFactoryAndRegistry", profile_factory_and_regsitry.address, "ProfileFactoryAndRegistry")
+        print(f"Updated profileFactoryAndRegistry address in configuration")
         
-        return profile_hub
+        return profile_factory_and_regsitry
 
 def main():
     network_type = "mainnet"  # Always use mainnet
@@ -281,19 +281,19 @@ def main():
     
     l1_contract = None
     l2_relay = None
-    owner_registry = None
+    art_collection_ownership_registry = None
     commission_hub_template = None
     art_piece_stencil = None
     profile_template = None
-    profile_hub = None
+    profile_factory_and_regsitry = None
     
     if deploy_mode == "full":
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
         
-        # Deploy Profile template and ProfileHub
+        # Deploy Profile template and ProfileFactoryAndRegistry
         profile_template = deploy_profile_template(deployer, network_type)
-        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
+        profile_factory_and_regsitry = deploy_profile_factory_and_regsitry(deployer, profile_template.address, network_type)
         
         l1_contract = deploy_l1_query_owner(deployer, network_type)
         l2_relay = deploy_l2_relay(deployer, network_type)
@@ -301,8 +301,38 @@ def main():
         # Deploy ArtCommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
         
-        owner_registry = deploy_owner_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
-        update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
+        art_collection_ownership_registry = deploy_art_collection_ownership_registry(deployer, l2_relay.address, commission_hub_template.address, network_type)
+        update_l2_relay_with_l3_contract(deployer, l2_relay, art_collection_ownership_registry)
+        
+        # CRITICAL: Establish bidirectional connection between ArtCommissionHubOwners and ProfileFactoryAndRegistry
+        print("\n--- Setting up bidirectional connection between contracts ---")
+        with networks.parse_network_choice("ethereum:animechain") as provider:
+            gas_params = get_optimized_gas_params(provider)
+            tx_kwargs = {}
+            tx_kwargs.update(gas_params)
+            print(f"Connecting ArtCommissionHubOwners ({art_collection_ownership_registry.address}) to ProfileFactoryAndRegistry ({profile_factory_and_regsitry.address})")
+            try:
+                # This call is critical - it sets up the bidirectional connection
+                # Without it, commission hubs won't be automatically linked to profiles
+                tx = art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
+                print(f"Bidirectional connection established successfully")
+                
+                # Verify the connection
+                registry_from_factory = profile_factory_and_regsitry.artCommissionHubOwners()
+                factory_from_registry = art_collection_ownership_registry.profileFactoryAndRegistry()
+                print(f"Verification: ProfileFactoryAndRegistry points to: {registry_from_factory}")
+                print(f"Verification: ArtCommissionHubOwners points to: {factory_from_registry}")
+                
+                if registry_from_factory != art_collection_ownership_registry.address:
+                    print(f"WARNING: Verification failed - ProfileFactoryAndRegistry not pointing to ArtCommissionHubOwners")
+                if factory_from_registry != profile_factory_and_regsitry.address:
+                    print(f"WARNING: Verification failed - ArtCommissionHubOwners not pointing to ProfileFactoryAndRegistry")
+            except Exception as e:
+                print(f"Error establishing bidirectional connection: {e}")
+                print(f"CRITICAL: You must manually call linkProfileFactoryAndRegistry later using:")
+                print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
+        
         with networks.parse_network_choice(ARBITRUM_MAINNET_CONFIG["network"]) as provider:
             gas_params = get_optimized_gas_params(provider)
             tx_kwargs = {}
@@ -318,7 +348,7 @@ def main():
                 sender=deployer,
                 **tx_kwargs
             )
-            print(f"Aliased L1QueryOwner ({aliased_l1_address}) registered in L2Relay for chain ID {l1_chain_id}")
+            print(f"Aliased L1QueryOwnership ({aliased_l1_address}) registered in L2OwnershipRelay for chain ID {l1_chain_id}")
     
     elif deploy_mode == "l2only":
         l2_relay = deploy_l2_relay(deployer, network_type)
@@ -327,16 +357,16 @@ def main():
         # Deploy ArtPiece stencil first
         art_piece_stencil = deploy_art_piece_stencil(deployer, network_type)
         
-        # Deploy Profile template and ProfileHub
+        # Deploy Profile template and ProfileFactoryAndRegistry
         profile_template = deploy_profile_template(deployer, network_type)
-        profile_hub = deploy_profile_hub(deployer, profile_template.address, network_type)
+        profile_factory_and_regsitry = deploy_profile_factory_and_regsitry(deployer, profile_template.address, network_type)
         
         # Deploy ArtCommissionHub and whitelist the ArtPiece contract
         commission_hub_template = deploy_commission_hub_template(deployer, art_piece_stencil.address, network_type)
         
         l2_address = get_contract_address(network_type, "l2")
         if l2_address:
-            use_existing = input(f"Use existing L2Relay at {l2_address}? (y/n) [y]: ").strip().lower() or "y"
+            use_existing = input(f"Use existing L2OwnershipRelay at {l2_address}? (y/n) [y]: ").strip().lower() or "y"
             if use_existing != "y":
                 l2_address = input("Enter L2 relay address: ").strip()
         else:
@@ -344,16 +374,46 @@ def main():
         ch_address = commission_hub_template.address if commission_hub_template else get_contract_address(network_type, "artCommissionHub")
         if not ch_address:
             ch_address = input("Enter ArtCommissionHub template address: ").strip()
-        owner_registry = deploy_owner_registry(deployer, l2_address, ch_address, network_type)
+        art_collection_ownership_registry = deploy_art_collection_ownership_registry(deployer, l2_address, ch_address, network_type)
+        
+        # CRITICAL: Establish bidirectional connection between ArtCommissionHubOwners and ProfileFactoryAndRegistry
+        if profile_factory_and_regsitry and art_collection_ownership_registry:
+            print("\n--- Setting up bidirectional connection between contracts ---")
+            with networks.parse_network_choice("ethereum:animechain") as provider:
+                gas_params = get_optimized_gas_params(provider)
+                tx_kwargs = {}
+                tx_kwargs.update(gas_params)
+                print(f"Connecting ArtCommissionHubOwners ({art_collection_ownership_registry.address}) to ProfileFactoryAndRegistry ({profile_factory_and_regsitry.address})")
+                try:
+                    # This call is critical - it sets up the bidirectional connection
+                    # Without it, commission hubs won't be automatically linked to profiles
+                    tx = art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer, **tx_kwargs)
+                    print(f"Bidirectional connection established successfully")
+                    
+                    # Verify the connection
+                    registry_from_factory = profile_factory_and_regsitry.artCommissionHubOwners()
+                    factory_from_registry = art_collection_ownership_registry.profileFactoryAndRegistry()
+                    print(f"Verification: ProfileFactoryAndRegistry points to: {registry_from_factory}")
+                    print(f"Verification: ArtCommissionHubOwners points to: {factory_from_registry}")
+                    
+                    if registry_from_factory != art_collection_ownership_registry.address:
+                        print(f"WARNING: Verification failed - ProfileFactoryAndRegistry not pointing to ArtCommissionHubOwners")
+                    if factory_from_registry != profile_factory_and_regsitry.address:
+                        print(f"WARNING: Verification failed - ArtCommissionHubOwners not pointing to ProfileFactoryAndRegistry")
+                except Exception as e:
+                    print(f"Error establishing bidirectional connection: {e}")
+                    print(f"CRITICAL: You must manually call linkProfileFactoryAndRegistry later using:")
+                    print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                    print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
     
-    if deploy_mode != "full" and input("Update L2Relay with L3 OwnerRegistry address? (y/n): ").strip().lower() == 'y':
+    if deploy_mode != "full" and input("Update L2OwnershipRelay with L3 ArtCommissionHubOwners address? (y/n): ").strip().lower() == 'y':
         if not l2_relay:
-            l2_address = input("Enter L2Relay address: ").strip()
-            l2_relay = project.L2Relay.at(l2_address)
-        if not owner_registry:
-            owner_registry_address = input("Enter OwnerRegistry address: ").strip()
-            owner_registry = project.OwnerRegistry.at(owner_registry_address)
-        update_l2_relay_with_l3_contract(deployer, l2_relay, owner_registry)
+            l2_address = input("Enter L2OwnershipRelay address: ").strip()
+            l2_relay = project.L2OwnershipRelay.at(l2_address)
+        if not art_collection_ownership_registry:
+            art_collection_ownership_registry_address = input("Enter ArtCommissionHubOwners address: ").strip()
+            art_collection_ownership_registry = project.ArtCommissionHubOwners.at(art_collection_ownership_registry_address)
+        update_l2_relay_with_l3_contract(deployer, l2_relay, art_collection_ownership_registry)
     
     print("\n=== Deployment Complete ===")
     print("Contract addresses have been saved to the configuration file")

@@ -10,46 +10,74 @@
 
 # Profile Contract
 # This contract represents a user's profile, with features for both regular users and artists.
-# It is designed to be cloned by the ProfileHub contract for each user.
+# It is designed to be cloned by the ProfileFactoryAndRegistry contract for each user.
 
 # State Variables
+event CommissionLinked:
+    profile: indexed(address)
+    art_piece: indexed(address)
+    is_artist: bool
+
+event UnverifiedCommissionLinked:
+    profile: indexed(address)
+    art_piece: indexed(address)
+
+event CommissionVerified:
+    profile: indexed(address)
+    art_piece: indexed(address)
+
+event CommissionUnverified:
+    profile: indexed(address)
+    art_piece: indexed(address)
+
+event CommissionFailedToLink:
+    profile: indexed(address)
+    art_piece: indexed(address)
+    reason: String[100]
 
 # Constants for standardized pagination and unified array capacities
 PAGE_SIZE: constant(uint256) = 20
-MAX_ITEMS: constant(uint256) = 10**9  # unified max length for all item lists (adjusted if needed to original limits)
-
+MAX_ITEMS: constant(uint256) = 10**8  # unified max length for all item lists (adjusted if needed to original limits)
 
 # Owner of the profile (user address)
-deployer: public(address)  # New variable to store the deployer's address
-hub: public(address)  # Address of the hub that created this profile
+deployer: public(address)
+profileFactoryAndRegistry: public(address)  # Address of the hub that created this profile
 owner: public(address)
 profileImage: public(address)  # Changed from Bytes[45000] to address
 
 # Commissions and counters
-commissions: public(DynArray[address, MAX_ITEMS])
-commissionCount: public(uint256)
-unverifiedCommissions: public(DynArray[address, MAX_ITEMS])
-unverifiedCommissionCount: public(uint256)
+myCommissions: public(DynArray[address, MAX_ITEMS])
+myCommissionCount: public(uint256)
+myUnverifiedCommissions: public(DynArray[address, MAX_ITEMS])
+myUnverifiedCommissionCount: public(uint256)
 allowUnverifiedCommissions: public(bool)
 
-# Add commissionRole mapping to track role at time of commission upload
-commissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
+# Wtf is going on with this hideous variable name?  
+# We can actually absolutely SLAUGHTER 2 birds with one stone here!  
+# We NEED to know if a commission exists, and we NEED to know the position of the commission
+#   in the list.  So we can remove it.  So we can do both with one variable.
+#   We're going to use the offset by one so that the 0 index can be used to check if the commission
+#   exists.  This is a hack, but it works.  And saves considerable gas.
+myCommissionExistsAndPositionOffsetByOne: public(HashMap[address, uint256])
+myUnverifiedCommissionsExistsAndPositionOffsetByOne : public(HashMap[address, uint256])
+
+# Add myCommissionRole mapping to track role at time of myCommission upload
+myCommissionRole: public(HashMap[address, bool])  # true = artist, false = commissioner
+
+# Commission hubs owned by this profile
+myCommissionHubs: public(DynArray[address, 10**8])
+myCommissionHubCount: public(uint256)
 
 # Art pieces collection
 myArt: public(DynArray[address, MAX_ITEMS])
 myArtCount: public(uint256)
 
 # Profile socials and counters
-likedProfiles: public(DynArray[address, MAX_ITEMS])
-likedProfileCount: public(uint256)
 whitelist: public(HashMap[address, bool])
 blacklist: public(HashMap[address, bool])
-linkedProfiles: public(DynArray[address, 10**5])  
-linkedProfileCount: public(uint256)
 
-
-# Profile expansion (for future features)
-profileExpansion: public(address)
+# Profile social (for future features)
+profileSocial: public(address)
 
 # ArtSales1155 link (forever tied after set)
 artSales1155: public(address)
@@ -57,14 +85,36 @@ artSales1155: public(address)
 # Artist status for this profile
 isArtist: public(bool)
 
-# Interface for ArtPiece contract
+# Interface for ProfileFactoryAndRegistry
+interface ProfileFactoryAndRegistry:
+    def artCommissionHubOwners() -> address: view
+    def getProfile(_owner: address) -> address: view
+    def owner() -> address: view
+
+# Interface for Profile (for cross-profile calls)
+interface Profile:
+    def updateCommissionVerificationStatus(_commission_art_piece: address): nonpayable
+    def owner() -> address: view
+    def linkArtPieceAsMyCommission(_art_piece: address) -> bool: nonpayable
+
+# Interface for ArtPiece contract - updated with new verification methods
 interface ArtPiece:
     def getOwner() -> address: view
     def getArtist() -> address: view
-    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _owner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool): nonpayable
+    def getCommissioner() -> address: view
+    def getArtCommissionHubAddress() -> address: view
+    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool, _profile_factory_address: address): nonpayable
+    def verifyAsArtist(): nonpayable
+    def verifyAsCommissioner(): nonpayable
+    def isFullyVerifiedCommission() -> bool: view # returns true if the art piece is a VERIFIED commissioner != artist AND fully verified)
+    def isUnverifiedCommission() -> bool: view # returns true if the art piece is an cnverified commission (commissioner != artist but not fully verified)
+    def isPrivateOrNonCommissionPiece() -> bool: view # returns true if the art piece is private/non-commission (commissioner == artist)
+    def artistVerified() -> bool: view
+    def commissionerVerified() -> bool: view
 
 # Interface for ArtCommissionHub
 interface ArtCommissionHub:
+    def owner() -> address: view
     def submitCommission(_art_piece: address): nonpayable
     def setWhitelistedArtPieceContract(_art_piece_contract: address): nonpayable
 
@@ -72,40 +122,49 @@ interface ArtCommissionHub:
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
 
+# Event for myCommission verification in profile context
+event CommissionVerifiedInProfile:
+    profile: indexed(address)
+    art_piece: indexed(address)
+    is_artist: bool
+
 # Constructor
 @deploy
 def __init__():
-    self.deployer = msg.sender  # Set deployer to msg.sender during deployment
+    pass
 
 # Initialization Function
 @external
-def initialize(_owner: address):
+def initialize(_owner: address, _profile_social: address, _profile_factory_and_registry: address, _is_artist: bool = False):
     assert self.owner == empty(address), "Already initialized"
+    assert _profile_factory_and_registry == msg.sender, "Profile factory and registry address cannot be empty"
+    assert _profile_social != empty(address), "Profile social address cannot be empty"
+
+    self.profileFactoryAndRegistry = _profile_factory_and_registry  # Set the hub to be the contract that called initialize
+    self.deployer = msg.sender
     self.owner = _owner
-    self.hub = msg.sender  # Set the hub to be the contract that called initialize
-    self.deployer = msg.sender  # Also set deployer to be the same as hub for backward compatibility
-    self.allowUnverifiedCommissions = True  # Default to allowing commissions
-    self.profileExpansion = empty(address)
-    self.isArtist = False  # Default to non-artist
+    self.isArtist = _is_artist 
+    self.profileSocial = _profile_social
+    self.allowUnverifiedCommissions = True  # Default to allowing myCommissions
     
     # Initialize counters
-    self.commissionCount = 0
-    self.unverifiedCommissionCount = 0
-    self.likedProfileCount = 0
-    self.linkedProfileCount = 0
+    self.myCommissionCount = 0
+    self.myUnverifiedCommissionCount = 0
     self.myArtCount = 0
+    self.myCommissionHubCount = 0
 
-# Toggle allowing new commissions
+# Internal function to get deployer address
+@internal
+@view
+def _getDeployer() -> address:
+    profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+    return staticcall profile_factory.owner()
+
+# Toggle allowing new myCommissions
 @external
 def setAllowUnverifiedCommissions(_allow: bool):
-    assert msg.sender == self.owner, "Only owner can set allow new commissions"
+    assert msg.sender == self.owner, "Only owner can set allow new myCommissions"
     self.allowUnverifiedCommissions = _allow
-
-# Set profile expansion address
-@external
-def setProfileExpansion(_address: address):
-    assert msg.sender == self.owner, "Only owner can set profile expansion"
-    self.profileExpansion = _address
 
 # Add address to whitelist
 @external
@@ -136,328 +195,411 @@ def setProfileImage(_profile_image: address):
     assert msg.sender == self.owner, "Only owner can set profile image"
     # check we are owner of the art piece
     art_piece: ArtPiece = ArtPiece(_profile_image)
-    assert staticcall(art_piece.getOwner()) == self.owner or staticcall(art_piece.getArtist()) == self.owner, "Only owner can set profile image"
+    effective_owner: address = staticcall art_piece.getOwner()
+    assert effective_owner == self.owner or staticcall(art_piece.getArtist()) == self.owner, "Only owner can set profile image"
     self.profileImage = _profile_image
 
-## Commissions
-#
-# addCommission
+# linkArtPieceAsMyCommission
 # -------------
-# Adds a commission to this profile.
+# Links a art piece to this profile, always to the myUnverified list until both parties verify it
 # Use case:
-# - If the profile is an artist, this is a piece of work they created for someone else (they are the artist).
+# - If the profile is an artist, this is a piece of work they draw/paint/etc for someone else (they are the artist).
 # - If the profile is a non-artist (commissioner/curator), this is a piece of work they commissioned from an artist (they are the client).
-# - The contract records the user's role at the time of upload in commissionRole.
-# Example:
-# - Alice (artist) uploads a new commission she did for Bob: Alice calls addCommission(commissionAddress).
-# - Bob (commissioner) uploads a commission he received from Alice: Bob calls addCommission(commissionAddress).
+# - The contract records the user's role at the time of upload in myCommissionRole.
+# Linked pieces have the following preconditions:
+# - The piece must not be a private/non-commission piece (commissioner == artist)
+# - The piece must be owned by the profile owner, profile factory, artist ,or artist/commissioner profile
+# - The piece must be a commission (commissioner != artist)
+# - The piece cannot be on the blacklist
+# - The piece CAN bypass permissions if on the whitelist
 #
 @external
-def addCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can add commission"
-    assert _commission not in self.commissions, "Commission already added"
-    self.commissions.append(_commission)
-    self.commissionCount += 1
-    # Use isArtist at upload time
-    self.commissionRole[_commission] = self.isArtist
+def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
+    """
+    @notice Adds an ArtPiece to this profile, to myCommissions or myUnverified list based on verification status
+    @dev Access control - Allowed callers:
+         1. Profile owner (direct)
+         2. ProfileFactoryAndRegistry (system)
+         3. The art piece itself (during verification)
+         4. A valid profile contract representing artist/commissioner
+    @param _art_piece The address of the myCommission art piece
+    """
+    # Get the art piece details to check permissions
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    effective_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_potential_commission: bool = commissioner != art_artist
+    
+    # Define clear permission categories
+    is_profile_owner: bool = msg.sender == self.owner
+    is_system: bool = msg.sender == self.profileFactoryAndRegistry
+    is_art_piece_self: bool = msg.sender == _art_piece
+    
+    # Check if caller is a valid profile representing one of the parties
+    is_valid_profile_caller: bool = False
+    if msg.sender != self.owner and msg.sender != self.profileFactoryAndRegistry and msg.sender != _art_piece:
+        # Only check profile validity for non-system/non-art-piece callers
+        # Verify this is a valid profile contract from our factory
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        artist_profile: address = staticcall profile_factory.getProfile(art_artist)
+        commissioner_profile: address = staticcall profile_factory.getProfile(commissioner)
+        
+        # Allow calls from the official profiles of the artist or commissioner
+        is_valid_profile_caller = (msg.sender == artist_profile or msg.sender == commissioner_profile)
+    
+    # Require at least one valid permission
+    assert is_profile_owner or is_system or is_art_piece_self or is_valid_profile_caller, "No permission to add commission"
+
+    if self.myCommissionExistsAndPositionOffsetByOne[_art_piece] != 0:
+        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added")
+        return False
+
+    if not is_potential_commission:
+        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Not a commission art piece")
+        return False
+    
+    # If artist/commissioner are blacklisted by THIS profile, reject the commission
+    if (self.blacklist[commissioner] or self.blacklist[art_artist]):
+        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is on blacklist")
+        return False
+
+    # For profile callers (not owner/system/art piece), require whitelisting
+    if is_valid_profile_caller and not (self.whitelist[commissioner] or self.whitelist[art_artist]):
+        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is not whitelisted")
+        return False
+    
+    # Determine if this should be added to verified or myUnverified list
+    # Commissions are now verified only when both parties verify them
+    is_verified_by_both: bool = False
+    if is_potential_commission:
+        is_verified_by_both = staticcall art_piece.isFullyVerifiedCommission()
+    
+    # Add to verified list
+    if is_verified_by_both:
+        self._addToVerifiedList(_art_piece)
+
+    # Add to myUnverified list
+    else:
+        if not self.allowUnverifiedCommissions:
+            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Unverified commissions are disallowed by this Profile.")
+            return False
+        if self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] != 0:
+            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added, but unverified.  Please verify.")
+            return False
+        self._addToUnverifiedList(_art_piece)
+
+    return True
+
+@internal
+def _addToUnverifiedList(_art_piece: address):
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    self.myUnverifiedCommissions.append(_art_piece)
+    self.myUnverifiedCommissionCount += 1
+    self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
+    self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = self.myUnverifiedCommissionCount
+    log UnverifiedCommissionLinked(profile=self, art_piece=_art_piece)
+
+@internal
+def _addToVerifiedList(_art_piece: address):
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    self.myCommissions.append(_art_piece)
+    self.myCommissionCount += 1
+    self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
+    self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = self.myCommissionCount
+    log CommissionLinked(profile=self, art_piece=_art_piece, is_artist=self.isArtist)
 
 #
-# removeCommission
+# verifyArtLinkedToMyCommission
+# -------------
+# Verifies an art piece linked to myCommissions. The profile owner can verify as artist or commissioner depending on their role.
+# Once both parties verify, the piece is moved from myUnverified to verified and ownership may transfer to the hub.
+#
+@external
+def verifyArtLinkedToMyCommission(_art_piece: address):
+    """
+    @notice Verifies half of a myCommission piece (either as artist or as commissioner) based on the profile owner's role
+    @dev Only the profile owner can call this
+    @param _art_piece The address of the myCommission art piece to verify
+    """
+    assert msg.sender == self.owner, "Only profile owner can verify myCommission"
+    assert self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] != 0, "Unverified myCommission not found"
+    
+    # Get the art piece details
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    effective_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+
+    # Determine if the profile owner is the artist or commissioner
+    is_artist: bool = self.owner == art_artist
+    is_commissioner: bool = self.owner == commissioner
+    assert is_artist or is_commissioner, "Profile owner not involved in this myCommission"
+
+    # Check verification status
+    artist_verified: bool = staticcall art_piece.artistVerified()
+    commissioner_verified: bool = staticcall art_piece.commissionerVerified()
+    
+    # Verify myCommission based on profile role if not already verified
+    if is_artist and not artist_verified:
+        # Verify as artist
+        extcall art_piece.verifyAsArtist()
+    elif is_commissioner and not commissioner_verified:
+        # Verify as commissioner
+        extcall art_piece.verifyAsCommissioner()
+
+    #TODO - verify artist and commissioner currently have a check that msg.sender is the person, but 
+    #   it actually gets set to this Profile address instead.  i need to get the owner of the profile if 
+    #   its an address
+    
+    # Check if now fully verified - this will move from myUnverified to verified
+    is_now_verified: bool = staticcall art_piece.isFullyVerifiedCommission()
+    
+    # If now verified, move from myUnverified to verified list
+    if is_now_verified:
+        # Check if it's in the myUnverified list
+        found_myUnverified: bool = False
+        myUnverified_index: uint256 = 0
+        
+        for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=1000):
+            if i >= len(self.myUnverifiedCommissions):
+                break
+            if self.myUnverifiedCommissions[i] == _art_piece:
+                myUnverified_index = i
+                found_myUnverified = True
+                break
+        
+        if found_myUnverified:
+            # Remove from myUnverified list and update mappings
+            if myUnverified_index < len(self.myUnverifiedCommissions) - 1:
+                last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
+                self.myUnverifiedCommissions[myUnverified_index] = last_item
+                # Update mapping for the moved item
+                self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = myUnverified_index + 1  # offset by 1
+            self.myUnverifiedCommissions.pop()
+            self.myUnverifiedCommissionCount -= 1
+            # Clear mapping for the removed item
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = 0
+        
+        # Add to verified list if not already there
+        if _art_piece not in self.myCommissions:
+            self.myCommissions.append(_art_piece)
+            self.myCommissionCount += 1
+            # Set mapping for the newly added verified item
+            self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = self.myCommissionCount  # offset by 1
+        
+        # If this profile owner is the commissioner, also add to myArt if not already there
+        if is_commissioner and _art_piece not in self.myArt:
+            self.myArt.append(_art_piece)
+            self.myArtCount += 1
+        
+        # Now we need to update the other party's profile as well
+        # Get the profile factory registry to find the other party's profile
+        if self.profileFactoryAndRegistry != empty(address):
+            # Try to find the other party's profile
+            other_party: address = empty(address)
+            if is_artist:
+                # If this profile owner is the artist, the other party is the commissioner
+                other_party = commissioner
+            else:
+                # If this profile owner is the commissioner, the other party is the artist
+                other_party = art_artist
+            
+            # If we have the other party's address, try to update their profile
+            if other_party != empty(address):
+                # Get the other party's profile from the hub
+                profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+                other_profile: address = staticcall profile_factory.getProfile(other_party)
+                
+                # If the other party has a profile, update their myCommission status
+                if other_profile != empty(address):
+                    # Call the updateCommissionVerificationStatus method on the other profile
+                    profile_interface: Profile = Profile(other_profile)
+                    extcall profile_interface.updateCommissionVerificationStatus(_art_piece)
+    
+    log CommissionVerifiedInProfile(profile=self, art_piece=_art_piece, is_artist=is_artist)
+
+#
+# removeArtLinkToMyCommission
 # ----------------
-# Removes a commission from this profile's list.
+# Removes a commission from this profile's verified or unverified commissions list
 # Use case:
 # - If a commission is no longer relevant, or was added in error, it can be removed.
 # - This also removes the recorded role for that commission.
-# Example:
-# - Alice accidentally adds the wrong commission: removeCommission(commissionAddress).
+# - If you remove a commission from your myCommissions list, it will REMOVE itself ONLY from unverified ArtCommissionHubs
 #
 @external
-def removeCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can remove commission"
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.commissions), bound=1000):
-        if self.commissions[i] == _commission:
-            index = i
-            found = True
-            break
-    assert found, "Commission not found"
-    # Swap with the last element and pop
-    if index < len(self.commissions) - 1:
-        last_item: address = self.commissions[len(self.commissions) - 1]
-        self.commissions[index] = last_item
-    self.commissions.pop()
-    self.commissionCount -= 1
-    self.commissionRole[_commission] = False  # Clear role (optional, for clarity)
+def removeArtLinkToMyCommission(_my_commission: address):
+    """
+    @notice Removes a commission from this profile's verified or unverified commissions list
+    @dev Access control - Allowed callers:
+         1. Profile owner (can remove any commission from their profile)
+         2. ProfileFactoryAndRegistry (system operations)
+         3. The art piece itself (during verification)
+         4. Valid profile contracts representing artist/commissioner (with restrictions)
+    @param _my_commission The address of the commission to remove
+    """
 
+    # Check that the commission exists in this profile
+    assert self.myCommissionExistsAndPositionOffsetByOne[_my_commission] != 0 or self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] != 0, "No commission to unlink"
+    
+    # Get art piece details
+    art_piece: ArtPiece = ArtPiece(_my_commission)
+    art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    
+    # Define clear permission categories
+    is_profile_owner: bool = msg.sender == self.owner
+    is_system: bool = msg.sender == self.profileFactoryAndRegistry
+    is_art_piece_self: bool = msg.sender == _my_commission
+    
+    # Check if caller is a valid profile representing one of the parties
+    is_valid_profile_caller: bool = False
+    if msg.sender != self.owner and msg.sender != self.profileFactoryAndRegistry and msg.sender != _my_commission:
+        # Verify this is a valid profile contract from our factory
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        artist_profile: address = staticcall profile_factory.getProfile(art_artist)
+        commissioner_profile: address = staticcall profile_factory.getProfile(commissioner)
+        
+        # Allow calls from the official profiles of the artist or commissioner
+        is_valid_profile_caller = (msg.sender == artist_profile or msg.sender == commissioner_profile)
+    
+    # Require at least one valid permission
+    assert is_profile_owner or is_system or is_art_piece_self or is_valid_profile_caller, "No permission to remove commission"
+    
+    # Remove from correct list
+    if (self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] != 0):
+        last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
+        self.myUnverifiedCommissions[self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] - 1] = last_item #offset by 1 so indices are 0 when absent
+        # Update mapping for the moved item
+        if len(self.myUnverifiedCommissions) > 1:  # Only update if we're actually moving an item
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission]
+        self.myUnverifiedCommissions.pop()
+        self.myUnverifiedCommissionCount -= 1
+        self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] = 0
+
+    elif (self.myCommissionExistsAndPositionOffsetByOne[_my_commission] != 0):
+        last_item: address = self.myCommissions[len(self.myCommissions) - 1]
+        self.myCommissions[self.myCommissionExistsAndPositionOffsetByOne[_my_commission] - 1] = last_item #offset by 1 so indices are 0 when absent
+        # Update mapping for the moved item
+        if len(self.myCommissions) > 1:  # Only update if we're actually moving an item
+            self.myCommissionExistsAndPositionOffsetByOne[last_item] = self.myCommissionExistsAndPositionOffsetByOne[_my_commission]
+        self.myCommissions.pop()
+        self.myCommissionCount -= 1
+        self.myCommissionExistsAndPositionOffsetByOne[_my_commission] = 0
+
+
+## get Commissions
 #
-# getCommissions
-# ---------------
-# Returns a paginated list of commissions (verified or unverified) for this profile.
+# getCommissionsByOffset
+# -------------------------
+# Returns a paginated list of myUnverified myCommissions for this profile.
 # Use case:
-# - Used by the frontend to display all commissions associated with this profile, either as artist or commissioner.
-# - The frontend can also query commissionRole to determine the user's role at the time of upload for each commission.
+# - Used by the frontend to display all myUnverified myCommissions associated with this profile.
 # Example:
-# - Alice wants to see all her commissions (as artist or as commissioner): getCommissions(page, pageSize).
+# - Alice wants to see all her myUnverified myCommissions: getUnverifiedCommissions(page, pageSize).
 #
 @view
 @external
-def getCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.commissions)
-    if arr_len == 0 or _page * _page_size >= arr_len:
+def getCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    Returns a paginated list of commissions using offset-based pagination.
+    """
+    result: DynArray[address, 50] = []
+    
+    # Handle empty array case first
+    if self.myCommissionCount == 0:
         return result
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.commissions[start + i])
+    
+    if not reverse:
+        # Forward pagination: oldest to newest
+        if _offset >= self.myCommissionCount:
+            return result  # Offset beyond array bounds
+        
+        # Calculate how many items we can return
+        available_items: uint256 = self.myCommissionCount - _offset
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        # Populate result
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myCommissions[_offset + i])
+    else:
+        # Reverse pagination: newest to oldest
+        # Calculate the actual starting position
+        max_valid_offset: uint256 = self.myCommissionCount - 1
+        actual_offset: uint256 = min(_offset, max_valid_offset)
+        
+        # Calculate how many items we can return going backwards
+        available_items: uint256 = actual_offset + 1
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        # Populate result going backwards
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            # Safe because we know actual_offset >= i (due to items_to_return calculation)
+            result.append(self.myCommissions[actual_offset - i])
+    
     return result
 
-@view
-@external
-def getRecentCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.commissions)
-    
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    # Calculate start index from the end and how many items to return
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.commissions[start - i])
-    
-    return result
 
 ## Unverified Commissions
 #
-# addUnverifiedCommission / removeUnverifiedCommission
-# ----------------------------------------------------
-# Adds or removes a commission from the unverified list.
-# Use case:
-# - When a commission is first uploaded, it may be unverified (pending approval by the other party).
-# - Either party can move a commission to or from the unverified list as part of the verification flow.
-# Example:
-# - Alice uploads a commission for Bob, but Bob hasn't approved it yet: addUnverifiedCommission(commissionAddress).
-# - Once Bob approves, removeUnverifiedCommission(commissionAddress) and move to verified.
-#
-@external
-def addUnverifiedCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can add unverified commission"
-    assert _commission not in self.unverifiedCommissions, "Unverified commission already added"
-    self.unverifiedCommissions.append(_commission)
-    self.unverifiedCommissionCount += 1
-
-@external
-def removeUnverifiedCommission(_commission: address):
-    assert msg.sender == self.owner, "Only owner can remove unverified commission"
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.unverifiedCommissions), bound=1000):
-        if self.unverifiedCommissions[i] == _commission:
-            index = i
-            found = True
-            break
-    assert found, "Unverified commission not found"
-    if index < len(self.unverifiedCommissions) - 1:
-        last_item: address = self.unverifiedCommissions[len(self.unverifiedCommissions) - 1]
-        self.unverifiedCommissions[index] = last_item
-    self.unverifiedCommissions.pop()
-    self.unverifiedCommissionCount -= 1
-
-#
 # getUnverifiedCommissions
 # -------------------------
-# Returns a paginated list of unverified commissions for this profile.
+# Returns a paginated list of myUnverified myCommissions for this profile.
 # Use case:
-# - Used by the frontend to display all unverified commissions associated with this profile.
+# - Used by the frontend to display all myUnverified myCommissions associated with this profile.
 # Example:
-# - Alice wants to see all her unverified commissions: getUnverifiedCommissions(page, pageSize).
+# - Alice wants to see all her myUnverified myCommissions: getUnverifiedCommissions(page, pageSize).
 #
 @view
 @external
-def getUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.unverifiedCommissions)
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.unverifiedCommissions[start + i])
-    return result
-
-@view
-@external
-def getRecentUnverifiedCommissions(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.unverifiedCommissions)
+def getUnverifiedCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    Returns a paginated list of unverified commissions using offset-based pagination.
+    """
+    result: DynArray[address, 50] = []
     
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
+    # Handle empty array case first
+    if self.myUnverifiedCommissionCount == 0:
         return result
     
-    # Calculate start index from the end and how many items to return
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.unverifiedCommissions[start - i])
-    
-    return result
-
-## Liked Profiles
-@external
-def addLikedProfile(_profile: address):
-    assert msg.sender == self.owner, "Only owner can add liked profile"
-    assert _profile not in self.likedProfiles, "Profile already liked"
-    self.likedProfiles.append(_profile)
-    self.likedProfileCount += 1
-
-@external
-def removeLikedProfile(_profile: address):
-    assert msg.sender == self.owner, "Only owner can remove liked profile"
-    
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.likedProfiles), bound=1000):
-        if self.likedProfiles[i] == _profile:
-            index = i
-            found = True
-            break
-    
-    # If not found, revert
-    assert found, "Profile not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.likedProfiles) - 1:  # Not the last element
-        # Get the last item
-        last_item: address = self.likedProfiles[len(self.likedProfiles) - 1]
-        # Replace the item to remove with the last item
-        self.likedProfiles[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
-    self.likedProfiles.pop()
-    self.likedProfileCount -= 1
-
-@view
-@external
-def getLikedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.likedProfiles)
-    
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    # Calculate how many items to return (bounded by array length and max return size)
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    # Populate result array
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.likedProfiles[start + i])
+    if not reverse:
+        # Forward pagination: oldest to newest
+        if _offset >= self.myUnverifiedCommissionCount:
+            return result
+        
+        available_items: uint256 = self.myUnverifiedCommissionCount - _offset
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myUnverifiedCommissions[_offset + i])
+    else:
+        # Reverse pagination: newest to oldest
+        max_valid_offset: uint256 = self.myUnverifiedCommissionCount - 1
+        actual_offset: uint256 = min(_offset, max_valid_offset)
+        
+        available_items: uint256 = actual_offset + 1
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myUnverifiedCommissions[actual_offset - i])
     
     return result
 
-@view
-@external
-def getRecentLikedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.likedProfiles)
-    
-    # Early returns for empty array or out-of-bounds page
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    # Calculate start index from the end and how many items to return
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    # Populate result array in reverse order
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.likedProfiles[start - i])
-    
-    return result
-
-## Other Profiles
-@external
-def linkProfile(_profile: address):
-    assert msg.sender == self.owner, "Only owner can add other profile"
-    assert _profile not in self.linkedProfiles, "Profile already linked"
-    self.linkedProfiles.append(_profile)
-    self.linkedProfileCount += 1
 
 @external
-def removeLinkedProfile(_profile: address):
-    assert msg.sender == self.owner, "Only owner can remove linked profile"
-    
-    # Find the index of the item to remove
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.linkedProfiles), bound=1000):
-        if self.linkedProfiles[i] == _profile:
-            index = i
-            found = True
-            break
-    
-    # If not found, revert
-    assert found, "Linked profile not found"
-    
-    # Swap with the last element and pop
-    if index < len(self.linkedProfiles) - 1:  # Not the last element
-        # Get the last item
-        last_item: address = self.linkedProfiles[len(self.linkedProfiles) - 1]
-        # Replace the item to remove with the last item
-        self.linkedProfiles[index] = last_item
-    
-    # Pop the last item (now a duplicate if we did the swap)
-    self.linkedProfiles.pop()
-    self.linkedProfileCount -= 1
-
-@view
-@external
-def getLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.linkedProfiles)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.linkedProfiles[start + i])
-    
-    return result
-
-@view
-@external
-def getRecentLinkedProfiles(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.linkedProfiles)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.linkedProfiles[start - i])
-    
-    return result
+def clearUnverifiedCommissions():
+    assert msg.sender == self.owner, "Only owner can clear myUnverified myCommissions"
+    self.myUnverifiedCommissions = []
+    self.myUnverifiedCommissionCount = 0
 
 # Set ArtSales1155 address (can only be set once)
 @external
@@ -487,9 +629,11 @@ def getProfileErc1155sForSale(_page: uint256, _page_size: uint256) -> DynArray[a
     return staticcall ArtSales1155(self.artSales1155).getAdditionalMintErc1155s(_page, _page_size)
 
 # Three types of art pieces can be created:
-# #1 - Profile Art Piece 
-# #2 - Commission Art Piece
-# #3 - Profile Art Peice
+# #1 - Personal Art Piece (non-myCommission)
+# #2 - Profile Art Piece (special case for profile image) 
+# #3 - Commission Art Piece
+#
+# #3 is the only one which takes considerable extra work as it requires linking the profile back to the ArtPiece
 @external
 def createArtPiece(
     _art_piece_template: address,
@@ -497,91 +641,169 @@ def createArtPiece(
     _token_uri_data_format: String[10],
     _title: String[100],
     _description: String[200],
-    _is_artist: bool,
+    _as_artist: bool,
     _other_party: address,
     _ai_generated: bool,
-    _art_commission_hub: address = empty(address),  # Register with art commission hub
+    _art_commission_hub: address = empty(address),  # Register with art myCommission hub
     _is_profile_art: bool = False
 ) -> address:
     """
-    Create a new art piece with optional profile art and commission registration
+    @notice Create a new art piece with optional profile art and myCommission registration
+    @dev New workflow: uploader is initial owner, myCommission pieces start with uploader's side verified
+    @param _art_piece_template The template contract to clone for this art piece
+    @param _token_uri_data The art data
+    @param _token_uri_data_format Format of the art data
+    @param _title Title of the art piece
+    @param _description Description of the art piece
+    @param _as_artist Flag indicating if the uploader is the artist (or commissioner)
+    @param _other_party Address of the other party (artist if uploader is commissioner, vice versa)
+    @param _ai_generated Flag indicating if the art was AI-generated
+    @param _art_commission_hub Optional hub address to register myCommission with
+    @param _is_profile_art Flag indicating if this is a profile image
+    @return The address of the created art piece
     """
-    # Determine permissions
-    if _is_profile_art:
-        assert msg.sender == self.owner, "Only profile owner can create profile art"
-    if _art_commission_hub != empty(address):
-        assert msg.sender == self.owner or msg.sender == self.hub, "Only profile owner can create profile art or register with commission hub"
+
+    # Who can call this?  
+    #        - Profile owner: (create profile art, personal art piece)...  direct call from user ONLY
+    #        - Profile owner or ProfileFactoryAndRegistry or Deployer: (register potential commission hub)
+    # Check for personal piece or commission art piece
+    personal_piece: bool = _is_profile_art or (_other_party == self.owner)
+    indirect_creation_call: bool = msg.sender == self._getDeployer() or msg.sender == self.profileFactoryAndRegistry
+    if personal_piece:
+        assert msg.sender == self.owner, "Only profile owner can create personal art piece"
     else:
-        assert msg.sender == self.owner or msg.sender == self.hub or msg.sender == self.deployer, "Only profile owner, hub, or deployer can create art"
+        assert msg.sender == self.owner or indirect_creation_call, "Only profile owner or deployer can create commission art piece"
+   
+    # Variables for ArtPiece initialization
+    artist: address = empty(address)
+    commissioner: address = empty(address)
+    art_commission_hub: address = _art_commission_hub  #overwrite to empty if personal piece...
 
-    # Adjust parameters for profile art
-    is_artist: bool = _is_artist
-    other_party: address = _other_party
-    art_commission_hub: address = _art_commission_hub
-
-    # If this art piece is your profile, flog as not commissionable
-    if _is_profile_art:
-        is_artist = True
-        other_party = self.owner
+    # If a Personal piece, it can be 1 of 2 options:
+    # #1 - Profile owner creating profile art
+    # #2 - Profile owner uploading to MyArt
+    if personal_piece:
         art_commission_hub = empty(address)
+        artist = self.owner
+        commissioner = self.owner
 
-    # Calculate owner_input and artist_input
-    owner_input: address = empty(address)
-    artist_input: address = empty(address)
-    if is_artist:
-        artist_input = self.owner
-        owner_input = other_party if other_party != empty(address) else self.owner
+    # if we are the artist, 
+    elif _as_artist:
+        commissioner = _other_party
+        artist = self.owner
     else:
-        owner_input = self.owner
-        artist_input = other_party if other_party != empty(address) else self.owner
+        artist = _other_party
+        commissioner = self.owner
 
-    # Create minimal proxy to the ArtPiece template
+    # Create ArtPiece template and initialize
+    # ArtPiece will link all parameters to this profile
     art_piece_address: address = create_minimal_proxy_to(_art_piece_template)
-
-    # Initialize the art piece proxy
     art_piece: ArtPiece = ArtPiece(art_piece_address)
     extcall art_piece.initialize(
         _token_uri_data,
         _token_uri_data_format,
         _title,
         _description,
-        owner_input,
-        artist_input,
+        commissioner,
+        artist,
         art_commission_hub,
-        _ai_generated
+        _ai_generated,
+        self.profileFactoryAndRegistry
     )
         
     # If profile art, set as profile image
     if _is_profile_art:
         self.profileImage = art_piece_address
 
-    # Add to my art collection if not profile art
-    if not _is_profile_art:
-        self.myArt.append(art_piece_address)
-        self.myArtCount += 1
+    # Add to my art collection 
+    self.myArt.append(art_piece_address)
+    self.myArtCount += 1
 
-    # If commission hub is provided, register with it
+    # If this is a commission, we need to link the profile back to the ArtPiece
+    # If we are whitelisted by the other party, we can verify by both immediately and turn into 
+    #        a commissioned art piece!
+    if not personal_piece:
+
+        # Record uploader as commissioner or artist (verifyAsArtist or verifyAsCommissioner)
+        self.myCommissionRole[art_piece_address] = _as_artist
+        if artist == self.owner:
+            extcall art_piece.verifyAsArtist()
+        else:
+            extcall art_piece.verifyAsCommissioner()
+        
+        # Need to try and verify on the other Profile as we might be whitelisted
+        # Since we are the Artist, the other party is the commissioner
+        # If we are the Commissioner, the other party is the artist
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        other_profile_address: address = staticcall profile_factory.getProfile(_other_party)
+        other_profile_instance: Profile = Profile(other_profile_address)
+        linked_other_profile: bool = extcall other_profile_instance.linkArtPieceAsMyCommission(art_piece_address)  
+                
+        # Flag as verified by this account as its the uploader
+        # If the other party is set, check if they are whitelisted... if so, verify by both
+        # Check if already fully verified (could happen in some edge cases)
+        is_verified_by_both: bool = staticcall art_piece.isFullyVerifiedCommission()
+        if is_verified_by_both:
+            # Add to verified myCommissions
+            self.myCommissions.append(art_piece_address)
+            self.myCommissionCount += 1
+        else:
+            # Add to myUnverified myCommissions
+            self.myUnverifiedCommissions.append(art_piece_address)
+            self.myUnverifiedCommissionCount += 1
+            
+
+    # If this art is a potential commission, ArtCommissionHub is provided
+    # in this case, we submitCommission to the ArtCommissionHub.. 
+    # WE SHOULD NOT DO THIS AS WE JUST WANT VERIFIED PIECES TO BE SUBMITTED
     if art_commission_hub != empty(address):
         _art_commission_hub_link: ArtCommissionHub = ArtCommissionHub(art_commission_hub)
+        extcall _art_commission_hub_link.submitCommission(art_piece_address)
 
     return art_piece_address
 
 
 @external
 def addArtPiece(_art_piece: address):
+    """
+    @notice Add an existing art piece to this profile
+    @dev Only the profile owner can call this, and must be either owner or artist of the piece
+    @param _art_piece Address of the art piece to add
+    """
     assert msg.sender == self.owner, "Only owner can add art piece"
     
     # Get the art piece owner and artist
     art_piece: ArtPiece = ArtPiece(_art_piece)
-    art_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_myCommission: bool = staticcall art_piece.isFullyVerifiedCommission()
     
     # Verify the profile owner is either the art piece owner or artist
-    assert self.owner == art_owner or self.owner == art_artist, "Can only add art you own or created"
+    assert self.owner == art_artist or self.owner == commissioner, "Can only add art you own or created"
     
-    assert _art_piece not in self.myArt, "Art piece already added"
-    self.myArt.append(_art_piece)
-    self.myArtCount += 1
+    # First, add to myArt if not already there
+    if _art_piece not in self.myArt:
+        self.myArt.append(_art_piece)
+        self.myArtCount += 1
+    
+    # If this is a myCommission, determine where to add it
+    if is_myCommission:
+        is_verified_by_both: bool = staticcall art_piece.isFullyVerifiedCommission()
+        
+        if is_verified_by_both:
+            # Add to verified myCommissions if not already there
+            if _art_piece not in self.myCommissions:
+                self.myCommissions.append(_art_piece)
+                self.myCommissionCount += 1
+                # Record the role (owner=commissioner, artist=artist)
+                self.myCommissionRole[_art_piece] = (self.owner == art_artist)
+        else:
+            # Add to myUnverified myCommissions if not already there
+            if _art_piece not in self.myUnverifiedCommissions:
+                self.myUnverifiedCommissions.append(_art_piece)
+                self.myUnverifiedCommissionCount += 1
+                # Record the role (owner=commissioner, artist=artist)
+                self.myCommissionRole[_art_piece] = (self.owner == art_artist)
 
 @external
 def removeArtPiece(_art_piece: address):
@@ -591,6 +813,8 @@ def removeArtPiece(_art_piece: address):
     index: uint256 = 0
     found: bool = False
     for i: uint256 in range(0, len(self.myArt), bound=1000):
+        if i >= len(self.myArt):
+            break
         if self.myArt[i] == _art_piece:
             index = i
             found = True
@@ -609,61 +833,92 @@ def removeArtPiece(_art_piece: address):
     # Pop the last item (now a duplicate if we did the swap)
     self.myArt.pop()
     self.myArtCount -= 1
+    
+    # Also check if it's in myCommissions or myUnverified myCommissions and remove if found
+    # This is optional - the user can use removeCommission for more explicit control
+    
+    # Check verified myCommissions
+    for i: uint256 in range(0, len(self.myCommissions), bound=1000):
+        if i >= len(self.myCommissions):
+            break
+        if self.myCommissions[i] == _art_piece:
+            # Remove from verified list
+            if i < len(self.myCommissions) - 1:
+                last_item: address = self.myCommissions[len(self.myCommissions) - 1]
+                self.myCommissions[i] = last_item
+                # Update mapping for the moved item
+                self.myCommissionExistsAndPositionOffsetByOne[last_item] = i + 1  # offset by 1
+            self.myCommissions.pop()
+            self.myCommissionCount -= 1
+            # Clear role data and mapping for removed item
+            self.myCommissionRole[_art_piece] = False
+            self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = 0
+            break
+    
+    # Check myUnverified myCommissions
+    for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=1000):
+        if i >= len(self.myUnverifiedCommissions):
+            break
+        if self.myUnverifiedCommissions[i] == _art_piece:
+            # Remove from myUnverified list
+            if i < len(self.myUnverifiedCommissions) - 1:
+                last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
+                self.myUnverifiedCommissions[i] = last_item
+                # Update mapping for the moved item
+                self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = i + 1  # offset by 1
+            self.myUnverifiedCommissions.pop()
+            self.myUnverifiedCommissionCount -= 1
+            # Clear role data and mapping for removed item
+            self.myCommissionRole[_art_piece] = False
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = 0
+            break
 
+## Get Art Pieces
+#
+# getArtPiecesByOffset
+# -------------------------
+# Returns a paginated list of myArt for this profile.
+# Use case:
+# - Used by the frontend to display all myArt associated with this profile.
+# Example:
+# - Alice wants to see all her myArt: getArtPiecesByOffset(page, pageSize).
+#
 @view
 @external
-def getArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myArt)
+def getArtPiecesByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    Returns a paginated list of art pieces using offset-based pagination.
+    """
+    result: DynArray[address, 50] = []
     
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myArt[start + i])
-    
-    return result
-    
-@view
-@external
-def getRecentArtPieces(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.myArt)
-    
-    # Early returns
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.myArt[start - i])
-    
-    return result
-
-@view
-@external
-def getLatestArtPieces() -> DynArray[address, 5]:
-    result: DynArray[address, 5] = []
-    
-    # If no art pieces exist, return empty array
+    # Handle empty array case first
     if self.myArtCount == 0:
         return result
     
-    # Get minimum of 5 or available art pieces
-    items_to_return: uint256 = min(5, self.myArtCount)
-    
-    # Start from the last (most recent) item and work backwards
-    # Using safe indexing to prevent underflow
-    for i: uint256 in range(0, items_to_return, bound=5):
-        if i < self.myArtCount:  # Safety check
-            idx: uint256 = self.myArtCount - 1 - i
-            result.append(self.myArt[idx])
+    if not reverse:
+        # Forward pagination
+        if _offset >= self.myArtCount:
+            return result
+        
+        available_items: uint256 = self.myArtCount - _offset
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myArt[_offset + i])
+    else:
+        # Reverse pagination
+        max_valid_offset: uint256 = self.myArtCount - 1
+        actual_offset: uint256 = min(_offset, max_valid_offset)
+        
+        available_items: uint256 = actual_offset + 1
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myArt[actual_offset - i])
     
     return result
 
@@ -681,3 +936,216 @@ def setIsArtist(_is_artist: bool):
     """
     assert msg.sender == self.owner, "Only owner can set artist status"
     self.isArtist = _is_artist
+
+## Commission Hubs
+#
+# addCommissionHub
+# ----------------
+# Adds a myCommission hub to this profile.
+# Use case:
+# - When a user becomes the owner of an ArtCommissionHub (either via NFT ownership or generic hub creation),
+#   the hub is added to their profile for tracking.
+# - Only the hub or owner registry can add hubs to ensure proper ownership tracking.
+# Example:
+# - When Alice buys an NFT, the ArtCommissionHubOwners calls addCommissionHub to link the hub to Alice's profile.
+#
+@external
+def addCommissionHub(_hub: address):
+    # Allow the hub (ProfileFactoryAndRegistry), owner registry, or original deployer to add myCommission hubs
+    # Check if we have an owner registry first
+    registry_address: address = empty(address)
+    if self.profileFactoryAndRegistry != empty(address):
+        # Try to get the owner registry from the profile-factory-and-registry
+        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
+    
+    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self._getDeployer() or msg.sender == registry_address, "Only hub or registry can add myCommission hub"
+    
+    # Check if hub is already in the list
+    hubs_len: uint256 = len(self.myCommissionHubs)
+    for i: uint256 in range(10**8):  # Use a large fixed bound
+        if i >= hubs_len:
+            break
+        if self.myCommissionHubs[i] == _hub:
+            return  # Hub already exists, nothing to do
+    
+    # Add the hub to the list
+    self.myCommissionHubs.append(_hub)
+    self.myCommissionHubCount += 1
+
+#
+# removeCommissionHub
+# -------------------
+# Removes a myCommission hub from this profile's list.
+# Use case:
+# - When a user transfers ownership of an NFT, the associated hub is removed from their profile.
+# - Only the hub or owner registry can remove hubs to ensure proper ownership tracking.
+# Example:
+# - When Alice sells her NFT to Bob, the ArtCommissionHubOwners calls removeCommissionHub to unlink the hub from Alice's profile.
+#
+@external
+def removeCommissionHub(_hub: address):
+    # Allow the hub (ProfileFactoryAndRegistry), owner registry, or original deployer to remove myCommission hubs
+    # Check if we have an owner registry first
+    registry_address: address = empty(address)
+    if self.profileFactoryAndRegistry != empty(address):
+        # Try to get the owner registry from the profile-factory-and-registry
+        profile_factory_and_regsitry_interface: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        registry_address = staticcall profile_factory_and_regsitry_interface.artCommissionHubOwners()
+    
+    assert msg.sender == self.profileFactoryAndRegistry or msg.sender == self._getDeployer() or msg.sender == registry_address, "Only hub or registry can remove myCommission hub"
+    
+    # Find the index of the hub to remove
+    index: uint256 = 0
+    found: bool = False
+    hubs_len: uint256 = len(self.myCommissionHubs)
+    for i: uint256 in range(10**8):  # Use a large fixed bound
+        if i >= hubs_len:
+            break
+        if self.myCommissionHubs[i] == _hub:
+            index = i
+            found = True
+            break
+    
+    # If hub found, remove it using swap and pop
+    if found:
+        # If not the last element, swap with the last element
+        if index < len(self.myCommissionHubs) - 1:
+            last_hub: address = self.myCommissionHubs[len(self.myCommissionHubs) - 1]
+            self.myCommissionHubs[index] = last_hub
+        # Remove the last element
+        self.myCommissionHubs.pop()
+        self.myCommissionHubCount -= 1
+
+
+## get Commission Hub By Offset
+#
+# getCommissionHubsByOffset
+# -------------------------
+# Returns a paginated list of myCommissionHubs for this profile.
+# Use case:
+# - Used by the frontend to display all myCommissionHubs associated with this profile.
+# Example:
+# - Alice wants to see all her myCommissionHubs: getCommissionHubsByOffset(page, pageSize).
+#
+@view
+@external
+def getCommissionHubsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    Returns a paginated list of commission hubs using offset-based pagination.
+    """
+    result: DynArray[address, 50] = []
+    
+    # Handle empty array case first
+    if self.myCommissionHubCount == 0:
+        return result
+    
+    if not reverse:
+        # Forward pagination
+        if _offset >= self.myCommissionHubCount:
+            return result
+        
+        available_items: uint256 = self.myCommissionHubCount - _offset
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myCommissionHubs[_offset + i])
+    else:
+        # Reverse pagination
+        max_valid_offset: uint256 = self.myCommissionHubCount - 1
+        actual_offset: uint256 = min(_offset, max_valid_offset)
+        
+        available_items: uint256 = actual_offset + 1
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(50):
+            if i >= items_to_return:
+                break
+            result.append(self.myCommissionHubs[actual_offset - i])
+    
+    return result
+
+
+@external
+def updateCommissionVerificationStatus(_commission_art_piece: address):
+    """
+    @notice Updates the verification status of a myCommission in this profile
+    @dev Access control:
+         - self.owner: The owner of the profile can update verification status
+         - The commissioner or artist of the art piece can update status
+         - The hub owner can update status
+    @param _commission_art_piece The address of the myCommission art piece
+    """
+    # Get the art piece details
+    art_piece: ArtPiece = ArtPiece(_commission_art_piece)
+    effective_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    commissioner: address = staticcall art_piece.getCommissioner()
+    is_myCommission: bool = staticcall art_piece.isFullyVerifiedCommission()
+    myCommission_hub: address = staticcall art_piece.getArtCommissionHubAddress()
+    
+    # Check if sender is the owner of this profile
+    is_profile_owner: bool = msg.sender == self.owner
+    
+    # Check if sender is the artist or commissioner of the art piece
+    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner
+    
+    # Check if sender is the hub owner
+    is_hub_owner: bool = False
+    if myCommission_hub != empty(address):
+        myCommission_hub_interface: ArtCommissionHub = ArtCommissionHub(myCommission_hub)
+        hub_owner: address = staticcall myCommission_hub_interface.owner()
+        is_hub_owner = (hub_owner == msg.sender)
+    
+    # Verify the sender has permission to update verification status
+    assert is_profile_owner or is_art_creator or is_hub_owner, "No permission to update verification status"
+    
+    # Ensure the profile owner is one of the parties involved
+    is_artist: bool = self.owner == art_artist
+    is_commissioner: bool = self.owner == commissioner
+    assert is_artist or is_commissioner, "Profile owner not involved in this myCommission"
+    
+    # Check if the myCommission is verified
+    is_verified_by_both: bool = staticcall art_piece.isFullyVerifiedCommission()
+    
+    # If verified, move from myUnverified to verified list
+    if is_verified_by_both:
+        # Check if it's in the myUnverified list
+        found_myUnverified: bool = False
+        myUnverified_index: uint256 = 0
+        
+        for i: uint256 in range(0, len(self.myUnverifiedCommissions), bound=1000):
+            if i >= len(self.myUnverifiedCommissions):
+                break
+            if self.myUnverifiedCommissions[i] == _commission_art_piece:
+                myUnverified_index = i
+                found_myUnverified = True
+                break
+        
+        if found_myUnverified:
+            # Remove from myUnverified list and update mappings
+            if myUnverified_index < len(self.myUnverifiedCommissions) - 1:
+                last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
+                self.myUnverifiedCommissions[myUnverified_index] = last_item
+                # Update mapping for the moved item
+                self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = myUnverified_index + 1  # offset by 1
+            self.myUnverifiedCommissions.pop()
+            self.myUnverifiedCommissionCount -= 1
+            # Clear mapping for the removed item
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_commission_art_piece] = 0
+        
+        # Add to verified list if not already there
+        if _commission_art_piece not in self.myCommissions:
+            self.myCommissions.append(_commission_art_piece)
+            self.myCommissionCount += 1
+            # Set mapping for the newly added verified item
+            self.myCommissionExistsAndPositionOffsetByOne[_commission_art_piece] = self.myCommissionCount  # offset by 1
+        
+        # If this profile owner is the commissioner, also add to myArt if not already there
+        if is_commissioner and _commission_art_piece not in self.myArt:
+            self.myArt.append(_commission_art_piece)
+            self.myArtCount += 1
+
+# NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.
