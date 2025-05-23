@@ -213,6 +213,7 @@ def _linkExistingHubs(_user: address, _profile: address):
 
 # Optionally on behalf of another user
 @external
+@nonreentrant
 def createProfile(_owner: address = empty(address)):
     owner: address = _owner
     if (owner == empty(address)):
@@ -220,6 +221,7 @@ def createProfile(_owner: address = empty(address)):
     self._createProfile(owner)
 
 @external
+@nonreentrant
 def createNewArtPieceAndRegisterProfileAndAttachToHub(
     _art_piece_template: address,
     _token_uri_data: Bytes[45000],
@@ -299,6 +301,7 @@ def createNewArtPieceAndRegisterProfileAndAttachToHub(
     return (profile, art_piece)
 
 @external
+@nonreentrant
 def createProfilesAndArtPieceWithBothProfilesLinked(
     _art_piece_template: address,
     _token_uri_data: Bytes[45000],
@@ -675,7 +678,3 @@ def getAllUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> Dyn
             result.append(self.allUserProfiles[index])
     
     return result
-
-# Bulk remove from profile
-# removeArtLinkToMyCommission
-#     assert msg.sender == self.owner or msg.sender == self.profileFactoryAndRegistry, "Only the owner or ProfileFactoryAndRegistry can remove a myCommission"

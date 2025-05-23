@@ -217,10 +217,11 @@ def setProfileImage(_profile_image: address):
 def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     """
     @notice Adds an ArtPiece to this profile, to myCommissions or myUnverified list based on verification status
-    @dev Access control:
-         - self.owner: The owner of the profile can add myCommissions to their own profile
-         - self.profileFactoryAndRegistry: The ProfileFactoryAndRegistry contract can add myCommissions on behalf of users
-         - Any other user: Can add myCommissions based on whitelist/blacklist status
+    @dev Access control - Allowed callers:
+         1. Profile owner (direct)
+         2. ProfileFactoryAndRegistry (system)
+         3. The art piece itself (during verification)
+         4. A valid profile contract representing artist/commissioner
     @param _art_piece The address of the myCommission art piece
     """
     # Get the art piece details to check permissions
@@ -230,32 +231,41 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     commissioner: address = staticcall art_piece.getCommissioner()
     is_potential_commission: bool = commissioner != art_artist
     
-    # Check who the sender is
+    # Define clear permission categories
     is_profile_owner: bool = msg.sender == self.owner
-    is_profile_factory_and_registry: bool = msg.sender == self.profileFactoryAndRegistry
-    is_art_creator: bool = msg.sender == art_artist or msg.sender == commissioner or staticcall Profile(commissioner).owner() == art_artist or staticcall Profile(art_artist).owner() == commissioner
-    is_art_creator_profile: bool = staticcall ProfileFactoryAndRegistry(self.profileFactoryAndRegistry).getProfile(art_artist) == msg.sender or staticcall ProfileFactoryAndRegistry(self.profileFactoryAndRegistry).getProfile(commissioner) == msg.sender
+    is_system: bool = msg.sender == self.profileFactoryAndRegistry
+    is_art_piece_self: bool = msg.sender == _art_piece
     
-    # Check to make sure its a valid commission and function caller has permission to add it
-    # The rest of these gracefully return, however this should hard fail because noone else 
-    #   should be calling this
-    assert is_profile_owner or is_profile_factory_and_registry or is_art_creator or is_art_creator_profile, "No permission to add myCommission"
+    # Check if caller is a valid profile representing one of the parties
+    is_valid_profile_caller: bool = False
+    if msg.sender != self.owner and msg.sender != self.profileFactoryAndRegistry and msg.sender != _art_piece:
+        # Only check profile validity for non-system/non-art-piece callers
+        # Verify this is a valid profile contract from our factory
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        artist_profile: address = staticcall profile_factory.getProfile(art_artist)
+        commissioner_profile: address = staticcall profile_factory.getProfile(commissioner)
+        
+        # Allow calls from the official profiles of the artist or commissioner
+        is_valid_profile_caller = (msg.sender == artist_profile or msg.sender == commissioner_profile)
+    
+    # Require at least one valid permission
+    assert is_profile_owner or is_system or is_art_piece_self or is_valid_profile_caller, "No permission to add commission"
 
     if self.myCommissionExistsAndPositionOffsetByOne[_art_piece] != 0:
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added")
         return False
 
     if not is_potential_commission:
-        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Not a myCommission art piece")
+        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Not a commission art piece")
         return False
     
-    # If artist/commissioner are blacklisted by THIS profile, reject the myCommission
+    # If artist/commissioner are blacklisted by THIS profile, reject the commission
     if (self.blacklist[commissioner] or self.blacklist[art_artist]):
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is on blacklist")
         return False
 
-    # Inside creating a ArtPiece from Profile, the artist or commissioner can be whiltelisted
-    if (is_art_creator_profile and not (self.whitelist[commissioner] or self.whitelist[art_artist])):
+    # For profile callers (not owner/system/art piece), require whitelisting
+    if is_valid_profile_caller and not (self.whitelist[commissioner] or self.whitelist[art_artist]):
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is not whitelisted")
         return False
     
@@ -272,10 +282,10 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     # Add to myUnverified list
     else:
         if not self.allowUnverifiedCommissions:
-            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Unverified myCommissions are disallowed by this Profile.")
+            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Unverified commissions are disallowed by this Profile.")
             return False
         if self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] != 0:
-            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added, but myUnverified.  Please verify.")
+            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added, but unverified.  Please verify.")
             return False
         self._addToUnverifiedList(_art_piece)
 
@@ -360,17 +370,23 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
                 break
         
         if found_myUnverified:
-            # Remove from myUnverified list
+            # Remove from myUnverified list and update mappings
             if myUnverified_index < len(self.myUnverifiedCommissions) - 1:
                 last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
                 self.myUnverifiedCommissions[myUnverified_index] = last_item
+                # Update mapping for the moved item
+                self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = myUnverified_index + 1  # offset by 1
             self.myUnverifiedCommissions.pop()
             self.myUnverifiedCommissionCount -= 1
+            # Clear mapping for the removed item
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = 0
         
         # Add to verified list if not already there
         if _art_piece not in self.myCommissions:
             self.myCommissions.append(_art_piece)
             self.myCommissionCount += 1
+            # Set mapping for the newly added verified item
+            self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = self.myCommissionCount  # offset by 1
         
         # If this profile owner is the commissioner, also add to myArt if not already there
         if is_commissioner and _art_piece not in self.myArt:
@@ -406,39 +422,58 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
 #
 # removeArtLinkToMyCommission
 # ----------------
-# Removes a myCommission from this profile's verified or myUnverified myCommissions list
+# Removes a commission from this profile's verified or unverified commissions list
 # Use case:
-# - If a myCommission is no longer relevant, or was added in error, it can be removed.
-# - This also removes the recorded role for that myCommission.
+# - If a commission is no longer relevant, or was added in error, it can be removed.
+# - This also removes the recorded role for that commission.
 # - If you remove a commission from your myCommissions list, it will REMOVE itself ONLY from unverified ArtCommissionHubs
 #
 @external
 def removeArtLinkToMyCommission(_my_commission: address):
     """
-    @notice Removes a myCommission from this profile's verified or myUnverified myCommissions list
-    @dev Access control:
-         - self.owner: The owner of the profile can remove their own myCommissions
-         - self.profileFactoryAndRegistry: The ProfileFactoryAndRegistry contract can remove myCommissions on behalf of users
-         - Art piece artist: Can remove myUnverified myCommissions they created
-         - ArtCommissionHub owner: Can remove myCommissions from the hub
-    @param _my_commission The address of the myCommission to remove
+    @notice Removes a commission from this profile's verified or unverified commissions list
+    @dev Access control - Allowed callers:
+         1. Profile owner (can remove any commission from their profile)
+         2. ProfileFactoryAndRegistry (system operations)
+         3. The art piece itself (during verification)
+         4. Valid profile contracts representing artist/commissioner (with restrictions)
+    @param _my_commission The address of the commission to remove
     """
 
-    # See if this is already a verified commission or linked as verified
-    assert msg.sender == self.owner or msg.sender == self.profileFactoryAndRegistry, "Only the owner or ProfileFactoryAndRegistry can remove a myCommission"
+    # Check that the commission exists in this profile
     assert self.myCommissionExistsAndPositionOffsetByOne[_my_commission] != 0 or self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] != 0, "No commission to unlink"
     
+    # Get art piece details
     art_piece: ArtPiece = ArtPiece(_my_commission)
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
-    assert msg.sender == art_artist or msg.sender == commissioner, "Only the artist or commissioner can remove a myCommission"
     
-    is_profile_factory_and_registry: bool = msg.sender == self.profileFactoryAndRegistry
+    # Define clear permission categories
+    is_profile_owner: bool = msg.sender == self.owner
+    is_system: bool = msg.sender == self.profileFactoryAndRegistry
+    is_art_piece_self: bool = msg.sender == _my_commission
+    
+    # Check if caller is a valid profile representing one of the parties
+    is_valid_profile_caller: bool = False
+    if msg.sender != self.owner and msg.sender != self.profileFactoryAndRegistry and msg.sender != _my_commission:
+        # Verify this is a valid profile contract from our factory
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        artist_profile: address = staticcall profile_factory.getProfile(art_artist)
+        commissioner_profile: address = staticcall profile_factory.getProfile(commissioner)
+        
+        # Allow calls from the official profiles of the artist or commissioner
+        is_valid_profile_caller = (msg.sender == artist_profile or msg.sender == commissioner_profile)
+    
+    # Require at least one valid permission
+    assert is_profile_owner or is_system or is_art_piece_self or is_valid_profile_caller, "No permission to remove commission"
     
     # Remove from correct list
     if (self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] != 0):
         last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
         self.myUnverifiedCommissions[self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] - 1] = last_item #offset by 1 so indices are 0 when absent
+        # Update mapping for the moved item
+        if len(self.myUnverifiedCommissions) > 1:  # Only update if we're actually moving an item
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission]
         self.myUnverifiedCommissions.pop()
         self.myUnverifiedCommissionCount -= 1
         self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_my_commission] = 0
@@ -446,6 +481,9 @@ def removeArtLinkToMyCommission(_my_commission: address):
     elif (self.myCommissionExistsAndPositionOffsetByOne[_my_commission] != 0):
         last_item: address = self.myCommissions[len(self.myCommissions) - 1]
         self.myCommissions[self.myCommissionExistsAndPositionOffsetByOne[_my_commission] - 1] = last_item #offset by 1 so indices are 0 when absent
+        # Update mapping for the moved item
+        if len(self.myCommissions) > 1:  # Only update if we're actually moving an item
+            self.myCommissionExistsAndPositionOffsetByOne[last_item] = self.myCommissionExistsAndPositionOffsetByOne[_my_commission]
         self.myCommissions.pop()
         self.myCommissionCount -= 1
         self.myCommissionExistsAndPositionOffsetByOne[_my_commission] = 0
@@ -856,10 +894,13 @@ def removeArtPiece(_art_piece: address):
             if i < len(self.myCommissions) - 1:
                 last_item: address = self.myCommissions[len(self.myCommissions) - 1]
                 self.myCommissions[i] = last_item
+                # Update mapping for the moved item
+                self.myCommissionExistsAndPositionOffsetByOne[last_item] = i + 1  # offset by 1
             self.myCommissions.pop()
             self.myCommissionCount -= 1
-            # Clear role data (optional)
+            # Clear role data and mapping for removed item
             self.myCommissionRole[_art_piece] = False
+            self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = 0
             break
     
     # Check myUnverified myCommissions
@@ -871,10 +912,13 @@ def removeArtPiece(_art_piece: address):
             if i < len(self.myUnverifiedCommissions) - 1:
                 last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
                 self.myUnverifiedCommissions[i] = last_item
+                # Update mapping for the moved item
+                self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = i + 1  # offset by 1
             self.myUnverifiedCommissions.pop()
             self.myUnverifiedCommissionCount -= 1
-            # Clear role data (optional)
+            # Clear role data and mapping for removed item
             self.myCommissionRole[_art_piece] = False
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = 0
             break
 
 ## Get Art Pieces
@@ -1183,17 +1227,23 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
                 break
         
         if found_myUnverified:
-            # Remove from myUnverified list
+            # Remove from myUnverified list and update mappings
             if myUnverified_index < len(self.myUnverifiedCommissions) - 1:
                 last_item: address = self.myUnverifiedCommissions[len(self.myUnverifiedCommissions) - 1]
                 self.myUnverifiedCommissions[myUnverified_index] = last_item
+                # Update mapping for the moved item
+                self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[last_item] = myUnverified_index + 1  # offset by 1
             self.myUnverifiedCommissions.pop()
             self.myUnverifiedCommissionCount -= 1
-            
-            # Add to verified list if not already there
-            if _commission_art_piece not in self.myCommissions:
-                self.myCommissions.append(_commission_art_piece)
-                self.myCommissionCount += 1
+            # Clear mapping for the removed item
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_commission_art_piece] = 0
+        
+        # Add to verified list if not already there
+        if _commission_art_piece not in self.myCommissions:
+            self.myCommissions.append(_commission_art_piece)
+            self.myCommissionCount += 1
+            # Set mapping for the newly added verified item
+            self.myCommissionExistsAndPositionOffsetByOne[_commission_art_piece] = self.myCommissionCount  # offset by 1
         
         # If this profile owner is the commissioner, also add to myArt if not already there
         if is_commissioner and _commission_art_piece not in self.myArt:

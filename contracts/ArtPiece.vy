@@ -424,11 +424,8 @@ def verifyAsArtist():
     assert not self.fullyVerifiedCommission, "Already fully verified"
     assert self.artCommissionHubAddress != empty(address), "ArtPiece must be attached to a ArtCommissionHub to be fully verified"
 
-    # If this is a contract, we need to get the owner from the Profile
-    potential_artist: address = msg.sender
-    if self._isContract(msg.sender):
-        potential_artist = staticcall Profile(msg.sender).owner()
-    assert potential_artist == self.artist, "Only the artist can verify as artist"
+    # Check if caller is the artist directly OR their profile
+    assert msg.sender == self.artist or (self._isContract(msg.sender) and staticcall Profile(msg.sender).owner() == self.artist), "Only the artist can verify"
 
     self.artistVerified = True
     log CommissionVerified(verifier=msg.sender, is_artist=True)
@@ -450,11 +447,8 @@ def verifyAsCommissioner():
     assert not self.fullyVerifiedCommission, "Already fully verified"
     assert self.artCommissionHubAddress != empty(address), "ArtPiece must be attached to a ArtCommissionHub to be fully verified"
 
-    # If this is a contract, we need to get the owner from the Profile
-    potential_commissioner: address = msg.sender
-    if self._isContract(msg.sender):
-        potential_commissioner = staticcall Profile(msg.sender).owner()
-    assert potential_commissioner == self.commissioner, "Only the commissioner can verify as commissioner"
+    # Check if caller is the commissioner directly OR their profile
+    assert msg.sender == self.commissioner or (self._isContract(msg.sender) and staticcall Profile(msg.sender).owner() == self.commissioner), "Only the commissioner can verify"
 
     self.commissionerVerified = True
     log CommissionVerified(verifier=msg.sender, is_artist=False)

@@ -39,6 +39,7 @@ interface ArtCommissionHubOwners:
 owner: public(address)  
 
 isInitialized: public(bool)
+registrationPending: public(bool)  # Flag to track if NFT registration is pending
 chainId: public(uint256)  # Added chain ID to identify which blockchain the NFT is on
 nftContract: public(address) # If non-generic, the NFT contract address
 nftTokenIdOrGenericHubAccount: public(uint256) # If non-generic, the token ID of the NFT
@@ -131,16 +132,29 @@ def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _n
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     assert staticcall art_commission_hub_owners_interface.isSystemAllowed(msg.sender), "Not allowed to update"
 
-    # Set the owner of the commission hub
-    if (_nft_contract == GENERIC_ART_COMMISSION_HUB_CONTRACT):
-        self.isGeneric = True
-    else:
-        self.isGeneric = False
+    # Set basic info first
     self.isInitialized = True
     self.chainId = _chain_id
     self.nftContract = _nft_contract
     self.nftTokenIdOrGenericHubAccount = _nft_token_id_or_generic_hub_account
-    self.owner = staticcall art_commission_hub_owners_interface.lookupRegisteredOwner(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account)
+    
+    # Check if generic hub
+    if (_nft_contract == GENERIC_ART_COMMISSION_HUB_CONTRACT):
+        self.isGeneric = True
+    else:
+        self.isGeneric = False
+    
+    # Look up owner and handle pending registration state
+    owner: address = staticcall art_commission_hub_owners_interface.lookupRegisteredOwner(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account)
+    
+    if owner == empty(address) and not self.isGeneric:
+        # NFT not registered yet - mark as pending registration
+        self.registrationPending = True
+        self.owner = empty(address)
+    else:
+        # Either generic hub or NFT is registered
+        self.registrationPending = False
+        self.owner = owner
     
     log Initialized(
         chain_id=_chain_id, 
@@ -162,21 +176,29 @@ def syncArtCommissionHubOwner(_chain_id: uint256, _nft_contract: address, _nft_t
     if self.isGeneric:
         assert self.chainId == _chain_id, "Chain ID mismatch"
         self.owner = _owner
+        # Clear registration pending flag if it was set
+        if self.registrationPending:
+            self.registrationPending = False
         log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_nft_token_id_or_generic_hub_account, previous_owner=previous_owner, owner=_owner)
         return
 
-    # If the new owner is the empty address and the old owner isnt empty we need to burn the NFT
-    elif _owner == empty(address) and self.owner != empty(address):
-        self.isBurned = True
-    
     # For NFT-based hubs, we check all parameters
     assert self.chainId == _chain_id, "Chain ID mismatch"
     assert self.nftContract == _nft_contract, "NFT contract mismatch"
     assert self.nftTokenIdOrGenericHubAccount == _nft_token_id_or_generic_hub_account, "Token ID mismatch"
     
+    # If the new owner is the empty address and the old owner isnt empty we need to burn the NFT
+    if _owner == empty(address) and self.owner != empty(address):
+        self.isBurned = True
+    
     # Always update the owner, even if it's the same as before
     # This ensures the owner is set correctly in all cases
     self.owner = _owner
+    
+    # Clear registration pending flag when we get a valid owner update
+    # This handles the case where hub was initialized before NFT was registered
+    if self.registrationPending and _owner != empty(address):
+        self.registrationPending = False
     
     log OwnershipUpdated(chain_id=_chain_id, nft_contract=_nft_contract, token_id=_nft_token_id_or_generic_hub_account, previous_owner=previous_owner, owner=_owner)
 
@@ -195,9 +217,10 @@ def syncArtCommissionHubOwner(_chain_id: uint256, _nft_contract: address, _nft_t
 # 5. This ensures only properly verified or trusted art pieces are immediately accepted as commissions, while others require additional validation.
 @external
 def submitCommission(_art_piece: address):
-    assert not self.isBurned, "Art piece has been burned"
+    assert not self.isBurned, "Commission hub has been burned"
+    assert not self.registrationPending, "Commission hub registration is pending - NFT owner must be registered first"
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
-    assert staticcall art_commission_hub_owners_interface.isApprovedArtPieceAddress(_art_piece), "Not allowed to update.  Unknwon art type"
+    assert staticcall art_commission_hub_owners_interface.isApprovedArtPieceAddress(_art_piece), "Not allowed to update.  Unknown art type"
     assert staticcall ArtPiece(_art_piece).isFullyVerifiedCommission(), "Art piece is not fully linked between Artist and Commissioner"
     
     # assert not already submitted or blacklisted artist or commissioner
@@ -207,12 +230,11 @@ def submitCommission(_art_piece: address):
     assert not self.blacklist[staticcall ArtPiece(_art_piece).getCommissioner()], "Commissioner is blacklisted"
 
     sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender)
-    is_recent_art_hub_creation: bool = self.isBurned == False and self.owner == empty(address)
     is_whitelisted_artist: bool = self.whitelist[staticcall ArtPiece(_art_piece).getArtist()]
     is_whitelisted_commissioner: bool = self.whitelist[staticcall ArtPiece(_art_piece).getCommissioner()]
 
-    # Add to verified list
-    if sender_has_permission or is_recent_art_hub_creation or is_whitelisted_artist or is_whitelisted_commissioner:
+    # Add to verified list if sender has permission or participants are whitelisted
+    if sender_has_permission or is_whitelisted_artist or is_whitelisted_commissioner:
         self.verifiedArtCommissions.append(_art_piece)
         self.countVerifiedArtCommissions += 1
         self.verifiedArtCommissionsRegistry[_art_piece] = True
@@ -253,10 +275,9 @@ def _verifyCommission(_art_piece: address):
 
     art_commission_hub_owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
     sender_has_permission: bool = staticcall art_commission_hub_owners_interface.isAllowedToUpdateHubForAddress(self, msg.sender)
-    is_recent_art_hub_creation: bool = self.isBurned == False and self.owner == empty(address)
     is_whitelisted_artist: bool = self.whitelist[staticcall ArtPiece(_art_piece).getArtist()]
     is_whitelisted_commissioner: bool = self.whitelist[staticcall ArtPiece(_art_piece).getCommissioner()]
-    assert sender_has_permission or is_recent_art_hub_creation or is_whitelisted_artist or is_whitelisted_commissioner, "Not allowed to verify, must be whitelisted or owner"
+    assert sender_has_permission or is_whitelisted_artist or is_whitelisted_commissioner, "Not allowed to verify, must be whitelisted or owner"
     
     # Find the art piece in the unverified array
     found_index: int256 = -1
@@ -342,6 +363,26 @@ def _unverifyCommission(_art_piece: address):
 @external
 def getUnverifiedCount(_user: address) -> uint256:
     return self.unverifiedArtCommissionsCountByUser[_user]
+
+@view
+@external
+def isRegistrationPending() -> bool:
+    """
+    @notice Returns whether the hub is waiting for NFT registration
+    @dev True if hub was initialized but NFT owner hasn't been registered yet
+    @return Boolean indicating if registration is pending
+    """
+    return self.registrationPending
+
+@view
+@external
+def isReadyForSubmissions() -> bool:
+    """
+    @notice Returns whether the hub is ready to accept commission submissions
+    @dev Hub is ready if initialized, not burned, and not pending registration
+    @return Boolean indicating if hub is ready for submissions
+    """
+    return self.isInitialized and not self.isBurned and not self.registrationPending
 
 @view
 @external
