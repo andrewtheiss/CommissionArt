@@ -416,7 +416,6 @@ def test_05_verify_commission():
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     
 
-
 def test_06_submit_commission():
     """Test submitting a commission to a hub"""
     deployer = accounts.test_accounts[0]
@@ -469,16 +468,16 @@ def test_06_submit_commission():
     
     # Create art piece through the Profile (this will automatically verify the artist)
     art_piece_address = artist_profile.createArtPiece(
-        art_piece_template.address,
-        TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,
-        TEST_TITLE,
-        TEST_DESCRIPTION,
-        True,  # as_artist
-        user.address,  # other_party (commissioner)
-        TEST_AI_GENERATED,
-        hub_address,  # commission hub
-        False,  # is_profile_art
+        art_piece_template.address,  # _art_piece_template
+        TEST_TOKEN_URI_DATA,         # _token_uri_data
+        TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
+        TEST_TITLE,                  # _title
+        TEST_DESCRIPTION,            # _description
+        True,                        # _as_artist
+        user.address,                # _other_party (commissioner)
+        TEST_AI_GENERATED,           # _ai_generated
+        hub_address,                 # _art_commission_hub
+        False,                       # _is_profile_art
         sender=artist
     )
     
@@ -514,13 +513,6 @@ def test_06_submit_commission():
     latest_verified = commission_hub.getLatestVerifiedArt(1)
     assert len(latest_verified) == 1, "Should have 1 art piece in latest verified"
     assert latest_verified[0] == art_piece.address, "Art piece should be in latest verified"
-    
-    # # Check that it was automatically submitted to verified list
-    # assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
-    
-    # verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
-    # assert len(verified_art_pieces) == 1, "Should have 1 art piece in verified list"
-    # assert verified_art_pieces[0] == art_piece.address, "Art piece should be in verified list"
 
 
 def test_07_verify_multiple_commissions():
@@ -575,30 +567,30 @@ def test_07_verify_multiple_commissions():
     
     # Create two art pieces through the Profile (this will automatically verify the artist for both)
     art_piece_1_address = artist_profile.createArtPiece(
-        art_piece_template.address,
-        TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,
-        "Test Title 1",
-        TEST_DESCRIPTION,
-        True,  # as_artist
-        user.address,  # other_party (commissioner)
-        TEST_AI_GENERATED,
-        hub_address,  # commission hub
-        False,  # is_profile_art
+        art_piece_template.address,  # _art_piece_template
+        TEST_TOKEN_URI_DATA,         # _token_uri_data
+        TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
+        "Test Title 1",              # _title
+        TEST_DESCRIPTION,            # _description
+        True,                        # _as_artist
+        user.address,                # _other_party (commissioner)
+        TEST_AI_GENERATED,           # _ai_generated
+        hub_address,                 # _art_commission_hub
+        False,                       # _is_profile_art
         sender=artist
     )
     
     art_piece_2_address = artist_profile.createArtPiece(
-        art_piece_template.address,
-        TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,
-        "Test Title 2",
-        TEST_DESCRIPTION,
-        True,  # as_artist
-        user.address,  # other_party (commissioner)
-        TEST_AI_GENERATED,
-        hub_address,  # commission hub
-        False,  # is_profile_art
+        art_piece_template.address,  # _art_piece_template
+        TEST_TOKEN_URI_DATA,         # _token_uri_data
+        TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
+        "Test Title 2",              # _title
+        TEST_DESCRIPTION,            # _description
+        True,                        # _as_artist
+        user.address,                # _other_party (commissioner)
+        TEST_AI_GENERATED,           # _ai_generated
+        hub_address,                 # _art_commission_hub
+        False,                       # _is_profile_art
         sender=artist
     )
     
@@ -692,16 +684,16 @@ def test_08_unverify_commission():
     
     # Create and fully verify a commission piece
     art_piece_address = artist_profile.createArtPiece(
-        art_piece_template.address,
-        TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,
-        TEST_TITLE,
-        TEST_DESCRIPTION,
-        True,  # as_artist
-        user.address,  # other_party (commissioner)
-        TEST_AI_GENERATED,
-        hub_address,  # commission hub
-        False,  # is_profile_art
+        art_piece_template.address,  # _art_piece_template
+        TEST_TOKEN_URI_DATA,         # _token_uri_data
+        TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
+        TEST_TITLE,                  # _title
+        TEST_DESCRIPTION,            # _description
+        True,                        # _as_artist
+        user.address,                # _other_party (commissioner)
+        TEST_AI_GENERATED,           # _ai_generated
+        hub_address,                 # _art_commission_hub
+        False,                       # _is_profile_art
         sender=artist
     )
     
@@ -789,16 +781,16 @@ def test_09_unverify_commission_permissions():
     
     # Create and fully verify a commission piece
     art_piece_address = artist_profile.createArtPiece(
-        art_piece_template.address,
-        TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,
-        TEST_TITLE,
-        TEST_DESCRIPTION,
-        True,  # as_artist
-        user.address,  # other_party (commissioner)
-        TEST_AI_GENERATED,
-        hub_address,  # commission hub
-        False,  # is_profile_art
+        art_piece_template.address,  # _art_piece_template
+        TEST_TOKEN_URI_DATA,         # _token_uri_data
+        TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
+        TEST_TITLE,                  # _title
+        TEST_DESCRIPTION,            # _description
+        True,                        # _as_artist
+        user.address,                # _other_party (commissioner)
+        TEST_AI_GENERATED,           # _ai_generated
+        hub_address,                 # _art_commission_hub
+        False,                       # _is_profile_art
         sender=artist
     )
     
@@ -879,16 +871,16 @@ def test_10_verify_unverify_cycle():
     
     # Create art piece through the Profile (this will automatically verify the artist)
     art_piece_address = artist_profile.createArtPiece(
-        art_piece_template.address,
-        TEST_TOKEN_URI_DATA,
-        TEST_TOKEN_URI_DATA_FORMAT,
-        TEST_TITLE,
-        TEST_DESCRIPTION,
-        True,  # as_artist
-        user.address,  # other_party (commissioner)
-        TEST_AI_GENERATED,
-        hub_address,  # commission hub
-        False,  # is_profile_art
+        art_piece_template.address,  # _art_piece_template
+        TEST_TOKEN_URI_DATA,         # _token_uri_data
+        TEST_TOKEN_URI_DATA_FORMAT,  # _token_uri_data_format
+        TEST_TITLE,                  # _title
+        TEST_DESCRIPTION,            # _description
+        True,                        # _as_artist
+        user.address,                # _other_party (commissioner)
+        TEST_AI_GENERATED,           # _ai_generated
+        hub_address,                 # _art_commission_hub
+        False,                       # _is_profile_art
         sender=artist
     )
     
