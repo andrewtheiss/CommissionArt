@@ -24,7 +24,7 @@ interface ERC721Receiver:
 
 # Interface for Profile
 interface Profile:
-    def addCommission(art_piece: address): nonpayable
+    def linkArtPieceAsMyCommission(art_piece: address) -> bool: nonpayable
     def owner() -> address: view
 
 # Interface for ProfileFactoryAndRegistry
@@ -475,13 +475,21 @@ def _completeVerification():
     - Updates ownership if attached to a hub
     - Emits events
     """
+    # Get the ProfileFactory to look up actual Profile contract addresses
+    profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+    artist_profile_address: address = staticcall profile_factory.getProfile(self.artist)
+    commissioner_profile_address: address = staticcall profile_factory.getProfile(self.commissioner)
+    assert artist_profile_address != empty(address) or commissioner_profile_address != empty(address), "Artist or commissioner must have a Profile"
+
     self.fullyVerifiedCommission = True
+
+    # Link to the artist's Profile if they have one
+    artist_profile: Profile = Profile(artist_profile_address)
+    extcall artist_profile.linkArtPieceAsMyCommission(self)
     
-    # Attach to the Profile of both the artist and commissioner as a commission
-    profile_interface: Profile = Profile(self.artist)
-    extcall profile_interface.addCommission(self)
-    profile_interface = Profile(self.commissioner)
-    extcall profile_interface.addCommission(self)
+    # Link to the commissioner's Profile if they have one  
+    commissioner_profile: Profile = Profile(commissioner_profile_address)
+    extcall commissioner_profile.linkArtPieceAsMyCommission(self)
 
     # Submit to commission hub if attached
     if self.artCommissionHubAddress != empty(address):

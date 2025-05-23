@@ -60,10 +60,6 @@ interface ProfileFactoryAndRegistry:
     def createProfile(_owner: address): nonpayable
     def linkArtCommissionHubOwnersContract(_registry: address): nonpayable
 
-interface Profile:
-    def addCommissionHub(_hub: address): nonpayable
-    def removeCommissionHub(_hub: address): nonpayable
-
 event Registered:
     chain_id: uint256
     nft_contract: indexed(address)
@@ -317,33 +313,6 @@ def isGeneric(_commission_hub: address) -> bool:
     @return True if the hub is generic, False otherwise
     """
     return self.isGenericHub[_commission_hub]
-
-# Link existing commission hubs to the owner's profile
-@external
-def linkHubsToProfile(_owner: address):
-    """
-    @notice Links all commission hubs owned by an address to their profile
-    @dev This can be used to sync hubs with a newly created profile
-         or to repair links if they become out of sync
-    @param _owner The address whose hubs should be linked to their profile
-    """
-    # Ensure profile-factory-and-registry is set
-    assert self.profileFactoryAndRegistry != empty(address), "Profile-Factory-And-Registry not set"
-    
-    # Ensure the owner has a profile (creates one if needed)
-    profile_address: address = self._ensureProfileForAddress(_owner)
-    if profile_address == empty(address):
-        return
-    
-    profile: Profile = Profile(profile_address)
-    
-    # Link all hubs to the profile
-    hubs_len: uint256 = len(self.artCommissionHubsByOwner[_owner])
-    for i:uint256 in range(10**8):
-        if i >= hubs_len:
-            break
-        hub: address = self.artCommissionHubsByOwner[_owner][i]
-        extcall profile.addCommissionHub(hub)
 
 #Called by other contracts on L3 to query the owner of an NFT
 @view

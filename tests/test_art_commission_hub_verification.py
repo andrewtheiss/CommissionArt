@@ -326,8 +326,8 @@ def test_04_register_nft_owner_and_create_hub():
     # assert commission_hub.owner() == owner.address, "Hub owner should be the NFT owner"
 
 
-def test_05_submit_commission():
-    """Test submitting a commission to a hub"""
+def test_05_verify_commission():
+    """Test verify a commission.  Submission is done in test_06_verify_commission()"""
     deployer = accounts.test_accounts[0]
     user = accounts.test_accounts[1]
     artist = accounts.test_accounts[2]
@@ -398,7 +398,7 @@ def test_05_submit_commission():
     assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
     assert not art_piece.artistVerified(), "Artist should not be verified yet"
     assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
-    
+
     # Artist verifies first
     art_piece.verifyAsArtist(sender=artist)
     
@@ -409,20 +409,16 @@ def test_05_submit_commission():
     
     # Commissioner verifies to complete the verification
     art_piece.verifyAsCommissioner(sender=user)
+    assert art_piece.artistVerified(), "Artist should be verified"
+    assert art_piece.commissionerVerified(), "Commissioner should not be verified yet"
     
     # Now the art piece should be fully verified and automatically submitted to hub
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     
-    # Check that it was automatically submitted to verified list
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
-    
-    verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
-    assert len(verified_art_pieces) == 1, "Should have 1 art piece in verified list"
-    assert verified_art_pieces[0] == art_piece.address, "Art piece should be in verified list"
 
 
-def test_06_verify_commission():
-    """Test verifying a commission"""
+def test_06_submit_commission():
+    """Test submitting a commission to a hub"""
     deployer = accounts.test_accounts[0]
     user = accounts.test_accounts[1]
     artist = accounts.test_accounts[2]
@@ -499,7 +495,7 @@ def test_06_verify_commission():
     
     # Check initial hub state - should have no commissions yet
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
-    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions initially"
+    assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions initially"
     
     # Verify the commission by having commissioner verify (which will complete verification and auto-submit)
     art_piece.verifyAsCommissioner(sender=user)
@@ -507,7 +503,7 @@ def test_06_verify_commission():
     # After verification, the commission should be automatically submitted and moved to verified
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Check verified list - should contain the art piece
     verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
@@ -518,6 +514,13 @@ def test_06_verify_commission():
     latest_verified = commission_hub.getLatestVerifiedArt(1)
     assert len(latest_verified) == 1, "Should have 1 art piece in latest verified"
     assert latest_verified[0] == art_piece.address, "Art piece should be in latest verified"
+    
+    # # Check that it was automatically submitted to verified list
+    # assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
+    
+    # verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
+    # assert len(verified_art_pieces) == 1, "Should have 1 art piece in verified list"
+    # assert verified_art_pieces[0] == art_piece.address, "Art piece should be in verified list"
 
 
 def test_07_verify_multiple_commissions():
@@ -616,14 +619,14 @@ def test_07_verify_multiple_commissions():
     
     # Check initial hub state
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
-    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions initially"
+    assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions initially"
     
     # Verify the first commission
     art_piece_1.verifyAsCommissioner(sender=user)
     
     # Check state after first verification
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     assert art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should be fully verified"
     assert not art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should still not be fully verified"
     
@@ -632,7 +635,7 @@ def test_07_verify_multiple_commissions():
     
     # Check state after second verification
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedCommissions() == 2, "Should have 2 verified commissions"
+    assert commission_hub.countVerifiedArtCommissions() == 2, "Should have 2 verified commissions"
     assert art_piece_1.isFullyVerifiedCommission(), "Art piece 1 should still be fully verified"
     assert art_piece_2.isFullyVerifiedCommission(), "Art piece 2 should now be fully verified"
 
@@ -713,14 +716,14 @@ def test_08_unverify_commission():
     # Check initial state - should be verified and in hub
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Unverify the commission
     commission_hub.unverifyCommission(art_piece.address, sender=user)
     
     # Check state after unverification
     assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
-    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions"
+    assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions"
     assert commission_hub.getUnverifiedCount(user.address) == 1, "User should have 1 unverified commission"
     
     # Check unverified list - should contain the art piece
@@ -808,7 +811,7 @@ def test_09_unverify_commission_permissions():
     art_piece.verifyAsCommissioner(sender=user)
     
     # Verify it's in verified state
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
     
     # Non-owner tries to unverify - should fail
@@ -820,7 +823,7 @@ def test_09_unverify_commission_permissions():
     assert "not allowed" in error_message or "auth" in error_message, "Error should mention authorization"
     
     # State should remain unchanged
-    assert commission_hub.countVerifiedCommissions() == 1, "Should still have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should still have 1 verified commission"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should still have 0 unverified commissions"
 
 
@@ -897,7 +900,7 @@ def test_10_verify_unverify_cycle():
     # Initial state - not fully verified yet
     assert not art_piece.isFullyVerifiedCommission(), "Art piece should not be fully verified yet"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions initially"
-    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions initially"
+    assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions initially"
     
     # Step 1: Verify the commission (complete verification and auto-submit)
     art_piece.verifyAsCommissioner(sender=user)
@@ -905,21 +908,21 @@ def test_10_verify_unverify_cycle():
     # Check state after verification
     assert art_piece.isFullyVerifiedCommission(), "Art piece should be fully verified"
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Step 2: Unverify the commission
     commission_hub.unverifyCommission(art_piece.address, sender=user)
     
     # Check state after unverification
     assert commission_hub.countUnverifiedCommissions() == 1, "Should have 1 unverified commission"
-    assert commission_hub.countVerifiedCommissions() == 0, "Should have 0 verified commissions"
+    assert commission_hub.countVerifiedArtCommissions() == 0, "Should have 0 verified commissions"
     
     # Step 3: Verify the commission again
     commission_hub.verifyCommission(art_piece.address, sender=user)
     
     # Check final state
     assert commission_hub.countUnverifiedCommissions() == 0, "Should have 0 unverified commissions"
-    assert commission_hub.countVerifiedCommissions() == 1, "Should have 1 verified commission"
+    assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Get the art piece from verified list
     verified_art_pieces = commission_hub.getVerifiedArtPieces(0, 10)
