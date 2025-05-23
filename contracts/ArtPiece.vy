@@ -81,6 +81,10 @@ event CommissionfullyVerified:
     artist: indexed(address)
     commissioner: indexed(address)
 
+event CommissionSubmissionFailed:
+    art_piece: indexed(address)
+    commission_hub: indexed(address)
+
 # ERC721 Standard variables
 name: public(String[32])
 symbol: public(String[8])
@@ -119,6 +123,9 @@ isTagValidated: public(HashMap[address, bool])
 taggedList: public(DynArray[address, 1000])  # List of all tagged addresses, max 1000
 taggedListCount: public(uint256)
 
+# Add near the other state variables after line ~90
+submissionAttempted: public(bool)  # Flag to track if submission to hub was attempted
+submissionSuccessful: public(bool)  # Flag to track if submission to hub was successful
 
 # Create minimal proxy to ArtPiece
 @deploy
@@ -476,9 +483,31 @@ def _completeVerification():
     profile_interface = Profile(self.commissioner)
     extcall profile_interface.addCommission(self)
 
-    # After call submitCommission on the commission hub
-    commission_hub_interface: ArtCommissionHub = ArtCommissionHub(self.artCommissionHubAddress)
-    submitedComission: bool = extcall commission_hub_interface.submitCommission(self)
+    # Submit to commission hub if attached
+    if self.artCommissionHubAddress != empty(address):
+        self.submissionAttempted = True
+        
+        # Use raw_call to catch revert and handle failure gracefully
+        success: bool = False
+        response: Bytes[32] = b""
+        success, response = raw_call(
+            self.artCommissionHubAddress,
+            concat(
+                method_id("submitCommission(address)"),
+                convert(self, bytes32)
+            ),
+            max_outsize=32,
+            revert_on_failure=False
+        )
+        
+        self.submissionSuccessful = success
+        
+        if not success:
+            # Log failure but don't revert - verification is still valid
+            log CommissionSubmissionFailed(
+                art_piece=self, 
+                commission_hub=self.artCommissionHubAddress
+            )
     
     # Emit verification complete event
     log CommissionfullyVerified(art_piece=self, artist=self.artist, commissioner=self.commissioner)
@@ -665,5 +694,32 @@ def isFullyVerifiedCommission() -> bool:
 @view
 def getProfileFactoryAndRegistry() -> address:
     return self.profileFactoryAndRegistry
+
+@external
+def retryCommissionHubSubmission():
+    """
+    @notice Retry submission to commission hub if it previously failed
+    @dev Can only be called if submission was attempted but failed
+    """
+    assert self.fullyVerifiedCommission, "Not fully verified"
+    assert self.submissionAttempted and not self.submissionSuccessful, "No retry needed"
+    assert self.artCommissionHubAddress != empty(address), "No hub attached"
+    
+    # Only artist, commissioner, or hub owner can retry
+    hub_owner: address = staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
+    assert msg.sender == self.artist or msg.sender == self.commissioner or msg.sender == hub_owner, "Not authorized"
+    
+    commission_hub_interface: ArtCommissionHub = ArtCommissionHub(self.artCommissionHubAddress)
+    extcall commission_hub_interface.submitCommission(self)
+    self.submissionSuccessful = True
+
+@external
+@view
+def getSubmissionStatus() -> (bool, bool):
+    """
+    @notice Get the commission hub submission status
+    @return (attempted, successful) - whether submission was attempted and if it was successful
+    """
+    return (self.submissionAttempted, self.submissionSuccessful)
 
 

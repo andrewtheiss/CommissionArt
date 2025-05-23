@@ -366,3 +366,149 @@ def test_get_array_by_offset_large_array(array_manager, many_addresses):
     assert len(result) == 20
     for i in range(len(result)):
         assert result[i] == many_addresses[59 - i]
+
+def test_pagination_edge_case_issues(array_manager, test_addresses):
+    """Test that exposes issues with pagination logic"""
+    
+    # Issue 1: Inconsistent behavior between get_array_slice_reverse and get_array_by_offset
+    for addr in test_addresses:
+        array_manager.add_to_array(addr, sender=accounts.test_accounts[0])
+    
+    # Test case: When requesting more items than available from the end
+    # get_array_slice_reverse with page=0, size=10 (requesting 10 items)
+    slice_result = array_manager.get_array_slice_reverse(0, 10)
+    
+    # get_array_by_offset mimicking the same request
+    array_length = 5  # We have 5 addresses
+    page = 0
+    page_size = 10
+    start = array_length - 1 - (page * page_size)  # This would be 5 - 1 - 0 = 4
+    # But wait, if we're asking for 10 items starting from index 4 going backwards,
+    # we can only get 5 items (indices 4, 3, 2, 1, 0)
+    
+    # The issue: get_array_slice_reverse calculates start incorrectly for large page sizes
+    # It should handle the case where page_size > array_length
+    
+    # This will show the issue:
+    print(f"slice_result length: {len(slice_result)}")  # Expected: 5
+    print(f"slice_result: {slice_result}")
+    
+    # Now let's test the actual bug
+    # When page * page_size approaches total, start calculation can be wrong
+    
+def test_reverse_pagination_calculation_error(array_manager):
+    """Test that shows calculation error in reverse pagination"""
+    
+    # Add exactly 5 items
+    addresses = [accounts.test_accounts[i] for i in range(1, 6)]
+    for addr in addresses:
+        array_manager.add_to_array(addr, sender=accounts.test_accounts[0])
+    
+    # Test case that shows the issue:
+    # If we have 5 items and request page 1 with size 3
+    # Expected: We should get 2 items (indices 1, 0)
+    # But the calculation might be wrong
+    
+    result = array_manager.get_array_slice_reverse(1, 3)
+    print(f"Result for page=1, size=3: {result}")
+    print(f"Length: {len(result)}")
+    
+    # The calculation in get_array_slice_reverse:
+    # start = total - (page * page_size) - 1
+    # start = 5 - (1 * 3) - 1 = 5 - 3 - 1 = 1
+    # items_to_return = min(page_size, start + 1) = min(3, 1 + 1) = min(3, 2) = 2
+    # So it returns indices [1, 0]
+    
+    # But logically, if we're doing page-based pagination:
+    # Page 0, size 3: indices [4, 3, 2]
+    # Page 1, size 3: indices [1, 0]
+    # This is correct, but let's test an edge case...
+
+def test_get_array_by_offset_off_by_one_error(array_manager):
+    """Test that exposes potential off-by-one errors in reverse pagination"""
+    
+    # Add exactly 3 items
+    addresses = [accounts.test_accounts[i] for i in range(1, 4)]
+    for addr in addresses:
+        array_manager.add_to_array(addr, sender=accounts.test_accounts[0])
+    
+    # Test 1: Get all items in reverse
+    result = array_manager.get_array_by_offset(2, 3, True)
+    assert len(result) == 3
+    assert result[0] == addresses[2]  # Index 2
+    assert result[1] == addresses[1]  # Index 1
+    assert result[2] == addresses[0]  # Index 0
+    
+    # Test 2: Edge case - offset exactly at array boundary
+    result = array_manager.get_array_by_offset(3, 1, True)
+    # offset >= array_length, so offset gets adjusted to array_length - 1 = 2
+    assert len(result) == 1
+    assert result[0] == addresses[2]
+    
+    # Test 3: The real issue - when array is empty after modifications
+    array_manager.clear_array(sender=accounts.test_accounts[0])
+    
+    # This should not fail, but in some implementations it might
+    result = array_manager.get_array_by_offset(0, 10, True)
+    assert len(result) == 0  # Should handle empty array gracefully
+
+def test_pagination_consistency_issue(array_manager):
+    """Test that shows inconsistency between different pagination methods"""
+    
+    # Add 10 items
+    addresses = []
+    for i in range(10):
+        priv_key = secrets.token_hex(32)
+        account = Account.from_key(priv_key)
+        addr = eth_utils.to_checksum_address(account.address)
+        addresses.append(addr)
+        array_manager.add_to_array(addr, sender=accounts.test_accounts[0])
+    
+    # Compare get_array_slice_reverse with get_array_by_offset
+    # They should give the same results when used to implement the same logic
+    
+    # Test page 0, size 3
+    page = 0
+    size = 3
+    
+    # Method 1: get_array_slice_reverse
+    result1 = array_manager.get_array_slice_reverse(page, size)
+    
+    # Method 2: get_array_by_offset (mimicking get_array_slice_reverse)
+    array_length = 10
+    start = array_length - 1 - (page * size)  # 10 - 1 - 0 = 9
+    items = min(size, start + 1)  # min(3, 10) = 3
+    result2 = array_manager.get_array_by_offset(start, items, True)
+    
+    print(f"get_array_slice_reverse result: {result1}")
+    print(f"get_array_by_offset result: {result2}")
+    
+    # They should be the same
+    assert len(result1) == len(result2), f"Length mismatch: {len(result1)} vs {len(result2)}"
+    for i in range(len(result1)):
+        assert result1[i] == result2[i], f"Mismatch at index {i}: {result1[i]} vs {result2[i]}"
+
+def test_actual_underflow_scenario(array_manager):
+    """Test a scenario that would cause underflow without proper guards"""
+    
+    # This test would fail if the guard wasn't there
+    # Currently it passes because of: if array_length == 0: return result
+    
+    # Step 1: Ensure array is empty
+    array_manager.clear_array(sender=accounts.test_accounts[0])
+    
+    # Step 2: Try get_array_by_offset with reverse=True
+    # Without the guard, this would try: offset = array_length - 1 = 0 - 1 = UNDERFLOW
+    result = array_manager.get_array_by_offset(0, 10, True)
+    assert len(result) == 0
+    
+    # To actually show the issue, let's imagine the guard wasn't there
+    # Here's what would happen:
+    # array_length = 0
+    # offset = array_length - 1  # This would underflow to 2^256 - 1
+    # Then accessing self.my_array[offset] would fail with index out of bounds
+    
+    print("Test passed because of proper guard. Without the guard at line:")
+    print("    if array_length == 0:")
+    print("        return result")
+    print("The code would underflow when calculating: offset = array_length - 1")

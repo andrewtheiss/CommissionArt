@@ -538,66 +538,33 @@ def getRandomActiveUserProfiles(_count: uint256, _seed: uint256) -> DynArray[add
 @view
 @external
 def getActiveUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
-    """
-    @notice Returns a paginated list of active users using offset-based pagination.
-    @dev This function supports fetching users from either the front or back of the array:
-         - **Front Pagination (reverse = False)**: Fetches `_count` users starting from `_offset` in stored order (oldest first).
-         - **Back Pagination (reverse = True)**: Fetches `_count` users starting from `_offset` and moving backwards (newest first).
-         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
-
-         **To Mimic Page-Based Pagination:**
-         - **For `recent = False` (oldest first, ascending order):**
-           - Set `_offset = _page * _page_size`
-           - Set `_count = _page_size`
-           - Set `reverse = False`
-           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
-           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
-         - **For `recent = True` (newest first, descending order):**
-           - Calculate `start = array_length - 1 - (_page * _page_size)`
-           - Calculate `items = min(_page_size, start + 1)`
-           - Set `_offset = start`
-           - Set `_count = items`
-           - Set `reverse = True`
-           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
-           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
-
-    @param _offset The starting index in the `latestActiveUsers` array.
-                   - If `reverse = False`: Index from the start (0-based).
-                   - If `reverse = True`: Index from which to start moving backwards.
-    @param _count The number of users to return (capped at 50).
-    @param reverse Boolean flag to control fetch direction:
-                   - `False`: Forward from `_offset` (ascending).
-                   - `True`: Backward from `_offset` (descending).
-    @return A list of up to 50 latest active user addresses.
-    """
     result: DynArray[address, 50] = []
-    offset: uint256 = _offset
-    # Early return if no users exist
+    
     if self.activeUsersWithCommissionsCount == 0:
         return result
     
     if not reverse:
-        # Front pagination: Fetch from offset forward
-        if offset >= self.activeUsersWithCommissionsCount:
+        if _offset >= self.activeUsersWithCommissionsCount:
             return result
-        available_items: uint256 = self.activeUsersWithCommissionsCount - offset
-        count: uint256 = min(min(_count, available_items), 50)
+        
+        available_items: uint256 = self.activeUsersWithCommissionsCount - _offset
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
         for i: uint256 in range(50):
-            if i >= count:
+            if i >= items_to_return:
                 break
-            result.append(self.activeUsersWithCommissions[offset + i])
+            result.append(self.activeUsersWithCommissions[_offset + i])
     else:
-        # Back pagination: Fetch from offset backward
-        if offset >= self.activeUsersWithCommissionsCount:
-            offset = self.activeUsersWithCommissionsCount - 1  # Adjust to last valid index
-        start: uint256 = offset
-        available_items: uint256 = start + 1  # Items available from start to index 0
-        count: uint256 = min(min(_count, available_items), 50)
+        max_valid_offset: uint256 = self.activeUsersWithCommissionsCount - 1
+        actual_offset: uint256 = min(_offset, max_valid_offset)
+        
+        available_items: uint256 = actual_offset + 1
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
         for i: uint256 in range(50):
-            if i >= count:
+            if i >= items_to_return:
                 break
-            index: uint256 = start - i
-            result.append(self.activeUsersWithCommissions[index])
+            result.append(self.activeUsersWithCommissions[actual_offset - i])
     
     return result
 
@@ -616,65 +583,32 @@ def getActiveUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> 
 @view
 @external
 def getAllUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
-    """
-    @notice Returns a paginated list of all users using offset-based pagination.
-    @dev This function supports fetching users from either the front or back of the array:
-         - **Front Pagination (reverse = False)**: Fetches `_count` users starting from `_offset` in stored order (oldest first).
-         - **Back Pagination (reverse = True)**: Fetches `_count` users starting from `_offset` and moving backwards (newest first).
-         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
-
-         **To Mimic Page-Based Pagination:**
-         - **For `recent = False` (oldest first, ascending order):**
-           - Set `_offset = _page * _page_size`
-           - Set `_count = _page_size`
-           - Set `reverse = False`
-           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
-           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
-         - **For `recent = True` (newest first, descending order):**
-           - Calculate `start = array_length - 1 - (_page * _page_size)`
-           - Calculate `items = min(_page_size, start + 1)`
-           - Set `_offset = start`
-           - Set `_count = items`
-           - Set `reverse = True`
-           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
-           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
-
-    @param _offset The starting index in the `latestActiveUsers` array.
-                   - If `reverse = False`: Index from the start (0-based).
-                   - If `reverse = True`: Index from which to start moving backwards.
-    @param _count The number of users to return (capped at 50).
-    @param reverse Boolean flag to control fetch direction:
-                   - `False`: Forward from `_offset` (ascending).
-                   - `True`: Backward from `_offset` (descending).
-    @return A list of up to 50 latest active user addresses.
-    """
     result: DynArray[address, 50] = []
-    offset: uint256 = _offset
-    # Early return if no users exist
+    
     if self.allUserProfilesCount == 0:
         return result
     
     if not reverse:
-        # Front pagination: Fetch from offset forward
-        if offset >= self.allUserProfilesCount:
+        if _offset >= self.allUserProfilesCount:
             return result
-        available_items: uint256 = self.allUserProfilesCount - offset
-        count: uint256 = min(min(_count, available_items), 50)
+        
+        available_items: uint256 = self.allUserProfilesCount - _offset
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
         for i: uint256 in range(50):
-            if i >= count:
+            if i >= items_to_return:
                 break
-            result.append(self.allUserProfiles[offset + i])
+            result.append(self.allUserProfiles[_offset + i])
     else:
-        # Back pagination: Fetch from offset backward
-        if offset >= self.allUserProfilesCount:
-            offset = self.allUserProfilesCount - 1  # Adjust to last valid index
-        start: uint256 = offset
-        available_items: uint256 = start + 1  # Items available from start to index 0
-        count: uint256 = min(min(_count, available_items), 50)
+        max_valid_offset: uint256 = self.allUserProfilesCount - 1
+        actual_offset: uint256 = min(_offset, max_valid_offset)
+        
+        available_items: uint256 = actual_offset + 1
+        items_to_return: uint256 = min(min(_count, available_items), 50)
+        
         for i: uint256 in range(50):
-            if i >= count:
+            if i >= items_to_return:
                 break
-            index: uint256 = start - i
-            result.append(self.allUserProfiles[index])
+            result.append(self.allUserProfiles[actual_offset - i])
     
     return result
