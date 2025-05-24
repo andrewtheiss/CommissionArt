@@ -476,33 +476,45 @@ def getRandomActiveUserProfiles(_count: uint256, _seed: uint256) -> DynArray[add
 @view
 @external
 def getActiveUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of active users using offset-based pagination.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 50)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 50 active user addresses
+    """
     result: DynArray[address, 50] = []
+    array_length: uint256 = self.activeUsersWithCommissionsCount
     
-    if self.activeUsersWithCommissionsCount == 0:
+    # Handle empty array
+    if array_length == 0:
         return result
     
     if not reverse:
-        if _offset >= self.activeUsersWithCommissionsCount:
-            return result
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
         
-        available_items: uint256 = self.activeUsersWithCommissionsCount - _offset
-        items_to_return: uint256 = min(min(_count, available_items), 50)
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
         
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
+        for i: uint256 in range(0, count, bound=50):
             result.append(self.activeUsersWithCommissions[_offset + i])
     else:
-        max_valid_offset: uint256 = self.activeUsersWithCommissionsCount - 1
-        actual_offset: uint256 = min(_offset, max_valid_offset)
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
         
-        available_items: uint256 = actual_offset + 1
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            result.append(self.activeUsersWithCommissions[actual_offset - i])
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.activeUsersWithCommissions[index])
     
     return result
 
@@ -521,32 +533,44 @@ def getActiveUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> 
 @view
 @external
 def getAllUsersByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    @notice Returns a paginated list of all users using offset-based pagination.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 50)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 50 user addresses
+    """
     result: DynArray[address, 50] = []
+    array_length: uint256 = self.allUserProfilesCount
     
-    if self.allUserProfilesCount == 0:
+    # Handle empty array
+    if array_length == 0:
         return result
     
     if not reverse:
-        if _offset >= self.allUserProfilesCount:
-            return result
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
         
-        available_items: uint256 = self.allUserProfilesCount - _offset
-        items_to_return: uint256 = min(min(_count, available_items), 50)
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
         
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
+        for i: uint256 in range(0, count, bound=50):
             result.append(self.allUserProfiles[_offset + i])
     else:
-        max_valid_offset: uint256 = self.allUserProfilesCount - 1
-        actual_offset: uint256 = min(_offset, max_valid_offset)
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
         
-        available_items: uint256 = actual_offset + 1
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            result.append(self.allUserProfiles[actual_offset - i])
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.allUserProfiles[index])
     
     return result

@@ -403,64 +403,43 @@ def linkProfileFactoryAndRegistry(_profile_factory_and_regsitry: address):
 @external
 def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    @notice Returns a paginated list of all artCommissionHubs by owner using offset-based pagination.
-    @dev This function supports fetching artCommissionHubs by owner from either the front or back of the array:
-         - **Front Pagination (reverse = False)**: Fetches `_count` artCommissionHubs by owner starting from `_offset` in stored order (oldest first).
-         - **Back Pagination (reverse = True)**: Fetches `_count` artCommissionHubs by owner starting from `_offset` and moving backwards (newest first).
-         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
-
-         **To Mimic Page-Based Pagination:**
-         - **For `recent = False` (oldest first, ascending order):**
-           - Set `_offset = _page * _page_size`
-           - Set `_count = _page_size`
-           - Set `reverse = False`
-           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
-           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
-         - **For `recent = True` (newest first, descending order):**
-           - Calculate `start = array_length - 1 - (_page * _page_size)`
-           - Calculate `items = min(_page_size, start + 1)`
-           - Set `_offset = start`
-           - Set `_count = items`
-           - Set `reverse = True`
-           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
-           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
-
-    @param _offset The starting index in the `artCommissionHubsByOwner` array.
-                   - If `reverse = False`: Index from the start (0-based).
-                   - If `reverse = True`: Index from which to start moving backwards.
-    @param _count The number of artCommissionHubs by owner to return (capped at 50).
-    @param reverse Boolean flag to control fetch direction:
-                   - `False`: Forward from `_offset` (ascending).
-                   - `True`: Backward from `_offset` (descending).
-    @return A list of up to 50 artCommissionHubs by owner.
+    @notice Returns a paginated list of commission hubs by owner using offset-based pagination.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 50)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 50 commission hub addresses
     """
     result: DynArray[address, 50] = []
-    offset: uint256 = _offset
-    # Early return if no artCommissionHubs by owner exist
-    if self.artCommissionHubsByOwnerCount[_owner] == 0:
+    array_length: uint256 = self.artCommissionHubsByOwnerCount[_owner]
+    
+    # Handle empty array
+    if array_length == 0:
         return result
     
     if not reverse:
-        # Front pagination: Fetch from offset forward
-        if offset >= self.artCommissionHubsByOwnerCount[_owner]:
-            return result
-        available_items: uint256 = self.artCommissionHubsByOwnerCount[_owner] - offset
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
+        
+        available_items: uint256 = array_length - _offset
         count: uint256 = min(min(_count, available_items), 50)
-        for i: uint256 in range(50):
-            if i >= count:
-                break
-            result.append(self.artCommissionHubsByOwner[_owner][offset + i])
+        
+        for i: uint256 in range(0, count, bound=50):
+            result.append(self.artCommissionHubsByOwner[_owner][_offset + i])
     else:
-        # Back pagination: Fetch from offset backward
-        if offset >= self.artCommissionHubsByOwnerCount[_owner]:
-            offset = self.artCommissionHubsByOwnerCount[_owner] - 1  # Adjust to last valid index
-        start: uint256 = offset
-        available_items: uint256 = start + 1  # Items available from start to index 0
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
         count: uint256 = min(min(_count, available_items), 50)
-        for i: uint256 in range(50):
-            if i >= count:
-                break
-            index: uint256 = start - i
+        
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
             result.append(self.artCommissionHubsByOwner[_owner][index])
     
     return result

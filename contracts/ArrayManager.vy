@@ -8,6 +8,109 @@
 # provided that appropriate credit is given to the original author.
 # For commercial use, please contact the author for permission.
 
+## Usage:
+"""
+getArtPiecesByOffset: Comprehensive Usage Guide
+==============================================
+
+This method provides flexible pagination through the art pieces array with both 
+forward and reverse traversal options.
+
+Parameters:
+    _offset (uint256): Starting position for pagination
+    _count (uint256): Number of items to retrieve (max 50)
+    reverse (bool): Direction of pagination (False = oldest→newest, True = newest→oldest)
+
+Returns:
+    DynArray[address, 50]: List of art piece addresses
+
+FORWARD PAGINATION (reverse=False)
+==================================
+Traverses from oldest to newest items (index 0 → myArtCount-1)
+
+Example array: [A, B, C, D, E] (5 items, indices 0-4)
+
+Usage examples:
+    getArtPiecesByOffset(0, 3, False)  → [A, B, C]    # First 3 items
+    getArtPiecesByOffset(2, 2, False)  → [C, D]       # Skip first 2, get next 2
+    getArtPiecesByOffset(4, 10, False) → [E]          # Start at index 4, only 1 available
+    getArtPiecesByOffset(5, 2, False)  → []           # Offset beyond array bounds
+    getArtPiecesByOffset(0, 50, False) → [A, B, C, D, E]  # Get all (limited by array size)
+
+Common patterns:
+    - Get first page: getArtPiecesByOffset(0, pageSize, False)
+    - Get next page: getArtPiecesByOffset(currentOffset + pageSize, pageSize, False)
+    - Get all items: getArtPiecesByOffset(0, 50, False)
+
+REVERSE PAGINATION (reverse=True) - After Fix
+=============================================
+Traverses from newest to oldest items (index myArtCount-1 → 0)
+_offset represents how many items to skip from the END of the array
+
+Example array: [A, B, C, D, E] (5 items, indices 0-4)
+
+Usage examples:
+    getArtPiecesByOffset(0, 3, True)  → [E, D, C]     # Last 3 items (newest first)
+    getArtPiecesByOffset(1, 2, True)  → [D, C]        # Skip newest, get next 2
+    getArtPiecesByOffset(2, 2, True)  → [C, B]        # Skip 2 newest, get next 2
+    getArtPiecesByOffset(4, 2, True)  → [A]           # Skip 4 newest, only oldest remains
+    getArtPiecesByOffset(5, 2, True)  → []            # Offset beyond array bounds
+    getArtPiecesByOffset(0, 50, True) → [E, D, C, B, A]  # All items, newest first
+
+Common patterns:
+    - Get latest items: getArtPiecesByOffset(0, pageSize, True)
+    - Get previous page: getArtPiecesByOffset(currentOffset + pageSize, pageSize, True)
+    - Get N oldest items: getArtPiecesByOffset(myArtCount - N, N, True)
+
+PAGINATION STRATEGIES
+====================
+
+1. Standard Forward Pagination (oldest → newest):
+   page = 0
+   while True:
+       items = getArtPiecesByOffset(page * 10, 10, False)
+       if len(items) == 0:
+           break
+       process(items)
+       page += 1
+
+2. Reverse Chronological Display (newest → oldest):
+   page = 0
+   while True:
+       items = getArtPiecesByOffset(page * 10, 10, True)
+       if len(items) == 0:
+           break
+       display(items)
+       page += 1
+
+3. Get Middle Range:
+   # Get items 10-19 (11th through 20th items)
+   items = getArtPiecesByOffset(10, 10, False)
+
+4. Get Last N Items:
+   # Get last 5 items in chronological order
+   items = getArtPiecesByOffset(0, 5, True)
+   
+5. Check if More Pages Exist:
+   items = getArtPiecesByOffset(offset, pageSize, reverse)
+   hasMore = len(items) == pageSize  # If full page returned, likely more exist
+
+EDGE CASES
+==========
+- Empty array: Always returns []
+- _count > 50: Limited to 50 items per call
+- _offset >= myArtCount: Returns []
+- _count = 0: Returns []
+- Requesting more items than available: Returns only available items
+
+IMPLEMENTATION NOTES
+===================
+- Uses DynArray with max size 50 to comply with EVM gas limits
+- Efficient O(n) iteration where n = min(_count, 50)
+- No array reversal needed - items are selected in correct order
+- Safe against out-of-bounds access
+"""
+
 PAGE_SIZE: constant(uint256) = 20
 MAX_ITEMS: constant(uint256) = 100000
 
@@ -119,59 +222,42 @@ def _removeFromArray(_array: DynArray[address, MAX_ITEMS], _item: address):
 def get_array_by_offset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 100]:
     """
     @notice Returns a paginated list of items from the array using offset-based pagination.
-    @dev This function supports fetching items from either the front or back of the array:
-         - **Front Pagination (reverse = False)**: Fetches `_count` items starting from `_offset` in stored order (ascending indices).
-         - **Back Pagination (reverse = True)**: Fetches `_count` items starting from `_offset` and moving backwards (descending indices).
-         This allows flexible pagination strategies, including mimicking page-based pagination as follows:
-
-         **To Mimic Page-Based Pagination:**
-         - **For oldest first (ascending order):**
-           - Set `_offset = _page * _page_size`
-           - Set `_count = _page_size`
-           - Set `reverse = False`
-           - Example: Page 0, size 10 → `_offset = 0`, `_count = 10`, `reverse = False` (indices 0 to 9)
-           - Example: Page 1, size 10 → `_offset = 10`, `_count = 10`, `reverse = False` (indices 10 to 19)
-         - **For newest first (descending order):**
-           - Calculate `start = array_length - 1 - (_page * _page_size)`
-           - Calculate `items = min(_page_size, start + 1)`
-           - Set `_offset = start`
-           - Set `_count = items`
-           - Set `reverse = True`
-           - Example: Array length 15, page 0, size 10 → `_offset = 14`, `_count = 10`, `reverse = True` (indices 14 to 5)
-           - Example: Array length 15, page 1, size 10 → `_offset = 4`, `_count = 5`, `reverse = True` (indices 4 to 0)
-
-    @param _offset The starting index in the `my_array`.
-                   - If `reverse = False`: Index from the start (0-based).
-                   - If `reverse = True`: Index from which to start moving backwards.
-    @param _count The number of items to return (capped at 100).
-    @param reverse Boolean flag to control fetch direction:
-                   - `False`: Forward from `_offset` (ascending).
-                   - `True`: Backward from `_offset` (descending).
-    @return A list of up to 100 addresses from the array.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 100)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 100 addresses from the array
     """
     result: DynArray[address, 100] = []
-    offset: uint256 = _offset
     array_length: uint256 = len(self.my_array)
+    
+    # Handle empty array
     if array_length == 0:
         return result
-
+    
     if not reverse:
-        # Front pagination: Fetch from offset forward
-        if offset >= array_length:
-            return result
-        available_items: uint256 = array_length - offset
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
+        
+        available_items: uint256 = array_length - _offset
         count: uint256 = min(min(_count, available_items), 100)
+        
         for i: uint256 in range(0, count, bound=100):
-            result.append(self.my_array[offset + i])
+            result.append(self.my_array[_offset + i])
     else:
-        # Back pagination: Fetch from offset backward
-        if offset >= array_length:
-            offset = array_length - 1
-        start: uint256 = offset
-        available_items: uint256 = start + 1
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
         count: uint256 = min(min(_count, available_items), 100)
+        
         for i: uint256 in range(0, count, bound=100):
-            index: uint256 = start - i
+            index: uint256 = start_index - i
             result.append(self.my_array[index])
-
+    
     return result

@@ -505,44 +505,44 @@ def removeArtLinkToMyCommission(_my_commission: address):
 @external
 def getCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    Returns a paginated list of commissions using offset-based pagination.
+    @notice Returns a paginated list of commissions using offset-based pagination.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 50)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 50 commission addresses
     """
     result: DynArray[address, 50] = []
+    array_length: uint256 = self.myCommissionCount
     
-    # Handle empty array case first
-    if self.myCommissionCount == 0:
+    # Handle empty array
+    if array_length == 0:
         return result
     
     if not reverse:
-        # Forward pagination: oldest to newest
-        if _offset >= self.myCommissionCount:
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
             return result  # Offset beyond array bounds
         
-        # Calculate how many items we can return
-        available_items: uint256 = self.myCommissionCount - _offset
-        items_to_return: uint256 = min(min(_count, available_items), 50)
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
         
-        # Populate result
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
+        for i: uint256 in range(0, count, bound=50):
             result.append(self.myCommissions[_offset + i])
     else:
-        # Reverse pagination: newest to oldest
-        # Calculate the actual starting position
-        max_valid_offset: uint256 = self.myCommissionCount - 1
-        actual_offset: uint256 = min(_offset, max_valid_offset)
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
         
-        # Calculate how many items we can return going backwards
-        available_items: uint256 = actual_offset + 1
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        # Populate result going backwards
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            # Safe because we know actual_offset >= i (due to items_to_return calculation)
-            result.append(self.myCommissions[actual_offset - i])
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.myCommissions[index])
     
     return result
 
@@ -561,38 +561,44 @@ def getCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> 
 @external
 def getUnverifiedCommissionsByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    Returns a paginated list of unverified commissions using offset-based pagination.
+    @notice Returns a paginated list of unverified commissions using offset-based pagination.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 50)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 50 unverified commission addresses
     """
     result: DynArray[address, 50] = []
+    array_length: uint256 = self.myUnverifiedCommissionCount
     
-    # Handle empty array case first
-    if self.myUnverifiedCommissionCount == 0:
+    # Handle empty array
+    if array_length == 0:
         return result
     
     if not reverse:
-        # Forward pagination: oldest to newest
-        if _offset >= self.myUnverifiedCommissionCount:
-            return result
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
         
-        available_items: uint256 = self.myUnverifiedCommissionCount - _offset
-        items_to_return: uint256 = min(min(_count, available_items), 50)
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
         
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
+        for i: uint256 in range(0, count, bound=50):
             result.append(self.myUnverifiedCommissions[_offset + i])
     else:
-        # Reverse pagination: newest to oldest
-        max_valid_offset: uint256 = self.myUnverifiedCommissionCount - 1
-        actual_offset: uint256 = min(_offset, max_valid_offset)
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
         
-        available_items: uint256 = actual_offset + 1
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            result.append(self.myUnverifiedCommissions[actual_offset - i])
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.myUnverifiedCommissions[index])
     
     return result
 
@@ -887,38 +893,44 @@ def removeArtPiece(_art_piece: address):
 @external
 def getArtPiecesByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
     """
-    Returns a paginated list of art pieces using offset-based pagination.
+    @notice Returns a paginated list of art pieces using offset-based pagination.
+    @dev Forward pagination: _offset is starting index, _count is number of items
+         Reverse pagination: _offset is number of items to skip from end, _count is number of items
+    @param _offset For forward: starting index. For reverse: items to skip from end
+    @param _count Number of items to return (capped at 50)
+    @param reverse Direction: False = forward (oldest first), True = reverse (newest first)
+    @return A list of up to 50 art piece addresses
     """
     result: DynArray[address, 50] = []
+    array_length: uint256 = self.myArtCount
     
-    # Handle empty array case first
-    if self.myArtCount == 0:
+    # Handle empty array
+    if array_length == 0:
         return result
     
     if not reverse:
-        # Forward pagination
-        if _offset >= self.myArtCount:
-            return result
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
         
-        available_items: uint256 = self.myArtCount - _offset
-        items_to_return: uint256 = min(min(_count, available_items), 50)
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
         
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
+        for i: uint256 in range(0, count, bound=50):
             result.append(self.myArt[_offset + i])
     else:
-        # Reverse pagination
-        max_valid_offset: uint256 = self.myArtCount - 1
-        actual_offset: uint256 = min(_offset, max_valid_offset)
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
         
-        available_items: uint256 = actual_offset + 1
-        items_to_return: uint256 = min(min(_count, available_items), 50)
-        
-        for i: uint256 in range(50):
-            if i >= items_to_return:
-                break
-            result.append(self.myArt[actual_offset - i])
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.myArt[index])
     
     return result
 
