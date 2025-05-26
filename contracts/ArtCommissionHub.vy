@@ -307,6 +307,10 @@ def _verifyCommission(_art_piece: address):
     self.verifiedArtCommissions.append(_art_piece)
     self.countVerifiedArtCommissions += 1
     
+    # Update registry mappings
+    self.verifiedArtCommissionsRegistry[_art_piece] = True
+    self.unverifiedArtCommissionsRegistry[_art_piece] = False
+    
     # Update latest verified art (circular buffer)
     self.latestVerifiedArtCommissions[self.nextLatestVerifiedArtCommissionsIndex] = _art_piece
     self.nextLatestVerifiedArtCommissionsIndex = (self.nextLatestVerifiedArtCommissionsIndex + 1) % 100
@@ -353,6 +357,10 @@ def _unverifyCommission(_art_piece: address):
         # Add to unverified list
         self.unverifiedArtCommissions.append(_art_piece)
         self.countUnverifiedArtCommissions += 1
+        
+        # Update registry mappings
+        self.verifiedArtCommissionsRegistry[_art_piece] = False
+        self.unverifiedArtCommissionsRegistry[_art_piece] = True
         
         log CommissionUnverified(art_piece=_art_piece, unverifier=msg.sender)
     else:

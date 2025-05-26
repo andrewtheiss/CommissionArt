@@ -2,6 +2,12 @@ import pytest
 from ape import accounts, project
 from ape.utils import ZERO_ADDRESS
 
+# Test data
+TEST_TOKEN_URI_DATA = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9"
+TEST_TITLE = "Test Commission"
+TEST_DESCRIPTION = "Test Description"
+TEST_TOKEN_URI_DATA_FORMAT = "avif"
+
 @pytest.fixture
 def setup():
     # Get accounts for testing
@@ -10,55 +16,62 @@ def setup():
     commissioner = accounts.test_accounts[2]
     hub_owner = accounts.test_accounts[3]
     
-    # Deploy ProfileFactoryAndRegistry
-    # Deploy Profile template
+    # Deploy all templates
     profile_template = project.Profile.deploy(sender=deployer)
-
-    # Deploy ProfileSocial template
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
-    # Deploy ProfileFactoryAndRegistry with both templates
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+    art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry with all templates
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
-    # Deploy ArtPiece template
-    art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    # Deploy ArtCommissionHubOwners
+    art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
+        deployer.address,  # L2OwnershipRelay
+        commission_hub_template.address,
+        art_piece_template.address,
+        sender=deployer
+    )
     
-    # Set the template in the factory
-    profile_factory.updateProfileTemplateContract(project.Profile.deploy(sender=deployer), sender=deployer)
+    # Link factory and hub owners
+    profile_factory.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory.address, sender=deployer)
     
     # Create profiles for artist and commissioner
-    profile_factory.createProfile(sender=artist)
-    profile_factory.createProfile(sender=commissioner)
+    profile_factory.createProfile(artist.address, sender=deployer)
+    profile_factory.createProfile(commissioner.address, sender=deployer)
+    profile_factory.createProfile(hub_owner.address, sender=deployer)
     
     # Get the created profiles
-    artist_profile = profile_factory.getProfile(artist.address)
-    commissioner_profile = profile_factory.getProfile(commissioner.address)
+    artist_profile_address = profile_factory.getProfile(artist.address)
+    commissioner_profile_address = profile_factory.getProfile(commissioner.address)
     
-    # Deploy ArtCommissionHub
-    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
-    
-    # Initialize the hub with hub_owner
-    chain_id = 1
-    nft_contract = deployer.address
-    token_id = 1
-    commission_hub.initialize(chain_id, nft_contract, token_id, hub_owner.address, sender=deployer)
-    
-    # Create a commission art piece
-    artist_profile_contract = project.Profile(artist_profile)
+    artist_profile = project.Profile.at(artist_profile_address)
+    commissioner_profile = project.Profile.at(commissioner_profile_address)
     
     # Set artist flag
-    artist_profile_contract.setIsArtist(True, sender=artist)
+    artist_profile.setIsArtist(True, sender=artist)
     
-    # Create art piece as a commission
-    art_piece_address = artist_profile_contract.createArtPiece(
+    # Create a commission hub for testing
+    art_commission_hub_owners.createGenericCommissionHub(hub_owner.address, sender=deployer)
+    
+    # Get the hub address
+    hubs_list = art_commission_hub_owners.getCommissionHubsByOwnerWithOffset(hub_owner.address, 0, 1, False)
+    hub_address = hubs_list[0]
+    commission_hub = project.ArtCommissionHub.at(hub_address)
+    
+    # Create a commission art piece
+    art_piece_tx = artist_profile.createArtPiece(
         art_piece_template.address,
-        b"test_data",
-        "avif",
-        "Test Commission",
-        "Test Description",
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        TEST_TITLE,
+        TEST_DESCRIPTION,
         True,  # is_artist
         commissioner.address,  # other_party (commissioner)
         False,  # ai_generated
@@ -67,16 +80,23 @@ def setup():
         sender=artist
     )
     
+    # Get the art piece address from the artist's recent art pieces
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 1, True)
+    art_piece_address = art_pieces[0]
+    art_piece = project.ArtPiece.at(art_piece_address)
+    
     return {
         "deployer": deployer,
         "artist": artist,
         "commissioner": commissioner,
         "hub_owner": hub_owner,
         "profile_factory": profile_factory,
-        "artist_profile": artist_profile_contract,
-        "commissioner_profile": project.Profile(commissioner_profile),
+        "art_commission_hub_owners": art_commission_hub_owners,
+        "artist_profile": artist_profile,
+        "commissioner_profile": commissioner_profile,
         "commission_hub": commission_hub,
-        "art_piece": project.ArtPiece(art_piece_address)
+        "art_piece": art_piece,
+        "art_piece_template": art_piece_template
     }
 
 def test_update_commission_verification_status_permissions(setup):
@@ -89,6 +109,9 @@ def test_update_commission_verification_status_permissions(setup):
     artist_profile = setup["artist_profile"]
     commissioner_profile = setup["commissioner_profile"]
     art_piece = setup["art_piece"]
+    
+    # Add commission to commissioner's profile first so they have permission
+    commissioner_profile.linkArtPieceAsMyCommission(art_piece.address, sender=commissioner)
     
     # Act & Assert - Profile owner can call
     artist_profile.updateCommissionVerificationStatus(art_piece.address, sender=artist)
@@ -113,25 +136,24 @@ def test_update_commission_verification_status_moves_commission(setup):
     commissioner_profile = setup["commissioner_profile"]
     art_piece = setup["art_piece"]
     
-    # Verify the commission should start as unverified
-    assert not art_piece.isFullyVerifiedCommission(), "Commission should start unverified"
+    # Note: Artist side is already verified when creating the commission
+    assert art_piece.artistVerified(), "Artist should be verified after creation"
+    assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
+    assert not art_piece.isFullyVerifiedCommission(), "Commission should not be fully verified yet"
     
     # Verify it's in the unverified list for artist
-    unverified_commissions = artist_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = artist_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert art_piece.address in unverified_commissions, "Should be in artist's unverified list"
     
     # Add to commissioner's profile
-    commissioner_profile.addCommission(art_piece.address, sender=commissioner)
+    commissioner_profile.linkArtPieceAsMyCommission(art_piece.address, sender=commissioner)
     
     # Verify it's in the unverified list for commissioner
-    unverified_commissions = commissioner_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = commissioner_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert art_piece.address in unverified_commissions, "Should be in commissioner's unverified list"
     
-    # Act - Verify as commissioner
+    # Act - Verify as commissioner (artist is already verified)
     art_piece.verifyAsCommissioner(sender=commissioner)
-    
-    # Act - Verify as artist
-    art_piece.verifyAsArtist(sender=artist)
     
     # Verify the commission is now verified
     assert art_piece.isFullyVerifiedCommission(), "Commission should now be verified"
@@ -141,23 +163,23 @@ def test_update_commission_verification_status_moves_commission(setup):
     commissioner_profile.updateCommissionVerificationStatus(art_piece.address, sender=commissioner)
     
     # Assert - Should be moved to verified list in artist profile
-    verified_commissions = artist_profile.getCommissions(0, 10)
+    verified_commissions = artist_profile.getCommissionsByOffset(0, 10, False)
     assert art_piece.address in verified_commissions, "Should be in artist's verified list"
     
     # Assert - Should be removed from unverified list in artist profile
-    unverified_commissions = artist_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = artist_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert art_piece.address not in unverified_commissions, "Should not be in artist's unverified list"
     
     # Assert - Should be moved to verified list in commissioner profile
-    verified_commissions = commissioner_profile.getCommissions(0, 10)
+    verified_commissions = commissioner_profile.getCommissionsByOffset(0, 10, False)
     assert art_piece.address in verified_commissions, "Should be in commissioner's verified list"
     
     # Assert - Should be removed from unverified list in commissioner profile
-    unverified_commissions = commissioner_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = commissioner_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert art_piece.address not in unverified_commissions, "Should not be in commissioner's unverified list"
     
     # Assert - Should be in commissioner's myArt collection
-    my_art = commissioner_profile.getArtPieces(0, 10)
+    my_art = commissioner_profile.getArtPiecesByOffset(0, 10, False)
     assert art_piece.address in my_art, "Should be in commissioner's myArt collection"
 
 def test_update_commission_verification_status_updates_role(setup):
@@ -169,31 +191,33 @@ def test_update_commission_verification_status_updates_role(setup):
     commissioner_profile = setup["commissioner_profile"]
     art_piece = setup["art_piece"]
     
-    # Verify as both parties to make it fully verified
+    # Add to commissioner's profile first
+    commissioner_profile.linkArtPieceAsMyCommission(art_piece.address, sender=commissioner)
+    
+    # Verify as commissioner (artist is already verified from creation)
     art_piece.verifyAsCommissioner(sender=commissioner)
-    art_piece.verifyAsArtist(sender=artist)
     
     # Act - Update verification status
     artist_profile.updateCommissionVerificationStatus(art_piece.address, sender=artist)
     commissioner_profile.updateCommissionVerificationStatus(art_piece.address, sender=commissioner)
     
     # Assert - Check commission role is set correctly for artist
-    assert artist_profile.commissionRole(art_piece.address), "Artist profile should have artist role (true)"
+    assert artist_profile.myCommissionRole(art_piece.address), "Artist profile should have artist role (true)"
     
     # Assert - Check commission role is set correctly for commissioner
-    assert not commissioner_profile.commissionRole(art_piece.address), "Commissioner profile should have commissioner role (false)"
+    assert not commissioner_profile.myCommissionRole(art_piece.address), "Commissioner profile should have commissioner role (false)"
 
 def test_update_commission_verification_status_non_involved_party(setup):
     """Test that updateCommissionVerificationStatus fails for non-involved parties"""
     # Arrange
     deployer = setup["deployer"]
-    artist_profile = setup["artist_profile"]
+    profile_factory = setup["profile_factory"]
     art_piece = setup["art_piece"]
     
     # Create a new profile for a non-involved party
-    profile_factory = setup["profile_factory"]
-    profile_factory.createProfile(sender=deployer)
-    non_involved_profile = project.Profile(profile_factory.getProfile(deployer.address))
+    profile_factory.createProfile(deployer.address, sender=deployer)
+    non_involved_profile_address = profile_factory.getProfile(deployer.address)
+    non_involved_profile = project.Profile.at(non_involved_profile_address)
     
     # Act & Assert - Non-involved profile owner cannot update
     with pytest.raises(Exception) as excinfo:
@@ -210,34 +234,34 @@ def test_cross_profile_verification_sync(setup):
     art_piece = setup["art_piece"]
     
     # Add to commissioner's profile
-    commissioner_profile.addCommission(art_piece.address, sender=commissioner)
+    commissioner_profile.linkArtPieceAsMyCommission(art_piece.address, sender=commissioner)
     
     # Initial state - both profiles should have the commission in unverified list
-    artist_unverified = artist_profile.getUnverifiedCommissions(0, 10)
-    commissioner_unverified = commissioner_profile.getUnverifiedCommissions(0, 10)
+    # Note: Artist is already verified from creation
+    artist_unverified = artist_profile.getUnverifiedCommissionsByOffset(0, 10, False)
+    commissioner_unverified = commissioner_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert art_piece.address in artist_unverified, "Should be in artist's unverified list"
     assert art_piece.address in commissioner_unverified, "Should be in commissioner's unverified list"
     
-    # Act - Commissioner verifies through profile
-    commissioner_profile.verifyCommission(art_piece.address, sender=commissioner)
-    
-    # Assert - Commission should still be unverified overall
+    # Verify initial verification status
+    assert art_piece.artistVerified(), "Artist should already be verified from creation"
+    assert not art_piece.commissionerVerified(), "Commissioner should not be verified yet"
     assert not art_piece.isFullyVerifiedCommission(), "Commission should not be fully verified yet"
     
-    # Act - Artist verifies through profile
-    artist_profile.verifyCommission(art_piece.address, sender=artist)
+    # Act - Commissioner verifies through profile
+    commissioner_profile.verifyArtLinkedToMyCommission(art_piece.address, sender=commissioner)
     
     # Assert - Commission should now be verified overall
     assert art_piece.isFullyVerifiedCommission(), "Commission should now be fully verified"
     
     # Assert - Both profiles should have the commission in verified lists
-    artist_verified = artist_profile.getCommissions(0, 10)
-    commissioner_verified = commissioner_profile.getCommissions(0, 10)
+    artist_verified = artist_profile.getCommissionsByOffset(0, 10, False)
+    commissioner_verified = commissioner_profile.getCommissionsByOffset(0, 10, False)
     assert art_piece.address in artist_verified, "Should be in artist's verified list"
     assert art_piece.address in commissioner_verified, "Should be in commissioner's verified list"
     
     # Assert - Both profiles should not have the commission in unverified lists
-    artist_unverified = artist_profile.getUnverifiedCommissions(0, 10)
-    commissioner_unverified = commissioner_profile.getUnverifiedCommissions(0, 10)
+    artist_unverified = artist_profile.getUnverifiedCommissionsByOffset(0, 10, False)
+    commissioner_unverified = commissioner_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert art_piece.address not in artist_unverified, "Should not be in artist's unverified list"
     assert art_piece.address not in commissioner_unverified, "Should not be in commissioner's unverified list" 

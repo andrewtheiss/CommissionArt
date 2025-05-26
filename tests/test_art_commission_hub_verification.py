@@ -960,16 +960,45 @@ def test_10_verify_unverify_cycle():
     assert commission_hub.countVerifiedArtCommissions() == 1, "Should have 1 verified commission"
     
     # Step 3: Test that artist CANNOT unverify a verified commission
+    # First, let's check who the hub owner is and who the artist is
+    print(f"Hub owner: {commission_hub.owner()}")
+    print(f"Artist: {artist.address}")
+    print(f"User (commissioner): {user.address}")
+    
+    # Check if artist is allowed to update hub
+    is_artist_allowed = art_commission_hub_owners.isAllowedToUpdateHubForAddress(commission_hub.address, artist.address)
+    print(f"Is artist allowed to update hub: {is_artist_allowed}")
+    
+    # Check initial state before unverify attempt
+    initial_verified_count = commission_hub.countVerifiedArtCommissions()
+    initial_unverified_count = commission_hub.countUnverifiedArtCommissions()
+    print(f"Before unverify attempt - Verified: {initial_verified_count}, Unverified: {initial_unverified_count}")
+    
+    # Check if the art piece is actually in the verified registry
+    try:
+        verified_pieces = commission_hub.getVerifiedArtPieces(0, 10)
+        unverified_pieces = commission_hub.getUnverifiedArtPieces(0, 10)
+        print(f"Verified pieces: {verified_pieces}")
+        print(f"Unverified pieces: {unverified_pieces}")
+        print(f"Art piece address: {art_piece.address}")
+        print(f"Is art piece in verified list: {art_piece.address in verified_pieces}")
+        print(f"Is art piece in unverified list: {art_piece.address in unverified_pieces}")
+    except Exception as e:
+        print(f"Error checking piece lists: {e}")
+    
+    # The artist should NOT be allowed to unverify since they're not the hub owner
     with pytest.raises(Exception) as excinfo:
         commission_hub.unverifyCommission(art_piece.address, sender=artist)
     
     # Check error message indicates authorization failure
     error_message = str(excinfo.value).lower()
-    assert "not allowed" in error_message or "auth" in error_message, "Error should mention authorization"
+    assert "not allowed" in error_message or "auth" in error_message, f"Error should mention authorization, got: {excinfo.value}"
     
     # Verify state unchanged after failed unverify attempt
-    assert commission_hub.countUnverifiedArtCommissions() == 0, "Should still have 0 unverified commissions"
-    assert commission_hub.countVerifiedArtCommissions() == 1, "Should still have 1 verified commission"
+    final_verified_count = commission_hub.countVerifiedArtCommissions()
+    final_unverified_count = commission_hub.countUnverifiedArtCommissions()
+    assert final_verified_count == initial_verified_count, f"Verified count should be unchanged, was {initial_verified_count}, now {final_verified_count}"
+    assert final_unverified_count == initial_unverified_count, f"Unverified count should be unchanged, was {initial_unverified_count}, now {final_unverified_count}"
     
     # Step 4: Test that commissioner (non-hub-owner) CANNOT unverify a verified commission
     # Note: In this test, user is both commissioner AND hub owner, so we'll use artist for this test

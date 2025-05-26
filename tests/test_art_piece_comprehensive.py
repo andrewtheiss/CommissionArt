@@ -53,10 +53,7 @@ def setup():
     # Create profiles for test accounts that will be used
     profile_factory.createProfile(artist.address, sender=deployer)
     profile_factory.createProfile(owner.address, sender=deployer)
-    
-    # Get profile addresses
-    artist_profile_address = profile_factory.getProfile(artist.address)
-    owner_profile_address = profile_factory.getProfile(owner.address)
+    profile_factory.createProfile(tagged_person.address, sender=deployer)
     
     # Deploy and initialize an art piece directly for basic testing
     art_piece = project.ArtPiece.deploy(sender=deployer)
@@ -87,8 +84,6 @@ def setup():
         "profile_factory": profile_factory,
         "art_commission_hub_owners": art_commission_hub_owners,
         "art_piece_template": art_piece_template,
-        "artist_profile_address": artist_profile_address,
-        "owner_profile_address": owner_profile_address,
         "art_piece": art_piece
     }
 
@@ -98,18 +93,17 @@ def test_initialization(setup):
     owner = setup["owner"]
     artist = setup["artist"]
     
-    # Check initialization status
-    assert art_piece.isInitialized() is True
+    # Check initialization status using correct method name
+    assert art_piece.initialized() is True
     
     # Check basic data using correct method names
-    assert art_piece.tokenUriData() == TEST_TOKEN_URI_DATA
-    assert art_piece.tokenUriDataFormat() == TEST_TOKEN_URI_DATA_FORMAT
+    assert art_piece.getTokenURIData() == TEST_TOKEN_URI_DATA
+    assert art_piece.tokenURI_data_format() == TEST_TOKEN_URI_DATA_FORMAT
     assert art_piece.title() == TEST_TITLE
     assert art_piece.description() == TEST_DESCRIPTION
-    assert art_piece.getOwner() == owner.address
+    assert art_piece.getOwner() == artist.address  # Original uploader is the effective owner initially
     assert art_piece.artist() == artist.address
     assert art_piece.aiGenerated() == TEST_AI_GENERATED
-
 
 def test_initialize_only_once(setup):
     """Test that initialize can only be called once"""
@@ -139,67 +133,61 @@ def test_initialize_only_once(setup):
     error_message = str(excinfo.value).lower()
     assert "already" in error_message or "initialized" in error_message
 
-
 def test_transfer_ownership(setup):
-    """Test transferring ownership"""
+    """Test that transfer ownership is disabled for art pieces"""
     art_piece = setup["art_piece"]
     owner = setup["owner"]
     deployer = setup["deployer"]
     artist = setup["artist"]
     
-    # Get the initial state
+    # Get the initial state - should be the original uploader (artist)
     initial_owner = art_piece.getOwner()
-    assert initial_owner == owner.address, "Initial owner should be the owner from setup"
+    assert initial_owner == artist.address, "Initial owner should be the original uploader (artist)"
     
-    # Check if it's attached to a hub - if so, skip transfer test
-    if art_piece.artCommissionHub() != ZERO_ADDRESS:
-        pytest.skip("Art piece is attached to a hub, can't transfer ownership")
-    
-    # Now transfer ownership to deployer
-    art_piece.transferOwnership(deployer.address, sender=owner)
-    
-    # Check that the owner was correctly updated to deployer
-    new_owner = art_piece.getOwner()
-    assert new_owner == deployer.address, f"Owner should be deployer after transfer, but got {new_owner} instead of {deployer.address}"
-
-
-def test_transfer_ownership_only_by_owner(setup):
-    """Test that only the owner can transfer ownership"""
-    art_piece = setup["art_piece"]
-    artist = setup["artist"]
-    deployer = setup["deployer"]
-    
-    # Try to transfer ownership from a non-owner account
+    # Try to transfer ownership - should fail because transfers are disabled
     with pytest.raises(Exception) as excinfo:
         art_piece.transferOwnership(deployer.address, sender=artist)
     
-    # Verify the error message contains authorization info
+    # Verify the error message indicates transfers are disabled
     error_message = str(excinfo.value).lower()
-    assert "owner" in error_message or "authorized" in error_message or "permission" in error_message
+    assert "disabled" in error_message or "transfers" in error_message
 
+def test_transfer_ownership_only_by_owner(setup):
+    """Test that transfer ownership fails with proper error message"""
+    art_piece = setup["art_piece"]
+    commissioner = setup["commissioner"]
+    deployer = setup["deployer"]
+    
+    # Try to transfer ownership from a non-owner account - should fail because transfers are disabled
+    with pytest.raises(Exception) as excinfo:
+        art_piece.transferOwnership(deployer.address, sender=commissioner)
+    
+    # Verify the error message indicates transfers are disabled
+    error_message = str(excinfo.value).lower()
+    assert "disabled" in error_message or "transfers" in error_message
 
 def test_transfer_ownership_not_to_zero_address(setup):
-    """Test that ownership cannot be transferred to the zero address"""
+    """Test that transfer ownership fails with proper error message"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
+    artist = setup["artist"]
     
-    # Try to transfer ownership to the zero address
+    # Try to transfer ownership to the zero address - should fail because transfers are disabled
     with pytest.raises(Exception) as excinfo:
-        art_piece.transferOwnership(ZERO_ADDRESS, sender=owner)
+        art_piece.transferOwnership(ZERO_ADDRESS, sender=artist)
     
-    # Verify the error message contains info about invalid address
+    # Verify the error message indicates transfers are disabled
     error_message = str(excinfo.value).lower()
-    assert "invalid" in error_message or "zero" in error_message or "address" in error_message
-
+    assert "disabled" in error_message or "transfers" in error_message
 
 def test_tag_person(setup):
     """Test tagging a person by an owner"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
+    artist = setup["artist"]  # Artist is the effective owner
     tagged_person = setup["tagged_person"]
+    profile_factory = setup["profile_factory"]
     
-    # Owner tags a person
-    art_piece.tagPerson(tagged_person.address, sender=owner)
+    # Artist (effective owner) tags a person
+    art_piece.tagPerson(tagged_person.address, profile_factory.address, sender=artist)
     
     # Verify the person was tagged
     assert art_piece.isPersonTagged(tagged_person.address) is True
@@ -207,16 +195,16 @@ def test_tag_person(setup):
     # Verify address is in the list of tagged addresses
     tagged_addresses = art_piece.getAllTaggedAddresses()
     assert tagged_person.address in tagged_addresses
-
 
 def test_tag_person_as_artist(setup):
     """Test tagging a person by the artist"""
     art_piece = setup["art_piece"]
     artist = setup["artist"]
     tagged_person = setup["tagged_person"]
+    profile_factory = setup["profile_factory"]
     
     # Artist tags a person
-    art_piece.tagPerson(tagged_person.address, sender=artist)
+    art_piece.tagPerson(tagged_person.address, profile_factory.address, sender=artist)
     
     # Verify the person was tagged
     assert art_piece.isPersonTagged(tagged_person.address) is True
@@ -225,90 +213,94 @@ def test_tag_person_as_artist(setup):
     tagged_addresses = art_piece.getAllTaggedAddresses()
     assert tagged_person.address in tagged_addresses
 
-
 def test_tag_person_unauthorized(setup):
     """Test that only the owner or artist can tag a person"""
     art_piece = setup["art_piece"]
     commissioner = setup["commissioner"]
     tagged_person = setup["tagged_person"]
+    profile_factory = setup["profile_factory"]
     
     # Try to tag a person from an unauthorized account
     with pytest.raises(Exception) as excinfo:
-        art_piece.tagPerson(tagged_person.address, sender=commissioner)
+        art_piece.tagPerson(tagged_person.address, profile_factory.address, sender=commissioner)
     
     # Verify the error message contains authorization info
     error_message = str(excinfo.value).lower()
-    assert "owner" in error_message or "artist" in error_message or "authorized" in error_message
-
+    assert "owner" in error_message or "artist" in error_message or "only" in error_message
 
 def test_tag_not_zero_address(setup):
     """Test that the zero address cannot be tagged"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
+    artist = setup["artist"]  # Artist is the effective owner
+    profile_factory = setup["profile_factory"]
     
     # Try to tag the zero address
     with pytest.raises(Exception) as excinfo:
-        art_piece.tagPerson(ZERO_ADDRESS, sender=owner)
+        art_piece.tagPerson(ZERO_ADDRESS, profile_factory.address, sender=artist)
     
     # Verify the error message contains info about zero address
     error_message = str(excinfo.value).lower()
-    assert "zero" in error_message or "invalid" in error_message
-
+    assert "zero" in error_message or "invalid" in error_message or "cannot" in error_message
 
 def test_tag_limits(setup):
     """Test the upper limit of tagged addresses"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
+    artist = setup["artist"]  # Artist is the effective owner
     deployer = setup["deployer"]
-    artist = setup["artist"]
     tagged_person = setup["tagged_person"]
     commissioner = setup["commissioner"]
+    owner = setup["owner"]
+    profile_factory = setup["profile_factory"]
     
     # Use the accounts we already have for tagging, to ensure they exist
     accounts_to_tag = [
         deployer,     # accounts.test_accounts[0]
-        artist,       # accounts.test_accounts[1]
         tagged_person, # accounts.test_accounts[3]
-        commissioner   # accounts.test_accounts[4]
+        commissioner,  # accounts.test_accounts[4]
+        owner         # accounts.test_accounts[2]
     ]
     
-    # Tag these accounts (excluding owner as they can't tag themselves)
+    # Tag these accounts (excluding artist as they can't tag themselves)
     for account in accounts_to_tag:
-        if account.address != owner.address:
-            art_piece.tagPerson(account.address, sender=owner)
+        if account.address != artist.address:
+            art_piece.tagPerson(account.address, profile_factory.address, sender=artist)
     
     # Verify tagged addresses
     tagged_addresses = art_piece.getAllTaggedAddresses()
     assert len(tagged_addresses) >= 1  # At least one should be tagged
     
     # Check a specific account is tagged
-    assert art_piece.isPersonTagged(artist.address) is True
-
+    assert art_piece.isPersonTagged(deployer.address) is True
 
 def test_validate_tag(setup):
     """Test validating a tag"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
+    artist = setup["artist"]  # Artist is the effective owner
     tagged_person = setup["tagged_person"]
+    profile_factory = setup["profile_factory"]
     
-    # Owner tags a person
-    art_piece.tagPerson(tagged_person.address, sender=owner)
+    # Artist tags a person
+    art_piece.tagPerson(tagged_person.address, profile_factory.address, sender=artist)
     
-    # Tagged person validates the tag
+    # Tagged person validates the tag - use call() to get return value
+    result = art_piece.validateTag.call(sender=tagged_person)
+    assert result is True
+    
+    # Actually execute the transaction
     art_piece.validateTag(sender=tagged_person)
     
     # Verify the tag is validated
     assert art_piece.isTaggedValidated(tagged_person.address) is True
 
-
 def test_invalidate_tag(setup):
     """Test invalidating a tag"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
+    artist = setup["artist"]  # Artist is the effective owner
     tagged_person = setup["tagged_person"]
+    profile_factory = setup["profile_factory"]
     
-    # Owner tags a person
-    art_piece.tagPerson(tagged_person.address, sender=owner)
+    # Artist tags a person
+    art_piece.tagPerson(tagged_person.address, profile_factory.address, sender=artist)
     
     # Tagged person initially validates the tag
     art_piece.validateTag(sender=tagged_person)
@@ -320,20 +312,14 @@ def test_invalidate_tag(setup):
     # Verify the tag is invalidated
     assert art_piece.isTaggedValidated(tagged_person.address) is False
 
-
 def test_validate_tag_requires_being_tagged(setup):
     """Test that only tagged persons can validate their tag"""
     art_piece = setup["art_piece"]
     tagged_person = setup["tagged_person"]
     
-    # Try to validate a tag when not tagged
-    with pytest.raises(Exception) as excinfo:
-        art_piece.validateTag(sender=tagged_person)
-    
-    # Verify the error message contains relevant info
-    error_message = str(excinfo.value).lower()
-    assert "tagged" in error_message or "not" in error_message
-
+    # Try to validate a tag when not tagged - should return False
+    result = art_piece.validateTag.call(sender=tagged_person)
+    assert result is False
 
 def test_invalidate_tag_requires_being_tagged(setup):
     """Test that only tagged persons can invalidate their tag"""
@@ -348,7 +334,6 @@ def test_invalidate_tag_requires_being_tagged(setup):
     error_message = str(excinfo.value).lower()
     assert "tagged" in error_message or "not" in error_message
 
-
 def test_is_on_chain(setup):
     """Test that the IS_ON_CHAIN constant is set to True"""
     art_piece = setup["art_piece"]
@@ -356,22 +341,61 @@ def test_is_on_chain(setup):
     # Verify the IS_ON_CHAIN constant is True
     assert art_piece.IS_ON_CHAIN() is True
 
-
 def test_all_getter_methods(setup):
     """Test all getter methods of the contract"""
     art_piece = setup["art_piece"]
-    owner = setup["owner"]
     artist = setup["artist"]
     
     # Test all available getter methods using correct method names
-    assert art_piece.tokenUriData() == TEST_TOKEN_URI_DATA
-    assert art_piece.tokenUriDataFormat() == TEST_TOKEN_URI_DATA_FORMAT
+    assert art_piece.getTokenURIData() == TEST_TOKEN_URI_DATA
+    assert art_piece.tokenURI_data_format() == TEST_TOKEN_URI_DATA_FORMAT
     assert art_piece.title() == TEST_TITLE
     assert art_piece.description() == TEST_DESCRIPTION
-    assert art_piece.getOwner() == owner.address
+    assert art_piece.getOwner() == artist.address  # Original uploader is the effective owner
     assert art_piece.artist() == artist.address
     assert art_piece.aiGenerated() == TEST_AI_GENERATED
     
     # Test initialization status and constants
-    assert art_piece.isInitialized() is True
-    assert art_piece.IS_ON_CHAIN() is True 
+    assert art_piece.initialized() is True
+    assert art_piece.IS_ON_CHAIN() is True
+
+def test_erc721_methods(setup):
+    """Test ERC721 standard methods"""
+    art_piece = setup["art_piece"]
+    artist = setup["artist"]
+    
+    # Test ERC721 methods
+    assert art_piece.name() == "ArtPiece"
+    assert art_piece.symbol() == "ART"
+    assert art_piece.balanceOf(artist.address) == 1  # Artist is the effective owner
+    assert art_piece.ownerOf(1) == artist.address  # Token ID 1
+    
+    # Test that approvals are disabled
+    with pytest.raises(Exception) as excinfo:
+        art_piece.approve(accounts.test_accounts[5].address, 1, sender=artist)
+    
+    error_message = str(excinfo.value).lower()
+    assert "disabled" in error_message or "approvals" in error_message
+    
+    # Test that transfers are disabled
+    with pytest.raises(Exception) as excinfo:
+        art_piece.transferFrom(artist.address, accounts.test_accounts[5].address, 1, sender=artist)
+    
+    error_message = str(excinfo.value).lower()
+    assert "disabled" in error_message or "transfers" in error_message
+
+def test_commission_methods(setup):
+    """Test commission-related methods"""
+    art_piece = setup["art_piece"]
+    
+    # Test commission status methods
+    assert art_piece.getCommissioner() == setup["owner"].address
+    assert art_piece.getArtist() == setup["artist"].address
+    
+    # Since commissioner != artist, this is a commission piece but not fully verified yet
+    # (it would need both parties to verify to be fully verified)
+    assert art_piece.isFullyVerifiedCommission() is False
+    assert art_piece.isUnverifiedCommission() is True
+    
+    # Test hub attachment
+    assert art_piece.getArtCommissionHubAddress() == ZERO_ADDRESS 

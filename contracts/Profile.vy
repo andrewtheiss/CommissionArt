@@ -185,6 +185,8 @@ def removeFromWhitelist(_address: address):
 def addToBlacklist(_address: address):
     assert msg.sender == self.owner, "Only owner can add to blacklist"
     self.blacklist[_address] = True
+    # Remove from whitelist when adding to blacklist
+    self.whitelist[_address] = False
 
 @external
 def removeFromBlacklist(_address: address):

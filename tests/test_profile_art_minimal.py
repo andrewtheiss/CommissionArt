@@ -1,6 +1,10 @@
 import pytest
 from ape import accounts, project
 
+# Test data
+TEST_TOKEN_URI_DATA = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9"
+ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 @pytest.fixture
 def setup():
     # Get accounts for testing
@@ -8,53 +12,65 @@ def setup():
     artist = accounts.test_accounts[1]
     owner = accounts.test_accounts[2]
     
-    # Deploy ArtCommissionHub
-    commission_hub = project.ArtCommissionHub.deploy(sender=deployer)
-    print(f"Deployed ArtCommissionHub at {commission_hub.address}")
-    
-    # Deploy ArtPiece template
-    art_piece_template = project.ArtPiece.deploy(sender=deployer)
-    print(f"Deployed ArtPiece template at {art_piece_template.address}")
-    
-    # Deploy Profile template
+    # Deploy all templates
     profile_template = project.Profile.deploy(sender=deployer)
     print(f"Deployed Profile template at {profile_template.address}")
     
-    # Deploy ProfileFactoryAndRegistry with the template
-    # Deploy ProfileSocial template
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
-
-
-    # Deploy ProfileFactoryAndRegistry with both templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
+    print(f"Deployed ProfileSocial template at {profile_social_template.address}")
+    
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+    print(f"Deployed ArtCommissionHub template at {commission_hub_template.address}")
+    
+    art_piece_template = project.ArtPiece.deploy(sender=deployer)
+    print(f"Deployed ArtPiece template at {art_piece_template.address}")
+    
+    # Deploy ProfileFactoryAndRegistry with all templates
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
-    print(f"Deployed ProfileFactoryAndRegistry at {profile_factory_and_regsitry.address}")
+    print(f"Deployed ProfileFactoryAndRegistry at {profile_factory_and_registry.address}")
+    
+    # Deploy ArtCommissionHubOwners
+    art_commission_hub_owners = project.ArtCommissionHubOwners.deploy(
+        deployer.address,  # L2OwnershipRelay
+        commission_hub_template.address,
+        art_piece_template.address,
+        sender=deployer
+    )
+    print(f"Deployed ArtCommissionHubOwners at {art_commission_hub_owners.address}")
+    
+    # Link factory and hub owners
+    profile_factory_and_registry.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory_and_registry.address, sender=deployer)
     
     return {
         "deployer": deployer,
         "artist": artist,
         "owner": owner,
-        "commission_hub": commission_hub,
-        "art_piece_template": art_piece_template,
         "profile_template": profile_template,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry
+        "profile_social_template": profile_social_template,
+        "commission_hub_template": commission_hub_template,
+        "art_piece_template": art_piece_template,
+        "profile_factory_and_registry": profile_factory_and_registry,
+        "art_commission_hub_owners": art_commission_hub_owners
     }
 
 def test_minimal_profile_creation(setup):
     """Test the most basic profile creation"""
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     owner = setup["owner"]
     
     # Create a profile for the owner
-    tx = profile_factory_and_regsitry.createProfile(sender=owner)
+    tx = profile_factory_and_registry.createProfile(owner.address, sender=setup["deployer"])
     print(f"Profile creation transaction: {tx.txn_hash}")
     
     # Verify profile was created
-    assert profile_factory_and_regsitry.hasProfile(owner.address) is True
-    profile_address = profile_factory_and_regsitry.getProfile(owner.address)
+    assert profile_factory_and_registry.hasProfile(owner.address) is True
+    profile_address = profile_factory_and_registry.getProfile(owner.address)
     print(f"Profile created at address: {profile_address}")
     
     # Access the profile
@@ -66,7 +82,7 @@ def test_minimal_profile_creation(setup):
     print(f"Initial art count: {profile.myArtCount()}")
     
     # Try to get art pieces (should be empty)
-    art_pieces = profile.getArtPieces(0, 10)
+    art_pieces = profile.getArtPiecesByOffset(0, 10, False)
     print(f"Initial art pieces: {art_pieces}")
 
 def test_minimal_art_piece_creation(setup):
@@ -75,37 +91,32 @@ def test_minimal_art_piece_creation(setup):
     test_minimal_profile_creation(setup)
     
     # Get the profile directly instead of using the return value
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     owner = setup["owner"]
-    profile_address = profile_factory_and_regsitry.getProfile(owner.address)
+    profile_address = profile_factory_and_registry.getProfile(owner.address)
     profile = project.Profile.at(profile_address)
     
-    artist = setup["artist"] 
     art_piece_template = setup["art_piece_template"]
-    commission_hub = setup["commission_hub"]
     
     # Test data for art piece
-    image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
     title = "Test Artwork"
     description = "This is a test description"
     
     print("\nCreating art piece...")
     print(f"Art piece template: {art_piece_template.address}")
-    print(f"Commission hub: {commission_hub.address}")
     print(f"Owner: {owner.address}")
-    print(f"Artist: {artist.address}")
     
-    # Create art piece
+    # Create art piece (personal piece - owner is both artist and commissioner)
     tx_receipt = profile.createArtPiece(
         art_piece_template.address,
-        image_data,
+        TEST_TOKEN_URI_DATA,
         "avif",
         title,
         description,
-        False,  # Not as artist
-        artist.address,
+        True,  # As artist (creating their own art)
+        owner.address,  # Other party is also owner (personal piece)
         False,  # Not AI generated
-        commission_hub.address,
+        ZERO_ADDRESS,  # No commission hub
         False,  # Not profile art
         sender=owner
     )
@@ -121,7 +132,7 @@ def test_minimal_art_piece_creation(setup):
     assert new_count == 1, f"Expected art count to be 1, got {new_count}"
     
     # Get art pieces 
-    art_pieces = profile.getArtPieces(0, 10)
+    art_pieces = profile.getArtPiecesByOffset(0, 10, False)
     print(f"Art pieces list (count: {len(art_pieces)}): {art_pieces}")
     
     # Should have at least one entry if successful
@@ -144,5 +155,5 @@ def test_minimal_art_piece_creation(setup):
     print(f"Art piece title: {piece_title}")
     
     assert piece_owner == owner.address
-    assert piece_artist == artist.address
+    assert piece_artist == owner.address  # Personal piece, so owner is also artist
     assert piece_title == title 
