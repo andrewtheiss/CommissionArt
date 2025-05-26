@@ -279,8 +279,15 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     if is_potential_commission:
         is_verified_by_both = staticcall art_piece.isFullyVerifiedCommission()
     
+    # Check if we should add to verified list due to whitelisting
+    should_add_to_verified: bool = is_verified_by_both
+    if is_potential_commission and not is_verified_by_both:
+        # If the artist or commissioner is whitelisted by this profile, add to verified list
+        if self.whitelist[commissioner] or self.whitelist[art_artist]:
+            should_add_to_verified = True
+    
     # Add to verified list
-    if is_verified_by_both:
+    if should_add_to_verified:
         self._addToVerifiedList(_art_piece)
 
     # Add to myUnverified list
@@ -351,10 +358,6 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
     elif is_commissioner and not commissioner_verified:
         # Verify as commissioner
         extcall art_piece.verifyAsCommissioner()
-
-    #TODO - verify artist and commissioner currently have a check that msg.sender is the person, but 
-    #   it actually gets set to this Profile address instead.  i need to get the owner of the profile if 
-    #   its an address
     
     # Check if now fully verified - this will move from myUnverified to verified
     is_now_verified: bool = staticcall art_piece.isFullyVerifiedCommission()
@@ -758,6 +761,8 @@ def createArtPiece(
             # Add to verified myCommissions
             self.myCommissions.append(art_piece_address)
             self.myCommissionCount += 1
+            # Update mapping for position tracking
+            self.myCommissionExistsAndPositionOffsetByOne[art_piece_address] = self.myCommissionCount
             
             # If both parties are whitelisted, we can have an already-verified piece
             if art_commission_hub != empty(address):
@@ -767,6 +772,8 @@ def createArtPiece(
             # Add to myUnverified myCommissions
             self.myUnverifiedCommissions.append(art_piece_address)
             self.myUnverifiedCommissionCount += 1
+            # Update mapping for position tracking
+            self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[art_piece_address] = self.myUnverifiedCommissionCount
 
     return art_piece_address
 

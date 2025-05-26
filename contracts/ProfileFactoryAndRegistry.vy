@@ -33,19 +33,22 @@ interface Profile:
     def allowUnverifiedCommissions() -> bool: view
     def addCommission(_commission: address): nonpayable
     def myCommissionCount() -> uint256: view
+    def linkArtPieceAsMyCommission(_art_piece: address) -> bool: nonpayable
 
 interface ProfileSocial:
     def initialize(_owner: address, _profile: address, _profile_factory_and_registry: address): nonpayable
 
 interface ArtCommissionHub:
     def initializeForArtCommissionHub(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256): nonpayable
+    def initializeParentCommissionHubOwnerContract(_art_commission_hub_owners: address): nonpayable
 
 interface ArtCommissionHubOwners:
     def getCommissionHubsByOwner(_owner: address, _page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
     def getCommissionHubCountByOwner(_owner: address) -> uint256: view
     def isSystemAllowed(_address: address) -> bool: view
     def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]: view    
-
+    def registerNFTOwnerFromParentChain(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256, _owner: address): nonpayable
+    def createGenericCommissionHub(_owner: address) -> address: nonpayable
 
 owner: public(address)
 profileTemplate: public(address)  # Address of the profile contract template to clone
@@ -198,33 +201,67 @@ def createNewArtPieceAndRegisterProfileAndAttachToHub(
         _linked_to_art_commission_hub_chain_id = 1 (or whatever chain ID is appropriate for generic hubs)
     """
 
+    # Validation
+    assert _art_piece_template != empty(address), "Invalid art piece template"
+    assert self.artCommissionHubOwners != empty(address), "ArtCommissionHubOwners not set"
+
     # Create profile
     profile: address = empty(address)
     profile_social: address = empty(address)
     (profile, profile_social) = self._createProfile(msg.sender)
-
-    # If there is no commission hub address AND we have details to create one, do so
-    if empty(address) == _commission_hub:
+    
+    # Determine which commission hub to use
+    commission_hub_to_use: address = _commission_hub
+    
+    # If no commission hub provided AND we have details to create one
+    if _commission_hub == empty(address) and _linked_to_art_commission_hub_address != empty(address):
         # Create a new commission hub
-        commission_hub: address = create_minimal_proxy_to(self.commissionHubTemplate)
-        commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
-
-        # /initialize as either generic hub for individual account or NFT hub
+        new_hub: address = create_minimal_proxy_to(self.commissionHubTemplate)
+        commission_hub_instance: ArtCommissionHub = ArtCommissionHub(new_hub)
+        
+        # CRITICAL: Initialize with parent contract first
+        extcall commission_hub_instance.initializeParentCommissionHubOwnerContract(self.artCommissionHubOwners)
+        
+        # Determine if generic or NFT-based hub
         if _linked_to_art_commission_hub_address == GENERIC_ART_COMMISSION_HUB_CONTRACT:
-            nft_token_id_or_generic_hub_account: uint256 = convert(msg.sender, uint256)
+            # For generic hub, use the caller's address as the account
+            generic_account: uint256 = convert(msg.sender, uint256)
+            
+            # Initialize as generic hub
             extcall commission_hub_instance.initializeForArtCommissionHub(
-                GENERIC_ART_COMMISSION_HUB_CHAIN_ID, 
-                GENERIC_ART_COMMISSION_HUB_CONTRACT, 
-                nft_token_id_or_generic_hub_account
+                GENERIC_ART_COMMISSION_HUB_CHAIN_ID,
+                GENERIC_ART_COMMISSION_HUB_CONTRACT,
+                generic_account
+            )
+            
+            # Register with ArtCommissionHubOwners for generic hub
+            owners_interface: ArtCommissionHubOwners = ArtCommissionHubOwners(self.artCommissionHubOwners)
+            if staticcall owners_interface.isSystemAllowed(self):
+                # If we're allowed, register directly
+                extcall owners_interface.registerNFTOwnerFromParentChain(
+                    GENERIC_ART_COMMISSION_HUB_CHAIN_ID,
+                    GENERIC_ART_COMMISSION_HUB_CONTRACT,
+                    generic_account,
+                    msg.sender
                 )
+            else:
+                # Otherwise use createGenericCommissionHub which handles registration
+                new_hub = extcall owners_interface.createGenericCommissionHub(msg.sender)
+                commission_hub_instance = ArtCommissionHub(new_hub)
         else:
+            # Initialize as NFT-based hub
             extcall commission_hub_instance.initializeForArtCommissionHub(
-                _linked_to_art_commission_hub_chain_id, 
-                _linked_to_art_commission_hub_address, 
+                _linked_to_art_commission_hub_chain_id,
+                _linked_to_art_commission_hub_address,
                 _linked_to_art_commission_hub_token_id_or_generic_hub_account
-                )
-
-    # Create the art piece on the profile
+            )
+            
+            # For NFT hubs, registration happens through L2OwnershipRelay
+            # The hub will be in "pending registration" state until owner is verified
+        
+        commission_hub_to_use = new_hub
+ 
+    # Create the art piece on the profile with the correct hub
     profile_instance: Profile = Profile(profile)
     art_piece: address = extcall profile_instance.createArtPiece(
         _art_piece_template,
@@ -235,10 +272,11 @@ def createNewArtPieceAndRegisterProfileAndAttachToHub(
         _is_artist,
         _other_party,
         _ai_generated,
-        _commission_hub
+        commission_hub_to_use  # Use the determined hub (original or new)
     )
     
     log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
+    
     # Explicitly create and return the tuple
     return (profile, art_piece)
 
@@ -274,9 +312,11 @@ def createProfilesAndArtPieceWithBothProfilesLinked(
     @param _ai_generated Whether the art is AI generated
     @return Tuple of (caller_profile, other_party_profile, art_piece, commission_hub)
     """
-    # Check if the other party is a valid address
+    # Validation
     assert _other_party != empty(address), "Other party address cannot be empty"
     assert _other_party != msg.sender, "Cannot create art piece for yourself"
+    assert _art_piece_template != empty(address), "Invalid art piece template"
+    
     
     caller_profile: address = empty(address)
     caller_profile_social: address = empty(address)
@@ -285,6 +325,11 @@ def createProfilesAndArtPieceWithBothProfilesLinked(
     (caller_profile, caller_profile_social) = self._createProfile(msg.sender)
     (other_profile, other_profile_social) = self._createProfile(_other_party)
     
+    # IMPORTANT: Use the provided commission hub or empty address
+    # We do NOT create commission hubs in this function since it's meant for 
+    # linking both profiles immediately, and hub submission should wait for verification
+    commission_hub_to_use: address = _commission_hub
+
     # Create the art piece on the caller's profile
     caller_profile_instance: Profile = Profile(caller_profile)
     art_piece: address = extcall caller_profile_instance.createArtPiece(
@@ -296,7 +341,7 @@ def createProfilesAndArtPieceWithBothProfilesLinked(
         _is_artist,
         _other_party,
         _ai_generated,
-        _commission_hub
+        commission_hub_to_use
     )
     
     log ArtPieceCreated(profile=caller_profile, art_piece=art_piece, user=msg.sender)
@@ -306,18 +351,18 @@ def createProfilesAndArtPieceWithBothProfilesLinked(
     # and not have any of these set
     # Check if the other party has blacklisted the caller
     other_profile_instance: Profile = Profile(other_profile)
-    if staticcall other_profile_instance.blacklist(msg.sender):
-        # Just return without adding to unverified commissions
-        # This silently fails to add to unverified commissions, but the art piece is still created
-        return (caller_profile, other_profile, art_piece, _commission_hub)
+    is_blacklisted: bool = staticcall other_profile_instance.blacklist(msg.sender)
     
-    # Check if unverified commissions are allowed
-    allow_unverified: bool = staticcall other_profile_instance.allowUnverifiedCommissions()
-    
-    # Add to the other party's commissions if allowed
-    if allow_unverified:
-        extcall other_profile_instance.addCommission(art_piece)
-    
+    if not is_blacklisted:
+        # Check if unverified commissions are allowed
+        allow_unverified: bool = staticcall other_profile_instance.allowUnverifiedCommissions()
+        
+        # Link to the other party's profile if allowed
+        if allow_unverified:
+            # FIX: Use the correct method name
+            linked: bool = extcall other_profile_instance.linkArtPieceAsMyCommission(art_piece)
+            # Note: We ignore the return value as it might fail for various reasons
+
     return (caller_profile, other_profile, art_piece, _commission_hub)
 
 @external

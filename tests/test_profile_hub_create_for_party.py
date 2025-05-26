@@ -25,10 +25,14 @@ def setup():
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
 
 
-    # Deploy ProfileFactoryAndRegistry with both templates
+    # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ProfileFactoryAndRegistry with all three templates
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
@@ -120,19 +124,19 @@ def test_artist_creates_art_for_new_commissioner(setup):
     assert artist_profile.myArtCount() == 1
     
     # Get the art piece
-    latest_art_pieces = artist_profile.getLatestArtPieces()
+    latest_art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
     assert len(latest_art_pieces) == 1
     art_piece_address = latest_art_pieces[0]
     
     # Verify art piece was added to commissioner's unverified commissions
-    unverified_commissions = commissioner_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = commissioner_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert len(unverified_commissions) == 1
     assert unverified_commissions[0] == art_piece_address
     
     # Load and verify the art piece properties
     art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getOwner() == commissioner.address  # Commissioner owns the art
     assert art_piece.getArtist() == artist.address  # Artist created it
+    assert art_piece.getCommissioner() == commissioner.address  # Commissioner is the commissioner
     assert art_piece.getTokenURIData() == token_uri_data
     assert art_piece.getTitle() == title
     assert art_piece.getDescription() == description
@@ -165,6 +169,9 @@ def test_commissioner_creates_art_for_existing_artist(setup):
     description = "Commissioner requesting art"
     is_artist = False  # Commissioner is not the artist
     
+    # Create a commission hub for this test
+    commission_hub = setup["commission_hub"]
+    
     # Act - Create art piece for artist
     result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
@@ -174,7 +181,7 @@ def test_commissioner_creates_art_for_existing_artist(setup):
         description,
         is_artist,
         artist.address,  # Artist is the other party
-        ZERO_ADDRESS,  # No commission hub
+        commission_hub.address,  # Use commission hub
         False,  # Not AI generated
         sender=commissioner
     )
@@ -194,21 +201,22 @@ def test_commissioner_creates_art_for_existing_artist(setup):
     assert commissioner_profile.myArtCount() == 1
     
     # Get the art piece
-    latest_art_pieces = commissioner_profile.getLatestArtPieces()
+    latest_art_pieces = commissioner_profile.getArtPiecesByOffset(0, 10, False)
     assert len(latest_art_pieces) == 1
     art_piece_address = latest_art_pieces[0]
     
     # Verify art piece was added to artist's unverified commissions
-    unverified_commissions = artist_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = artist_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert len(unverified_commissions) == 1
     assert unverified_commissions[0] == art_piece_address
     
     # Load and verify the art piece properties
     art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getOwner() == commissioner.address  # Commissioner owns the art
+    assert art_piece.getCommissioner() == commissioner.address  # Commissioner is the commissioner
     assert art_piece.getArtist() == artist.address  # Artist created it
     assert art_piece.getTitle() == title
     assert art_piece.getDescription() == description
+    assert art_piece.getArtCommissionHubAddress() == commission_hub.address
 
 def test_blacklisted_user_cannot_add_to_unverified(setup):
     """
@@ -231,6 +239,9 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
     description = "Art from blacklisted user"
     is_artist = True
     
+    # Create a commission hub for this test
+    commission_hub = setup["commission_hub"]
+    
     # Act - Create art piece for blacklister
     result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
@@ -240,7 +251,7 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
         description,
         is_artist,
         blacklister.address,
-        ZERO_ADDRESS,
+        commission_hub.address,
         False,
         sender=new_user
     )
@@ -258,18 +269,19 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
     assert new_user_profile.myArtCount() == 1
     
     # Get the art piece
-    latest_art_pieces = new_user_profile.getLatestArtPieces()
+    latest_art_pieces = new_user_profile.getArtPiecesByOffset(0, 10, False)
     assert len(latest_art_pieces) == 1
     art_piece_address = latest_art_pieces[0]
     
     # Verify art piece was NOT added to blacklister's unverified commissions
-    unverified_commissions = blacklister_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = blacklister_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert len(unverified_commissions) == 0
     
     # Verify the art piece properties
     art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getOwner() == blacklister.address  # Blacklister still owns the art
+    assert art_piece.getCommissioner() == blacklister.address  # Blacklister is the commissioner
     assert art_piece.getArtist() == new_user.address  # New user is the artist
+    assert art_piece.getArtCommissionHubAddress() == commission_hub.address
 
 def test_whitelisted_user_adds_directly_to_verified(setup):
     """
@@ -295,6 +307,9 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     description = "Art from whitelisted user"
     is_artist = True
     
+    # Create a commission hub for this test
+    commission_hub = setup["commission_hub"]
+    
     # Act - Create art piece for whitelister
     result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
@@ -304,7 +319,7 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
         description,
         is_artist,
         whitelister.address,
-        ZERO_ADDRESS,
+        commission_hub.address,
         False,
         sender=new_user
     )
@@ -322,7 +337,7 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     assert new_user_profile.myArtCount() == 1
     
     # Get the art piece
-    latest_art_pieces = new_user_profile.getLatestArtPieces()
+    latest_art_pieces = new_user_profile.getArtPiecesByOffset(0, 10, False)
     assert len(latest_art_pieces) == 1
     art_piece_address = latest_art_pieces[0]
     
@@ -333,11 +348,11 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
     print(f"Is new_user whitelisted: {whitelister_profile.whitelist(new_user.address)}")
     
     # Verify art piece was added to whitelister's verified commissions
-    verified_commissions = whitelister_profile.getCommissions(0, 10)
+    verified_commissions = whitelister_profile.getCommissionsByOffset(0, 10, False)
     print(f"Verified commissions count: {len(verified_commissions)}")
     
     # Verify art piece was NOT added to whitelister's unverified commissions
-    unverified_commissions = whitelister_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = whitelister_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     print(f"Unverified commissions count: {len(unverified_commissions)}")
     if len(unverified_commissions) > 0:
         print(f"Unverified commission: {unverified_commissions[0]}")
@@ -380,6 +395,9 @@ def test_unverified_commissions_disabled(setup):
     description = "Art with unverified commissions disabled"
     is_artist = False  # Commissioner is not the artist
     
+    # Create a commission hub for this test
+    commission_hub = setup["commission_hub"]
+    
     # Act - Create art piece for artist
     result = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
@@ -389,28 +407,29 @@ def test_unverified_commissions_disabled(setup):
         description,
         is_artist,
         artist.address,
-        ZERO_ADDRESS,
+        commission_hub.address,
         False,
         sender=commissioner
     )
     
     # Get the art piece
-    latest_art_pieces = commissioner_profile.getLatestArtPieces()
+    latest_art_pieces = commissioner_profile.getArtPiecesByOffset(0, 10, False)
     assert len(latest_art_pieces) == 1
     art_piece_address = latest_art_pieces[0]
     
     # Verify art piece was NOT added to artist's unverified commissions
-    unverified_commissions = artist_profile.getUnverifiedCommissions(0, 10)
+    unverified_commissions = artist_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     assert len(unverified_commissions) == 0
     
     # Verify art piece was NOT added to artist's verified commissions either
-    verified_commissions = artist_profile.getCommissions(0, 10)
+    verified_commissions = artist_profile.getCommissionsByOffset(0, 10, False)
     assert len(verified_commissions) == 0
     
     # Verify the art piece properties
     art_piece = project.ArtPiece.at(art_piece_address)
-    assert art_piece.getOwner() == commissioner.address  # Commissioner owns the art
+    assert art_piece.getCommissioner() == commissioner.address  # Commissioner is the commissioner
     assert art_piece.getArtist() == artist.address  # Artist created it
+    assert art_piece.getArtCommissionHubAddress() == commission_hub.address
 
 def test_ai_generated_flag_set_correctly(setup):
     """
@@ -428,6 +447,9 @@ def test_ai_generated_flag_set_correctly(setup):
     description = "AI generated art"
     is_artist = True
     
+    # Create a commission hub for this test
+    commission_hub = setup["commission_hub"]
+    
     # Act - Create AI generated art piece
     profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
@@ -437,7 +459,7 @@ def test_ai_generated_flag_set_correctly(setup):
         description,
         is_artist,
         commissioner.address,
-        ZERO_ADDRESS,
+        commission_hub.address,
         True,  # AI generated
         sender=artist
     )
@@ -449,7 +471,7 @@ def test_ai_generated_flag_set_correctly(setup):
     artist_profile = project.Profile.at(artist_profile_address)
     
     # Get the art piece from the artist's latest art pieces
-    latest_art_pieces = artist_profile.getLatestArtPieces()
+    latest_art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
     assert len(latest_art_pieces) == 1
     art_piece_address = latest_art_pieces[0]
     
@@ -505,6 +527,9 @@ def test_events_emitted_correctly(setup):
     description = "Art for event testing"
     is_artist = True
     
+    # Create a commission hub for this test
+    commission_hub = setup["commission_hub"]
+    
     # Act - Create art piece and capture events
     tx = profile_factory_and_regsitry.createProfilesAndArtPieceWithBothProfilesLinked(
         art_piece_template.address,
@@ -514,7 +539,7 @@ def test_events_emitted_correctly(setup):
         description,
         is_artist,
         commissioner.address,
-        ZERO_ADDRESS,
+        commission_hub.address,
         False,
         sender=artist
     )
