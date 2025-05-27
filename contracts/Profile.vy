@@ -683,7 +683,7 @@ def createArtPiece(
     personal_piece: bool = _is_profile_art or (_other_party == self.owner)
     indirect_creation_call: bool = msg.sender == self._getDeployer() or msg.sender == self.profileFactoryAndRegistry
     if personal_piece:
-        assert msg.sender == self.owner, "Only profile owner can create personal art piece"
+        assert msg.sender == self.owner or indirect_creation_call, "Only profile owner or system can create personal art piece"
     else:
         assert msg.sender == self.owner or indirect_creation_call, "Only profile owner or deployer can create commission art piece"
    

@@ -242,8 +242,9 @@ def _isContract(_addr: address) -> bool:
 #Called by L2OwnershipRelay when ownership is verified, including chain_id, nft_contract, nft_token_id_or_generic_hub_account, and owner as parameters.
 @external
 def registerNFTOwnerFromParentChain(_chain_id: uint256, _nft_contract: address, _nft_token_id_or_generic_hub_account: uint256, _owner: address):
-    # Only allow registration from L2OwnershipRelay
-    assert msg.sender == self.l2OwnershipRelay or msg.sender == self.owner, "Only L2OwnershipRelay or the owner can register artCommissionHubOwners"
+    # Only allow registration from system allowed addresses
+    allowed: bool = (msg.sender == self.owner or msg.sender == self.l2OwnershipRelay or msg.sender == self or msg.sender == self.profileFactoryAndRegistry)
+    assert allowed, "Only system allowed addresses can register artCommissionHubOwners"
     self._createOrUpdateCommissionHubAndOwner(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account, _owner)
 
 # Create a generic commission hub for non-NFT artCommissionHubOwners like multisigs, DAOs, or individual wallets
@@ -565,6 +566,6 @@ def isAllowedToUpdateHubForAddress(_commission_hub: address, _user: address) -> 
 @external
 @view
 def isSystemAllowed(_address: address) -> bool:
-    # Either the owner or the L2OwnershipRelay or the ArtCommissionHubOwners contract itself can update
-    allowed: bool = (_address == self.owner or _address == self.l2OwnershipRelay or _address == self)
+    # Either the owner or the L2OwnershipRelay or the ArtCommissionHubOwners contract itself or the ProfileFactoryAndRegistry can update
+    allowed: bool = (_address == self.owner or _address == self.l2OwnershipRelay or _address == self or _address == self.profileFactoryAndRegistry)
     return allowed

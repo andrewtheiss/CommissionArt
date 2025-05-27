@@ -46,10 +46,14 @@ def setup():
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
 
 
-    # Deploy ProfileFactoryAndRegistry with both templates
+    # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+    
+    # Deploy ProfileFactoryAndRegistry with all templates
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
@@ -89,7 +93,8 @@ def setup():
         "owner_sales": owner_sales,
         "artist_sales": artist_sales,
         "art_piece_template": art_piece_template,
-        "commission_hub": commission_hub
+        "commission_hub": commission_hub,
+        "commission_hub_template": commission_hub_template
     }
 
 def test_getProfileErc1155sForSale(setup):
@@ -110,7 +115,7 @@ def test_getProfileErc1155sForSale(setup):
     title = "Test ERC1155"
     description = "Test ERC1155 token for sale"
     
-    # Create an art piece on the artist's profile
+    # Create an art piece on the artist's profile (personal piece)
     print(f"Creating art piece for artist {artist.address}")
     receipt = artist_profile.createArtPiece(
         art_piece_template.address,
@@ -119,9 +124,9 @@ def test_getProfileErc1155sForSale(setup):
         title,
         description,
         True,  # As artist
-        deployer.address,  # Use deployer as other party to avoid zero address
+        artist.address,  # Use artist as other party to make it a personal piece
         False,  # Not AI generated
-        deployer.address,  # Use deployer as commission hub to avoid zero address
+        ZERO_ADDRESS,  # No commission hub for personal art
         False,  # Not profile art
         sender=artist
     )
@@ -185,7 +190,7 @@ def test_get_art_piece_at_index(setup):
     
     print(f"Creating art pieces for artist {artist.address}")
     
-    # Create 3 art pieces
+    # Create 3 art pieces (personal pieces)
     for i in range(3):
         art_piece_addr = artist_profile.createArtPiece(
             art_piece_template.address,
@@ -194,9 +199,9 @@ def test_get_art_piece_at_index(setup):
             titles[i],
             descriptions[i],
             True,  # As artist
-            deployer.address,  # Use deployer as other party
+            artist.address,  # Use artist as other party to make it a personal piece
             False,  # Not AI generated
-            deployer.address,  # Use deployer as commission hub
+            ZERO_ADDRESS,  # No commission hub for personal art
             False,  # Not profile art
             sender=artist
         )
@@ -253,7 +258,7 @@ def test_getLatestArtPieces(setup):
     
     print(f"Creating {len(titles)} art pieces for testing getLatestArtPieces")
     
-    # Create 6 art pieces (more than the getLatestArtPieces limit of 5)
+    # Create 6 art pieces (more than the getLatestArtPieces limit of 5) - personal pieces
     for i in range(len(titles)):
         art_piece_addr = artist_profile.createArtPiece(
             art_piece_template.address,
@@ -262,9 +267,9 @@ def test_getLatestArtPieces(setup):
             titles[i],
             descriptions[i],
             True,  # As artist
-            deployer.address,  # Use deployer as other party
+            artist.address,  # Use artist as other party to make it a personal piece
             False,  # Not AI generated
-            deployer.address,  # Use deployer as commission hub
+            ZERO_ADDRESS,  # No commission hub for personal art
             False,  # Not profile art
             sender=artist
         )
@@ -273,8 +278,8 @@ def test_getLatestArtPieces(setup):
     
     print(f"Total art pieces created: {len(art_pieces)}")
     
-    # Get the latest 5 art pieces
-    latest_pieces = artist_profile.getLatestArtPieces()
+    # Get the latest 5 art pieces using getArtPiecesByOffset with reverse=True
+    latest_pieces = artist_profile.getArtPiecesByOffset(0, 5, True)  # offset=0, count=5, reverse=True
     print(f"Latest pieces count: {len(latest_pieces)}")
     
     # Verify we get at most 5 pieces

@@ -121,11 +121,13 @@ def test_factory_created_profile_social_link(setup):
     # Deploy L2OwnershipRelay and ArtCommissionHub template for ArtCommissionHubOwners
     l2_relay = project.L2OwnershipRelay.deploy(sender=deployer)
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+    art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Deploy ArtCommissionHubOwners
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(
         l2_relay.address,
         art_commission_hub_template.address,
+        art_piece_template.address,
         sender=deployer
     )
     # Link ArtCommissionHubOwners and ProfileFactoryAndRegistry
