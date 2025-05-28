@@ -15,15 +15,17 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileFactoryAndRegistry
     # Deploy ProfileSocial template
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
 
+    # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
-    # Deploy ProfileFactoryAndRegistry with both templates
+    # Deploy ProfileFactoryAndRegistry with all three templates
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
@@ -75,17 +77,17 @@ def test_initialization(setup):
     assert owner_profile.deployer() == profile_factory_and_regsitry.address
     assert owner_profile.isArtist() is False
     assert owner_profile.allowUnverifiedCommissions() is True
-    assert owner_profile.profileExpansion() == "0x" + "0" * 40
+    # assert owner_profile.profileExpansion() == "0x" + "0" * 40  # This method doesn't exist
     
     # Check proceeds address is set (not checking exact value as it may vary)
     assert owner_sales.artistProceedsAddress() != ZERO_ADDRESS
     
     # Check basic counts are initialized to zero
-    assert owner_profile.commissionCount() == 0
-    assert owner_profile.unverifiedCommissionCount() == 0
-    assert owner_profile.likedProfileCount() == 0
-    assert owner_profile.linkedProfileCount() == 0
+    assert owner_profile.myCommissionCount() == 0
+    assert owner_profile.myUnverifiedCommissionCount() == 0
     # These methods don't exist in the contract, so we'll skip them
+    # assert owner_profile.likedProfileCount() == 0
+    # assert owner_profile.linkedProfileCount() == 0
     # assert owner_profile.artistCommissionedWorkCount() == 0
     # assert owner_profile.artistErc1155sToSellCount() == 0
     assert owner_profile.myArtCount() == 0
@@ -366,7 +368,7 @@ def test_create_art_piece(setup):
         assert owner_profile.myArtCount() == 1
         
         # Get the art piece
-        art_pieces = owner_profile.getArtPieces(0, 1)
+        art_pieces = owner_profile.getArtPiecesByOffset(0, 1, False)
         assert len(art_pieces) == 1
         
         art_piece = project.ArtPiece.at(art_pieces[0])

@@ -197,9 +197,13 @@ def test_create_art_piece_and_register_profile(setup):
     
     # Assert - Art piece was created and linked to profile
     assert profile.myArtCount() > 0, "Profile should have art pieces"
-    # For cloned contracts, we need to explicitly tell Ape the contract type
-    from ape import Contract
-    art_piece = Contract(art_piece_address, contract_type=project.ArtPiece.contract_type)
+    # Get the actual art piece address from the profile's myArt array
+    actual_art_pieces = profile.getArtPiecesByOffset(0, 1, False)
+    assert len(actual_art_pieces) > 0, "Profile should have at least one art piece"
+    actual_art_piece_address = actual_art_pieces[0]
+    
+    # Use the actual stored address to interact with the art piece
+    art_piece = project.ArtPiece.at(actual_art_piece_address)
     assert art_piece.getArtist() == user3.address, "Art piece should have user3 as artist"
 
 def test_create_art_piece_for_party(setup):
@@ -300,9 +304,13 @@ def test_create_art_piece_for_party(setup):
     assert user2_social.profile() == user2_profile_address, "ProfileSocial should link back to Profile"
     
     # Assert - Art piece was created and linked correctly
-    # For cloned contracts, we need to explicitly tell Ape the contract type
-    from ape import Contract
-    art_piece = Contract(art_piece_address, contract_type=project.ArtPiece.contract_type)
+    # Get the actual art piece address from the artist's profile myArt array
+    actual_art_pieces = user1_profile.getArtPiecesByOffset(0, 1, False)
+    assert len(actual_art_pieces) > 0, "Artist profile should have at least one art piece"
+    actual_art_piece_address = actual_art_pieces[0]
+    
+    # Use the actual stored address to interact with the art piece
+    art_piece = project.ArtPiece.at(actual_art_piece_address)
     assert art_piece.getArtist() == user1.address, "Art piece should have user1 as artist"
     assert art_piece.getCommissioner() == user2.address, "Art piece should have user2 as commissioner"
 

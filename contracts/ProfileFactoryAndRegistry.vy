@@ -138,11 +138,11 @@ def _createProfile(_new_profile_address: address, _is_artist: bool = False) -> (
 
     if caller_profile == empty(address):
         # Create a new profile for the caller
-        caller_profile = create_minimal_proxy_to(self.profileTemplate)
+        caller_profile = create_minimal_proxy_to(self.profileTemplate, revert_on_failure=True)
         caller_profile_instance = Profile(caller_profile)
         
         # Create a new profile social contract for the caller
-        caller_social: address = create_minimal_proxy_to(self.profileSocialTemplate)
+        caller_social: address = create_minimal_proxy_to(self.profileSocialTemplate, revert_on_failure=True)
         caller_profile_social_instance = ProfileSocial(caller_social)
         
         # Initialize the profile with the caller as the owner
@@ -216,7 +216,7 @@ def createNewArtPieceAndRegisterProfileAndAttachToHub(
     # If no commission hub provided AND we have details to create one
     if _commission_hub == empty(address) and _linked_to_art_commission_hub_address != empty(address):
         # Create a new commission hub
-        new_hub: address = create_minimal_proxy_to(self.commissionHubTemplate)
+        new_hub: address = create_minimal_proxy_to(self.commissionHubTemplate, revert_on_failure=True)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(new_hub)
         
         # CRITICAL: Initialize with parent contract first
