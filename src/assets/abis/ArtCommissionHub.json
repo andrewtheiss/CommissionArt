@@ -4,21 +4,90 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "profile",
+        "name": "chain_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "name": "nft_contract",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "art_piece",
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "artCommissionHubOwners",
         "type": "address"
       },
       {
         "indexed": false,
-        "name": "is_artist",
+        "name": "is_generic",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "chain_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "name": "nft_contract",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "token_id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "previous_owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "owner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "art_piece",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "submitter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "verified",
         "type": "bool"
       }
     ],
-    "name": "CommissionLinked",
+    "name": "CommissionSubmitted",
     "type": "event"
   },
   {
@@ -26,29 +95,12 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "profile",
+        "name": "art_piece",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "art_piece",
-        "type": "address"
-      }
-    ],
-    "name": "UnverifiedCommissionLinked",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "profile",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "art_piece",
+        "name": "verifier",
         "type": "address"
       }
     ],
@@ -60,12 +112,12 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "profile",
+        "name": "art_piece",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "art_piece",
+        "name": "unverifier",
         "type": "address"
       }
     ],
@@ -77,157 +129,70 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "profile",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "art_piece",
+        "name": "commissioner",
         "type": "address"
       },
       {
         "indexed": false,
-        "name": "reason",
-        "type": "string"
-      }
-    ],
-    "name": "CommissionFailedToLink",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "profile",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "art_piece",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "is_artist",
+        "name": "status",
         "type": "bool"
       }
     ],
-    "name": "CommissionVerifiedInProfile",
+    "name": "CommissionerWhitelisted",
     "type": "event"
   },
   {
     "inputs": [
       {
+        "name": "_art_commission_hub_owners",
+        "type": "address"
+      }
+    ],
+    "name": "initializeParentCommissionHubOwnerContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_nft_token_id_or_generic_hub_account",
+        "type": "uint256"
+      }
+    ],
+    "name": "initializeForArtCommissionHub",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_chain_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_nft_contract",
+        "type": "address"
+      },
+      {
+        "name": "_nft_token_id_or_generic_hub_account",
+        "type": "uint256"
+      },
+      {
         "name": "_owner",
         "type": "address"
-      },
-      {
-        "name": "_profile_social",
-        "type": "address"
-      },
-      {
-        "name": "_profile_factory_and_registry",
-        "type": "address"
       }
     ],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_owner",
-        "type": "address"
-      },
-      {
-        "name": "_profile_social",
-        "type": "address"
-      },
-      {
-        "name": "_profile_factory_and_registry",
-        "type": "address"
-      },
-      {
-        "name": "_is_artist",
-        "type": "bool"
-      }
-    ],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_allow",
-        "type": "bool"
-      }
-    ],
-    "name": "setAllowUnverifiedCommissions",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_address",
-        "type": "address"
-      }
-    ],
-    "name": "addToWhitelist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_address",
-        "type": "address"
-      }
-    ],
-    "name": "removeFromWhitelist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_address",
-        "type": "address"
-      }
-    ],
-    "name": "addToBlacklist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_address",
-        "type": "address"
-      }
-    ],
-    "name": "removeFromBlacklist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_profile_image",
-        "type": "address"
-      }
-    ],
-    "name": "setProfileImage",
+    "name": "syncArtCommissionHubOwner",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -239,13 +204,8 @@
         "type": "address"
       }
     ],
-    "name": "linkArtPieceAsMyCommission",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
+    "name": "submitCommission",
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -256,7 +216,7 @@
         "type": "address"
       }
     ],
-    "name": "verifyArtLinkedToMyCommission",
+    "name": "verifyCommission",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -264,11 +224,11 @@
   {
     "inputs": [
       {
-        "name": "_my_commission",
+        "name": "_art_piece",
         "type": "address"
       }
     ],
-    "name": "removeArtLinkToMyCommission",
+    "name": "unverifyCommission",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -276,48 +236,15 @@
   {
     "inputs": [
       {
-        "name": "_offset",
-        "type": "uint256"
-      },
-      {
-        "name": "_count",
-        "type": "uint256"
-      },
-      {
-        "name": "reverse",
-        "type": "bool"
+        "name": "_user",
+        "type": "address"
       }
     ],
-    "name": "getCommissionsByOffset",
+    "name": "getUnverifiedCount",
     "outputs": [
       {
         "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_offset",
         "type": "uint256"
-      },
-      {
-        "name": "_count",
-        "type": "uint256"
-      },
-      {
-        "name": "reverse",
-        "type": "bool"
-      }
-    ],
-    "name": "getUnverifiedCommissionsByOffset",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address[]"
       }
     ],
     "stateMutability": "view",
@@ -325,35 +252,36 @@
   },
   {
     "inputs": [],
-    "name": "clearUnverifiedCommissions",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "isRegistrationPending",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isReadyForSubmissions",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_sales",
-        "type": "address"
-      }
-    ],
-    "name": "setArtSales1155",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_page",
-        "type": "uint256"
-      },
-      {
-        "name": "_page_size",
+        "name": "_count",
         "type": "uint256"
       }
     ],
-    "name": "getProfileErc1155sForSale",
+    "name": "getLatestVerifiedArt",
     "outputs": [
       {
         "name": "",
@@ -366,172 +294,140 @@
   {
     "inputs": [
       {
-        "name": "_art_piece_template",
-        "type": "address"
+        "name": "_count",
+        "type": "uint256"
       },
       {
-        "name": "_token_uri_data",
-        "type": "bytes"
-      },
-      {
-        "name": "_token_uri_data_format",
-        "type": "string"
-      },
-      {
-        "name": "_title",
-        "type": "string"
-      },
-      {
-        "name": "_description",
-        "type": "string"
-      },
-      {
-        "name": "_as_artist",
-        "type": "bool"
-      },
-      {
-        "name": "_other_party",
-        "type": "address"
-      },
-      {
-        "name": "_ai_generated",
-        "type": "bool"
+        "name": "_page",
+        "type": "uint256"
       }
     ],
-    "name": "createArtPiece",
+    "name": "getLatestVerifiedArt",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "address[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_art_piece_template",
-        "type": "address"
+        "name": "_start_idx",
+        "type": "uint256"
       },
       {
-        "name": "_token_uri_data",
-        "type": "bytes"
-      },
-      {
-        "name": "_token_uri_data_format",
-        "type": "string"
-      },
-      {
-        "name": "_title",
-        "type": "string"
-      },
-      {
-        "name": "_description",
-        "type": "string"
-      },
-      {
-        "name": "_as_artist",
-        "type": "bool"
-      },
-      {
-        "name": "_other_party",
-        "type": "address"
-      },
-      {
-        "name": "_ai_generated",
-        "type": "bool"
-      },
-      {
-        "name": "_art_commission_hub",
-        "type": "address"
+        "name": "_count",
+        "type": "uint256"
       }
     ],
-    "name": "createArtPiece",
+    "name": "getVerifiedArtPieces",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "address[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_art_piece_template",
-        "type": "address"
+        "name": "_start_idx",
+        "type": "uint256"
       },
       {
-        "name": "_token_uri_data",
-        "type": "bytes"
-      },
-      {
-        "name": "_token_uri_data_format",
-        "type": "string"
-      },
-      {
-        "name": "_title",
-        "type": "string"
-      },
-      {
-        "name": "_description",
-        "type": "string"
-      },
-      {
-        "name": "_as_artist",
-        "type": "bool"
-      },
-      {
-        "name": "_other_party",
-        "type": "address"
-      },
-      {
-        "name": "_ai_generated",
-        "type": "bool"
-      },
-      {
-        "name": "_art_commission_hub",
-        "type": "address"
-      },
-      {
-        "name": "_is_profile_art",
-        "type": "bool"
+        "name": "_count",
+        "type": "uint256"
       }
     ],
-    "name": "createArtPiece",
+    "name": "getUnverifiedArtPieces",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "address[]"
       }
     ],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_art_piece",
-        "type": "address"
+        "name": "_start_idx",
+        "type": "uint256"
+      },
+      {
+        "name": "_count",
+        "type": "uint256"
       }
     ],
-    "name": "addArtPiece",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "getBatchVerifiedArtPieces",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_art_piece",
-        "type": "address"
+        "name": "_start_idx",
+        "type": "uint256"
+      },
+      {
+        "name": "_count",
+        "type": "uint256"
       }
     ],
-    "name": "removeArtPiece",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "getBatchUnverifiedArtPieces",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_count",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRecentVerifiedArtPieces",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_count",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRecentUnverifiedArtPieces",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -543,13 +439,9 @@
       {
         "name": "_count",
         "type": "uint256"
-      },
-      {
-        "name": "reverse",
-        "type": "bool"
       }
     ],
-    "name": "getArtPiecesByOffset",
+    "name": "getVerifiedArtPiecesByOffset",
     "outputs": [
       {
         "name": "",
@@ -561,12 +453,37 @@
   },
   {
     "inputs": [
+      {
+        "name": "_offset",
+        "type": "uint256"
+      },
+      {
+        "name": "_count",
+        "type": "uint256"
+      }
+    ],
+    "name": "getUnverifiedArtPiecesByOffset",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_verified",
+        "type": "bool"
+      },
       {
         "name": "_index",
         "type": "uint256"
       }
     ],
-    "name": "getArtPieceAtIndex",
+    "name": "getArtPieceByIndex",
     "outputs": [
       {
         "name": "",
@@ -579,120 +496,52 @@
   {
     "inputs": [
       {
-        "name": "_art_piece",
-        "type": "address"
-      }
-    ],
-    "name": "artPieceExists",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_art_piece",
-        "type": "address"
-      }
-    ],
-    "name": "getArtPiecePosition",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_is_artist",
-        "type": "bool"
-      }
-    ],
-    "name": "setIsArtist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_commission_art_piece",
-        "type": "address"
-      }
-    ],
-    "name": "updateCommissionVerificationStatus",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_offset",
-        "type": "uint256"
-      },
-      {
-        "name": "_count",
-        "type": "uint256"
-      },
-      {
-        "name": "reverse",
-        "type": "bool"
-      }
-    ],
-    "name": "getCommissionHubsByOffset",
-    "outputs": [
-      {
-        "name": "",
+        "name": "_commission_addresses",
         "type": "address[]"
       }
     ],
-    "stateMutability": "view",
+    "name": "bulkVerifyCommissions",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getCommissionHubCount",
-    "outputs": [
+    "inputs": [
       {
-        "name": "",
-        "type": "uint256"
+        "name": "_commission_addresses",
+        "type": "address[]"
       }
     ],
-    "stateMutability": "view",
+    "name": "bulkUnverifyCommissions",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "deployer",
-    "outputs": [
+    "inputs": [
       {
-        "name": "",
+        "name": "_address_to_list",
         "type": "address"
+      },
+      {
+        "name": "_is_whitelist",
+        "type": "bool"
+      },
+      {
+        "name": "_list_status",
+        "type": "bool"
       }
     ],
-    "stateMutability": "view",
+    "name": "updateWhitelistOrBlacklist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "profileFactoryAndRegistry",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
+    "name": "clearAllUnverifiedArtCommissions",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -709,7 +558,156 @@
   },
   {
     "inputs": [],
-    "name": "profileImage",
+    "name": "isInitialized",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "registrationPending",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "chainId",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nftContract",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nftTokenIdOrGenericHubAccount",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artCommissionHubOwners",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "expectedArtCommissionHubOwnersHash",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isBurned",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isGeneric",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sourceChainContract",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sourceChainTokenId",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sourceChainImageData",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      }
+    ],
+    "name": "latestVerifiedArtCommissions",
     "outputs": [
       {
         "name": "",
@@ -726,7 +724,7 @@
         "type": "uint256"
       }
     ],
-    "name": "myCommissions",
+    "name": "verifiedArtCommissions",
     "outputs": [
       {
         "name": "",
@@ -738,7 +736,7 @@
   },
   {
     "inputs": [],
-    "name": "myCommissionCount",
+    "name": "countVerifiedArtCommissions",
     "outputs": [
       {
         "name": "",
@@ -752,22 +750,10 @@
     "inputs": [
       {
         "name": "arg0",
-        "type": "uint256"
-      }
-    ],
-    "name": "myUnverifiedCommissions",
-    "outputs": [
-      {
-        "name": "",
         "type": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "myUnverifiedCommissionCount",
+    "name": "verifiedArtCommissionsCountByUser",
     "outputs": [
       {
         "name": "",
@@ -778,8 +764,13 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "allowUnverifiedCommissions",
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "verifiedArtCommissionsRegistry",
     "outputs": [
       {
         "name": "",
@@ -793,61 +784,10 @@
     "inputs": [
       {
         "name": "arg0",
-        "type": "address"
-      }
-    ],
-    "name": "myCommissionExistsAndPositionOffsetByOne",
-    "outputs": [
-      {
-        "name": "",
         "type": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "address"
-      }
-    ],
-    "name": "myUnverifiedCommissionsExistsAndPositionOffsetByOne",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "address"
-      }
-    ],
-    "name": "myCommissionRole",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "uint256"
-      }
-    ],
-    "name": "myArt",
+    "name": "unverifiedArtCommissions",
     "outputs": [
       {
         "name": "",
@@ -859,7 +799,7 @@
   },
   {
     "inputs": [],
-    "name": "myArtCount",
+    "name": "countUnverifiedArtCommissions",
     "outputs": [
       {
         "name": "",
@@ -876,11 +816,28 @@
         "type": "address"
       }
     ],
-    "name": "myArtExistsAndPositionOffsetByOne",
+    "name": "unverifiedArtCommissionsCountByUser",
     "outputs": [
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "unverifiedArtCommissionsRegistry",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -922,11 +879,11 @@
   },
   {
     "inputs": [],
-    "name": "profileSocial",
+    "name": "nextLatestVerifiedArtCommissionsIndex",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -934,23 +891,11 @@
   },
   {
     "inputs": [],
-    "name": "artSales1155",
+    "name": "nextLatestVerifiedArtIndex",
     "outputs": [
       {
         "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isArtist",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

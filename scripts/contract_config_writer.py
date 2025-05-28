@@ -42,6 +42,10 @@ def get_default_config():
                     "address": "",
                     "contract": "Profile"
                 },
+                "profileSocialTemplate": {
+                    "address": "",
+                    "contract": "ProfileSocial"
+                },
                 "profileFactoryAndRegistry": {
                     "address": "",
                     "contract": "ProfileFactoryAndRegistry"
@@ -71,6 +75,10 @@ def get_default_config():
                 "profileTemplate": {
                     "address": "",
                     "contract": "Profile"
+                },
+                "profileSocialTemplate": {
+                    "address": "",
+                    "contract": "ProfileSocial"
                 },
                 "profileFactoryAndRegistry": {
                     "address": "",
@@ -108,7 +116,7 @@ def validate_config(config):
             print(f"Added missing network '{network}' to configuration")
         else:
             # Check for required layers in each network
-            required_layers = ["l1", "l2", "l3", "artCommissionHub", "artPiece", "profileTemplate", "profileFactoryAndRegistry"]
+            required_layers = ["l1", "l2", "l3", "artCommissionHub", "artPiece", "profileTemplate", "profileSocialTemplate", "profileFactoryAndRegistry"]
             for layer in required_layers:
                 if layer not in config["networks"][network]:
                     config["networks"][network][layer] = default_config["networks"][network][layer]
@@ -192,7 +200,18 @@ def update_contract_address(network, layer, address, contract_name=None):
         print(f"Created missing network '{network}' in configuration")
     
     if layer not in config["networks"][network]:
-        config["networks"][network][layer] = get_default_config()["networks"]["testnet"][layer]
+        # Try to get the layer from the default config for the same network, or fall back to testnet
+        default_config = get_default_config()
+        if network in default_config["networks"] and layer in default_config["networks"][network]:
+            config["networks"][network][layer] = default_config["networks"][network][layer]
+        elif layer in default_config["networks"]["testnet"]:
+            config["networks"][network][layer] = default_config["networks"]["testnet"][layer]
+        else:
+            # Create a minimal structure if layer doesn't exist in default config
+            config["networks"][network][layer] = {
+                "address": "",
+                "contract": contract_name or ""
+            }
         print(f"Created missing layer '{layer}' in network '{network}'")
     
     # Update the address

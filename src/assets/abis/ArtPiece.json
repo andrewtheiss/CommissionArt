@@ -144,6 +144,84 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "art_piece",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "commission_hub",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "detacher",
+        "type": "address"
+      }
+    ],
+    "name": "DetachedFromArtCommissionHub",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "verifier",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "is_artist",
+        "type": "bool"
+      }
+    ],
+    "name": "CommissionVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "art_piece",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "artist",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "commissioner",
+        "type": "address"
+      }
+    ],
+    "name": "CommissionfullyVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "art_piece",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "commission_hub",
+        "type": "address"
+      }
+    ],
+    "name": "CommissionSubmissionFailed",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "name": "_token_uri_data",
@@ -162,7 +240,7 @@
         "type": "string"
       },
       {
-        "name": "_owner_input",
+        "name": "_commissioner_input",
         "type": "address"
       },
       {
@@ -176,6 +254,14 @@
       {
         "name": "_ai_generated",
         "type": "bool"
+      },
+      {
+        "name": "_original_uploader",
+        "type": "address"
+      },
+      {
+        "name": "_profile_factory_address",
+        "type": "address"
       }
     ],
     "name": "initialize",
@@ -409,6 +495,18 @@
   },
   {
     "inputs": [],
+    "name": "getCommissioner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getArtist",
     "outputs": [
       {
@@ -429,6 +527,40 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_commission_hub_address",
+        "type": "address"
+      },
+      {
+        "name": "_commissioner",
+        "type": "address"
+      },
+      {
+        "name": "_artist",
+        "type": "address"
+      }
+    ],
+    "name": "addArtCommissionHubDetails",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifyAsArtist",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verifyAsCommissioner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -477,6 +609,10 @@
       {
         "name": "_person",
         "type": "address"
+      },
+      {
+        "name": "_profile_factory_and_regsitry",
+        "type": "address"
       }
     ],
     "name": "tagPerson",
@@ -487,7 +623,12 @@
   {
     "inputs": [],
     "name": "validateTag",
-    "outputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -506,39 +647,6 @@
       }
     ],
     "name": "isPersonTagged",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_commissioner",
-        "type": "address"
-      },
-      {
-        "name": "_status",
-        "type": "bool"
-      }
-    ],
-    "name": "setCommissionWhitelist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_commissioner",
-        "type": "address"
-      }
-    ],
-    "name": "isOnCommissionWhitelist",
     "outputs": [
       {
         "name": "",
@@ -574,11 +682,77 @@
   },
   {
     "inputs": [],
+    "name": "detachFromArtCommissionHub",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "checkOwner",
     "outputs": [
       {
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isUnverifiedCommission",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isFullyVerifiedCommission",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getProfileFactoryAndRegistry",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "retryCommissionHubSubmission",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getSubmissionStatus",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -648,6 +822,90 @@
   },
   {
     "inputs": [],
+    "name": "profileFactoryAndRegistry",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "IS_ON_CHAIN",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tokenURI_data_format",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "title",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "description",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "commissioner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "aiGenerated",
     "outputs": [
       {
@@ -672,18 +930,6 @@
   },
   {
     "inputs": [],
-    "name": "attachedToArtCommissionHub",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "artCommissionHubAddress",
     "outputs": [
       {
@@ -696,7 +942,7 @@
   },
   {
     "inputs": [],
-    "name": "IS_ON_CHAIN",
+    "name": "artistVerified",
     "outputs": [
       {
         "name": "",
@@ -707,13 +953,32 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "commissionerVerified",
+    "outputs": [
       {
-        "name": "arg0",
-        "type": "address"
+        "name": "",
+        "type": "bool"
       }
     ],
-    "name": "isTagValidated",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "fullyVerifiedCommission",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isPrivateOrNonCommissionPiece",
     "outputs": [
       {
         "name": "",
@@ -744,6 +1009,23 @@
     "inputs": [
       {
         "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "isTagValidated",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
         "type": "uint256"
       }
     ],
@@ -758,13 +1040,32 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "taggedListCount",
+    "outputs": [
       {
-        "name": "arg0",
-        "type": "address"
+        "name": "",
+        "type": "uint256"
       }
     ],
-    "name": "commissionWhitelist",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "submissionAttempted",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "submissionSuccessful",
     "outputs": [
       {
         "name": "",

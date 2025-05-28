@@ -2,53 +2,57 @@
   "networks": {
     "testnet": {
       "l1": {
-        "address": "0xDdc84E4CF833b5AE92A2aA7F4edc59bdcB4b6F0F",
+        "address": "0x27F93A6f6d31a7bcDd3088dc915788704353C3d5",
         "contract": "L1QueryOwnership"
       },
       "l2": {
-        "address": "0x32BFa3AD2408821FA1631681F81603a84612687c",
+        "address": "0x115f6ED62c1f8514ec5dD8563B5Ba8a68a69c00F",
         "contract": "L2OwnershipRelay"
       },
       "l3": {
-        "address": "0x89244283543881Af0E005AE6B4eb713d3603974c",
+        "address": "0xC76f4342e0d1b011a8dc4ba60ed7c9733a77a9e7",
         "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
-        "address": "0x78c39bB3072b43D9B7A4B9116E7A87FbE19A69ef",
+        "address": "0x31D54369b19ed3D74a14DCDd160D41Da6dcF9095",
         "contract": "ArtCommissionHub"
       },
       "artPiece": {
-        "address": "0xb663053448AC33f8e880Ee2eF877895db599A7f3",
+        "address": "0xA57271FFAA9F862EddFbb56F25E7F5791f112D95",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0xCB5ba99bAECb67F8282426d2d993888975af6d8E",
+        "address": "0x00C22B6616252b0df6D845e31c4a6B13f8a9A86A",
         "contract": "Profile"
       },
       "profileFactoryAndRegistry": {
-        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
+        "address": "0x3e428590501DD1BA7da756dBdfA6AD2F77016E58",
         "contract": "ProfileFactoryAndRegistry"
       },
       "l2ProfileFactoryAndRegistry": {
         "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
-        "contract": "ProfileFactoryAndRegistry" 
+        "contract": "ProfileFactoryAndRegistry"
       },
       "l3ProfileFactoryAndRegistry": {
-        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169", 
+        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
         "contract": "ProfileFactoryAndRegistry"
+      },
+      "profileSocialTemplate": {
+        "address": "0x4a9EFDAf6A35212d6185d65d7F6eBd2006Bf8482",
+        "contract": "ProfileSocial"
       }
     },
     "mainnet": {
       "l1": {
-        "address": "0x9Ff3BE6A1f0aa275c61cD231eC3C4469730CC3FD",
+        "address": "0x8bFE2eA513D1BcB1a7A01aeaD1d4347952CA42e9",
         "contract": "L1QueryOwnership"
       },
       "l2": {
-        "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
+        "address": "0x3cF3dada5C03F32F0b77AAE7Ae19F61Ab89dbD06",
         "contract": "L2OwnershipRelay"
       },
       "l3": {
-        "address": "0x51C11796198289c3e3e3AD6e11B137e94ed2e793",
+        "address": "0xAb2fa091126f49E6b3B808426776aC139F0BD0b3",
         "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
@@ -56,15 +60,15 @@
         "contract": "ArtCommissionHub"
       },
       "artPiece": {
-        "address": "0x538e72fD1856F2b2B966B3103ec37Bb652232FfF",
+        "address": "0x48015942F03b850bf4e0b1ea285b9E5cdB3fBcC6",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0xD1B46FB543f2A15560eD835857c7e90b43f66617",
+        "address": "0x61D2C3d1D344e72184Cb813840502fF7c51719E3",
         "contract": "Profile"
       },
       "profileFactoryAndRegistry": {
-        "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
+        "address": "0x09F9D4aAcDed38355e55226e80472e70016Ae3b7",
         "contract": "ProfileFactoryAndRegistry"
       },
       "l2ProfileFactoryAndRegistry": {
@@ -74,8 +78,12 @@
       "l3ProfileFactoryAndRegistry": {
         "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
         "contract": "ProfileFactoryAndRegistry"
+      },
+      "profileSocialTemplate": {
+        "address": "0xC2fe14e67063fCF4A88ca1E50BF1CE49D9cF1c39",
+        "contract": "ProfileSocial"
       }
     }
   },
-  "lastUpdated": "2025-05-06T07:26:07.761249"
+  "lastUpdated": "2025-05-28T11:49:51.515599"
 }

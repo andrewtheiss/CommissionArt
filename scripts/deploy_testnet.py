@@ -51,6 +51,7 @@ def deploy_contracts():
                 "artCommissionHub": {"address": "", "contract": "ArtCommissionHub"},
                 "artPiece": {"address": "", "contract": "ArtPiece"},
                 "profileTemplate": {"address": "", "contract": "Profile"},
+                "profileSocialTemplate": {"address": "", "contract": "ProfileSocial"},
                 "profileFactoryAndRegistry": {"address": "", "contract": "ProfileFactoryAndRegistry"}
             }
             # Save the updated config
@@ -110,7 +111,8 @@ def deploy_contracts():
     commission_hub_existing_address = get_contract_address(config_network, "artCommissionHub")
     art_piece_existing_address = get_contract_address(config_network, "artPiece")
     profile_template_existing_address = get_contract_address(config_network, "profileTemplate")
-    profile_factory_and_regsitry_existing_address = get_contract_address(config_network, "profileFactoryAndRegistry")
+    profile_social_template_existing_address = get_contract_address(config_network, "profileSocialTemplate")
+    profile_factory_and_registry_existing_address = get_contract_address(config_network, "profileFactoryAndRegistry")
     
     # For prodtest mode, if we don't have an L1 address, prompt for one
     if network_choice == "prodtest" and not l1_existing_address:
@@ -123,11 +125,12 @@ def deploy_contracts():
     # Track deployed contracts
     l1_contract = None
     l2_contract = None
-    l3_art_collection_ownership_registry = None
+    l3_art_commission_hub_owners = None
     commission_hub_template = None
     art_piece_stencil = None
     profile_template = None
-    profile_factory_and_regsitry = None
+    profile_social_template = None
+    profile_factory_and_registry = None
 
     # Deploy L2OwnershipRelay first with 0 parameters
     with networks.parse_network_choice(l2_network) as provider:
@@ -185,7 +188,7 @@ def deploy_contracts():
                 print(f"Error deploying ArtPiece stencil: {e}")
                 sys.exit(1)
 
-    # Deploy ArtCommissionHub template on L3 (as reference for ArtCommissionHubOwners)
+    # Deploy ArtCommissionHub template on L3
     with networks.parse_network_choice(l3_network) as provider:
         if not full_redeploy and commission_hub_existing_address and input(f"Use existing ArtCommissionHub template at {commission_hub_existing_address}? (Y/n): ").strip().lower() != 'n':
             print(f"Using existing ArtCommissionHub template at: {commission_hub_existing_address}")
@@ -194,7 +197,7 @@ def deploy_contracts():
             print(f"Deploying ArtCommissionHub template on {l3_network} (as reference for ArtCommissionHubOwners)")
             try:
                 # For Arbitrum deployments, we may need higher gas limits
-                gas_limit = 3000000  # Higher gas limit
+                gas_limit = 6000000  # Increased gas limit for larger contract
                 commission_hub_template = deployer.deploy(
                     project.ArtCommissionHub, 
                     gas_limit=gas_limit,
@@ -206,13 +209,6 @@ def deploy_contracts():
                 
                 # Update the frontend config
                 update_contract_address(config_network, "artCommissionHub", commission_hub_template.address, "ArtCommissionHub")
-                
-                # Whitelist the ArtPiece stencil if available
-                if art_piece_stencil:
-                    print(f"Whitelisting ArtPiece stencil ({art_piece_stencil.address}) in ArtCommissionHub...")
-                    # Explicitly set the sender as deployer to ensure permission
-                    commission_hub_template.setWhitelistedArtPieceContract(art_piece_stencil.address, sender=deployer)
-                    print(f"ArtPiece stencil whitelisted in ArtCommissionHub")
                 
                 print("=" * 50)  # Delimiter after ArtCommissionHub template deployment
                 print("ArtCommissionHub template deployment completed")
@@ -248,26 +244,55 @@ def deploy_contracts():
                 print(f"Error deploying Profile template: {e}")
                 sys.exit(1)
 
+    # Deploy ProfileSocial template on L3
+    with networks.parse_network_choice(l3_network) as provider:
+        if not full_redeploy and profile_social_template_existing_address and input(f"Use existing ProfileSocial template at {profile_social_template_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ProfileSocial template at: {profile_social_template_existing_address}")
+            profile_social_template = project.ProfileSocial.at(profile_social_template_existing_address)
+        else:
+            print(f"Deploying ProfileSocial template on {l3_network}")
+            try:
+                # For L3 deployments, we may need higher gas limits
+                gas_limit = 3000000  # Higher gas limit for ProfileSocial
+                profile_social_template = deployer.deploy(
+                    project.ProfileSocial,
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"ProfileSocial template deployed at: {profile_social_template.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "profileSocialTemplate", profile_social_template.address, "ProfileSocial")
+                
+                print("=" * 50)  # Delimiter after ProfileSocial template deployment
+                print("ProfileSocial template deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying ProfileSocial template: {e}")
+                sys.exit(1)
+
     # Deploy ProfileFactoryAndRegistry on L3
     with networks.parse_network_choice(l3_network) as provider:
-        if not full_redeploy and profile_factory_and_regsitry_existing_address and input(f"Use existing ProfileFactoryAndRegistry at {profile_factory_and_regsitry_existing_address}? (Y/n): ").strip().lower() != 'n':
-            print(f"Using existing ProfileFactoryAndRegistry at: {profile_factory_and_regsitry_existing_address}")
-            profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.at(profile_factory_and_regsitry_existing_address)
+        if not full_redeploy and profile_factory_and_registry_existing_address and input(f"Use existing ProfileFactoryAndRegistry at {profile_factory_and_registry_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ProfileFactoryAndRegistry at: {profile_factory_and_registry_existing_address}")
+            profile_factory_and_registry = project.ProfileFactoryAndRegistry.at(profile_factory_and_registry_existing_address)
         else:
             print(f"Deploying ProfileFactoryAndRegistry on {l3_network}")
             try:
                 # For L3 deployments, we may need higher gas limits
                 gas_limit = 6000000  # Much higher gas limit for ProfileFactoryAndRegistry which might be large
-                profile_factory_and_regsitry = deployer.deploy(
+                profile_factory_and_registry = deployer.deploy(
                     project.ProfileFactoryAndRegistry,
                     profile_template.address,  # Profile template address
+                    profile_social_template.address,  # ProfileSocial template address
+                    commission_hub_template.address,  # ArtCommissionHub template address
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
-                print(f"ProfileFactoryAndRegistry deployed at: {profile_factory_and_regsitry.address}")
+                print(f"ProfileFactoryAndRegistry deployed at: {profile_factory_and_registry.address}")
                 
                 # Update the frontend config
-                update_contract_address(config_network, "profileFactoryAndRegistry", profile_factory_and_regsitry.address, "ProfileFactoryAndRegistry")
+                update_contract_address(config_network, "profileFactoryAndRegistry", profile_factory_and_registry.address, "ProfileFactoryAndRegistry")
                 
                 print("=" * 50)  # Delimiter after ProfileFactoryAndRegistry deployment
                 print("ProfileFactoryAndRegistry deployment completed")
@@ -280,26 +305,27 @@ def deploy_contracts():
     with networks.parse_network_choice(l3_network) as provider:
         if not (full_redeploy or (network_choice == "prodtest" and redeploy_l2_l3)) and l3_existing_address and input(f"Use existing ArtCommissionHubOwners at {l3_existing_address}? (Y/n): ").strip().lower() != 'n':
             print(f"Using existing ArtCommissionHubOwners at: {l3_existing_address}")
-            l3_art_collection_ownership_registry = project.ArtCommissionHubOwners.at(l3_existing_address)
+            l3_art_commission_hub_owners = project.ArtCommissionHubOwners.at(l3_existing_address)
         else:
             print(f"Deploying ArtCommissionHubOwners on {l3_network}")
             try:
                 # For Arbitrum deployments, we may need higher gas limits
-                gas_limit = 3000000  # Higher gas limit
+                gas_limit = 6000000  # Increased gas limit for larger contract
                 
                 # Note: The deployer address (msg.sender) will automatically become the owner of the contract
                 print(f"ArtCommissionHubOwners will be owned by: {deployer.address}")
-                l3_art_collection_ownership_registry = deployer.deploy(
+                l3_art_commission_hub_owners = deployer.deploy(
                     project.ArtCommissionHubOwners,
                     l2_contract.address,  # L2OwnershipRelay address
                     commission_hub_template.address,  # ArtCommissionHub template address
+                    art_piece_stencil.address,  # ArtPiece template address
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
-                print(f"ArtCommissionHubOwners deployed at: {l3_art_collection_ownership_registry.address}")
+                print(f"ArtCommissionHubOwners deployed at: {l3_art_commission_hub_owners.address}")
                 
                 # Update the frontend config
-                update_contract_address(config_network, "l3", l3_art_collection_ownership_registry.address, "ArtCommissionHubOwners")
+                update_contract_address(config_network, "l3", l3_art_commission_hub_owners.address, "ArtCommissionHubOwners")
                 
                 print("=" * 50)  # Delimiter after ArtCommissionHubOwners deployment
                 print("ArtCommissionHubOwners deployment completed")
@@ -310,7 +336,7 @@ def deploy_contracts():
 
     # Now update the L2OwnershipRelay with the L3 ArtCommissionHubOwners address
     with networks.parse_network_choice(l2_network) as provider:
-        print(f"Updating L2OwnershipRelay with L3 ArtCommissionHubOwners address: {l3_art_collection_ownership_registry.address}")
+        print(f"Updating L2OwnershipRelay with L3 ArtCommissionHubOwners address: {l3_art_commission_hub_owners.address}")
         try:
             # Check the owner of the L2OwnershipRelay contract
             current_owner = l2_contract.owner()
@@ -323,7 +349,7 @@ def deploy_contracts():
                 print(f"Attempting to continue anyway...")
             
             # Set the L3 contract address
-            tx = l2_contract.setL3Contract(l3_art_collection_ownership_registry.address)
+            tx = l2_contract.setL3Contract(l3_art_commission_hub_owners.address)
             print(f"L2OwnershipRelay updated with L3 ArtCommissionHubOwners address")
         except Exception as e:
             print(f"Error updating L2OwnershipRelay with L3 ArtCommissionHubOwners address: {e}")
@@ -347,14 +373,14 @@ def deploy_contracts():
                 print(f"Could not get debugging information: {debug_error}")
             
             print(f"Please manually set the L3 contract address on L2OwnershipRelay later using:")
-            print(f"L2OwnershipRelay.setL3Contract({l3_art_collection_ownership_registry.address})")
+            print(f"L2OwnershipRelay.setL3Contract({l3_art_commission_hub_owners.address})")
             
             # Ask if the user wants to retry
             if input("Do you want to retry updating the L3 contract address? (y/n): ").strip().lower() == 'y':
                 try:
                     print("Retrying in 5 seconds...")
                     time.sleep(5)
-                    tx = l2_contract.setL3Contract(l3_art_collection_ownership_registry.address)
+                    tx = l2_contract.setL3Contract(l3_art_commission_hub_owners.address)
                     print(f"L2OwnershipRelay successfully updated with L3 ArtCommissionHubOwners address on retry")
                 except Exception as retry_error:
                     print(f"Error on retry: {retry_error}")
@@ -441,30 +467,30 @@ def deploy_contracts():
                 print(f"L2OwnershipRelay.updateCrossChainQueryOwnerContract({l1_contract.address}, {l1_chain_id})")
 
     # CRITICAL: Establish bidirectional connection between ArtCommissionHubOwners and ProfileFactoryAndRegistry
-    if l3_art_collection_ownership_registry and profile_factory_and_regsitry:
+    if l3_art_commission_hub_owners and profile_factory_and_registry:
         with networks.parse_network_choice(l3_network) as provider:
             print(f"\n=== Setting up bidirectional connection between contracts ===")
-            print(f"Connecting ArtCommissionHubOwners ({l3_art_collection_ownership_registry.address}) to ProfileFactoryAndRegistry ({profile_factory_and_regsitry.address})")
+            print(f"Connecting ArtCommissionHubOwners ({l3_art_commission_hub_owners.address}) to ProfileFactoryAndRegistry ({profile_factory_and_registry.address})")
             try:
                 # This call is critical - it sets up the bidirectional connection
                 # Without it, commission hubs won't be automatically linked to profiles
-                tx = l3_art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address)
+                tx = l3_art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory_and_registry.address)
                 print(f"Bidirectional connection established successfully")
                 
                 # Verify the connection
-                registry_from_factory = profile_factory_and_regsitry.artCommissionHubOwners()
-                factory_from_registry = l3_art_collection_ownership_registry.profileFactoryAndRegistry()
+                registry_from_factory = profile_factory_and_registry.artCommissionHubOwners()
+                factory_from_registry = l3_art_commission_hub_owners.profileFactoryAndRegistry()
                 print(f"Verification: ProfileFactoryAndRegistry points to: {registry_from_factory}")
                 print(f"Verification: ArtCommissionHubOwners points to: {factory_from_registry}")
                 
-                if registry_from_factory != l3_art_collection_ownership_registry.address:
+                if registry_from_factory != l3_art_commission_hub_owners.address:
                     print(f"WARNING: Verification failed - ProfileFactoryAndRegistry not pointing to ArtCommissionHubOwners")
-                if factory_from_registry != profile_factory_and_regsitry.address:
+                if factory_from_registry != profile_factory_and_registry.address:
                     print(f"WARNING: Verification failed - ArtCommissionHubOwners not pointing to ProfileFactoryAndRegistry")
             except Exception as e:
                 print(f"Error establishing bidirectional connection: {e}")
                 print(f"CRITICAL: You must manually call linkProfileFactoryAndRegistry later using:")
-                print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_regsitry.address})")
+                print(f"ArtCommissionHubOwners.linkProfileFactoryAndRegistry({profile_factory_and_registry.address})")
                 print(f"Without this connection, commission hubs won't be linked to user profiles automatically")
 
     # Print deployment summary
@@ -479,21 +505,23 @@ def deploy_contracts():
         print(f"  Save these addresses for reference when deploying to production")
     elif network_choice == "prodtest":
         print(f"L3 Contracts (Animechain L3):")
-        print(f"  - ArtCommissionHubOwners: {l3_art_collection_ownership_registry.address if l3_art_collection_ownership_registry else 'Not deployed'}")
+        print(f"  - ArtCommissionHubOwners: {l3_art_commission_hub_owners.address if l3_art_commission_hub_owners else 'Not deployed'}")
         print(f"  - ArtCommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
-        print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_regsitry.address if profile_factory_and_regsitry else 'Not deployed'}")
+        print(f"  - ProfileSocial Template: {profile_social_template.address if profile_social_template else 'Not deployed'}")
+        print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_registry.address if profile_factory_and_registry else 'Not deployed'}")
         print("\nNOTE: These are TEST contracts deployed to PRODUCTION networks.")
         print("They can be used for testing with real chain interactions, but should not be")
         print("considered the final production deployment.")
     else:
         print(f"L3 Contracts ({l3_network}):")
-        print(f"  - ArtCommissionHubOwners: {l3_art_collection_ownership_registry.address if l3_art_collection_ownership_registry else 'Not deployed'}")
+        print(f"  - ArtCommissionHubOwners: {l3_art_commission_hub_owners.address if l3_art_commission_hub_owners else 'Not deployed'}")
         print(f"  - ArtCommissionHub Template: {commission_hub_template.address if commission_hub_template else 'Not deployed'}")
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
-        print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_regsitry.address if profile_factory_and_regsitry else 'Not deployed'}")
+        print(f"  - ProfileSocial Template: {profile_social_template.address if profile_social_template else 'Not deployed'}")
+        print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_registry.address if profile_factory_and_registry else 'Not deployed'}")
     
     # Check if the contracts were properly linked
     if l2_contract:
@@ -513,10 +541,10 @@ def deploy_contracts():
         except Exception as e:
             print(f"Could not retrieve contract links: {e}")
     
-    if l3_art_collection_ownership_registry:
+    if l3_art_commission_hub_owners:
         try:
-            l2relay = l3_art_collection_ownership_registry.l2OwnershipRelay()
-            hub_template = l3_art_collection_ownership_registry.artCommissionHubTemplate()
+            l2relay = l3_art_commission_hub_owners.l2OwnershipRelay()
+            hub_template = l3_art_commission_hub_owners.artCommissionHubTemplate()
             print(f"  - ArtCommissionHubOwners -> L2OwnershipRelay: {l2relay}")
             print(f"  - ArtCommissionHubOwners -> ArtCommissionHub Template: {hub_template}")
         except Exception as e:
@@ -533,7 +561,7 @@ def deploy_contracts():
     print(f"\nMake sure to use these contract addresses in your application.\n")
     print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
-    return l1_contract, l2_contract, l3_art_collection_ownership_registry, commission_hub_template, art_piece_stencil, profile_template, profile_factory_and_regsitry
+    return l1_contract, l2_contract, l3_art_commission_hub_owners, commission_hub_template, art_piece_stencil, profile_template, profile_social_template, profile_factory_and_registry
 
 def main():
     try:
