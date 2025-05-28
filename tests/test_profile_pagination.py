@@ -16,15 +16,17 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileFactoryAndRegistry with the template
     # Deploy ProfileSocial template
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
 
+    # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
-    # Deploy ProfileFactoryAndRegistry with both templates
+    # Deploy ProfileFactoryAndRegistry with all three templates
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
@@ -49,13 +51,13 @@ def test_art_pieces_pagination_empty(setup):
     user_profile = setup["user_profile"]
     
     # Get art pieces with offset 0
-    result = user_profile.getArtPiecesByOffset(0, 10)
+    result = user_profile.getArtPiecesByOffset(0, 10, False)
     
     # Verify empty array is returned
     assert len(result) == 0
     
     # Test with offset beyond available items
-    result_empty = user_profile.getArtPiecesByOffset(100, 10)
+    result_empty = user_profile.getArtPiecesByOffset(100, 10, False)
     assert len(result_empty) == 0
 
 def test_commissions_pagination_empty(setup):
@@ -66,13 +68,13 @@ def test_commissions_pagination_empty(setup):
     user_profile = setup["user_profile"]
     
     # Get commissions with offset 0
-    result = user_profile.getCommissionsByOffset(0, 10)
+    result = user_profile.getCommissionsByOffset(0, 10, False)
     
     # Verify empty array is returned
     assert len(result) == 0
     
     # Test with offset beyond available items
-    result_empty = user_profile.getCommissionsByOffset(100, 10)
+    result_empty = user_profile.getCommissionsByOffset(100, 10, False)
     assert len(result_empty) == 0
 
 def test_unverified_commissions_pagination_empty(setup):
@@ -83,13 +85,13 @@ def test_unverified_commissions_pagination_empty(setup):
     user_profile = setup["user_profile"]
     
     # Get unverified commissions with offset 0
-    result = user_profile.getUnverifiedCommissionsByOffset(0, 10)
+    result = user_profile.getUnverifiedCommissionsByOffset(0, 10, False)
     
     # Verify empty array is returned
     assert len(result) == 0
     
     # Test with offset beyond available items
-    result_empty = user_profile.getUnverifiedCommissionsByOffset(100, 10)
+    result_empty = user_profile.getUnverifiedCommissionsByOffset(100, 10, False)
     assert len(result_empty) == 0
 
 def test_commission_hubs_pagination_empty(setup):
@@ -100,11 +102,11 @@ def test_commission_hubs_pagination_empty(setup):
     user_profile = setup["user_profile"]
     
     # Get commission hubs with offset 0
-    result = user_profile.getCommissionHubsByOffset(0, 10)
+    result = user_profile.getCommissionHubsByOffset(0, 10, False)
     
     # Verify empty array is returned
     assert len(result) == 0
     
     # Test with offset beyond available items
-    result_empty = user_profile.getCommissionHubsByOffset(100, 10)
+    result_empty = user_profile.getCommissionHubsByOffset(100, 10, False)
     assert len(result_empty) == 0 

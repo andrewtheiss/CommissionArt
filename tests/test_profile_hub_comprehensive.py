@@ -19,15 +19,17 @@ def setup():
     # Deploy Profile template
     profile_template = project.Profile.deploy(sender=deployer)
     
-    # Deploy ProfileFactoryAndRegistry with the template
     # Deploy ProfileSocial template
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
 
+    # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
-    # Deploy ProfileFactoryAndRegistry with both templates
+    # Deploy ProfileFactoryAndRegistry with all three templates
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address,
         profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
@@ -83,8 +85,11 @@ def test_user_first_upload_creates_profile_and_art(setup):
             description,
             is_artist,
             ZERO_ADDRESS,  # No other party
+            ZERO_ADDRESS,  # commission_hub - empty address
             False,  # Not AI generated
-            ZERO_ADDRESS,  # Not linked to a commission hub
+            1,  # _linked_to_art_commission_hub_chain_id
+            ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+            0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
             sender=user
         )
         
@@ -104,7 +109,7 @@ def test_user_first_upload_creates_profile_and_art(setup):
         assert profile.myArtCount() == 1
         
         # Get the latest art pieces and verify
-        latest_art_pieces = profile.getLatestArtPieces()
+        latest_art_pieces = profile.getArtPiecesByOffset(0, 10, False)
         assert len(latest_art_pieces) == 1
         art_piece_address = latest_art_pieces[0]
         
@@ -151,8 +156,11 @@ def test_commissioner_creates_profile_and_commission(setup):
             description,
             is_artist,
             artist.address,  # Artist is the other party
+            ZERO_ADDRESS,  # commission_hub - empty address
             False,  # Not AI generated
-            ZERO_ADDRESS,  # Not linked to a commission hub
+            1,  # _linked_to_art_commission_hub_chain_id
+            ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+            0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
             sender=commissioner
         )
         
@@ -172,7 +180,7 @@ def test_commissioner_creates_profile_and_commission(setup):
         assert profile.myArtCount() == 1
         
         # Get the art piece
-        latest_art_pieces = profile.getLatestArtPieces()
+        latest_art_pieces = profile.getArtPiecesByOffset(0, 10, False)
         assert len(latest_art_pieces) == 1
         art_piece_address = latest_art_pieces[0]
         
@@ -218,8 +226,11 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
             description,
             is_artist,
             ZERO_ADDRESS,  # No other party for portfolio piece
+            ZERO_ADDRESS,  # commission_hub - empty address
             False,  # Not AI generated
-            commission_hub.address,
+            1,  # _linked_to_art_commission_hub_chain_id
+            ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+            0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
             sender=other_artist
         )
         
@@ -241,7 +252,7 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
         assert profile.myArtCount() == 1
         
         # Get the art piece
-        latest_art_pieces = profile.getLatestArtPieces()
+        latest_art_pieces = profile.getArtPiecesByOffset(0, 10, False)
         assert len(latest_art_pieces) == 1
         art_piece_address = latest_art_pieces[0]
         
@@ -291,8 +302,11 @@ def test_multiple_users_create_profiles_with_art(setup):
                 f"Description for {titles[i]}",
                 i % 2 == 1,  # Alternate between artist and not
                 ZERO_ADDRESS if i % 2 == 1 else users[(i + 1) % len(users)].address,  # Other party
+                ZERO_ADDRESS,  # commission_hub - empty address
                 False,  # Not AI generated
-                commission_hub.address,
+                1,  # _linked_to_art_commission_hub_chain_id
+                ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+                0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
                 sender=test_user
             )
             
@@ -305,7 +319,7 @@ def test_multiple_users_create_profiles_with_art(setup):
             
             # If art creation worked, verify it
             if profile.myArtCount() > 0:
-                art_pieces = profile.getLatestArtPieces()
+                art_pieces = profile.getArtPiecesByOffset(0, 10, False)
                 assert len(art_pieces) > 0
                 
                 # Verify the latest art piece
@@ -344,8 +358,11 @@ def test_edge_case_max_size_art(setup):
             "Testing maximum allowed size",
             True,  # User as artist
             ZERO_ADDRESS,  # No other party
+            ZERO_ADDRESS,  # commission_hub - empty address
             False,  # Not AI generated
-            commission_hub.address,
+            1,  # _linked_to_art_commission_hub_chain_id
+            ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+            0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
             sender=user
         )
         
@@ -353,7 +370,7 @@ def test_edge_case_max_size_art(setup):
         profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
         
         if profile.myArtCount() > 0:
-            art_pieces = profile.getLatestArtPieces()
+            art_pieces = profile.getArtPiecesByOffset(0, 10, False)
             
             if len(art_pieces) > 0:
                 # Load the art piece and verify data
@@ -396,8 +413,11 @@ def test_ai_generated_art_flag(setup):
             description,
             True,  # User as artist
             ZERO_ADDRESS,  # No other party
+            ZERO_ADDRESS,  # commission_hub - empty address
             True,  # AI generated
-            commission_hub.address,
+            1,  # _linked_to_art_commission_hub_chain_id
+            ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+            0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
             sender=user
         )
         
@@ -407,7 +427,7 @@ def test_ai_generated_art_flag(setup):
             
             # Check if art piece was created
             if profile.myArtCount() > 0:
-                art_pieces = profile.getLatestArtPieces()
+                art_pieces = profile.getArtPiecesByOffset(0, 10, False)
                 
                 if len(art_pieces) > 0:
                     # Verify AI generated flag
@@ -448,8 +468,11 @@ def test_error_profile_exists_already(setup):
                 "This should fail as profile exists",
                 True,  # As artist
                 ZERO_ADDRESS,  # No other party
+                ZERO_ADDRESS,  # commission_hub - empty address
                 False,  # Not AI generated
-                commission_hub.address,
+                1,  # _linked_to_art_commission_hub_chain_id
+                ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+                0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
                 sender=user
             )
     except Exception as e:
@@ -531,8 +554,11 @@ def test_create_profile_with_empty_description(setup):
             empty_description,
             True,  # User as artist
             ZERO_ADDRESS,  # No other party
+            ZERO_ADDRESS,  # commission_hub - empty address
             False,  # Not AI generated
-            commission_hub.address,
+            1,  # _linked_to_art_commission_hub_chain_id
+            ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
+            0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
             sender=user
         )
         
@@ -541,7 +567,7 @@ def test_create_profile_with_empty_description(setup):
             profile = project.Profile.at(profile_factory_and_regsitry.getProfile(user.address))
             
             if profile.myArtCount() > 0:
-                art_pieces = profile.getLatestArtPieces()
+                art_pieces = profile.getArtPiecesByOffset(0, 10, False)
                 if len(art_pieces) > 0:
                     art_piece = project.ArtPiece.at(art_pieces[0])
                     # Verify title and empty description

@@ -9,13 +9,13 @@ profileAddress: public(address)
 owner: public(address)
 
 # Artist ERC1155s for sale
-artistErc1155sToSell: public(DynArray[address, 1000])
+artistErc1155sToSell: public(DynArray[address, 10000000])
 artistErc1155sToSellCount: public(uint256)
-artistCommissionToErc1155Map: public(HashMap[address, address])
+artistPieceToErc1155Map: public(HashMap[address, address])
 artistProceedsAddress: public(address)
 
 # Collector ERC1155s
-collectorErc1155s: public(DynArray[address, 1000])
+collectorErc1155s: public(DynArray[address, 10000000])
 collectorErc1155Count: public(uint256)
 
 # Events (placeholders)
@@ -91,7 +91,7 @@ def mapCommissionToMintErc1155(_commission: address, _erc1155: address):
     Map a commission to an ERC1155. Only the owner can call.
     """
     assert msg.sender == self.owner, "Only owner can call"
-    self.artistCommissionToErc1155Map[_commission] = _erc1155
+    self.artistPieceToErc1155Map[_commission] = _erc1155
 
 @external
 def removeMapCommissionToMintErc1155(_commission: address):
@@ -99,12 +99,12 @@ def removeMapCommissionToMintErc1155(_commission: address):
     Remove a commission to ERC1155 mapping. Only the owner can call.
     """
     assert msg.sender == self.owner, "Only owner can call"
-    self.artistCommissionToErc1155Map[_commission] = empty(address)
+    self.artistPieceToErc1155Map[_commission] = empty(address)
 
 @view
 @external
 def getMapCommissionToMintErc1155(_commission: address) -> address:
-    return self.artistCommissionToErc1155Map[_commission]
+    return self.artistPieceToErc1155Map[_commission]
 
 # Collector ERC1155s
 @external

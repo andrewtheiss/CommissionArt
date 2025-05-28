@@ -19,11 +19,13 @@ def setup():
     # Deploy Profile template and ProfileSocial template
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
+    commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
     
-    # Deploy ProfileFactoryAndRegistry with both templates
+    # Deploy ProfileFactoryAndRegistry with all three templates
     profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
         profile_template.address, 
-        profile_social_template.address, 
+        profile_social_template.address,
+        commission_hub_template.address,
         sender=deployer
     )
     
@@ -63,6 +65,7 @@ def setup():
         "user7": user7,
         "profile_template": profile_template,
         "profile_social_template": profile_social_template,
+        "commission_hub_template": commission_hub_template,
         "profile_factory_and_regsitry": profile_factory_and_regsitry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
@@ -289,3 +292,81 @@ def test_commission_to_mint_erc1155_mapping(setup):
     artist_sales.removeMapCommissionToMintErc1155(commission, sender=artist)
     removed = artist_sales.getMapCommissionToMintErc1155(commission)
     assert removed == "0x" + "0" * 40
+
+def test_artist_proceeds_address(setup):
+    """Test setting and getting artist proceeds address"""
+    artist = setup["artist"]
+    artist_sales = setup["artist_sales"]
+    owner = setup["owner"]
+    
+    # Test initial proceeds address (should be profile address)
+    initial_proceeds = artist_sales.getArtistProceedsAddress()
+    assert initial_proceeds == artist_sales.profileAddress()
+    
+    # Test setting new proceeds address
+    new_proceeds_address = "0x" + "7" * 40
+    artist_sales.setArtistProceedsAddress(new_proceeds_address, sender=artist)
+    updated_proceeds = artist_sales.getArtistProceedsAddress()
+    assert updated_proceeds == new_proceeds_address
+    
+    # Test only owner can set proceeds address
+    with pytest.raises(Exception):
+        artist_sales.setArtistProceedsAddress("0x" + "8" * 40, sender=owner)
+    
+    # Test cannot set empty address
+    with pytest.raises(Exception):
+        artist_sales.setArtistProceedsAddress("0x" + "0" * 40, sender=artist)
+
+def test_duplicate_artist_methods(setup):
+    """Test the duplicate artist ERC1155 methods (addArtistErc1155ToSell, removeArtistErc1155ToSell)"""
+    artist = setup["artist"]
+    artist_sales = setup["artist_sales"]
+    
+    test_erc1155s = [f"0x{'A' * 39}{i+1}" for i in range(3)]
+    
+    # Test addArtistErc1155ToSell (should work same as addAdditionalMintErc1155)
+    for erc1155 in test_erc1155s:
+        artist_sales.addArtistErc1155ToSell(erc1155, sender=artist)
+    
+    assert artist_sales.artistErc1155sToSellCount() == 3
+    
+    # Verify they appear in getAdditionalMintErc1155s
+    all_erc1155s = artist_sales.getAdditionalMintErc1155s(0, 10)
+    assert len(all_erc1155s) == 3
+    for i, erc1155 in enumerate(test_erc1155s):
+        assert normalize_address(all_erc1155s[i]) == normalize_address(erc1155)
+    
+    # Test removeArtistErc1155ToSell
+    artist_sales.removeArtistErc1155ToSell(test_erc1155s[1], sender=artist)
+    assert artist_sales.artistErc1155sToSellCount() == 2
+    
+    # Verify removal
+    updated_erc1155s = artist_sales.getAdditionalMintErc1155s(0, 10)
+    assert len(updated_erc1155s) == 2
+    assert normalize_address(test_erc1155s[1]) not in [normalize_address(addr) for addr in updated_erc1155s]
+
+def test_mixed_artist_methods(setup):
+    """Test mixing both artist methods (addAdditionalMintErc1155 and addArtistErc1155ToSell)"""
+    artist = setup["artist"]
+    artist_sales = setup["artist_sales"]
+    
+    # Add some using addAdditionalMintErc1155
+    artist_sales.addAdditionalMintErc1155("0x" + "1" * 40, sender=artist)
+    artist_sales.addAdditionalMintErc1155("0x" + "2" * 40, sender=artist)
+    
+    # Add some using addArtistErc1155ToSell
+    artist_sales.addArtistErc1155ToSell("0x" + "3" * 40, sender=artist)
+    artist_sales.addArtistErc1155ToSell("0x" + "4" * 40, sender=artist)
+    
+    # Should have 4 total
+    assert artist_sales.artistErc1155sToSellCount() == 4
+    
+    # All should appear in the same list
+    all_erc1155s = artist_sales.getAdditionalMintErc1155s(0, 10)
+    assert len(all_erc1155s) == 4
+    
+    # Remove using both methods
+    artist_sales.removeAdditionalMintErc1155("0x" + "1" * 40, sender=artist)
+    artist_sales.removeArtistErc1155ToSell("0x" + "3" * 40, sender=artist)
+    
+    assert artist_sales.artistErc1155sToSellCount() == 2

@@ -186,7 +186,7 @@ def _createOrUpdateCommissionHubAndOwner(_chain_id: uint256,_nft_contract: addre
         #2. Initialize the commission hub
         #3. Register the commission hub
         #4. Add the commission hub to the new owner's list  
-        commission_hub = create_minimal_proxy_to(self.artCommissionHubTemplate)
+        commission_hub = create_minimal_proxy_to(self.artCommissionHubTemplate, revert_on_failure=True)
         commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
         extcall commission_hub_instance.initializeParentCommissionHubOwnerContract(self)
         extcall commission_hub_instance.initializeForArtCommissionHub(_chain_id, _nft_contract, _nft_token_id_or_generic_hub_account)
@@ -276,7 +276,7 @@ def createGenericCommissionHub(_owner: address) -> address:
     _nft_token_id_or_generic_hub_account: uint256 = convert(_owner, uint256)
 
     # Create a new commission hub
-    commission_hub: address = create_minimal_proxy_to(self.artCommissionHubTemplate)
+    commission_hub: address = create_minimal_proxy_to(self.artCommissionHubTemplate, revert_on_failure=True)
     commission_hub_instance: ArtCommissionHub = ArtCommissionHub(commission_hub)
     
     # Initialize the parent contract reference first

@@ -402,7 +402,7 @@ def test_access_control_for_commission_hub_methods(setup):
             chain_id, nft_contract, token_id + 1, user1.address, sender=user2
         )
     
-    assert "Only L2OwnershipRelay or the owner can register" in str(excinfo.value)
+    assert "Only system allowed addresses can register artCommissionHubOwners" in str(excinfo.value)
     
     # Test that only owner can create generic hubs for themselves
     # This should work
