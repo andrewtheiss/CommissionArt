@@ -274,6 +274,12 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
         log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is not whitelisted")
         return False
     
+    # Add to myArt collection if the profile owner is the commissioner
+    if self.owner == commissioner and self.myArtExistsAndPositionOffsetByOne[_art_piece] == 0:
+        self.myArt.append(_art_piece)
+        self.myArtCount += 1
+        self.myArtExistsAndPositionOffsetByOne[_art_piece] = self.myArtCount
+    
     # Determine if this should be added to verified or myUnverified list
     # Commissions are now verified only when both parties verify them
     is_verified_by_both: bool = False
@@ -365,6 +371,12 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
     
     # If now verified, move from myUnverified to verified list
     if is_now_verified:
+        # Add to myArt collection if the profile owner is the commissioner and not already there
+        if is_commissioner and self.myArtExistsAndPositionOffsetByOne[_art_piece] == 0:
+            self.myArt.append(_art_piece)
+            self.myArtCount += 1
+            self.myArtExistsAndPositionOffsetByOne[_art_piece] = self.myArtCount
+        
         # Check if it's in the myUnverified list
         found_myUnverified: bool = False
         myUnverified_index: uint256 = 0
@@ -395,10 +407,13 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
             self.myCommissionCount += 1
             # Set mapping for the newly added verified item
             self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = self.myCommissionCount  # offset by 1
+            # Set the role based on whether profile owner is artist or commissioner
+            self.myCommissionRole[_art_piece] = is_artist
         
         # Now we need to update the other party's profile as well
         # Get the profile factory registry to find the other party's profile
-        if self.profileFactoryAndRegistry != empty(address):
+        if self.profileFactoryAndRegistry != empty(address) and found_myUnverified:
+            # Only update the other profile if we actually moved something from unverified to verified
             # Try to find the other party's profile
             other_party: address = empty(address)
             if is_artist:
@@ -794,7 +809,7 @@ def addArtPiece(_art_piece: address):
     art_piece: ArtPiece = ArtPiece(_art_piece)
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
-    is_myCommission: bool = staticcall art_piece.isFullyVerifiedCommission()
+    is_commission: bool = commissioner != art_artist  # Check if it's a commission piece
     
     # Verify the profile owner is either the art piece owner or artist
     assert self.owner == art_artist or self.owner == commissioner, "Can only add art you own or created"
@@ -806,7 +821,7 @@ def addArtPiece(_art_piece: address):
         self.myArtExistsAndPositionOffsetByOne[_art_piece] = self.myArtCount
     
     # If this is a myCommission, determine where to add it
-    if is_myCommission:
+    if is_commission:
         is_verified_by_both: bool = staticcall art_piece.isFullyVerifiedCommission()
         
         if is_verified_by_both:
@@ -993,7 +1008,7 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
     effective_owner: address = staticcall art_piece.getOwner()
     art_artist: address = staticcall art_piece.getArtist()
     commissioner: address = staticcall art_piece.getCommissioner()
-    is_myCommission: bool = staticcall art_piece.isFullyVerifiedCommission()
+    is_commission: bool = commissioner != art_artist  # Check if it's a commission piece
     myCommission_hub: address = staticcall art_piece.getArtCommissionHubAddress()
     
     # Check if sender is the owner of this profile
@@ -1033,6 +1048,12 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
     
     # If verified, move from myUnverified to verified list
     if is_verified_by_both:
+        # Add to myArt collection if the profile owner is the commissioner and not already there
+        if is_commissioner and self.myArtExistsAndPositionOffsetByOne[_commission_art_piece] == 0:
+            self.myArt.append(_commission_art_piece)
+            self.myArtCount += 1
+            self.myArtExistsAndPositionOffsetByOne[_commission_art_piece] = self.myArtCount
+        
         # Check if it's in the myUnverified list
         found_myUnverified: bool = False
         myUnverified_index: uint256 = 0
@@ -1063,10 +1084,13 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
             self.myCommissionCount += 1
             # Set mapping for the newly added verified item
             self.myCommissionExistsAndPositionOffsetByOne[_commission_art_piece] = self.myCommissionCount  # offset by 1
+            # Set the role based on whether profile owner is artist or commissioner
+            self.myCommissionRole[_commission_art_piece] = is_artist
         
         # Now we need to update the other party's profile as well
         # Get the profile factory registry to find the other party's profile
-        if self.profileFactoryAndRegistry != empty(address):
+        if self.profileFactoryAndRegistry != empty(address) and found_myUnverified:
+            # Only update the other profile if we actually moved something from unverified to verified
             # Try to find the other party's profile
             other_party: address = empty(address)
             if is_artist:
