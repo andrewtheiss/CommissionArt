@@ -294,6 +294,9 @@ def createEditionFromArtPiece(
     assert self.artEdition1155Template != empty(address), "ArtEdition1155 template not set"
     assert _art_piece != empty(address), "Invalid art piece address"
     
+    # Check that this art piece doesn't already have an edition
+    assert self.artistPieceToErc1155Map[_art_piece] == empty(address), "Art piece already has an edition"
+    
     # Verify the caller owns the art piece
     art_piece: ArtPiece = ArtPiece(_art_piece)
     art_owner: address = staticcall art_piece.getOwner()
