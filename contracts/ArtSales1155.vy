@@ -288,9 +288,9 @@ def createEditionFromArtPiece(
     _royalty_percent: uint256
 ) -> address:
     """
-    Create an ERC1155 edition from an art piece. Only the owner can call.
+    Create an ERC1155 edition from an art piece. Only the owner or profile can call.
     """
-    assert msg.sender == self.owner, "Only owner can call"
+    assert msg.sender == self.owner or msg.sender == self.profileAddress, "Only owner or profile can call"
     assert self.artEdition1155Template != empty(address), "ArtEdition1155 template not set"
     assert _art_piece != empty(address), "Invalid art piece address"
     

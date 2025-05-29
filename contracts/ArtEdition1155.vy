@@ -123,7 +123,7 @@ def createEdition(
     _royalty_percent: uint256
 ) -> uint256:
     """Create a new edition/token type"""
-    assert msg.sender == self.owner, "Only owner can create editions"
+    assert msg.sender == self.owner or msg.sender == self.artSales1155, "Only owner or ArtSales1155 can create editions"
     assert _royalty_percent <= MAX_ROYALTY_PERCENT, "Royalty too high"
     
     token_id: uint256 = self.nextTokenId
