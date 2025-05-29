@@ -20,22 +20,26 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with all three templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address, 
-        profile_social_template.address,
-        commission_hub_template.address,
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
     # Create profiles for owner and artist
-    profile_factory_and_regsitry.createProfile(sender=owner)
-    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_factory_and_registry.createProfile(sender=owner)
+    profile_factory_and_registry.createProfile(sender=artist)
     
     # Get the created profile addresses
-    owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
-    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    owner_profile_address = profile_factory_and_registry.getProfile(owner.address)
+    artist_profile_address = profile_factory_and_registry.getProfile(artist.address)
     
     # Create profile objects
     owner_profile = project.Profile.at(owner_profile_address)
@@ -43,14 +47,18 @@ def setup():
     
     # Set artist flag on artist profile
     artist_profile.setIsArtist(True, sender=artist)
+    # Note: ArtSales1155 is automatically created when setting artist status
 
-    # Deploy ArtSales1155 for owner and artist
-    owner_sales = project.ArtSales1155.deploy(owner_profile_address, owner.address, sender=deployer)
-    artist_sales = project.ArtSales1155.deploy(artist_profile_address, artist.address, sender=deployer)
+    # Deploy ArtSales1155 for owner only (artist already has one auto-created)
+    owner_sales = project.ArtSales1155.deploy(sender=deployer)
+    owner_sales.initialize(owner_profile_address, owner.address, profile_factory_and_registry.address, sender=deployer)
     
-    # Link ArtSales1155 to profiles
+    # Get the auto-created ArtSales1155 for artist
+    artist_sales_address = artist_profile.artSales1155()
+    artist_sales = project.ArtSales1155.at(artist_sales_address)
+    
+    # Link ArtSales1155 to owner profile only (artist already has it linked)
     owner_profile.setArtSales1155(owner_sales.address, sender=owner)
-    artist_profile.setArtSales1155(artist_sales.address, sender=artist)
 
     return {
         "deployer": deployer,
@@ -66,12 +74,13 @@ def setup():
         "profile_template": profile_template,
         "profile_social_template": profile_social_template,
         "commission_hub_template": commission_hub_template,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
         "owner_sales": owner_sales,
         "artist_sales": artist_sales
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template}
 
 # --- Helper function ---
 def normalize_address(address):

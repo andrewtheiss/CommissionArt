@@ -87,6 +87,7 @@ interface ProfileFactoryAndRegistry:
     def artCommissionHubOwners() -> address: view
     def getProfile(_owner: address) -> address: view
     def owner() -> address: view
+    def artSales1155Template() -> address: view
 
 # Interface for Profile (for cross-profile calls)
 interface Profile:
@@ -118,6 +119,9 @@ interface ArtCommissionHub:
 # Interface for ArtSales1155 (expanded)
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
+    def createEditionFromArtPiece(_art_piece: address, _edition_name: String[100], _edition_symbol: String[10], _base_uri: String[256], _mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256) -> address: nonpayable
+    def hasEditions(_art_piece: address) -> bool: view
+    def initialize(_profile_address: address, _owner: address, _profile_factory_and_registry: address): nonpayable
 
 # Add this interface at the top
 interface ArtCommissionHubOwners:
@@ -155,6 +159,10 @@ def initialize(_owner: address, _profile_social: address, _profile_factory_and_r
     self.myCommissionCount = 0
     self.myUnverifiedCommissionCount = 0
     self.myArtCount = 0
+    
+    # If this is an artist profile, ensure ArtSales1155 exists
+    if _is_artist:
+        self._assuresArtSalesExists()
 
 # Internal function to get deployer address
 @internal
@@ -162,6 +170,29 @@ def initialize(_owner: address, _profile_social: address, _profile_factory_and_r
 def _getDeployer() -> address:
     profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
     return staticcall profile_factory.owner()
+
+# Internal function to ensure ArtSales1155 exists for artists
+@internal
+def _assuresArtSalesExists():
+    """
+    @notice Ensures that an ArtSales1155 contract exists for this profile if it's an artist
+    @dev Automatically creates ArtSales1155 if the profile is an artist and doesn't have one
+    """
+    if self.isArtist and self.artSales1155 == empty(address):
+        # Get the ArtSales1155 template from ProfileFactoryAndRegistry
+        profile_factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(self.profileFactoryAndRegistry)
+        art_sales_template: address = staticcall profile_factory.artSales1155Template()
+        assert art_sales_template != empty(address), "ArtSales1155 template not set in factory"
+        
+        # Create ArtSales1155 contract using minimal proxy
+        art_sales_contract: address = create_minimal_proxy_to(art_sales_template, revert_on_failure=True)
+        
+        # Initialize the ArtSales1155 contract
+        art_sales: ArtSales1155 = ArtSales1155(art_sales_contract)
+        extcall art_sales.initialize(self, self.owner, self.profileFactoryAndRegistry)
+        
+        # Set the artSales1155 address
+        self.artSales1155 = art_sales_contract
 
 # Toggle allowing new myCommissions
 @external
@@ -990,7 +1021,10 @@ def setIsArtist(_is_artist: bool):
     """
     assert msg.sender == self.owner, "Only owner can set artist status"
     self.isArtist = _is_artist
-
+    
+    # If becoming an artist, ensure ArtSales1155 exists
+    if _is_artist:
+        self._assuresArtSalesExists()
 
 @external
 def updateCommissionVerificationStatus(_commission_art_piece: address):
@@ -1146,5 +1180,55 @@ def getCommissionHubCount() -> uint256:
     
     registry: ArtCommissionHubOwners = ArtCommissionHubOwners(registry_addr)
     return staticcall registry.getCommissionHubCountByOwner(self.owner)
+
+@external
+def createArtEdition(
+    _art_piece: address,
+    _edition_name: String[100],
+    _edition_symbol: String[10],
+    _base_uri: String[256],
+    _mint_price: uint256,
+    _max_supply: uint256,
+    _royalty_percent: uint256
+) -> address:
+    """
+    Create an ERC1155 edition from an art piece in this profile
+    This is a convenience method that calls through to ArtSales1155
+    """
+    assert msg.sender == self.owner, "Only owner can create editions"
+    assert self.artSales1155 != empty(address), "ArtSales1155 not set"
+    
+    # Verify the art piece belongs to this profile
+    assert self.myArtExistsAndPositionOffsetByOne[_art_piece] != 0, "Art piece not in profile"
+    
+    # Get the art piece to verify ownership
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    art_artist: address = staticcall art_piece.getArtist()
+    assert art_artist == self.owner, "Must be the artist of the art piece"
+    
+    # Call ArtSales1155 to create the edition
+    sales_contract: ArtSales1155 = ArtSales1155(self.artSales1155)
+    edition: address = extcall sales_contract.createEditionFromArtPiece(
+        _art_piece,
+        _edition_name,
+        _edition_symbol,
+        _base_uri,
+        _mint_price,
+        _max_supply,
+        _royalty_percent
+    )
+    
+    return edition
+
+# Add view method to check if art piece has editions
+@view
+@external
+def artPieceHasEditions(_art_piece: address) -> bool:
+    """Check if an art piece has any ERC1155 editions"""
+    if self.artSales1155 == empty(address):
+        return False
+    
+    sales_contract: ArtSales1155 = ArtSales1155(self.artSales1155)
+    return staticcall sales_contract.hasEditions(_art_piece)
 
 # NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.

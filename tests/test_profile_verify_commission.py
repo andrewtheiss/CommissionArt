@@ -20,13 +20,17 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with all templates
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -79,6 +83,8 @@ def setup():
         "artist_profile": artist_profile,
         "commissioner_profile": commissioner_profile,
         "commission_hub": commission_hub,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template,
         "art_piece_template": art_piece_template
     }
 

@@ -15,12 +15,16 @@ def setup():
     
     # Deploy ArtCommissionHub template to pass to ProfileFactoryAndRegistry
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with templates
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -44,7 +48,10 @@ def setup():
         "profile": profile,
         "profile_social": profile_social,
         "commission_hub_template": commission_hub_template
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_profilesocial_link_immutability(setup):
     """Test that the link between Profile and ProfileSocial is permanent and immutable"""
@@ -121,6 +128,12 @@ def test_factory_created_profile_social_link(setup):
     # Deploy L2OwnershipRelay and ArtCommissionHub template for ArtCommissionHubOwners
     l2_relay = project.L2OwnershipRelay.deploy(sender=deployer)
     art_commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Deploy ArtCommissionHubOwners

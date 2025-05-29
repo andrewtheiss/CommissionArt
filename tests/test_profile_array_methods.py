@@ -29,20 +29,24 @@ def setup():
     # Deploy ArtCommissionHub template (used by ProfileFactory and ArtCommissionHubOwners)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
+
     # Deploy ProfileFactoryAndRegistry with a Profile template and a ProfileSocial template and ArtCommissionHub template
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
     # Create profiles for testing
-    profile_factory_and_regsitry.createProfile(sender=owner)
-    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_factory_and_registry.createProfile(sender=owner)
+    profile_factory_and_registry.createProfile(sender=artist)
     
-    owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
-    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    owner_profile_address = profile_factory_and_registry.getProfile(owner.address)
+    artist_profile_address = profile_factory_and_registry.getProfile(artist.address)
     
     owner_profile = project.Profile.at(owner_profile_address)
     artist_profile = project.Profile.at(artist_profile_address)
@@ -66,8 +70,8 @@ def setup():
     )
     
     # Link contracts
-    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
-    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    profile_factory_and_registry.linkArtCommissionHubOwnersContract(art_commission_hub_owners.address, sender=deployer)
+    art_commission_hub_owners.linkProfileFactoryAndRegistry(profile_factory_and_registry.address, sender=deployer)
     
     # Create a generic commission hub for the 'owner' test account
     # The owner of ArtCommissionHubOwners needs to be L2OwnershipRelay or owner for registerNFTOwnerFromParentChain.
@@ -90,13 +94,14 @@ def setup():
         "user6": user6,
         "user7": user7,
         "profile_template": profile_template,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
         "art_piece_template": art_piece_template,
         "art_commission_hub_owners": art_commission_hub_owners,
         "generic_hub_address_for_owner": generic_hub_address
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template}
 
 # Tests for Commission Array Methods
 def test_commission_array_methods(setup):
@@ -107,6 +112,7 @@ def test_commission_array_methods(setup):
     artist_profile = setup["artist_profile"]
     art_piece_template = setup["art_piece_template"]
     generic_hub_address_for_owner = setup["generic_hub_address_for_owner"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Test empty state
     assert owner_profile.myCommissionCount() == 0
@@ -173,12 +179,13 @@ def test_unverified_commission_array_methods(setup):
     artist_profile = setup["artist_profile"]
     user1 = setup["user1"]
     art_piece_template = setup["art_piece_template"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     generic_hub_address_for_owner = setup["generic_hub_address_for_owner"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Create profile for user1
-    profile_factory_and_regsitry.createProfile(sender=user1)
-    user1_profile_address = profile_factory_and_regsitry.getProfile(user1.address)
+    profile_factory_and_registry.createProfile(sender=user1)
+    user1_profile_address = profile_factory_and_registry.getProfile(user1.address)
     user1_profile = project.Profile.at(user1_profile_address)
     
     # Test empty state
@@ -235,6 +242,7 @@ def test_my_commissions_array_methods(setup):
     owner_profile = setup["owner_profile"]
     art_piece_template = setup["art_piece_template"]
     generic_hub_address_for_owner = setup["generic_hub_address_for_owner"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Create test art pieces as commissions with commission hub
     test_commissions = []
@@ -308,6 +316,7 @@ def test_create_artpiece_with_erc721(setup):
     artist_profile = setup["artist_profile"]
     art_piece_template = setup["art_piece_template"]
     generic_hub_address_for_owner = setup["generic_hub_address_for_owner"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Create art piece as owner/commissioner with commission hub
     token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnQiLCJkZXNjcmlwdGlvbiI6IlRlc3QgRGVzY3JpcHRpb24iLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFCM1JKVFVVSDVBb1NEdUZvQ0FBQUFBMUpSRUZVZU5xVEVFRUFBQUE1VVBBRHhpVXFJVzRBQUFBQlNVVk9SSzVDWUlJPSJ9"

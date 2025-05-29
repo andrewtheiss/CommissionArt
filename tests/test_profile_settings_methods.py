@@ -1,5 +1,5 @@
-import pytest
 from ape import accounts, project
+import pytest
 
 # Define constant for zero address
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -21,20 +21,24 @@ def setup():
     # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
+
     # Deploy ProfileFactoryAndRegistry with all three templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
     # Create profiles for testing
-    profile_factory_and_regsitry.createProfile(sender=owner)
-    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_factory_and_registry.createProfile(sender=owner)
+    profile_factory_and_registry.createProfile(sender=artist)
     
-    owner_profile_address = profile_factory_and_regsitry.getProfile(owner.address)
-    artist_profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+    owner_profile_address = profile_factory_and_registry.getProfile(owner.address)
+    artist_profile_address = profile_factory_and_registry.getProfile(artist.address)
     
     owner_profile = project.Profile.at(owner_profile_address)
     artist_profile = project.Profile.at(artist_profile_address)
@@ -51,10 +55,12 @@ def setup():
         "artist": artist,
         "other_user": other_user,
         "profile_template": profile_template,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
-        "art_piece_template": art_piece_template
+        "art_piece_template": art_piece_template,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template
     }
 
 def test_initialization(setup):
@@ -64,17 +70,22 @@ def test_initialization(setup):
     artist = setup["artist"]
     artist_profile = setup["artist_profile"]
     deployer = setup["deployer"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
-    # Deploy and link ArtSales1155 for owner and artist
-    owner_sales = project.ArtSales1155.deploy(owner_profile.address, owner.address, sender=deployer)
-    artist_sales = project.ArtSales1155.deploy(artist_profile.address, artist.address, sender=deployer)
+    # Deploy and link ArtSales1155 for owner only (artist already has one auto-created)
+    owner_sales = project.ArtSales1155.deploy(sender=deployer)
+    owner_sales.initialize(owner_profile.address, owner.address, profile_factory_and_registry.address, sender=deployer)
+    
+    # Get the auto-created ArtSales1155 for artist (created when setIsArtist was called)
+    artist_sales_address = artist_profile.artSales1155()
+    artist_sales = project.ArtSales1155.at(artist_sales_address)
+    
+    # Link ArtSales1155 to owner profile only (artist already has it linked)
     owner_profile.setArtSales1155(owner_sales.address, sender=owner)
-    artist_profile.setArtSales1155(artist_sales.address, sender=artist)
     
     # Check owner profile initial state
     assert owner_profile.owner() == owner.address
-    assert owner_profile.deployer() == profile_factory_and_regsitry.address
+    assert owner_profile.deployer() == profile_factory_and_registry.address
     assert owner_profile.isArtist() is False
     assert owner_profile.allowUnverifiedCommissions() is True
     # assert owner_profile.profileExpansion() == "0x" + "0" * 40  # This method doesn't exist
@@ -237,12 +248,18 @@ def test_set_proceeds_address(setup):
     owner_profile = setup["owner_profile"]
     other_user = setup["other_user"]
     deployer = setup["deployer"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
-    # Deploy and link ArtSales1155 for owner and artist
-    owner_sales = project.ArtSales1155.deploy(owner_profile.address, owner.address, sender=deployer)
-    artist_sales = project.ArtSales1155.deploy(artist_profile.address, artist.address, sender=deployer)
+    # Deploy and link ArtSales1155 for owner only (artist already has one auto-created)
+    owner_sales = project.ArtSales1155.deploy(sender=deployer)
+    owner_sales.initialize(owner_profile.address, owner.address, profile_factory_and_registry.address, sender=deployer)
+    
+    # Get the auto-created ArtSales1155 for artist (created when setIsArtist was called)
+    artist_sales_address = artist_profile.artSales1155()
+    artist_sales = project.ArtSales1155.at(artist_sales_address)
+    
+    # Link ArtSales1155 to owner profile only (artist already has it linked)
     owner_profile.setArtSales1155(owner_sales.address, sender=owner)
-    artist_profile.setArtSales1155(artist_sales.address, sender=artist)
     
     # Initial state - check artist proceeds address is set (not exact value)
     assert artist_sales.artistProceedsAddress() != ZERO_ADDRESS
@@ -385,9 +402,11 @@ def test_art_sales_recipient_behavior(setup):
     owner_profile = setup["owner_profile"]
     deployer = setup["deployer"]
     other_user = setup["other_user"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Deploy ArtSales1155 for the profile
-    owner_sales = project.ArtSales1155.deploy(owner_profile.address, owner.address, sender=deployer)
+    owner_sales = project.ArtSales1155.deploy(sender=deployer)
+    owner_sales.initialize(owner_profile.address, owner.address, profile_factory_and_registry.address, sender=deployer)
     
     # 1. Verify initial state: proceeds address is set to the profile address (not null)
     assert owner_sales.artistProceedsAddress().lower() == owner_profile.address.lower()
@@ -407,7 +426,8 @@ def test_art_sales_recipient_behavior(setup):
     
     # 4. If we initialize a new ArtSales with the owner's address instead of profile address
     # it should still work (and later we can set it to the profile)
-    new_sales = project.ArtSales1155.deploy(owner_profile.address, owner.address, sender=deployer)
+    new_sales = project.ArtSales1155.deploy(sender=deployer)
+    new_sales.initialize(owner_profile.address, owner.address, profile_factory_and_registry.address, sender=deployer)
     # 4a. In this case, the proceeds address is still set to profile address by default
     assert new_sales.artistProceedsAddress().lower() == owner_profile.address.lower()
     
