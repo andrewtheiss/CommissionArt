@@ -87,6 +87,25 @@ const L2L3Test: React.FC = () => {
     return ethers.getAddress(address);
   };
 
+  // Helper function to calculate L2 to L3 address alias
+  const calculateL2ToL3Alias = (l2Address: string): string => {
+    if (!ethers.isAddress(l2Address)) {
+      return 'Invalid address';
+    }
+    
+    // Convert address to BigInt for calculation
+    const addressBigInt = BigInt(l2Address);
+    const offset = BigInt('0x1111000000000000000000000000000000001111');
+    
+    // Add the offset
+    const aliasBigInt = addressBigInt + offset;
+    
+    // Convert back to hex address (ensure it's 40 chars + 0x)
+    const aliasHex = '0x' + aliasBigInt.toString(16).padStart(40, '0');
+    
+    return ethers.getAddress(aliasHex);
+  };
+
   // Helper function to create calldata for crossChainUpdate
   const createCrossChainUpdateCalldata = (userAddress: string): string => {
     if (!ethers.isAddress(userAddress)) {
@@ -492,6 +511,35 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
         <p className="description">
           Test L2 to L3 retryable ticket creation functionality. This creates a retryable ticket that calls <strong>crossChainUpdate(address)</strong> on the L3ReceiveMessage contract. This page automatically switches to <strong>Arbitrum Mainnet</strong> for optimal testing.
         </p>
+
+        {isConnected && walletAddress && (
+          <div className="wallet-alias-section">
+            <h4>🔗 Connected Wallet & L3 Alias</h4>
+            <div className="wallet-grid">
+              <div>
+                <strong>L2 Address (Your Wallet):</strong>
+                <div className="wallet-address-display">
+                  {walletAddress}
+                </div>
+              </div>
+              <div>
+                <strong>L3 Alias (How L3 sees you):</strong>
+                <div className="wallet-alias-display">
+                  {calculateL2ToL3Alias(walletAddress)}
+                </div>
+              </div>
+            </div>
+            <div className="wallet-info-note">
+              <strong>💡 Aliasing Info:</strong> Your L2 address gets "aliased" on L3 by adding <code>0x1111000000000000000000000000000000001111</code>. This prevents cross-chain exploits by ensuring contracts can distinguish between parent-chain and child-chain calls.
+            </div>
+          </div>
+        )}
+
+        {!isConnected && (
+          <div className="wallet-connection-prompt">
+            <strong>⚠️ Connect your wallet to see your L3 alias address</strong>
+          </div>
+        )}
         
         <div className="l2-to-l3-message-sender">
           <div className="contract-info">
@@ -502,6 +550,16 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
             <p className="network-requirement">
               Network: Arbitrum One (L2) - Mainnet
             </p>
+            {isConnected && walletAddress && (
+              <>
+                <p className="wallet-info">
+                  Connected Wallet: <code>{walletAddress}</code>
+                </p>
+                <p className="wallet-alias">
+                  Connected Wallet L3 Alias: <code>{calculateL2ToL3Alias(walletAddress)}</code>
+                </p>
+              </>
+            )}
           </div>
 
           <div className="sender-controls">
@@ -533,8 +591,8 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
               
               <div className="calldata-subform">
                 <h6>Cross-Chain Message Details</h6>
-                <div className="calldata-info">
-                  <div className="form-row">
+                <div className="calldata-info compact">
+                  <div className="form-row compact">
                     <label>L3 Target Contract:</label>
                     <input
                       type="text"
@@ -545,7 +603,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                     <small>L3ReceiveMessage contract where the message will be delivered</small>
                   </div>
                   
-                  <div className="form-row">
+                  <div className="form-row compact">
                     <label>Function to Call:</label>
                     <input
                       type="text"
@@ -556,7 +614,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                     <small>Method signature that will be called on L3</small>
                   </div>
                   
-                  <div className="form-row">
+                  <div className="form-row compact">
                     <label>Function Parameter (address):</label>
                     <input
                       type="text"
@@ -593,8 +651,8 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                 </div>
               </div>
 
-              <div className="form-grid">
-                <div className="form-row">
+              <div className="form-grid compact">
+                <div className="form-row compact">
                   <label>L2 Inbox Contract (Pre-populated, Editable):</label>
                   <input
                     type="text"
@@ -606,7 +664,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>L2 Inbox contract that will create the retryable ticket</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>L2 Call Value (ETH):</label>
                   <input
                     type="text"
@@ -617,7 +675,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>Amount of ETH to send to your L3 wallet</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>Max Submission Cost (ETH):</label>
                   <input
                     type="text"
@@ -628,7 +686,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>Cost to submit retryable ticket (~0.0006 ETH current estimate)</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>Excess Fee Refund Address:</label>
                   <input
                     type="text"
@@ -640,7 +698,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>Address to receive refund of excess fees (usually your wallet)</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>Call Value Refund Address:</label>
                   <input
                     type="text"
@@ -652,7 +710,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>Address to receive refund of call value on failure (usually your wallet)</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>Gas Limit:</label>
                   <input
                     type="text"
@@ -663,7 +721,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>Gas limit for L3 execution (300,000 is typical)</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>Max Fee Per Gas (wei):</label>
                   <input
                     type="text"
@@ -674,7 +732,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                   <small>Max fee per gas for L3 execution (36M wei = 0.036 gwei)</small>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row compact">
                   <label>Token Total Fee Amount (ANIME):</label>
                   <input
                     type="text"
