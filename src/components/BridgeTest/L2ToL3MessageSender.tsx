@@ -21,16 +21,16 @@ const L2ToL3MessageSender: React.FC<L2ToL3MessageSenderProps> = ({ setBridgeStat
   // Contract address - deployed on L2 (Arbitrum)
   const L2_TO_L3_CONTRACT = "0xa46E204B8cD37959c0e4C3082c8830eFa160dc14";
   const ANIME_TOKEN_ADDRESS = "0x37a645648dF29205C6261289983FB04ECD70b4B3";
-  const DEFAULT_L3_TARGET = "0x08Fa26D7C129Ea51CCFf87109C382a532605E120";
+  const DEFAULT_L3_TARGET = "0xed9d942cb93cece584b3898be216c366d81d9e84";
 
   // State variables for form inputs
   const [l3Receiver, setL3Receiver] = useState<string>(DEFAULT_L3_TARGET);
   const [userInputAddress, setUserInputAddress] = useState<string>("");
-  const [l3CallValue, setL3CallValue] = useState<string>("0");
-  const [maxSubmissionCost, setMaxSubmissionCost] = useState<string>("0.01");
+  const [l3CallValue, setL3CallValue] = useState<string>("1");
+  const [maxSubmissionCost, setMaxSubmissionCost] = useState<string>("0.0093");
   const [gasLimit, setGasLimit] = useState<string>("300000");
-  const [maxFeePerGas, setMaxFeePerGas] = useState<string>("2000000000");
-  const [ethValue, setEthValue] = useState<string>("0.012");
+  const [maxFeePerGas, setMaxFeePerGas] = useState<string>("36000000");
+  const [ethValue, setEthValue] = useState<string>("1.0048");
 
   // State for loading states
   const [isApproving, setIsApproving] = useState<boolean>(false);
@@ -57,6 +57,79 @@ const L2ToL3MessageSender: React.FC<L2ToL3MessageSenderProps> = ({ setBridgeStat
     "event AnimeApprovedForMessaging(address indexed user, uint256 amount)",
     "event L2ToL3MessageSent(address indexed l3_receiver, address indexed user_input_address, address sender, uint256 ticket_id)"
   ];
+
+  // ANIME Token ABI for checking balance and allowance
+  const ANIME_TOKEN_ABI = [
+    "function balanceOf(address account) external view returns (uint256)",
+    "function allowance(address owner, address spender) external view returns (uint256)",
+    "function approve(address spender, uint256 amount) external returns (bool)"
+  ];
+
+  // Function to check ANIME token status
+  const checkAnimeTokenStatus = async () => {
+    if (!isConnected || !walletAddress) {
+      setBridgeStatus('Please connect your wallet to check ANIME token status');
+      return;
+    }
+
+    // Ensure we're on L2 (Arbitrum)
+    if (!networkType.includes('arbitrum')) {
+      setBridgeStatus('Please switch to Arbitrum network (L2) to check ANIME tokens');
+      return;
+    }
+
+    try {
+      if (typeof window === 'undefined' || !window.ethereum) {
+        throw new Error('MetaMask is not installed or not accessible');
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // Confirm we're on the right network first
+      const network = await provider.getNetwork();
+      const isArbitrum = network.chainId === 42161n || network.chainId === 421614n; // Arbitrum One or Sepolia
+      
+      if (!isArbitrum) {
+        setBridgeStatus('Error: Please make sure your wallet is connected to Arbitrum network');
+        return;
+      }
+
+      setBridgeStatus('Checking ANIME token status...');
+      
+      const animeContract = new ethers.Contract(ANIME_TOKEN_ADDRESS, ANIME_TOKEN_ABI, provider);
+      
+      // Check balance and allowance
+      const [balance, allowance] = await Promise.all([
+        animeContract.balanceOf(walletAddress),
+        animeContract.allowance(walletAddress, L2_TO_L3_CONTRACT)
+      ]);
+      
+      const requiredAmount = ethers.parseEther("1.0014");
+      const balanceSufficient = balance >= requiredAmount;
+      const allowanceSufficient = allowance >= requiredAmount;
+      
+      setBridgeStatus(`ANIME Token Status Check:
+- Your ANIME Balance: ${ethers.formatEther(balance)} ANIME
+- Contract Allowance: ${ethers.formatEther(allowance)} ANIME
+- Required for Transaction: ~1.0014 ANIME
+- Balance Sufficient: ${balanceSufficient ? "✅ YES" : "❌ NO"}
+- Allowance Sufficient: ${allowanceSufficient ? "✅ YES" : "❌ NO"}
+- Network: ${network.chainId === 42161n ? 'Arbitrum One' : 'Arbitrum Sepolia'}
+
+${!balanceSufficient ? "\n⚠️ You need more ANIME tokens in your wallet." : ""}
+${!allowanceSufficient ? "\n⚠️ You need to approve ANIME tokens for this contract." : ""}
+${balanceSufficient && allowanceSufficient ? "\n🎉 All checks passed! You can proceed with the transaction." : ""}`);
+      
+    } catch (error: any) {
+      console.error('Error checking ANIME token status:', error);
+      setBridgeStatus(`Error checking ANIME token status: ${error.message || String(error)}
+      
+Please ensure:
+- You're connected to Arbitrum network
+- MetaMask is unlocked and accessible
+- The ANIME token contract is accessible`);
+    }
+  };
 
   // Function to approve maximum ANIME tokens for messaging
   const handleApproveAnime = async () => {
@@ -228,11 +301,11 @@ Sender: ${event.args[2]}`);
   const usePresetValues = () => {
     setL3Receiver(DEFAULT_L3_TARGET);
     setUserInputAddress(walletAddress || "");
-    setL3CallValue("0");
-    setMaxSubmissionCost("0.01");
+    setL3CallValue("1");
+    setMaxSubmissionCost("0.0093");
     setGasLimit("300000");
-    setMaxFeePerGas("2000000000");
-    setEthValue("0.012");
+    setMaxFeePerGas("36000000");
+    setEthValue("1.0048");
     setBridgeStatus('Loaded preset values for testing');
   };
 
@@ -240,12 +313,37 @@ Sender: ${event.args[2]}`);
   const useMainnetValues = () => {
     setL3Receiver(DEFAULT_L3_TARGET);
     setUserInputAddress(walletAddress || "");
-    setL3CallValue("0");
+    setL3CallValue("1");
     setMaxSubmissionCost("0.0095");
     setGasLimit("300000");
     setMaxFeePerGas("36000000");
-    setEthValue("0.0105");
+    setEthValue("1.0048");
     setBridgeStatus('Loaded optimized mainnet values');
+  };
+
+  // Function to use ETH-only values (no ANIME tokens required)
+  const useEthOnlyValues = () => {
+    setL3Receiver(DEFAULT_L3_TARGET);
+    setUserInputAddress(walletAddress || "");
+    setL3CallValue("0");
+    setMaxSubmissionCost("0.01");
+    setGasLimit("300000");
+    setMaxFeePerGas("2000000000");
+    setEthValue("0.012");
+    setBridgeStatus('Loaded ETH-only values (no ANIME tokens required)');
+  };
+
+  // Function to try the original L3 contract address
+  const useOriginalL3Target = () => {
+    const originalL3Target = "0x08Fa26D7C129Ea51CCFf87109C382a532605E120";
+    setL3Receiver(originalL3Target);
+    setUserInputAddress(walletAddress || "");
+    setL3CallValue("1");
+    setMaxSubmissionCost("0.0093");
+    setGasLimit("300000");
+    setMaxFeePerGas("36000000");
+    setEthValue("1.0048");
+    setBridgeStatus(`Loaded values with original L3 target: ${originalL3Target}`);
   };
 
   return (
@@ -266,13 +364,22 @@ Sender: ${event.args[2]}`);
           <p className="info-text">
             Approve this contract to spend your ANIME tokens for L3 gas fees (optional for ETH-only transactions)
           </p>
-          <button 
-            onClick={handleApproveAnime}
-            disabled={!isConnected || isApproving}
-            className="approve-button"
-          >
-            {isApproving ? 'Approving...' : 'Approve Max ANIME'}
-          </button>
+          <div className="approval-buttons">
+            <button 
+              onClick={checkAnimeTokenStatus}
+              disabled={!isConnected}
+              className="check-button"
+            >
+              Check ANIME Status
+            </button>
+            <button 
+              onClick={handleApproveAnime}
+              disabled={!isConnected || isApproving}
+              className="approve-button"
+            >
+              {isApproving ? 'Approving...' : 'Approve Max ANIME'}
+            </button>
+          </div>
         </div>
 
         <div className="message-section">
@@ -285,6 +392,12 @@ Sender: ${event.args[2]}`);
             <button onClick={useMainnetValues} className="preset-button">
               Use Mainnet Values
             </button>
+            <button onClick={useEthOnlyValues} className="preset-button">
+              Use ETH-only Values
+            </button>
+            <button onClick={useOriginalL3Target} className="preset-button">
+              Use Original L3 Target
+            </button>
           </div>
 
           <div className="form-grid">
@@ -294,7 +407,7 @@ Sender: ${event.args[2]}`);
                 type="text"
                 value={l3Receiver}
                 onChange={(e) => setL3Receiver(e.target.value)}
-                placeholder="L3 contract address (0x08Fa26D7C129Ea51CCFf87109C382a532605E120)"
+                placeholder="L3 contract address (0xed9d942cb93cece584b3898be216c366d81d9e84)"
                 className="address-input"
               />
               <small>L3 contract that will receive the message</small>
@@ -318,9 +431,9 @@ Sender: ${event.args[2]}`);
                 type="text"
                 value={l3CallValue}
                 onChange={(e) => setL3CallValue(e.target.value)}
-                placeholder="0"
+                placeholder="1"
               />
-              <small>ETH to send with L3 call (usually 0)</small>
+              <small>ETH to send with L3 call (1 ETH based on transaction data)</small>
             </div>
 
             <div className="form-row">
@@ -329,9 +442,9 @@ Sender: ${event.args[2]}`);
                 type="text"
                 value={maxSubmissionCost}
                 onChange={(e) => setMaxSubmissionCost(e.target.value)}
-                placeholder="0.01"
+                placeholder="0.0093"
               />
-              <small>Cost to submit retryable ticket (e.g., 0.01 ETH)</small>
+              <small>Cost to submit retryable ticket (0.0093 ETH based on transaction data)</small>
             </div>
 
             <div className="form-row">
@@ -351,9 +464,9 @@ Sender: ${event.args[2]}`);
                 type="text"
                 value={maxFeePerGas}
                 onChange={(e) => setMaxFeePerGas(e.target.value)}
-                placeholder="2000000000"
+                placeholder="36000000"
               />
-              <small>Max fee per gas (e.g., 2,000,000,000 = 2 gwei)</small>
+              <small>Max fee per gas (36,000,000 wei = 0.036 gwei based on transaction data)</small>
             </div>
 
             <div className="form-row">
@@ -362,9 +475,9 @@ Sender: ${event.args[2]}`);
                 type="text"
                 value={ethValue}
                 onChange={(e) => setEthValue(e.target.value)}
-                placeholder="0.012"
+                placeholder="1.0048"
               />
-              <small>Total ETH to send (covers submission + gas costs)</small>
+              <small>Total ETH to send (1.0048 ETH based on transaction data)</small>
             </div>
           </div>
 
