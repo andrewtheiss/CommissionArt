@@ -150,7 +150,7 @@ def test_create_art_edition_success_via_sales_contract(setup):
     assert artist_profile.artPieceHasEditions(art_piece_address) == False
     
     # Create edition via ArtSales1155
-    receipt = artist_sales.createEditionFromArtPiece(
+    artist_sales.createEditionFromArtPiece(
         art_piece_address,
         "Test Edition",
         "TESTART",
@@ -164,8 +164,8 @@ def test_create_art_edition_success_via_sales_contract(setup):
     # Should now have editions
     assert artist_profile.artPieceHasEditions(art_piece_address) == True
     
-    # Verify the return value is an address
-    edition_address = receipt.return_value
+    # Verify the edition was created by checking the mapping
+    edition_address = artist_sales.getMapCommissionToMintErc1155(art_piece_address)
     assert edition_address != ZERO_ADDRESS
     assert len(edition_address) == 42  # Valid Ethereum address format
 
@@ -213,7 +213,7 @@ def test_create_art_edition_via_profile_method(setup):
     assert artist_profile.artPieceHasEditions(art_piece_address) == False
     
     # Create edition via Profile method
-    receipt = artist_profile.createArtEdition(
+    artist_profile.createArtEdition(
         art_piece_address,
         "Profile Edition",
         "PROFILE",
@@ -227,8 +227,9 @@ def test_create_art_edition_via_profile_method(setup):
     # Should now have editions
     assert artist_profile.artPieceHasEditions(art_piece_address) == True
     
-    # Verify the return value is an address
-    edition_address = receipt.return_value
+    # Verify the edition was created by checking the mapping
+    artist_sales = setup["artist_sales"]
+    edition_address = artist_sales.getMapCommissionToMintErc1155(art_piece_address)
     assert edition_address != ZERO_ADDRESS
     assert len(edition_address) == 42  # Valid Ethereum address format
 
