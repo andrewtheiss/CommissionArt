@@ -8,6 +8,7 @@ import NFTRegistration from './NFTRegistration';
 import ArtCommissionHub from './ArtCommissionHub';
 import Account from './Account';
 import L2OwnershipRelayTester from './L2RelayTester';
+import L2L3Test from './L2L3Test';
 import { BlockchainProvider } from '../utils/BlockchainContext';
 
 // ABI fragments for Registry contract functions we need
@@ -85,11 +86,11 @@ const MainTab: React.FC = () => {
   const [isImageLoading, setIsImageLoading] = useState(false);
   
   // Initialize activeTab from localStorage or default to 'account'
-  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration' | 'account' | 'l2relay'>(() => {
+  const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration' | 'account' | 'l2relay' | 'l2l3test'>(() => {
     const savedTab = localStorage.getItem('active_tab');
     if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || 
         savedTab === 'commissioned' || savedTab === 'registration' || savedTab === 'account' || 
-        savedTab === 'l2relay') {
+        savedTab === 'l2relay' || savedTab === 'l2l3test') {
       return savedTab;
     }
     return 'account';
@@ -283,6 +284,12 @@ const MainTab: React.FC = () => {
             NFT Registration
           </button>
           <button 
+            className={`tab-button ${activeTab === 'l2l3test' ? 'active' : ''}`}
+            onClick={() => setActiveTab('l2l3test')}
+          >
+            L2L3 Test
+          </button>
+          <button 
             className={`tab-button ${activeTab === 'l2relay' ? 'active' : ''}`}
             onClick={() => setActiveTab('l2relay')}
           >
@@ -327,6 +334,21 @@ const MainTab: React.FC = () => {
           </ErrorBoundary>
         ) : activeTab === 'registration' ? (
           <NFTRegistration />
+        ) : activeTab === 'l2l3test' ? (
+          <ErrorBoundary fallback={
+            <div className="error-message-container">
+              <h3>Error in L2L3 Test Component</h3>
+              <p>There was an error loading the L2L3 Test component. This might be due to:</p>
+              <ul>
+                <li>Network connectivity issues</li>
+                <li>MetaMask connection problems</li>
+                <li>Contract interaction issues</li>
+              </ul>
+              <p>Please check the console for more details.</p>
+            </div>
+          }>
+            <L2L3Test />
+          </ErrorBoundary>
         ) : activeTab === 'l2relay' ? (
           <ErrorBoundary fallback={
             <div className="error-message-container">
