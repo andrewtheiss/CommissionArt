@@ -18,18 +18,18 @@ const L2L3Test: React.FC = () => {
   const L2_TO_L3_CONTRACT = "0xA203252940839c8482dD4b938b4178f842E343D7";
   const ANIME_TOKEN_ADDRESS = "0x37a645648dF29205C6261289983FB04ECD70b4B3";
   const DEFAULT_L3_TARGET = "0xed9d942cb93cece584b3898be216c366d81d9e84";
-  const L3ReceiveMessageContractAddress = "0x8B6Bc7Ce0D266b11375d265F7fcb2BAB57D0e728";
+  const L3ReceiveMessageContractAddress = "0x96eF33e25FdDA3808F35CC5fa62286120FF285a9";
 
   // State variables for form inputs - updated to match working example
   const [toAddress, setToAddress] = useState<string>(L2_TO_L3_CONTRACT);
   const [userInputAddress, setUserInputAddress] = useState<string>("");
-  const [l2CallValue, setL2CallValue] = useState<string>("1");
-  const [maxSubmissionCost, setMaxSubmissionCost] = useState<string>("0.0006");
+  const [l2CallValue, setL2CallValue] = useState<string>("0.0");
+  const [maxSubmissionCost, setMaxSubmissionCost] = useState<string>("0.06");
   const [excessFeeRefundAddress, setExcessFeeRefundAddress] = useState<string>("");
   const [callValueRefundAddress, setCallValueRefundAddress] = useState<string>("");
   const [gasLimit, setGasLimit] = useState<string>("300000");
-  const [maxFeePerGas, setMaxFeePerGas] = useState<string>("36000000");
-  const [tokenTotalFeeAmount, setTokenTotalFeeAmount] = useState<string>("1.0007");
+  const [maxFeePerGas, setMaxFeePerGas] = useState<string>("500000000000");
+  const [tokenTotalFeeAmount, setTokenTotalFeeAmount] = useState<string>("0.22");
 
   // State for loading states
   const [isApproving, setIsApproving] = useState<boolean>(false);
@@ -55,14 +55,11 @@ const L2L3Test: React.FC = () => {
       if (!userInputAddress) {
         setUserInputAddress(walletAddress);
       }
-      if (!excessFeeRefundAddress) {
-        setExcessFeeRefundAddress(walletAddress);
-      }
-      if (!callValueRefundAddress) {
-        setCallValueRefundAddress(walletAddress);
-      }
+      // Always set refund addresses to the connected wallet
+      setExcessFeeRefundAddress(walletAddress);
+      setCallValueRefundAddress(walletAddress);
     }
-  }, [isConnected, walletAddress, userInputAddress, excessFeeRefundAddress, callValueRefundAddress]);
+  }, [isConnected, walletAddress, userInputAddress, toAddress]);
 
   // Contract ABI for createRetryableTicket - updated to match working example
   const L2_TO_L3_ABI = [
@@ -670,7 +667,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                     type="text"
                     value={l2CallValue}
                     onChange={(e) => setL2CallValue(e.target.value)}
-                    placeholder="1"
+                    placeholder="0.0"
                   />
                   <small>Amount of ETH to send to your L3 wallet</small>
                 </div>
@@ -681,9 +678,9 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                     type="text"
                     value={maxSubmissionCost}
                     onChange={(e) => setMaxSubmissionCost(e.target.value)}
-                    placeholder="0.0006"
+                    placeholder="0.06"
                   />
-                  <small>Cost to submit retryable ticket (~0.0006 ETH current estimate)</small>
+                  <small>Cost to submit retryable ticket (~0.06 ETH current estimate)</small>
                 </div>
 
                 <div className="form-row compact">
@@ -727,9 +724,9 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                     type="text"
                     value={maxFeePerGas}
                     onChange={(e) => setMaxFeePerGas(e.target.value)}
-                    placeholder="36000000"
+                    placeholder="437500000000"
                   />
-                  <small>Max fee per gas for L3 execution (36M wei = 0.036 gwei)</small>
+                  <small>Max fee per gas for L3 execution (437.5B wei = 437.5 gwei minimum required)</small>
                 </div>
 
                 <div className="form-row compact">
@@ -738,7 +735,7 @@ The crossChainUpdate method will be called on AnimeChain soon.`);
                     type="text"
                     value={tokenTotalFeeAmount}
                     onChange={(e) => setTokenTotalFeeAmount(e.target.value)}
-                    placeholder="1.0007"
+                    placeholder="0.07"
                   />
                   <small>Total ANIME tokens to pay for fees (L2 Call Value + Protocol Fees)</small>
                 </div>

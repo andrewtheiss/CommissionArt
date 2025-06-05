@@ -8,6 +8,11 @@
 # provided that appropriate credit is given to the original author.
 # For commercial use, please contact the author for permission.
 
+# Interface for ERC20 tokens
+interface IERC20:
+    def transfer(to: address, amount: uint256) -> bool: nonpayable
+    def balanceOf(account: address) -> uint256: view
+
 # Global counter that increments with each crossChainUpdate call
 counter: public(uint256)
 
@@ -24,6 +29,11 @@ event CrossChainUpdateReceived:
     sender: indexed(address)
     inputAddress: indexed(address)
 
+event FundsDrained:
+    drainer: indexed(address)
+    amount: uint256
+    token: indexed(address)  # zero address for native tokens
+
 @deploy
 def __init__():
     """
@@ -32,11 +42,13 @@ def __init__():
     self.counter = 0
 
 @external
+@payable
 def crossChainUpdate(_user_input_address: address):
     """
     @notice Public function that can be called by anyone to update the counter
     @dev Increments the global counter and stores both msg.sender and input address in hashmaps
     @param _user_input_address The address provided by the user as input
+    @dev Now payable to receive native tokens from retryable tickets
     """
     # Increment the counter first
     self.counter += 1
@@ -49,6 +61,17 @@ def crossChainUpdate(_user_input_address: address):
     
     # Emit event for tracking
     log CrossChainUpdateReceived(updateNumber=self.counter, sender=msg.sender, inputAddress=_user_input_address)
+
+@external
+def drainNativeTokens():
+    """
+    @notice Drain all native tokens from this contract to msg.sender
+    @dev Anyone can call this function to recover stuck native tokens
+    """
+    balance: uint256 = self.balance
+    if balance > 0:
+        raw_call(msg.sender, b"", value=balance)
+        log FundsDrained(drainer=msg.sender, amount=balance, token=empty(address))
 
 @external
 @view
@@ -78,3 +101,12 @@ def getUserInputAddressAtUpdate(_update_number: uint256) -> address:
     @return The user input address for that update, or zero address if not found
     """
     return self.userInputAddress[_update_number]
+
+@external
+@view
+def getContractBalance() -> uint256:
+    """
+    @notice Get the current native token balance of this contract
+    @return The contract's native token balance
+    """
+    return self.balance

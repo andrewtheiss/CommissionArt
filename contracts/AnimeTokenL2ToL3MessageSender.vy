@@ -36,7 +36,7 @@ interface IInbox:
         gasLimit: uint256,
         maxFeePerGas: uint256,
         tokenTotalFeeAmount: uint256,
-        data: Bytes[1024]
+        data: Bytes[256]
     ) -> uint256: payable
 
 # Confirmed addresses
