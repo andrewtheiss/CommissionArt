@@ -7,6 +7,8 @@
 
 profileAddress: public(address)
 owner: public(address)
+artEdition1155Template: public(address)  # Template for creating ArtEdition1155 contracts
+initialized: public(bool)  # Flag to track initialization for minimal proxy pattern
 
 # Artist ERC1155s for sale
 artistErc1155sToSell: public(DynArray[address, 10000000])
@@ -22,15 +24,42 @@ collectorErc1155Count: public(uint256)
 event ERC1155Added: erc1155: address
 # ... (add more as needed)
 
+# Interface for ProfileFactoryAndRegistry
+interface ProfileFactoryAndRegistry:
+    def artEdition1155Template() -> address: view
+
+# Interface for ArtEdition1155
+interface ArtEdition1155:
+    def initialize(_art_sales_1155: address, _art_piece: address, _name: String[100], _symbol: String[10], _base_uri: String[256]): nonpayable
+    def createEdition(_mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256) -> uint256: nonpayable
+
+# Interface for ArtPiece
+interface ArtPiece:
+    def getOwner() -> address: view
+    def getArtist() -> address: view
+    def getTitle() -> String[100]: view
+
 @deploy
-def __init__(_profile_address: address, _owner: address):
+def __init__():
+    pass
+
+@external
+def initialize(_profile_address: address, _owner: address, _profile_factory_and_registry: address):
+    assert not self.initialized, "Already initialized"
     assert _profile_address != empty(address), "Profile address required"
     assert _owner != empty(address), "Owner address required"
+    assert _profile_factory_and_registry != empty(address), "ProfileFactoryAndRegistry address required"
+    
+    self.initialized = True
     self.profileAddress = _profile_address
     self.owner = _owner
     self.artistProceedsAddress = _profile_address
     self.artistErc1155sToSellCount = 0
     self.collectorErc1155Count = 0
+    
+    # Get the ArtEdition1155 template from ProfileFactoryAndRegistry
+    factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_and_registry)
+    self.artEdition1155Template = staticcall factory.artEdition1155Template()
 
 # Artist ERC1155s
 @external
@@ -247,3 +276,57 @@ def getArtistProceedsAddress() -> address:
     Get the current proceeds address for this artist's sales.
     """
     return self.artistProceedsAddress
+
+@external
+def createEditionFromArtPiece(
+    _art_piece: address,
+    _edition_name: String[100],
+    _edition_symbol: String[10],
+    _base_uri: String[256],
+    _mint_price: uint256,
+    _max_supply: uint256,
+    _royalty_percent: uint256
+) -> address:
+    """
+    Create an ERC1155 edition from an art piece. Only the owner or profile can call.
+    """
+    assert msg.sender == self.owner or msg.sender == self.profileAddress, "Only owner or profile can call"
+    assert self.artEdition1155Template != empty(address), "ArtEdition1155 template not set"
+    assert _art_piece != empty(address), "Invalid art piece address"
+    
+    # Check that this art piece doesn't already have an edition
+    assert self.artistPieceToErc1155Map[_art_piece] == empty(address), "Art piece already has an edition"
+    
+    # Verify the caller owns the art piece
+    art_piece: ArtPiece = ArtPiece(_art_piece)
+    art_owner: address = staticcall art_piece.getOwner()
+    art_artist: address = staticcall art_piece.getArtist()
+    assert art_owner == self.owner or art_artist == self.owner, "Must own or be artist of the art piece"
+    
+    # Create the ArtEdition1155 contract
+    edition_contract: address = create_minimal_proxy_to(self.artEdition1155Template, revert_on_failure=True)
+    edition: ArtEdition1155 = ArtEdition1155(edition_contract)
+    
+    # Initialize the edition contract
+    extcall edition.initialize(self, _art_piece, _edition_name, _edition_symbol, _base_uri)
+    
+    # Create the first edition with the specified parameters
+    extcall edition.createEdition(_mint_price, _max_supply, _royalty_percent)
+    
+    # Add to artist's ERC1155s for sale
+    self.artistErc1155sToSell.append(edition_contract)
+    self.artistErc1155sToSellCount += 1
+    
+    # Map the art piece to this edition
+    self.artistPieceToErc1155Map[_art_piece] = edition_contract
+    
+    log ERC1155Added(erc1155=edition_contract)
+    return edition_contract
+
+@view
+@external
+def hasEditions(_art_piece: address) -> bool:
+    """
+    Check if an art piece has any ERC1155 editions
+    """
+    return self.artistPieceToErc1155Map[_art_piece] != empty(address)

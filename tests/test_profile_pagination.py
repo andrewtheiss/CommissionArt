@@ -22,26 +22,33 @@ def setup():
     # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
+
     # Deploy ProfileFactoryAndRegistry with all three templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
     # Create a profile for the user
-    profile_factory_and_regsitry.createProfile(sender=user)
-    user_profile_address = profile_factory_and_regsitry.getProfile(user.address)
+    profile_factory_and_registry.createProfile(sender=user)
+    user_profile_address = profile_factory_and_registry.getProfile(user.address)
     user_profile = project.Profile.at(user_profile_address)
     
     return {
         "deployer": deployer,
         "user": user,
         "artist": artist,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "user_profile": user_profile
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_art_pieces_pagination_empty(setup):
     """

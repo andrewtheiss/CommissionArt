@@ -18,6 +18,10 @@ interface ArtCommissionHub:
     def owner() -> address: view
     def submitCommission(art_piece: address) -> bool: nonpayable
 
+# Interface for ArtPieceLicense
+interface ArtPieceLicense:
+    def getOwner() -> address: view
+
 # Interface for ERC721Receiver
 interface ERC721Receiver:
     def onERC721Received(operator: address, sender: address, tokenId: uint256, data: Bytes[1024]) -> bytes4: view
@@ -127,6 +131,10 @@ taggedListCount: public(uint256)
 submissionAttempted: public(bool)  # Flag to track if submission to hub was attempted
 submissionSuccessful: public(bool)  # Flag to track if submission to hub was successful
 
+# ArtPieces will eventually need right management
+# This is handled in a totally different contract tied 1 to 1 with each ArtPiece
+artPieceLicense: public(address)
+
 # Create minimal proxy to ArtPiece
 @deploy
 def __init__():
@@ -165,7 +173,8 @@ def initialize(
     _commission_hub: address, 
     _ai_generated: bool,
     _original_uploader: address,  # MUST already be a profile
-    _profile_factory_address: address
+    _profile_factory_address: address,
+    _off_chain_data: Bytes[500] = empty(Bytes[500]) # Optional extra off-chain data
 ):
     """
     @notice Initialize the ArtPiece contract, can only be called once
@@ -344,6 +353,10 @@ def _getEffectiveOwner() -> address:
     @notice Internal function to determine the effective owner based on verification and hub status
     @return The effective owner address
     """
+    # If there's an ArtPieceLicense, use its getOwner() method
+    if self.artPieceLicense != empty(address):
+        return staticcall ArtPieceLicense(self.artPieceLicense).getOwner()
+    
     # If attached to a hub and fully verified, return the hub owner (which is set only by ArtCommissionHubOwners)
     if self.artCommissionHubAddress != empty(address) and self.fullyVerifiedCommission:
         hub_owner: address = staticcall ArtCommissionHub(self.artCommissionHubAddress).owner()
@@ -729,5 +742,21 @@ def getSubmissionStatus() -> (bool, bool):
     @return (attempted, successful) - whether submission was attempted and if it was successful
     """
     return (self.submissionAttempted, self.submissionSuccessful)
+
+@external
+def setArtPieceLicense(_license_address: address):
+    """
+    @notice Set the ArtPieceLicense contract for this ArtPiece
+    @param _license_address The address of the ArtPieceLicense contract
+    @dev Can be called at any time by the current owner, artist, or commissioner
+    """
+    assert self.initialized, "Contract not initialized"
+    assert _license_address != empty(address), "Invalid license address"
+    
+    # Allow current owner, artist, or commissioner to set the license
+    current_owner: address = self._getEffectiveOwner()
+    assert msg.sender == current_owner or msg.sender == self.artist or msg.sender == self.commissioner, "Only owner, artist, or commissioner can set license"
+    
+    self.artPieceLicense = _license_address
 
 

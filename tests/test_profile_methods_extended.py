@@ -1,5 +1,5 @@
-import pytest
 from ape import accounts, project
+import pytest
 
 # Constants
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
@@ -48,32 +48,40 @@ def setup():
 
     # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with all templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
     # Create profiles for owner and artist
-    profile_factory_and_regsitry.createProfile(sender=owner)
-    profile_factory_and_regsitry.createProfile(sender=artist)
+    profile_factory_and_registry.createProfile(sender=owner)
+    profile_factory_and_registry.createProfile(sender=artist)
     
-    owner_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(owner.address))
-    artist_profile = project.Profile.at(profile_factory_and_regsitry.getProfile(artist.address))
+    owner_profile = project.Profile.at(profile_factory_and_registry.getProfile(owner.address))
+    artist_profile = project.Profile.at(profile_factory_and_registry.getProfile(artist.address))
     
     # Setup artist profile
     artist_profile.setIsArtist(True, sender=artist)
+    # Note: ArtSales1155 is automatically created when setting artist status
     
-    # Deploy ArtSales1155 contracts
-    owner_sales = project.ArtSales1155.deploy(owner_profile.address, owner.address, sender=deployer)
-    artist_sales = project.ArtSales1155.deploy(artist_profile.address, artist.address, sender=deployer)
+    # Deploy ArtSales1155 contracts only for owner
+    owner_sales = project.ArtSales1155.deploy(sender=deployer)
+    owner_sales.initialize(owner_profile.address, owner.address, profile_factory_and_registry.address, sender=deployer)
     
-    # Set ArtSales1155 addresses
+    # Get the auto-created ArtSales1155 for artist
+    artist_sales_address = artist_profile.artSales1155()
+    artist_sales = project.ArtSales1155.at(artist_sales_address)
+    
+    # Set ArtSales1155 address only for owner
     owner_profile.setArtSales1155(owner_sales.address, sender=owner)
-    artist_profile.setArtSales1155(artist_sales.address, sender=artist)
     
     # Deploy ArtPiece template for art piece creation
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -87,13 +95,15 @@ def setup():
         "artist": artist,
         "other_user": other_user,
         "profile_template": profile_template,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "owner_profile": owner_profile,
         "artist_profile": artist_profile,
         "owner_sales": owner_sales,
         "artist_sales": artist_sales,
         "art_piece_template": art_piece_template,
         "commission_hub": commission_hub,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template,
         "commission_hub_template": commission_hub_template
     }
 
@@ -111,7 +121,7 @@ def test_getProfileErc1155sForSale(setup):
     print(f"ArtSales1155 address set in profile: {artist_profile.artSales1155()}")
     
     # Create at least one ERC1155 token for sale
-    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiVGVzdCBwaWVjZSBmb3IgRVJDMTE1NSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQ0MzekJsQUFBQUJsQk1WRVgvLy8vLy8vL1c2QlVQQUFBQUFuUlNUbE1BQUdFQlNVam9BQUFBQmt0RlJBSG1BUGNJYmdBQUFBUklVazVoQklzSUN3QUFBQWxKUkVGVUNKbGpiMkVBQUFBTUFBRUFBQUNDK0RpbEFBQUFBRWxGVGtTdVFtQ0MifQ=="
+    token_uri_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBQaWVjZSIsImRlc2NyaXB0aW9uIjoiVGVzdCBwaWVjZSBmb3IgRVJDMTE1NSIsImltYWdlIjoiZGF0YTppbWFnZS9wbmc7YmFzZTY0LGlWQk9SdzBLR2dvQUFBQU5TVWhFVWdBQUFBUUFBQUFFQ0FJQUFBQ0MzekJsQUFBQUJsQk1WRVgvLy8vLy8vL1c2QlVQQUFBQUFuUlNUbE1BQUdFQlNVam9BQUFBQmt0RlJBSG1BUGNJYmdBQUFBUklVazVoQklzSUN3QUFBQWxKUkVGVUNKbGpiMkVBQUFBTUFBRUFBQUNDK0RpbEFBQUFBQUVsRlRrU3VRbUNDIn0="
     title = "Test ERC1155"
     description = "Test ERC1155 token for sale"
     

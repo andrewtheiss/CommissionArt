@@ -41,6 +41,12 @@ def test_03_deploy_commission_hub_template():
     """Test that ArtCommissionHub template can be deployed"""
     deployer = accounts.test_accounts[0]
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     assert commission_hub_template.address != ZERO_ADDRESS
 
@@ -61,12 +67,16 @@ def test_05_deploy_profile_factory_registry():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -82,6 +92,12 @@ def test_06_deploy_art_commission_hub_owners():
     
     # Deploy templates first
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Deploy ArtCommissionHubOwners
@@ -104,13 +120,17 @@ def test_07_link_factory_and_hub_owners():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Deploy both contracts
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -136,6 +156,12 @@ def test_08_initialize_commission_hub():
     
     # Deploy templates
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Deploy ArtCommissionHubOwners
@@ -165,12 +191,16 @@ def test_09_create_profile():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy factory registry
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -202,12 +232,16 @@ def test_10_initialize_art_piece():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy factory registry
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     

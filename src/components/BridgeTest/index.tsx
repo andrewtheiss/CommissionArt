@@ -5,7 +5,8 @@ import abiLoader from '../../utils/abiLoader';
 import NFTOwnershipQuery from './NFTOwnershipQuery';
 import L3OwnerLookup from './L3OwnerLookup';
 import L1OwnerUpdateRequest from './L1OwnerUpdateRequest';
-import L2OwnershipRelayManager from './L2OwnershipRelayManager';
+import L2OwnershipRelayManager from './L2RelayManager';
+import L2ToL3MessageSender from './L2ToL3MessageSender';
 import './BridgeTest.css';
 import { ethers } from 'ethers';
 import { NodeInterface__factory } from '@arbitrum/sdk/dist/lib/abi/factories/NodeInterface__factory';
@@ -979,6 +980,14 @@ You can monitor the status at: https://sepolia-retryable-tx-dashboard.arbitrum.i
             <div className="component-section">
               <h3>L2 Relay Manager ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'})</h3>
               <L2OwnershipRelayManager 
+                setBridgeStatus={setBridgeStatus}
+              />
+            </div>
+            
+            {/* L2 to L3 Message Sender Component */}
+            <div className="component-section">
+              <h3>L2→L3 Message Sender ({environment === 'testnet' ? 'Arbitrum Sepolia' : 'Arbitrum One'} → AnimeChain)</h3>
+              <L2ToL3MessageSender 
                 setBridgeStatus={setBridgeStatus}
               />
             </div>

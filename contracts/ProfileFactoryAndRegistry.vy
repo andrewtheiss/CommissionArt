@@ -57,6 +57,8 @@ userAddressToProfile: public(HashMap[address, address])  # Maps user address to 
 userAddressToProfileSocial: public(HashMap[address, address])  # Maps user address to profile social contract
 artCommissionHubOwners: public(address)  # Address of the ArtCommissionHubOwners contract
 commissionHubTemplate: public(address)  # Address of the commission hub contract template to clone
+artEdition1155Template: public(address)  # Address of the ArtEdition1155 contract template to clone
+artSales1155Template: public(address)  # Address of the ArtSales1155 contract template to clone
 
 # Profile variables
 latestUsers: public(address[100])  # List of registered users for easy querying
@@ -87,6 +89,14 @@ event ProfileSocialTemplateUpdated:
     previous_template: indexed(address)
     new_template: indexed(address)
     
+event ArtEdition1155TemplateUpdated:
+    previous_template: indexed(address)
+    new_template: indexed(address)
+    
+event ArtSales1155TemplateUpdated:
+    previous_template: indexed(address)
+    new_template: indexed(address)
+    
 event ArtPieceCreated:
     profile: indexed(address)
     art_piece: indexed(address)
@@ -106,13 +116,15 @@ event ActiveUserProfileAdded:
 
 # Called once on deployment.  There's only one ProfileFactoryAndRegistry for all time!  Dayummm
 @deploy
-def __init__(_profile_template: address, _profile_social_template: address, _commission_hub_template: address):
+def __init__(_profile_template: address, _profile_social_template: address, _commission_hub_template: address, _art_edition_1155_template: address, _art_sales_1155_template: address):
     self.owner = msg.sender
     self.profileTemplate = _profile_template
     self.profileSocialTemplate = _profile_social_template
     self.allUserProfilesCount = 0
     self.artCommissionHubOwners = empty(address)
     self.commissionHubTemplate = _commission_hub_template
+    self.artEdition1155Template = _art_edition_1155_template
+    self.artSales1155Template = _art_sales_1155_template
 
 @internal
 def _addNewUserAndProfileAndSocial(_user: address, _profile: address, _social: address):
@@ -392,6 +404,30 @@ def updateProfileSocialTemplateContract(_new_template: address):
     
     log ProfileSocialTemplateUpdated(previous_template=self.profileSocialTemplate, new_template=_new_template)
     self.profileSocialTemplate = _new_template
+
+@external
+def updateArtEdition1155TemplateContract(_new_template: address):
+    """
+    @notice Updates the ArtEdition1155 template contract address
+    @param _new_template The address of the new ArtEdition1155 template contract
+    """
+    assert msg.sender == self.owner, "Only owner can update template"
+    assert _new_template != empty(address), "Invalid template address"
+    
+    log ArtEdition1155TemplateUpdated(previous_template=self.artEdition1155Template, new_template=_new_template)
+    self.artEdition1155Template = _new_template
+
+@external
+def updateArtSales1155TemplateContract(_new_template: address):
+    """
+    @notice Updates the ArtSales1155 template contract address
+    @param _new_template The address of the new ArtSales1155 template contract
+    """
+    assert msg.sender == self.owner, "Only owner can update template"
+    assert _new_template != empty(address), "Invalid template address"
+    
+    log ArtSales1155TemplateUpdated(previous_template=self.artSales1155Template, new_template=_new_template)
+    self.artSales1155Template = _new_template
 
 # Store active users with commissions so that spamming new accounts with
 # no commissions doesn't show up on the homepage

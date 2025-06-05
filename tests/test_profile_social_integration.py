@@ -17,12 +17,16 @@ def setup():
     
     # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     
     # Deploy ProfileFactoryAndRegistry with all templates
     profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address, 
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -39,7 +43,10 @@ def setup():
         "profile_factory_and_registry": profile_factory_and_registry,
         "art_piece_template": art_piece_template,
         "commission_hub_template": commission_hub_template
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_profile_social_creation(setup):
     """Test that ProfileSocial is created alongside Profile"""

@@ -22,11 +22,15 @@ def setup():
     # Deploy ArtCommissionHub template for ProfileFactoryAndRegistry
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
+
     # Deploy ProfileFactoryAndRegistry with all three templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -41,21 +45,24 @@ def setup():
         "user": user,
         "artist": artist,
         "profile_template": profile_template,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "art_piece_template": art_piece_template,
-        "commission_hub": commission_hub
+        "commission_hub": commission_hub,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template
     }
 
 def test_create_new_commission_and_register_profile(setup):
     """Test creating a profile and art piece in one transaction"""
     user = setup["user"]
     artist = setup["artist"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Verify user doesn't have a profile yet
-    assert profile_factory_and_regsitry.hasProfile(user.address) == False
+    assert profile_factory_and_registry.hasProfile(user.address) == False
     
     # Sample art piece data
     image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -65,7 +72,7 @@ def test_create_new_commission_and_register_profile(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
+        profile_factory_and_registry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             image_data,
             "avif",
@@ -82,10 +89,10 @@ def test_create_new_commission_and_register_profile(setup):
         )
         
         # Get profile address from ProfileFactoryAndRegistry
-        profile_address = profile_factory_and_regsitry.getProfile(user.address)
+        profile_address = profile_factory_and_registry.getProfile(user.address)
         
         # Verify profile was created and registered
-        assert profile_factory_and_regsitry.hasProfile(user.address) == True
+        assert profile_factory_and_registry.hasProfile(user.address) == True
         
         # Load the profile contract
         profile = project.Profile.at(profile_address)
@@ -117,15 +124,16 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
     """Test that creating a commission with an existing profile fails"""
     user = setup["user"]
     artist = setup["artist"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # First create a profile the normal way
-    profile_factory_and_regsitry.createProfile(sender=user)
+    profile_factory_and_registry.createProfile(sender=user)
     
     # Verify user now has a profile
-    assert profile_factory_and_regsitry.hasProfile(user.address) == True
+    assert profile_factory_and_registry.hasProfile(user.address) == True
     
     # Sample art piece data
     image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -135,7 +143,7 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
     # Attempt to create profile and commission when profile already exists
     # This should fail
     with pytest.raises(Exception):
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
+        profile_factory_and_registry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             image_data,
             "avif",
@@ -155,12 +163,13 @@ def test_artist_creates_commission_for_user(setup):
     """Test an artist creating a commission and profile in one transaction"""
     user = setup["user"]
     artist = setup["artist"]
-    profile_factory_and_regsitry = setup["profile_factory_and_regsitry"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     art_piece_template = setup["art_piece_template"]
     commission_hub = setup["commission_hub"]
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
     
     # Verify artist doesn't have a profile yet
-    assert profile_factory_and_regsitry.hasProfile(artist.address) == False
+    assert profile_factory_and_registry.hasProfile(artist.address) == False
     
     # Sample art piece data
     image_data = b"data:application/json;base64,eyJuYW1lIjoiVGVzdCBBcnR3b3JrIiwiZGVzY3JpcHRpb24iOiJUaGlzIGlzIGEgdGVzdCBkZXNjcmlwdGlvbiBmb3IgdGhlIGFydHdvcmsiLCJpbWFnZSI6ImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCxpVkJPUncwS0dnb0FBQUFOU1VoRVVnQUFBQVFBQUFBRUNBSUFBQUJDTkN2REFBQUFBM3BKUkVGVUNOZGovQThEQUFBTkFQOS9oWllhQUFBQUFFbEZUa1N1UW1DQyJ9"
@@ -170,7 +179,7 @@ def test_artist_creates_commission_for_user(setup):
     
     try:
         # Create profile and commission in one transaction
-        profile_factory_and_regsitry.createNewArtPieceAndRegisterProfileAndAttachToHub(
+        profile_factory_and_registry.createNewArtPieceAndRegisterProfileAndAttachToHub(
             art_piece_template.address,
             image_data,
             "avif",
@@ -187,10 +196,10 @@ def test_artist_creates_commission_for_user(setup):
         )
         
         # Get profile address from ProfileFactoryAndRegistry
-        profile_address = profile_factory_and_regsitry.getProfile(artist.address)
+        profile_address = profile_factory_and_registry.getProfile(artist.address)
         
         # Verify profile was created and registered
-        assert profile_factory_and_regsitry.hasProfile(artist.address) == True
+        assert profile_factory_and_registry.hasProfile(artist.address) == True
         
         # Load the profile contract
         profile = project.Profile.at(profile_address)

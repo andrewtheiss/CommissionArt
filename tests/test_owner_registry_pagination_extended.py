@@ -25,11 +25,15 @@ def setup():
     l2_relay = project.L2OwnershipRelay.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
+
     # Deploy ProfileFactoryAndRegistry with three templates
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address, 
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address, 
         sender=deployer
     )
     
@@ -42,17 +46,17 @@ def setup():
     )
     
     # Set ArtCommissionHubOwners in ProfileFactoryAndRegistry
-    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_registry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
     
     # Set ProfileFactoryAndRegistry in ArtCommissionHubOwners
-    art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_registry.address, sender=deployer)
     
     # Set L2OwnershipRelay to the deployer for testing purposes
     art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)
     
     # Create a profile for the user
-    profile_factory_and_regsitry.createProfile(sender=user)
-    user_profile_address = profile_factory_and_regsitry.getProfile(user.address)
+    profile_factory_and_registry.createProfile(sender=user)
+    user_profile_address = profile_factory_and_registry.getProfile(user.address)
     user_profile = project.Profile.at(user_profile_address)
     
     # Deploy multiple commission hubs for testing pagination
@@ -67,11 +71,14 @@ def setup():
     return {
         "deployer": deployer,
         "user": user,
-        "profile_factory_and_regsitry": profile_factory_and_regsitry,
+        "profile_factory_and_registry": profile_factory_and_registry,
         "art_collection_ownership_registry": art_collection_ownership_registry,
         "user_profile": user_profile,
         "commission_hubs": commission_hubs
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_forward_pagination_offset_based(setup):
     """
@@ -210,10 +217,14 @@ def setup_empty_user():
     l2_relay = project.L2OwnershipRelay.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
 
-    profile_factory_and_regsitry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
+
+    profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     art_collection_ownership_registry = project.ArtCommissionHubOwners.deploy(
@@ -224,10 +235,10 @@ def setup_empty_user():
     )
     
     # Set ArtCommissionHubOwners in ProfileFactoryAndRegistry
-    profile_factory_and_regsitry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
+    profile_factory_and_registry.linkArtCommissionHubOwnersContract(art_collection_ownership_registry.address, sender=deployer)
 
     # Set ProfileFactoryAndRegistry in ArtCommissionHubOwners
-    art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_regsitry.address, sender=deployer)
+    art_collection_ownership_registry.linkProfileFactoryAndRegistry(profile_factory_and_registry.address, sender=deployer)
 
     # Set L2OwnershipRelay to the deployer for testing purposes
     art_collection_ownership_registry.setL2OwnershipRelay(deployer.address, sender=deployer)
@@ -236,7 +247,10 @@ def setup_empty_user():
         "deployer": deployer,
         "user_with_no_hubs": user_with_no_hubs,
         "art_collection_ownership_registry": art_collection_ownership_registry
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_get_commission_hubs_for_user_with_no_hubs(setup_empty_user):
     """

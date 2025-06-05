@@ -23,6 +23,12 @@ def setup():
     profile_template = project.Profile.deploy(sender=deployer)
     profile_social_template = project.ProfileSocial.deploy(sender=deployer)
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
     
     # Verify all templates were deployed
@@ -33,9 +39,7 @@ def setup():
     
     # Deploy factory registry
     profile_factory = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     
@@ -77,7 +81,10 @@ def setup():
         "art_piece_template": art_piece_template,
         "profile_factory": profile_factory,
         "art_commission_hub_owners": art_commission_hub_owners
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_profile_initialization(setup):
     """Test profile initialization and getter methods"""
@@ -91,7 +98,9 @@ def test_profile_initialization(setup):
     profile = project.Profile.at(profile_address)
     
     # Deploy and link ArtSales1155
-    art_sales = project.ArtSales1155.deploy(profile_address, user1.address, sender=deployer)
+    art_sales = project.ArtSales1155.deploy(sender=deployer)
+
+    art_sales.initialize(profile_address, user1.address, profile_factory.address, sender=deployer)
     profile.setArtSales1155(art_sales.address, sender=user1)
     
     # Check initial values
@@ -254,7 +263,9 @@ def test_profile_proceed_address(setup):
     profile = project.Profile.at(profile_address)
     
     # Deploy and link ArtSales1155
-    art_sales = project.ArtSales1155.deploy(profile_address, user1.address, sender=deployer)
+    art_sales = project.ArtSales1155.deploy(sender=deployer)
+
+    art_sales.initialize(profile_address, user1.address, profile_factory.address, sender=deployer)
     profile.setArtSales1155(art_sales.address, sender=user1)
     
     # Check that proceeds address is set (should be user1 since that's what we passed to constructor)

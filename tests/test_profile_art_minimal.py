@@ -20,6 +20,12 @@ def setup():
     print(f"Deployed ProfileSocial template at {profile_social_template.address}")
     
     commission_hub_template = project.ArtCommissionHub.deploy(sender=deployer)
+
+    # Deploy ArtEdition1155 template
+    art_edition_1155_template = project.ArtEdition1155.deploy(sender=deployer)
+    
+    # Deploy ArtSales1155 template
+    art_sales_1155_template = project.ArtSales1155.deploy(sender=deployer)
     print(f"Deployed ArtCommissionHub template at {commission_hub_template.address}")
     
     art_piece_template = project.ArtPiece.deploy(sender=deployer)
@@ -27,9 +33,7 @@ def setup():
     
     # Deploy ProfileFactoryAndRegistry with all templates
     profile_factory_and_registry = project.ProfileFactoryAndRegistry.deploy(
-        profile_template.address,
-        profile_social_template.address,
-        commission_hub_template.address,
+        profile_template.address, profile_social_template.address, commission_hub_template.address, art_edition_1155_template.address, art_sales_1155_template.address,
         sender=deployer
     )
     print(f"Deployed ProfileFactoryAndRegistry at {profile_factory_and_registry.address}")
@@ -57,7 +61,10 @@ def setup():
         "art_piece_template": art_piece_template,
         "profile_factory_and_registry": profile_factory_and_registry,
         "art_commission_hub_owners": art_commission_hub_owners
-    }
+    ,
+        "art_sales_1155_template": art_sales_1155_template,
+        "art_edition_1155_template": art_edition_1155_template,
+        "art_sales_1155_template": art_sales_1155_template}
 
 def test_minimal_profile_creation(setup):
     """Test the most basic profile creation"""
