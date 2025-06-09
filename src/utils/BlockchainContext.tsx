@@ -29,6 +29,9 @@ interface BlockchainContextType {
   switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => void;
   connectWallet: () => Promise<void>;
   walletAddress: string | null;
+  provider: ethers.BrowserProvider | null;
+  hasProfile: boolean;
+  checkUserProfile: () => Promise<void>;
 }
 
 const BlockchainContext = createContext<BlockchainContextType | undefined>(undefined);
@@ -40,17 +43,39 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   const [network, setNetwork] = useState<NetworkConfig>(ethersService.getNetwork());
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [hasProfile, setHasProfile] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check connection status on mount
-    const checkConnection = async () => {
-      const connected = await ethersService.isConnected();
-      setIsConnected(connected);
+    const init = async () => {
+      const browserProvider = ethersService.getBrowserProvider();
+      if (browserProvider) {
+        setProvider(browserProvider);
+        const accounts = await browserProvider.listAccounts();
+        if (accounts.length > 0) {
+          const signer = await browserProvider.getSigner();
+          const address = await signer.getAddress();
+          setWalletAddress(address);
+          setIsConnected(true);
+          await checkUserProfile(address, browserProvider);
+        }
+      }
       setIsLoading(false);
     };
-    
-    checkConnection();
+    init();
   }, []);
+
+  const checkUserProfile = async (address?: string, p?: ethers.BrowserProvider) => {
+    const checkAddress = address || walletAddress;
+    const checkProvider = p || provider;
+    if (!checkAddress || !checkProvider) {
+      setHasProfile(false);
+      return;
+    }
+    // Placeholder logic for checking profile.
+    // Replace with your actual implementation.
+    console.log("Checking profile for", checkAddress);
+    setHasProfile(false); // Default to false
+  };
 
   const switchNetwork = async (newNetworkType: NetworkType) => {
     const newNetwork = ethersService.switchNetwork(newNetworkType);
@@ -71,17 +96,21 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
 
   const connectWallet = async () => {
     try {
-      const signer = await ethersService.getSigner();
-      if (signer) {
-        const address = await signer.getAddress();
-        setWalletAddress(address);
-        setIsConnected(true);
-        return;
+      const browserProvider = ethersService.getBrowserProvider();
+      if (!browserProvider) {
+        throw new Error("No browser wallet detected.");
       }
-      throw new Error('No wallet connected');
+      setProvider(browserProvider);
+      await browserProvider.send("eth_requestAccounts", []);
+      const signer = await browserProvider.getSigner();
+      const address = await signer.getAddress();
+      setWalletAddress(address);
+      setIsConnected(true);
+      await checkUserProfile(address, browserProvider);
     } catch (error) {
       console.error('Failed to connect wallet:', error);
       setWalletAddress(null);
+      setIsConnected(false);
     }
   };
 
@@ -94,7 +123,9 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
     switchNetwork,
     switchToLayer,
     connectWallet,
-    walletAddress
+    walletAddress,
+    hasProfile,
+    checkUserProfile,
   };
 
   return (

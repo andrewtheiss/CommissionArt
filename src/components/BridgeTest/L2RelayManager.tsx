@@ -163,12 +163,28 @@ const L2OwnershipRelayManager: React.FC<L2OwnershipRelayManagerProps> = ({ setBr
         // Step 2: Fetch contract data if connected
         if (isConnected && relayAddress && ethers.isAddress(relayAddress) && window.ethereum) {
           console.log('[L2OwnershipRelayManager] Connected to wallet, fetching contract details...');
+          console.log(`[L2OwnershipRelayManager] Using relay address: ${relayAddress}`);
+          console.log(`[L2OwnershipRelayManager] Current network type: ${networkType}`);
+          
           const provider = new ethers.BrowserProvider(window.ethereum);
+          
+          // Check current network
+          const network = await provider.getNetwork();
+          console.log(`[L2OwnershipRelayManager] Connected to network: ${network.name} (chainId: ${network.chainId})`);
+          
           const L2OwnershipRelayABI = abiLoader.loadABI('L2OwnershipRelay');
           if (!L2OwnershipRelayABI) {
             throw new Error('Failed to load L2OwnershipRelay ABI');
           }
           const contract = new ethers.Contract(relayAddress, L2OwnershipRelayABI, provider);
+
+          // Check if contract exists by checking bytecode
+          const code = await provider.getCode(relayAddress);
+          if (code === '0x') {
+            console.error(`[L2OwnershipRelayManager] No contract found at address ${relayAddress} on network ${network.name}`);
+            throw new Error(`No contract deployed at address ${relayAddress} on network ${network.name} (chainId: ${network.chainId})`);
+          }
+          console.log(`[L2OwnershipRelayManager] Contract bytecode found, length: ${code.length}`);
 
           const owner = await contract.owner();
           setOwnerAddress(owner);

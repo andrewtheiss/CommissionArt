@@ -19,6 +19,7 @@ interface ImageInfo {
 
 interface CompressionResult {
   dataUrl: string;
+  blob: Blob;
   width: number;
   height: number;
   sizeKB: number;
@@ -40,7 +41,7 @@ const compressImage = async (
     targetSizeKB: 43,
     autoOptimize: true
   }
-): Promise<string | CompressionResult> => {
+): Promise<CompressionResult> => {
   const {
     format = 'webp',
     quality = 0.8,
@@ -114,23 +115,27 @@ const compressImage = async (
   ctx?.drawImage(img, 0, 0, width, height);
   
   // Get the mime type
-  let mimeType: string;
-  switch(outputFormat) {
-    case 'webp':
-      mimeType = 'image/webp';
-      break;
-    case 'jpeg':
-      mimeType = 'image/jpeg';
-      break;
-    case 'avif':
-      mimeType = 'image/avif';
-      break;
-    default:
-      mimeType = 'image/webp';
-  }
+  const mimeType = `image/${outputFormat}`;
   
-  // Convert canvas to compressed data URL
-  return canvas.toDataURL(mimeType, quality);
+  // Convert canvas to compressed blob
+  const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mimeType, quality));
+
+  if (!blob) {
+    throw new Error('Failed to create blob from canvas');
+  }
+
+  const dataUrl = URL.createObjectURL(blob);
+  const sizeKB = blob.size / 1024;
+  
+  return {
+    dataUrl,
+    blob,
+    width,
+    height,
+    sizeKB,
+    format: outputFormat,
+    quality
+  };
 };
 
 /**
@@ -167,7 +172,7 @@ const optimizeImageForSize = async (
   console.log(`Original dimensions: ${originalWidth}x${originalHeight}`);
   
   // Start with original dimensions and try all formats and qualities
-  let bestResult: CompressionResult | null = null;
+  let bestResult: (Omit<CompressionResult, 'dataUrl'> & { blob: Blob }) | null = null;
   
   // Try different formats and quality levels
   for (const format of formatOptions) {
@@ -185,15 +190,17 @@ const optimizeImageForSize = async (
       
       // Convert canvas to data URL with current format and quality
       try {
-        const dataUrl = canvas.toDataURL(mimeType, quality);
-        const sizeKB = calculateDataUrlSizeKB(dataUrl);
+        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mimeType, quality));
+        if (!blob) continue;
+
+        const sizeKB = blob.size / 1024;
         
         console.log(`Format: ${format}, Quality: ${quality.toFixed(1)}, Size: ${sizeKB.toFixed(2)}KB`);
         
         // Check if this result is better than our previous best
         if (sizeKB <= targetSizeKB && (!bestResult || sizeKB > bestResult.sizeKB)) {
           bestResult = {
-            dataUrl,
+            blob,
             width: originalWidth,
             height: originalHeight,
             sizeKB,
@@ -205,7 +212,8 @@ const optimizeImageForSize = async (
           // If we're very close to target with a good format, we can stop early
           if (sizeKB > targetSizeKB * 0.95 && (format === 'avif' || format === 'webp')) {
             console.log(`Optimal result found early, stopping search`);
-            return bestResult;
+            const dataUrl = URL.createObjectURL(bestResult.blob);
+            return { ...bestResult, dataUrl };
           }
         }
       } catch (error) {
@@ -243,15 +251,17 @@ const optimizeImageForSize = async (
           
           try {
             // Convert canvas to data URL with current format and quality
-            const dataUrl = canvas.toDataURL(mimeType, quality);
-            const sizeKB = calculateDataUrlSizeKB(dataUrl);
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, mimeType, quality));
+            if (!blob) continue;
+
+            const sizeKB = blob.size / 1024;
             
             console.log(`Scale: ${Math.round(scale * 100)}%, Format: ${format}, Quality: ${quality.toFixed(1)}, Size: ${sizeKB.toFixed(2)}KB`);
             
             // Check if this result is better than our previous best
             if (sizeKB <= targetSizeKB && (!bestResult || sizeKB > bestResult.sizeKB)) {
               bestResult = {
-                dataUrl,
+                blob,
                 width,
                 height,
                 sizeKB,
@@ -263,7 +273,8 @@ const optimizeImageForSize = async (
               // If we're very close to target with a good format, we can stop early
               if (sizeKB > targetSizeKB * 0.95 && (format === 'avif' || format === 'webp')) {
                 console.log(`Optimal result found, stopping search`);
-                return bestResult;
+                const dataUrl = URL.createObjectURL(bestResult.blob);
+                return { ...bestResult, dataUrl };
               }
             }
           } catch (error) {
@@ -297,11 +308,14 @@ const optimizeImageForSize = async (
     ctx?.drawImage(img, 0, 0, width, height);
     
     // Use JPEG at lowest quality
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.3);
-    const sizeKB = calculateDataUrlSizeKB(dataUrl);
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.3));
+    if (!blob) {
+      throw new Error('Fallback compression failed');
+    }
+    const sizeKB = blob.size / 1024;
     
     bestResult = {
-      dataUrl,
+      blob,
       width,
       height,
       sizeKB,
@@ -311,8 +325,10 @@ const optimizeImageForSize = async (
     
     console.log(`Fallback result: ${width}x${height} JPEG at minimum quality (${sizeKB.toFixed(2)}KB)`);
   }
+
+  const dataUrl = URL.createObjectURL(bestResult.blob);
   
-  return bestResult;
+  return { ...bestResult, dataUrl };
 };
 
 /**
@@ -364,6 +380,7 @@ const ImageCompressor: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [originalImageInfo, setOriginalImageInfo] = useState<ImageInfo | null>(null);
   const [compressedImageInfo, setCompressedImageInfo] = useState<ImageInfo | null>(null);
+  const [compressedBlob, setCompressedBlob] = useState<Blob | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [fileName, setFileName] = useState('No file selected');
   const [options, setOptions] = useState<CompressionOptions>({
@@ -379,13 +396,31 @@ const ImageCompressor: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  React.useEffect(() => {
+    // Revoke object URLs to prevent memory leaks
+    return () => {
+      if (originalImageInfo?.dataUrl && !originalImageInfo.dataUrl.startsWith('data:')) {
+        URL.revokeObjectURL(originalImageInfo.dataUrl);
+      }
+      if (compressedImageInfo?.dataUrl && !compressedImageInfo.dataUrl.startsWith('data:')) {
+        URL.revokeObjectURL(compressedImageInfo.dataUrl);
+      }
+    };
+  }, [originalImageInfo, compressedImageInfo]);
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setSelectedFile(file);
     setFileName(file.name);
+
+    // Clean up previous compressed image blob and URL
+    if (compressedImageInfo?.dataUrl && !compressedImageInfo.dataUrl.startsWith('data:')) {
+      URL.revokeObjectURL(compressedImageInfo.dataUrl);
+    }
     setCompressedImageInfo(null);
+    setCompressedBlob(null);
     setSizeReduction('-');
     setOptimizationDetails('');
 
@@ -477,65 +512,40 @@ const ImageCompressor: React.FC = () => {
     setIsCompressing(true);
     
     try {
+      // Clean up previous compressed image blob and URL
+      if (compressedImageInfo?.dataUrl && !compressedImageInfo.dataUrl.startsWith('data:')) {
+        URL.revokeObjectURL(compressedImageInfo.dataUrl);
+      }
+
       // Compress the image
       const result = await compressImage(
         selectedFile, 
         options
       );
       
-      // Handle result based on whether it's a string (regular compression) or CompressionResult (auto-optimized)
-      let compressedDataUrl: string;
+      const { dataUrl, blob, width, height, format, quality, sizeKB } = result;
+
       let details = '';
-      
-      if (typeof result === 'string') {
-        compressedDataUrl = result;
-        
-        // Create img element to get dimensions
-        const img = document.createElement('img');
-        const imageLoaded = new Promise<{width: number, height: number}>((resolve) => {
-          img.onload = () => {
-            resolve({width: img.width, height: img.height});
-          };
-          img.src = compressedDataUrl;
-        });
-        
-        const dimensions = await imageLoaded;
-        
-        const compressedSizeKB = calculateSizeInKB(compressedDataUrl);
-        
-        // Log the first part of the compressed image data
-        console.log("Compressed image data (first 100 chars):", compressedDataUrl.substring(0, 100));
-        
-        setCompressedImageInfo({
-          dataUrl: compressedDataUrl,
-          size: `${compressedSizeKB} KB`,
-          dimensions: getImageDimensions(dimensions.width, dimensions.height),
-          format: options.format.toUpperCase()
-        });
-        
-      } else {
-        // It's an auto-optimized result
-        compressedDataUrl = result.dataUrl;
-        
-        // Log the first part of the compressed image data
-        console.log("Auto-optimized image data (first 100 chars):", compressedDataUrl.substring(0, 100));
-        console.log(`Compression format: ${result.format}, Quality: ${result.quality.toFixed(2)}, Size: ${result.sizeKB.toFixed(2)}KB`);
-        
-        details = `Optimized to ${result.width}x${result.height} at ${Math.round(result.quality * 100)}% quality using ${result.format.toUpperCase()}`;
+      if (options.autoOptimize) {
+        details = `Optimized to ${width}x${height} at ${Math.round(quality * 100)}% quality using ${format.toUpperCase()}`;
         setOptimizationDetails(details);
-        
-        setCompressedImageInfo({
-          dataUrl: compressedDataUrl,
-          size: `${result.sizeKB.toFixed(2)} KB`,
-          dimensions: getImageDimensions(result.width, result.height),
-          format: result.format.toUpperCase()
-        });
+      } else {
+        setOptimizationDetails('');
       }
       
+      setCompressedImageInfo({
+        dataUrl: dataUrl,
+        size: `${sizeKB.toFixed(2)} KB`,
+        dimensions: getImageDimensions(width, height),
+        format: format.toUpperCase()
+      });
+      
+      setCompressedBlob(blob);
+
       // Calculate size reduction
       const originalSizeKB = parseFloat((selectedFile.size / 1024).toFixed(2));
-      const compressedSizeKB = parseFloat(compressedImageInfo?.size?.split(' ')[0] || '0');
-      const reductionPercent = (100 - (compressedSizeKB / originalSizeKB * 100)).toFixed(1);
+      const compressedSizeKBFloat = sizeKB;
+      const reductionPercent = (100 - (compressedSizeKBFloat / originalSizeKB * 100)).toFixed(1);
       setSizeReduction(`${reductionPercent}%`);
       
     } catch (error) {
@@ -551,10 +561,17 @@ const ImageCompressor: React.FC = () => {
     
     const link = document.createElement('a');
     link.href = compressedImageInfo.dataUrl;
-    link.download = `compressed_${fileName}`;
+    link.download = `compressed_${fileName.replace(/\.[^/.]+$/, "")}.${compressedImageInfo.format.toLowerCase()}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleLogByteArray = async () => {
+    if (!compressedBlob) return;
+    const byteArray = new Uint8Array(await compressedBlob.arrayBuffer());
+    console.log('Compressed Image Byte Array:', byteArray);
+    alert('The byte array has been logged to the browser console.');
   };
 
   return (
@@ -721,10 +738,31 @@ const ImageCompressor: React.FC = () => {
               <p>Format: {compressedImageInfo?.format || '-'}</p>
               <p>Reduction: {sizeReduction}</p>
               {optimizationDetails && <p className="optimization-details">{optimizationDetails}</p>}
+              
+              {compressedBlob && (
+                <div className="image-info-details" style={{marginTop: '10px'}}>
+                  <p>
+                    <strong>Storage Size: {compressedBlob.size} bytes</strong>
+                    <br />
+                    <small>This is the raw data size for on-chain storage.</small>
+                  </p>
+                  <p>
+                    <strong>Base64 Size: ~{Math.round(compressedBlob.size * 4 / 3)} bytes</strong>
+                    <br />
+                    <small>Base64 is ~33% larger and not ideal for contracts.</small>
+                  </p>
+                </div>
+              )}
+
               {compressedImageInfo && (
-                <button onClick={handleDownload} className="download-button">
-                  Download
-                </button>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                  <button onClick={handleDownload} className="download-button">
+                    Download
+                  </button>
+                  <button onClick={handleLogByteArray} className="download-button" style={{ backgroundColor: '#117a8b' }}>
+                    Log Byte Array
+                  </button>
+                </div>
               )}
             </div>
           </div>
