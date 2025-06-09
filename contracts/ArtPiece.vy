@@ -111,6 +111,7 @@ artist: public(address)
 commissioner: public(address)  # Store the commissioner's address explicitly
 originalUploader: address  # Store the original uploader's address, do not need to expose
 aiGenerated: public(bool)
+tokenURIJson: public(String[2500])  # Store the OpenSea-standard tokenURI JSON
 
 # Contract state
 initialized: public(bool)  # Flag to track if the contract has been initialized
@@ -174,7 +175,7 @@ def initialize(
     _ai_generated: bool,
     _original_uploader: address,  # MUST already be a profile
     _profile_factory_address: address,
-    _off_chain_data: String[2500] = empty(String[2500]) # Optional extra off-chain data
+    _token_uri_json: String[2500] = empty(String[2500]) # Optional extra off-chain data
 ):
     """
     @notice Initialize the ArtPiece contract, can only be called once
@@ -205,6 +206,7 @@ def initialize(
     self.artCommissionHubAddress = _commission_hub
     self.profileFactoryAndRegistry = _profile_factory_address
     self.originalUploader = _original_uploader
+    self.tokenURIJson = _token_uri_json
 
     # Determine if this is a private or non-commission piece based on commissioner and artist being the same
     if _commissioner_input == _artist_input and _commissioner_input != empty(address) and _artist_input != empty(address):
@@ -300,15 +302,14 @@ def supportsInterface(_interfaceId: bytes4) -> bool:
 
 @external
 @view
-def tokenURI(_tokenId: uint256) -> String[1000]:  # Updated return type
+def tokenURI(_tokenId: uint256) -> String[2500]:  # Updated return type
     """
     @notice Get the URI for a token
     @param _tokenId The token ID
     @return The token URI
     """
     assert _tokenId == TOKEN_ID, "This NFT collection only has a single id: 1"
-    temp: String[1000] = ""
-    return temp
+    return self.tokenURIJson
 
 @external
 @view

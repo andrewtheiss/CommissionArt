@@ -108,6 +108,7 @@ def test_artist_creates_art_for_new_commissioner(setup):
         commissioner.address,  # Commissioner is the other party
         commission_hub.address,
         False,  # Not AI generated
+        "",  # Empty token_uri_json parameter
         sender=artist
     )
     
@@ -188,9 +189,10 @@ def test_commissioner_creates_art_for_existing_artist(setup):
         title,
         description,
         is_artist,
-        artist.address,  # Artist is the other party
-        commission_hub.address,  # Use commission hub
-        False,  # Not AI generated
+        artist.address,
+        commission_hub.address,
+        False,
+        "",  # Empty token_uri_json parameter
         sender=commissioner
     )
     
@@ -262,6 +264,7 @@ def test_blacklisted_user_cannot_add_to_unverified(setup):
         blacklister.address,
         commission_hub.address,
         False,
+        "",  # Empty token_uri_json parameter
         sender=new_user
     )
     
@@ -331,6 +334,7 @@ def test_whitelisted_user_adds_directly_to_verified(setup):
         whitelister.address,
         commission_hub.address,
         False,
+        "",  # Empty token_uri_json parameter
         sender=new_user
     )
     
@@ -420,6 +424,7 @@ def test_unverified_commissions_disabled(setup):
         artist.address,
         commission_hub.address,
         False,
+        "",  # Empty token_uri_json parameter
         sender=commissioner
     )
     
@@ -473,6 +478,7 @@ def test_ai_generated_flag_set_correctly(setup):
         commissioner.address,
         commission_hub.address,
         True,  # AI generated
+        "",  # Empty token_uri_json parameter
         sender=artist
     )
     
@@ -521,6 +527,7 @@ def test_cannot_create_art_for_self(setup):
             artist.address,  # Same as sender
             ZERO_ADDRESS,
             False,
+            "",  # Empty token_uri_json parameter
             sender=artist
         )
 
@@ -555,6 +562,7 @@ def test_events_emitted_correctly(setup):
         commissioner.address,
         commission_hub.address,
         False,
+        "",  # Empty token_uri_json parameter
         sender=artist
     )
     

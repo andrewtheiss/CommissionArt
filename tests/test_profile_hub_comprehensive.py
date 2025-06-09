@@ -97,6 +97,7 @@ def test_user_first_upload_creates_profile_and_art(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=user
         )
         
@@ -169,6 +170,7 @@ def test_commissioner_creates_profile_and_commission(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=commissioner
         )
         
@@ -240,6 +242,7 @@ def test_artist_creates_profile_with_portfolio_piece(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=other_artist
         )
         
@@ -317,6 +320,7 @@ def test_multiple_users_create_profiles_with_art(setup):
                 1,  # _linked_to_art_commission_hub_chain_id
                 ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
                 0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+                "",  # Empty token_uri_json parameter
                 sender=test_user
             )
             
@@ -374,6 +378,7 @@ def test_edge_case_max_size_art(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=user
         )
         
@@ -430,6 +435,7 @@ def test_ai_generated_art_flag(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=user
         )
         
@@ -486,6 +492,7 @@ def test_error_profile_exists_already(setup):
                 1,  # _linked_to_art_commission_hub_chain_id
                 ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
                 0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+                "",  # Empty token_uri_json parameter
                 sender=user
             )
     except Exception as e:
@@ -526,6 +533,7 @@ def test_special_characters_in_title_and_description(setup):
             False,  # Not AI generated
             ZERO_ADDRESS,  # Not linked to a commission hub
             False,  # Not profile art
+            "",  # Empty token_uri_json parameter
             sender=user
         )
         
@@ -574,6 +582,7 @@ def test_create_profile_with_empty_description(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=user
         )
         

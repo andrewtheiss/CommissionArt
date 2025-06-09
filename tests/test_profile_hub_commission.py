@@ -85,6 +85,7 @@ def test_create_new_commission_and_register_profile(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=user
         )
         
@@ -156,6 +157,7 @@ def test_create_new_commission_when_profile_exists_should_fail(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=user
         )
 
@@ -192,6 +194,7 @@ def test_artist_creates_commission_for_user(setup):
             1,  # _linked_to_art_commission_hub_chain_id
             ZERO_ADDRESS,  # _linked_to_art_commission_hub_address - empty for no hub creation
             0,  # _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            "",  # Empty token_uri_json parameter
             sender=artist
         )
         
