@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import ethersService from './ethers-service';
+import profileService from './profile-service';
 import { NetworkConfig } from './config';
 import config from './config';
 import { ethers } from 'ethers';
@@ -71,10 +72,16 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
       setHasProfile(false);
       return;
     }
-    // Placeholder logic for checking profile.
-    // Replace with your actual implementation.
-    console.log("Checking profile for", checkAddress);
-    setHasProfile(false); // Default to false
+    
+    try {
+      // Use the profile service to check if user has a profile
+      const profileExists = await profileService.hasProfile();
+      setHasProfile(profileExists);
+      console.log(`Profile check for ${checkAddress}: ${profileExists ? 'Found' : 'Not found'}`);
+    } catch (error) {
+      console.error("Error checking profile:", error);
+      setHasProfile(false);
+    }
   };
 
   const switchNetwork = async (newNetworkType: NetworkType) => {

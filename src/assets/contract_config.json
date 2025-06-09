@@ -2,31 +2,31 @@
   "networks": {
     "testnet": {
       "l1": {
-        "address": "0x27F93A6f6d31a7bcDd3088dc915788704353C3d5",
+        "address": "0x7b2859Aa865a8f2A56dC7Fd36279b13C223C968D",
         "contract": "L1QueryOwnership"
       },
       "l2": {
-        "address": "0x115f6ED62c1f8514ec5dD8563B5Ba8a68a69c00F",
+        "address": "0x4C3AF4a24FBA22a5234747a2836ef94618987805",
         "contract": "L2OwnershipRelay"
       },
       "l3": {
-        "address": "0xC76f4342e0d1b011a8dc4ba60ed7c9733a77a9e7",
+        "address": "0x7a0C10E8D5Adfd37372A52c7F6c03cE013224896",
         "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
-        "address": "0x31D54369b19ed3D74a14DCDd160D41Da6dcF9095",
+        "address": "0x907996da0cE4B71011D15cd73F345597Bea67618",
         "contract": "ArtCommissionHub"
       },
       "artPiece": {
-        "address": "0xA57271FFAA9F862EddFbb56F25E7F5791f112D95",
+        "address": "0x1edC0D67777C18d0B767403ac00ccBB0e3bfEaf4",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0x00C22B6616252b0df6D845e31c4a6B13f8a9A86A",
+        "address": "0xdD465BCDe5BAEB85f462f176E938C55179703164",
         "contract": "Profile"
       },
       "profileFactoryAndRegistry": {
-        "address": "0x3e428590501DD1BA7da756dBdfA6AD2F77016E58",
+        "address": "0xCb440D2806a54Ce51A0738937b9f65e889E3975F",
         "contract": "ProfileFactoryAndRegistry"
       },
       "l2ProfileFactoryAndRegistry": {
@@ -38,8 +38,16 @@
         "contract": "ProfileFactoryAndRegistry"
       },
       "profileSocialTemplate": {
-        "address": "0x4a9EFDAf6A35212d6185d65d7F6eBd2006Bf8482",
+        "address": "0x45e813D7508BECE8e534b619DD016514e46a895A",
         "contract": "ProfileSocial"
+      },
+      "artEdition1155Template": {
+        "address": "0xEc4BDAe7fFC0967Ab2099B5B9D67a8e326E1C094",
+        "contract": "ArtEdition1155"
+      },
+      "artSales1155Template": {
+        "address": "0x87F6dd65880C6206A5484B02a2E5AE8f678701A3",
+        "contract": "ArtSales1155"
       }
     },
     "mainnet": {
@@ -85,5 +93,5 @@
       }
     }
   },
-  "lastUpdated": "2025-05-28T11:49:51.515599"
+  "lastUpdated": "2025-06-09T10:59:52.903566"
 }

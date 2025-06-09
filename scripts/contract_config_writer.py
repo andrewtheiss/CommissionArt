@@ -46,6 +46,14 @@ def get_default_config():
                     "address": "",
                     "contract": "ProfileSocial"
                 },
+                "artEdition1155Template": {
+                    "address": "",
+                    "contract": "ArtEdition1155"
+                },
+                "artSales1155Template": {
+                    "address": "",
+                    "contract": "ArtSales1155"
+                },
                 "profileFactoryAndRegistry": {
                     "address": "",
                     "contract": "ProfileFactoryAndRegistry"
@@ -79,6 +87,14 @@ def get_default_config():
                 "profileSocialTemplate": {
                     "address": "",
                     "contract": "ProfileSocial"
+                },
+                "artEdition1155Template": {
+                    "address": "",
+                    "contract": "ArtEdition1155"
+                },
+                "artSales1155Template": {
+                    "address": "",
+                    "contract": "ArtSales1155"
                 },
                 "profileFactoryAndRegistry": {
                     "address": "",

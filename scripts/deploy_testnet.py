@@ -52,6 +52,8 @@ def deploy_contracts():
                 "artPiece": {"address": "", "contract": "ArtPiece"},
                 "profileTemplate": {"address": "", "contract": "Profile"},
                 "profileSocialTemplate": {"address": "", "contract": "ProfileSocial"},
+                "artEdition1155Template": {"address": "", "contract": "ArtEdition1155"},
+                "artSales1155Template": {"address": "", "contract": "ArtSales1155"},
                 "profileFactoryAndRegistry": {"address": "", "contract": "ProfileFactoryAndRegistry"}
             }
             # Save the updated config
@@ -112,6 +114,8 @@ def deploy_contracts():
     art_piece_existing_address = get_contract_address(config_network, "artPiece")
     profile_template_existing_address = get_contract_address(config_network, "profileTemplate")
     profile_social_template_existing_address = get_contract_address(config_network, "profileSocialTemplate")
+    art_edition_1155_template_existing_address = get_contract_address(config_network, "artEdition1155Template")
+    art_sales_1155_template_existing_address = get_contract_address(config_network, "artSales1155Template")
     profile_factory_and_registry_existing_address = get_contract_address(config_network, "profileFactoryAndRegistry")
     
     # For prodtest mode, if we don't have an L1 address, prompt for one
@@ -130,6 +134,8 @@ def deploy_contracts():
     art_piece_stencil = None
     profile_template = None
     profile_social_template = None
+    art_edition_1155_template = None
+    art_sales_1155_template = None
     profile_factory_and_registry = None
 
     # Deploy L2OwnershipRelay first with 0 parameters
@@ -271,6 +277,60 @@ def deploy_contracts():
                 print(f"Error deploying ProfileSocial template: {e}")
                 sys.exit(1)
 
+    # Deploy ArtEdition1155 template on L3
+    with networks.parse_network_choice(l3_network) as provider:
+        if not full_redeploy and art_edition_1155_template_existing_address and input(f"Use existing ArtEdition1155 template at {art_edition_1155_template_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ArtEdition1155 template at: {art_edition_1155_template_existing_address}")
+            art_edition_1155_template = project.ArtEdition1155.at(art_edition_1155_template_existing_address)
+        else:
+            print(f"Deploying ArtEdition1155 template on {l3_network}")
+            try:
+                # For L3 deployments, we may need higher gas limits
+                gas_limit = 6000000  # Higher gas limit for ArtEdition1155
+                art_edition_1155_template = deployer.deploy(
+                    project.ArtEdition1155,
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"ArtEdition1155 template deployed at: {art_edition_1155_template.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "artEdition1155Template", art_edition_1155_template.address, "ArtEdition1155")
+                
+                print("=" * 50)  # Delimiter after ArtEdition1155 template deployment
+                print("ArtEdition1155 template deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying ArtEdition1155 template: {e}")
+                sys.exit(1)
+
+    # Deploy ArtSales1155 template on L3
+    with networks.parse_network_choice(l3_network) as provider:
+        if not full_redeploy and art_sales_1155_template_existing_address and input(f"Use existing ArtSales1155 template at {art_sales_1155_template_existing_address}? (Y/n): ").strip().lower() != 'n':
+            print(f"Using existing ArtSales1155 template at: {art_sales_1155_template_existing_address}")
+            art_sales_1155_template = project.ArtSales1155.at(art_sales_1155_template_existing_address)
+        else:
+            print(f"Deploying ArtSales1155 template on {l3_network}")
+            try:
+                # For L3 deployments, we may need higher gas limits
+                gas_limit = 6000000  # Higher gas limit for ArtSales1155
+                art_sales_1155_template = deployer.deploy(
+                    project.ArtSales1155,
+                    gas_limit=gas_limit,
+                    required_confirmations=1
+                )
+                print(f"ArtSales1155 template deployed at: {art_sales_1155_template.address}")
+                
+                # Update the frontend config
+                update_contract_address(config_network, "artSales1155Template", art_sales_1155_template.address, "ArtSales1155")
+                
+                print("=" * 50)  # Delimiter after ArtSales1155 template deployment
+                print("ArtSales1155 template deployment completed")
+                print("=" * 50)
+            except Exception as e:
+                print(f"Error deploying ArtSales1155 template: {e}")
+                sys.exit(1)
+
     # Deploy ProfileFactoryAndRegistry on L3
     with networks.parse_network_choice(l3_network) as provider:
         if not full_redeploy and profile_factory_and_registry_existing_address and input(f"Use existing ProfileFactoryAndRegistry at {profile_factory_and_registry_existing_address}? (Y/n): ").strip().lower() != 'n':
@@ -286,6 +346,8 @@ def deploy_contracts():
                     profile_template.address,  # Profile template address
                     profile_social_template.address,  # ProfileSocial template address
                     commission_hub_template.address,  # ArtCommissionHub template address
+                    art_edition_1155_template.address,  # ArtEdition1155 template address
+                    art_sales_1155_template.address,  # ArtSales1155 template address
                     gas_limit=gas_limit,
                     required_confirmations=1
                 )
@@ -510,6 +572,8 @@ def deploy_contracts():
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
         print(f"  - ProfileSocial Template: {profile_social_template.address if profile_social_template else 'Not deployed'}")
+        print(f"  - ArtEdition1155 Template: {art_edition_1155_template.address if art_edition_1155_template else 'Not deployed'}")
+        print(f"  - ArtSales1155 Template: {art_sales_1155_template.address if art_sales_1155_template else 'Not deployed'}")
         print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_registry.address if profile_factory_and_registry else 'Not deployed'}")
         print("\nNOTE: These are TEST contracts deployed to PRODUCTION networks.")
         print("They can be used for testing with real chain interactions, but should not be")
@@ -521,6 +585,8 @@ def deploy_contracts():
         print(f"  - ArtPiece Stencil: {art_piece_stencil.address if art_piece_stencil else 'Not deployed'}")
         print(f"  - Profile Template: {profile_template.address if profile_template else 'Not deployed'}")
         print(f"  - ProfileSocial Template: {profile_social_template.address if profile_social_template else 'Not deployed'}")
+        print(f"  - ArtEdition1155 Template: {art_edition_1155_template.address if art_edition_1155_template else 'Not deployed'}")
+        print(f"  - ArtSales1155 Template: {art_sales_1155_template.address if art_sales_1155_template else 'Not deployed'}")
         print(f"  - ProfileFactoryAndRegistry: {profile_factory_and_registry.address if profile_factory_and_registry else 'Not deployed'}")
     
     # Check if the contracts were properly linked
@@ -561,7 +627,7 @@ def deploy_contracts():
     print(f"\nMake sure to use these contract addresses in your application.\n")
     print(f"\nPlease run: ape run compile_and_extract_abis\n")
 
-    return l1_contract, l2_contract, l3_art_commission_hub_owners, commission_hub_template, art_piece_stencil, profile_template, profile_social_template, profile_factory_and_registry
+    return l1_contract, l2_contract, l3_art_commission_hub_owners, commission_hub_template, art_piece_stencil, profile_template, profile_social_template, art_edition_1155_template, art_sales_1155_template, profile_factory_and_registry
 
 def main():
     try:

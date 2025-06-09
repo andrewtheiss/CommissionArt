@@ -19,7 +19,7 @@ const getInitialDebugMode = (): boolean => {
 };
 
 // Address displayed format
-const formatAddress = (address: string | null) => {
+const formatAddress = (address: string | null): string => {
   if (!address) return 'Not connected';
   return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
 };
@@ -60,6 +60,7 @@ const Account: React.FC = () => {
   // Create profile
   const [creatingProfile, setCreatingProfile] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [createAsArtist, setCreateAsArtist] = useState<boolean>(false);
 
   // For wallet connection
   const isTrulyConnected = isConnected && !!walletAddress;
@@ -475,8 +476,8 @@ const Account: React.FC = () => {
       setCreatingProfile(true);
       setError(null);
       
-      // Create profile via the ProfileFactoryAndRegistry
-      const newProfileAddress = await profileService.createProfile();
+      // Create profile via the ProfileFactoryAndRegistry with artist status
+      const newProfileAddress = await profileService.createProfile(createAsArtist);
       console.log("Profile created at address:", newProfileAddress);
       
       // Refresh profile data
@@ -509,10 +510,11 @@ const Account: React.FC = () => {
     
     try {
       setProfileDataLoading(true);
-      // Call the contract method
-      const tx = await profile.setIsArtist(status);
-      // Wait for transaction to be mined
-      await tx.wait();
+      setError(null);
+      
+      // Use the profile service method
+      await profileService.setArtistStatus(status);
+      
       // Update state
       setIsArtist(status);
     } catch (err) {
@@ -559,6 +561,22 @@ const Account: React.FC = () => {
           <h3>No Profile Found</h3>
           <p>You don't have a profile yet. Create one to start using the platform.</p>
           <p className="wallet-info">Connected wallet: {formatAddress(walletAddress)}</p>
+          
+          <div className="create-profile-options">
+            <label className="artist-checkbox">
+              <input 
+                type="checkbox" 
+                checked={createAsArtist} 
+                onChange={(e) => setCreateAsArtist(e.target.checked)}
+                disabled={creatingProfile}
+              />
+              <span className="checkbox-text">Create as Artist</span>
+            </label>
+            <p className="artist-help-text">
+              Artists can create and sell art pieces. You can change this setting later.
+            </p>
+          </div>
+          
           <button 
             className="create-profile-button" 
             onClick={handleCreateProfile}
@@ -724,6 +742,45 @@ const Account: React.FC = () => {
       ) : (
         <div className="account-card connect-card">
           <p>Please connect your wallet to view your profile</p>
+        </div>
+      )}
+      
+      {/* Debug information */}
+      {debugMode && hasProfile && profile && (
+        <div className="account-card debug-card">
+          <h3>Debug Information</h3>
+          <div className="debug-info">
+            <p><strong>Profile Address:</strong> {profileAddress}</p>
+            <p><strong>Profile Layer:</strong> {profileLayer}</p>
+            <p><strong>Network:</strong> {network.name}</p>
+            <p><strong>Is Artist:</strong> {isArtist ? 'Yes' : 'No'}</p>
+            <p><strong>Total Art Pieces:</strong> {totalArtPieces}</p>
+            <p><strong>Total Commissions:</strong> {recentCommissions.length}</p>
+            <div className="debug-actions">
+              <button 
+                className="debug-button"
+                onClick={async () => {
+                  try {
+                    const artistStatus = await profile.isArtist();
+                    const owner = await profile.owner();
+                    const artCount = await profile.myArtCount();
+                    console.log('Profile Debug Info:', {
+                      address: profileAddress,
+                      owner,
+                      isArtist: artistStatus,
+                      artCount: Number(artCount)
+                    });
+                    alert('Debug info logged to console');
+                  } catch (err) {
+                    console.error('Debug error:', err);
+                    alert('Debug failed - check console');
+                  }
+                }}
+              >
+                Log Profile Details
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

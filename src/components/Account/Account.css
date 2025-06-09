@@ -653,4 +653,103 @@
   font-size: 0.85rem;
   color: #e0e0e0;
   margin-left: 4px;
+}
+
+.create-profile-options {
+  margin: 20px 0;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border-secondary);
+}
+
+.artist-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.artist-checkbox input[type="checkbox"] {
+  margin-right: 8px;
+  transform: scale(1.2);
+}
+
+.checkbox-text {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.artist-help-text {
+  margin: 8px 0 0 24px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.artist-checkbox:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Debug styles */
+.debug-card {
+  border-left: 4px solid #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
+}
+
+.debug-info {
+  font-family: monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.debug-info p {
+  margin: 8px 0;
+  color: var(--text-secondary);
+}
+
+.debug-info strong {
+  color: var(--text-primary);
+}
+
+.debug-actions {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-secondary);
+}
+
+.debug-button {
+  background: #2196f3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.debug-button:hover {
+  background: #1976d2;
+}
+
+.debug-mode-toggle-container {
+  margin-bottom: 20px;
+}
+
+.debug-mode-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.debug-mode-toggle input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.debug-mode-toggle-text {
+  user-select: none;
 } 

@@ -40,9 +40,10 @@ class ProfileService {
 
   /**
    * Create a new profile for the current wallet
+   * @param isArtist Whether to create the profile as an artist
    * @returns Promise<string> Address of the created profile
    */
-  public async createProfile(): Promise<string> {
+  public async createProfile(isArtist: boolean = false): Promise<string> {
     try {
       const signer = await ethersService.getSigner();
       if (!signer) {
@@ -63,12 +64,31 @@ class ProfileService {
 
       const hubContract = new ethers.Contract(hubAddress, hubAbi, signer);
       console.log("Creating profile via ProfileFactoryAndRegistry at:", hubAddress);
-      const tx = await hubContract.createProfile();
+      
+      // Call createProfile with empty address (which defaults to msg.sender)
+      const tx = await hubContract.createProfile(ethers.ZeroAddress);
       await tx.wait();
 
       // Get the newly created profile address
       const userAddress = await signer.getAddress();
-      return await hubContract.getProfile(userAddress);
+      const profileAddress = await hubContract.getProfile(userAddress);
+      
+      // If the user wants to be an artist, set that status
+      if (isArtist && profileAddress !== ethers.ZeroAddress) {
+        try {
+          const profileContract = await this.getMyProfile();
+          if (profileContract) {
+            const artistTx = await profileContract.setIsArtist(true);
+            await artistTx.wait();
+            console.log("Artist status set successfully");
+          }
+        } catch (artistError) {
+          console.warn("Profile created but failed to set artist status:", artistError);
+          // Don't throw here, profile creation was successful
+        }
+      }
+      
+      return profileAddress;
     } catch (error) {
       console.error("Error creating profile:", error);
       throw error;
@@ -194,35 +214,45 @@ class ProfileService {
    */
   private getProfileFactoryAndRegistryAddress(): string {
     const network = ethersService.getNetwork();
-    // Use the toggle preference from localStorage to determine which layer to use
-    const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
     
     // Determine environment (testnet/mainnet)
     const environment = network.name === "Sepolia" ? "testnet" : "mainnet";
     
-    // Select the contract based on the toggle setting
-    // If useL2Testnet is true, we use the L2 testnet contract
-    // Otherwise, we use the L3 animechain contract (default behavior)
+    // Use the standard profileFactoryAndRegistry address
     try {
-      let address;
-      if (useL2Testnet) {
-        // Use L2 testnet contract for profiles
-        address = contractConfig.networks[environment].l2ProfileFactoryAndRegistry.address;
-        console.log(`Using L2 testnet ProfileFactoryAndRegistry at: ${address}`);
-      } else {
-        // Use L3 animechain contract (previous default behavior)
-        address = contractConfig.networks[environment].l3ProfileFactoryAndRegistry.address;
-        console.log(`Using L3 AnimeChain ProfileFactoryAndRegistry at: ${address}`);
-      }
-    
+      const address = contractConfig.networks[environment].profileFactoryAndRegistry.address;
+      
       if (!address) {
         console.warn(`ProfileFactoryAndRegistry address for ${environment} is not configured in contract_config.json`);
+        return "";
       }
       
+      console.log(`Using ProfileFactoryAndRegistry at: ${address} (${environment})`);
       return address;
     } catch (error) {
       console.error("Error getting ProfileFactoryAndRegistry address:", error);
       return "";
+    }
+  }
+
+  /**
+   * Toggle artist status for the current user's profile
+   * @param isArtist Whether the user should be an artist
+   * @returns Promise<void>
+   */
+  public async setArtistStatus(isArtist: boolean): Promise<void> {
+    try {
+      const profileContract = await this.getMyProfile();
+      if (!profileContract) {
+        throw new Error("Profile not found");
+      }
+
+      const tx = await profileContract.setIsArtist(isArtist);
+      await tx.wait();
+      console.log(`Artist status ${isArtist ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error("Error setting artist status:", error);
+      throw error;
     }
   }
 }
