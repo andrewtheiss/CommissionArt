@@ -12,12 +12,40 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
 }
 
 .toggle-label {
   font-size: 14px;
   color: #b8b9bf;
   margin-right: 5px;
+}
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-option-label {
+  font-size: 13px;
+  color: #888;
+  transition: color 0.3s ease;
+  min-width: 80px;
+  text-align: center;
+}
+
+.toggle-option-label.left {
+  text-align: right;
+}
+
+.toggle-option-label.right {
+  text-align: left;
+}
+
+.toggle-option-label.active {
+  color: #e0e0e0;
+  font-weight: 500;
 }
 
 .toggle-switch {
@@ -33,6 +61,11 @@
   height: 0;
 }
 
+.toggle-switch input:disabled + .toggle-slider {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .toggle-slider {
   position: absolute;
   cursor: pointer;
@@ -44,6 +77,9 @@
   transition: 0.4s;
   border-radius: 22px;
   border: 1px solid #434968;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toggle-slider:before {
@@ -56,6 +92,29 @@
   background-color: #e0e0e0;
   transition: 0.4s;
   border-radius: 50%;
+}
+
+.toggle-slider.switching:before {
+  animation: pulse 1s infinite;
+}
+
+.switching-indicator {
+  position: absolute;
+  font-size: 10px;
+  color: #b8b9bf;
+  animation: spin 1s linear infinite;
+  z-index: 1;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 input:checked + .toggle-slider {
@@ -76,5 +135,20 @@ input:checked + .toggle-slider:before {
   .profile-environment-toggle {
     flex-direction: column;
     align-items: flex-start;
+  }
+  
+  .toggle-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .toggle-wrapper {
+    gap: 8px;
+  }
+  
+  .toggle-option-label {
+    min-width: 70px;
+    font-size: 12px;
   }
 } 

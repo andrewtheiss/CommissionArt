@@ -65,8 +65,9 @@ class ProfileService {
       const hubContract = new ethers.Contract(hubAddress, hubAbi, signer);
       console.log("Creating profile via ProfileFactoryAndRegistry at:", hubAddress);
       
-      // Call createProfile with empty address (which defaults to msg.sender)
-      const tx = await hubContract.createProfile(ethers.ZeroAddress);
+      // Call createProfile with no parameters (defaults to msg.sender)
+      // Use the specific function signature to avoid ambiguity
+      const tx = await hubContract['createProfile()']();
       await tx.wait();
 
       // Get the newly created profile address
@@ -215,8 +216,21 @@ class ProfileService {
   private getProfileFactoryAndRegistryAddress(): string {
     const network = ethersService.getNetwork();
     
-    // Determine environment (testnet/mainnet)
-    const environment = network.name === "Sepolia" ? "testnet" : "mainnet";
+    // Determine environment based on network configuration
+    // Testnet: Arbitrum Sepolia (421614) or Ethereum Sepolia (11155111)
+    // Mainnet: AnimeChain (69000) or Ethereum Mainnet (1) 
+    let environment: "testnet" | "mainnet";
+    
+    if (network.chainId === 421614 || network.chainId === 11155111) {
+      // Arbitrum Sepolia or Ethereum Sepolia
+      environment = "testnet";
+    } else if (network.chainId === 69000 || network.chainId === 1) {
+      // AnimeChain or Ethereum Mainnet
+      environment = "mainnet";
+    } else {
+      // Default fallback - determine by network name
+      environment = network.name === "Sepolia" || network.name === "Arbitrum Sepolia" ? "testnet" : "mainnet";
+    }
     
     // Use the standard profileFactoryAndRegistry address
     try {
@@ -227,7 +241,7 @@ class ProfileService {
         return "";
       }
       
-      console.log(`Using ProfileFactoryAndRegistry at: ${address} (${environment})`);
+      console.log(`Using ProfileFactoryAndRegistry at: ${address} (${environment}) for network ${network.name} (${network.chainId})`);
       return address;
     } catch (error) {
       console.error("Error getting ProfileFactoryAndRegistry address:", error);

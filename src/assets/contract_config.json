@@ -2,51 +2,43 @@
   "networks": {
     "testnet": {
       "l1": {
-        "address": "0x7b2859Aa865a8f2A56dC7Fd36279b13C223C968D",
+        "address": "0x1cbdEdf11e24387cFBD9797B6769Ed4600726Ef2",
         "contract": "L1QueryOwnership"
       },
       "l2": {
-        "address": "0x4C3AF4a24FBA22a5234747a2836ef94618987805",
+        "address": "0x0c6c3FD49C82724AB599D7FFb1a9C5bC04bf8cC8",
         "contract": "L2OwnershipRelay"
       },
       "l3": {
-        "address": "0x7a0C10E8D5Adfd37372A52c7F6c03cE013224896",
+        "address": "0xc646373ca42558E3D56E43c7A4e397EE6976Fe3F",
         "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
-        "address": "0x907996da0cE4B71011D15cd73F345597Bea67618",
+        "address": "0x7b2859Aa865a8f2A56dC7Fd36279b13C223C968D",
         "contract": "ArtCommissionHub"
       },
       "artPiece": {
-        "address": "0x1edC0D67777C18d0B767403ac00ccBB0e3bfEaf4",
+        "address": "0x27F93A6f6d31a7bcDd3088dc915788704353C3d5",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0xdD465BCDe5BAEB85f462f176E938C55179703164",
+        "address": "0x1cbdEdf11e24387cFBD9797B6769Ed4600726Ef2",
         "contract": "Profile"
       },
       "profileFactoryAndRegistry": {
-        "address": "0xCb440D2806a54Ce51A0738937b9f65e889E3975F",
-        "contract": "ProfileFactoryAndRegistry"
-      },
-      "l2ProfileFactoryAndRegistry": {
-        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
-        "contract": "ProfileFactoryAndRegistry"
-      },
-      "l3ProfileFactoryAndRegistry": {
-        "address": "0x26e9f10892D82440C63A981e0c2Bb686b4b54169",
+        "address": "0x11F023357048D2915070e83D956f668715d07712",
         "contract": "ProfileFactoryAndRegistry"
       },
       "profileSocialTemplate": {
-        "address": "0x45e813D7508BECE8e534b619DD016514e46a895A",
+        "address": "0x04C4fD0354C965B878Ae87ebf3cd1AB9F1519fEE",
         "contract": "ProfileSocial"
       },
       "artEdition1155Template": {
-        "address": "0xEc4BDAe7fFC0967Ab2099B5B9D67a8e326E1C094",
+        "address": "0x7490265b1e5052c68412cE1fC6723b941077EAA3",
         "contract": "ArtEdition1155"
       },
       "artSales1155Template": {
-        "address": "0x87F6dd65880C6206A5484B02a2E5AE8f678701A3",
+        "address": "0x093aCDF81D83a478268bE62D36A37F213518f0A5",
         "contract": "ArtSales1155"
       }
     },
@@ -79,19 +71,11 @@
         "address": "0x09F9D4aAcDed38355e55226e80472e70016Ae3b7",
         "contract": "ProfileFactoryAndRegistry"
       },
-      "l2ProfileFactoryAndRegistry": {
-        "address": "0xf94228517679F83b786C1e4F0ea9042c0c7ceF8c",
-        "contract": "ProfileFactoryAndRegistry"
-      },
-      "l3ProfileFactoryAndRegistry": {
-        "address": "0x8D1A7aE1e8b8d0FA1d5B52a856ABFC7Ad0465277",
-        "contract": "ProfileFactoryAndRegistry"
-      },
       "profileSocialTemplate": {
         "address": "0xC2fe14e67063fCF4A88ca1E50BF1CE49D9cF1c39",
         "contract": "ProfileSocial"
       }
     }
   },
-  "lastUpdated": "2025-06-09T10:59:52.903566"
+  "lastUpdated": "2025-06-09T15:10:38.752635"
 }

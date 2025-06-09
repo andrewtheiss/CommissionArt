@@ -7,49 +7,75 @@ interface ProfileEnvironmentToggleProps {
 
 const ProfileEnvironmentToggle: React.FC<ProfileEnvironmentToggleProps> = ({ className = '' }) => {
   const { switchToLayer } = useBlockchain();
-  const [useL2Testnet, setUseL2Testnet] = useState<boolean>(() => {
-    // Get the saved preference or default to false (L3)
-    const saved = localStorage.getItem('profile-use-l2-testnet');
+  const [useTestnet, setUseTestnet] = useState<boolean>(() => {
+    // Get the saved preference or default to false (Mainnet)
+    const saved = localStorage.getItem('profile-use-testnet');
     return saved ? JSON.parse(saved) : false;
   });
+  const [isSwitching, setIsSwitching] = useState<boolean>(false);
 
   // Save preference to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('profile-use-l2-testnet', JSON.stringify(useL2Testnet));
-  }, [useL2Testnet]);
+    localStorage.setItem('profile-use-testnet', JSON.stringify(useTestnet));
+  }, [useTestnet]);
 
-  const handleToggle = () => {
-    const newValue = !useL2Testnet;
-    setUseL2Testnet(newValue);
+  const handleToggle = async () => {
+    const newValue = !useTestnet;
+    setIsSwitching(true);
     
-    // Switch network layer based on toggle selection
-    if (newValue) {
-      // Switch to L2 testnet for profiles
-      switchToLayer('l2', 'testnet');
-    } else {
-      // Switch to L3 for profiles (default)
-      switchToLayer('l3', 'mainnet');
+    console.log(`[ProfileEnvironmentToggle] Starting network switch: ${!newValue ? 'Mainnet' : 'Testnet'} -> ${newValue ? 'Testnet' : 'Mainnet'}`);
+    
+    try {
+      // Switch network based on toggle selection
+      if (newValue) {
+        // Switch to Testnet (Arbitrum Sepolia)
+        console.log('[ProfileEnvironmentToggle] Calling switchToLayer(l2, testnet)');
+        await switchToLayer('l2', 'testnet');
+        console.log('[ProfileEnvironmentToggle] Successfully switched to Testnet');
+      } else {
+        // Switch to Mainnet (AnimeChain)
+        console.log('[ProfileEnvironmentToggle] Calling switchToLayer(l3, mainnet)');
+        await switchToLayer('l3', 'mainnet');
+        console.log('[ProfileEnvironmentToggle] Successfully switched to Mainnet');
+      }
+      
+      // Only update state if network switch was successful
+      setUseTestnet(newValue);
+      
+      // Dispatch custom event to notify components of the change
+      window.dispatchEvent(new Event('profile-environment-changed'));
+    } catch (error) {
+      console.error('[ProfileEnvironmentToggle] Failed to switch network:', error);
+      // Don't update the toggle state if network switch failed
+      alert(`Failed to switch network: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSwitching(false);
     }
-    
-    // Dispatch custom event to notify components of the change
-    window.dispatchEvent(new Event('profile-layer-changed'));
   };
 
   return (
     <div className={`profile-environment-toggle ${className}`}>
       <div className="toggle-container">
-        <span className="toggle-label">Profile Environment:</span>
-        <label className="toggle-switch">
-          <input 
-            type="checkbox" 
-            checked={useL2Testnet} 
-            onChange={handleToggle} 
-          />
-          <span className="toggle-slider"></span>
-        </label>
-        <span className="toggle-value">
-          {useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain'}
-        </span>
+        <span className="toggle-label">Environment:</span>
+        <div className="toggle-wrapper">
+          <span className={`toggle-option-label left ${!useTestnet ? 'active' : ''}`}>
+            Mainnet
+          </span>
+          <label className="toggle-switch">
+            <input 
+              type="checkbox" 
+              checked={useTestnet} 
+              onChange={handleToggle}
+              disabled={isSwitching}
+            />
+            <span className={`toggle-slider ${isSwitching ? 'switching' : ''}`}>
+              {isSwitching && <span className="switching-indicator">⟳</span>}
+            </span>
+          </label>
+          <span className={`toggle-option-label right ${useTestnet ? 'active' : ''}`}>
+            Testnet
+          </span>
+        </div>
       </div>
     </div>
   );

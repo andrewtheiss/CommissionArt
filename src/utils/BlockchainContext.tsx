@@ -26,8 +26,8 @@ interface BlockchainContextType {
   isLoading: boolean;
   networkType: NetworkType;
   network: NetworkConfig;
-  switchNetwork: (network: NetworkType) => void;
-  switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => void;
+  switchNetwork: (network: NetworkType) => Promise<void>;
+  switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => Promise<void>;
   connectWallet: () => Promise<void>;
   walletAddress: string | null;
   provider: ethers.BrowserProvider | null;
@@ -85,20 +85,39 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const switchNetwork = async (newNetworkType: NetworkType) => {
-    const newNetwork = ethersService.switchNetwork(newNetworkType);
-    setNetworkType(newNetworkType);
-    setNetwork(newNetwork);
-    
-    // Check connection after switching
-    ethersService.isConnected().then(connected => {
-      setIsConnected(connected);
-    });
+    try {
+      console.log(`[BlockchainContext] Starting switch to network: ${newNetworkType}`);
+      
+      // Switch the network in ethersService and request wallet network switch
+      const newNetwork = ethersService.switchNetwork(newNetworkType);
+      console.log(`[BlockchainContext] EthersService switched, now requesting wallet switch...`);
+      
+      // Request wallet to switch networks (this is async)
+      const switchSuccess = await ethersService.requestWalletNetworkSwitch(newNetworkType);
+      console.log(`[BlockchainContext] Wallet switch result: ${switchSuccess}`);
+      
+      if (switchSuccess) {
+        setNetworkType(newNetworkType);
+        setNetwork(newNetwork);
+        
+        // Check connection after switching
+        const connected = await ethersService.isConnected();
+        setIsConnected(connected);
+        
+        console.log(`[BlockchainContext] Successfully switched to network: ${newNetworkType}`);
+      } else {
+        throw new Error(`Failed to switch to network: ${newNetworkType}`);
+      }
+    } catch (error) {
+      console.error('[BlockchainContext] Error switching network:', error);
+      throw error; // Re-throw so the caller can handle it
+    }
   };
 
-  const switchToLayer = (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => {
+  const switchToLayer = async (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => {
     const targetNetwork = mapLayerToNetwork(layer, environment);
     console.log(`Switching to layer ${layer} (${environment}) => network ${targetNetwork}`);
-    switchNetwork(targetNetwork);
+    await switchNetwork(targetNetwork);
   };
 
   const connectWallet = async () => {

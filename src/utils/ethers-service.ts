@@ -118,9 +118,6 @@ class EthersService {
     this.network = config.networks[networkType];
     this.connectProvider();
     
-    // Request wallet to switch networks
-    this.requestWalletNetworkSwitch(networkType);
-    
     return this.network;
   }
 
@@ -135,58 +132,67 @@ class EthersService {
    * Request the wallet to switch to the specified network
    */
   public async requestWalletNetworkSwitch(networkType: NetworkType) {
+    console.log(`[EthersService] requestWalletNetworkSwitch called for: ${networkType}`);
+    
     if (!this.hasBrowserWallet()) {
-      console.warn('No wallet detected for network switching');
+      console.warn('[EthersService] No wallet detected for network switching');
       return false;
     }
     
     const targetNetwork = config.networks[networkType];
+    console.log(`[EthersService] Target network config:`, targetNetwork);
     
     try {
       // Format chain ID as hexadecimal string required by MetaMask
       const chainIdHex = `0x${targetNetwork.chainId.toString(16)}`;
+      console.log(`[EthersService] Requesting switch to chainId: ${chainIdHex} (${targetNetwork.chainId})`);
       
       // Request network switch
       try {
+        console.log(`[EthersService] Calling wallet_switchEthereumChain...`);
         await window.ethereum.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: chainIdHex }],
         });
         
-        console.log(`Successfully switched to network: ${targetNetwork.name}`);
+        console.log(`[EthersService] Successfully switched to network: ${targetNetwork.name}`);
         return true;
       } catch (switchError: any) {
+        console.log(`[EthersService] Switch error:`, switchError);
+        
         // This error code indicates the chain has not been added to MetaMask
         if (switchError.code === 4902) {
+          console.log(`[EthersService] Network not found in wallet, attempting to add...`);
           try {
+            const addParams = {
+              chainId: chainIdHex,
+              chainName: targetNetwork.name,
+              rpcUrls: [targetNetwork.rpcUrl],
+              nativeCurrency: {
+                name: targetNetwork.currency || 'ETH',
+                symbol: targetNetwork.currency || 'ETH',
+                decimals: 18,
+              },
+            };
+            console.log(`[EthersService] Adding network with params:`, addParams);
+            
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
-              params: [
-                {
-                  chainId: chainIdHex,
-                  chainName: targetNetwork.name,
-                  rpcUrls: [targetNetwork.rpcUrl],
-                  nativeCurrency: {
-                    name: targetNetwork.currency || 'ETH',
-                    symbol: targetNetwork.currency || 'ETH',
-                    decimals: 18,
-                  },
-                },
-              ],
+              params: [addParams],
             });
-            console.log(`Successfully added and switched to network: ${targetNetwork.name}`);
+            console.log(`[EthersService] Successfully added and switched to network: ${targetNetwork.name}`);
             return true;
           } catch (addError) {
-            console.error('Error adding network to wallet:', addError);
+            console.error('[EthersService] Error adding network to wallet:', addError);
             return false;
           }
         } else {
-          console.error('Error switching network in wallet:', switchError);
+          console.error('[EthersService] Error switching network in wallet:', switchError);
           return false;
         }
       }
     } catch (error) {
-      console.error('Error requesting network switch:', error);
+      console.error('[EthersService] Error requesting network switch:', error);
       return false;
     }
   }

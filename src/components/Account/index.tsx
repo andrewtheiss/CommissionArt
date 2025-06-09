@@ -104,44 +104,64 @@ const Account: React.FC = () => {
     }
   }, []);
 
-  // Create a state to track profile layer changes
-  const [profileLayer, setProfileLayer] = useState<string>(
-    localStorage.getItem('profile-use-l2-testnet') === 'true' ? 'L2 Testnet' : 'L3 AnimeChain'
+  // Create a state to track profile environment changes
+  const [profileEnvironment, setProfileEnvironment] = useState<string>(
+    localStorage.getItem('profile-use-testnet') === 'true' ? 'Testnet' : 'Mainnet'
   );
 
-  // Watch for changes to the profile layer setting
+  // Watch for changes to the profile environment setting
   useEffect(() => {
-    const checkProfileLayer = () => {
-      const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
-      setProfileLayer(useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain');
+    const checkProfileEnvironment = () => {
+      const useTestnet = localStorage.getItem('profile-use-testnet') === 'true';
+      setProfileEnvironment(useTestnet ? 'Testnet' : 'Mainnet');
     };
 
     // Check initially
-    checkProfileLayer();
+    checkProfileEnvironment();
 
     // Set up event listener for storage changes
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'profile-use-l2-testnet') {
-        checkProfileLayer();
+      if (e.key === 'profile-use-testnet') {
+        checkProfileEnvironment();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
     // Custom event for local changes
-    const handleCustomEvent = () => checkProfileLayer();
-    window.addEventListener('profile-layer-changed', handleCustomEvent);
+    const handleCustomEvent = () => checkProfileEnvironment();
+    window.addEventListener('profile-environment-changed', handleCustomEvent);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('profile-layer-changed', handleCustomEvent);
+      window.removeEventListener('profile-environment-changed', handleCustomEvent);
     };
   }, []);
 
   const ConnectionBar = () => {
-    // Get the profile layer preference from localStorage
-    const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
-    const profileLayer = useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain';
+    // Get the profile environment preference from localStorage
+    const useTestnet = localStorage.getItem('profile-use-testnet') === 'true';
+    const currentEnvironment = useTestnet ? 'Testnet' : 'Mainnet';
+    
+    // Better network name mapping
+    const getNetworkDisplayName = (networkType: string) => {
+      switch (networkType) {
+        case 'animechain':
+          return 'AnimeChain L3';
+        case 'arbitrum_testnet':
+          return 'Arbitrum Sepolia (L2)';
+        case 'arbitrum_mainnet':
+          return 'Arbitrum One (L2)';
+        case 'dev':
+          return 'Sepolia (L1)';
+        case 'prod':
+          return 'Ethereum (L1)';
+        case 'local':
+          return 'Local Network';
+        default:
+          return networkType;
+      }
+    };
     
     return (
       <div className="connection-bar">
@@ -167,11 +187,11 @@ const Account: React.FC = () => {
               <div className="connection-details">
                 <span className="status-text">
                   Connected to: <span className="network-name">
-                    {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
+                    {getNetworkDisplayName(networkType)}
                   </span>
                 </span>
-                <span className="profile-layer">
-                  Profile Layer: <span className="layer-name">{profileLayer}</span>
+                <span className="profile-environment">
+                  Environment: <span className="environment-name">{currentEnvironment}</span>
                 </span>
                 <span className="wallet-address">
                   {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
@@ -232,7 +252,7 @@ const Account: React.FC = () => {
     };
     
     checkProfileStatus();
-  }, [isConnected, walletAddress, network, profileLayer]);
+  }, [isConnected, walletAddress, network, profileEnvironment]);
   
   // Load profile data after we have the profile contract
   useEffect(() => {
@@ -751,7 +771,7 @@ const Account: React.FC = () => {
           <h3>Debug Information</h3>
           <div className="debug-info">
             <p><strong>Profile Address:</strong> {profileAddress}</p>
-            <p><strong>Profile Layer:</strong> {profileLayer}</p>
+            <p><strong>Environment:</strong> {profileEnvironment}</p>
             <p><strong>Network:</strong> {network.name}</p>
             <p><strong>Is Artist:</strong> {isArtist ? 'Yes' : 'No'}</p>
             <p><strong>Total Art Pieces:</strong> {totalArtPieces}</p>
