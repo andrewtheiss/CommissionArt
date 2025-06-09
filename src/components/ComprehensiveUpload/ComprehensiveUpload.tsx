@@ -43,7 +43,12 @@ interface SpecialProperties {
   youtube_url?: string;
 }
 
-const ComprehensiveUpload: React.FC = () => {
+interface ComprehensiveUploadProps {
+  onBack?: () => void;
+  userType?: 'artist' | 'commissioner';
+}
+
+const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userType }) => {
   const { isConnected, walletAddress, hasProfile, checkUserProfile, provider } = useBlockchain();
 
   // Basic artwork form data
@@ -373,44 +378,129 @@ const ComprehensiveUpload: React.FC = () => {
       const signer = await provider.getSigner();
       let tx;
       
+      // Get contract addresses from config
       const artPieceTemplateAddress = (contractConfig.networks.mainnet.artPiece as any).address;
-      const artCommissionHubAddress = (contractConfig.networks.mainnet.artCommissionHub as any).address;
+      const profileFactoryRegistryAddress = (contractConfig.networks.mainnet.profileFactoryAndRegistry as any).address;
 
       if (hasProfile) {
-        const profileAddress = await new ethers.Contract((contractConfig.networks.mainnet.profileFactoryAndRegistry as any).address, ProfileFactoryABI, signer).getProfile(walletAddress);
-        const profileContract = new ethers.Contract(profileAddress, ProfileFactoryABI, signer);
+        // User has profile - get profile address and use Profile.createArtPiece
+        const profileFactoryContract = new ethers.Contract(
+          profileFactoryRegistryAddress, 
+          ProfileFactoryABI, 
+          signer
+        );
+        
+        const profileAddress = await profileFactoryContract.getProfile(walletAddress);
+        
+        // Import Profile ABI
+        const ProfileABI = await import('../../assets/abis/Profile.json');
+        const profileContract = new ethers.Contract(profileAddress, ProfileABI.default, signer);
         
         if (!profileContract) throw new Error("Profile contract not found");
 
-        tx = await profileContract.createArtPiece(
-          artPieceTemplateAddress,
-          finalImageData,
-          finalFormat,
-          formData.title,
-          metadataJSON,
-          true,
-          ethers.ZeroAddress,
-          artCommissionHubAddress,
-          aiGenerated
+        // Log all parameters before creating art piece
+        console.log('=== CREATE ART PIECE PARAMETERS ===');
+        console.log('1. _art_piece_template:', artPieceTemplateAddress);
+        console.log('2. _token_uri_data (length):', finalImageData.length, 'bytes');
+        console.log('2. _token_uri_data (first 100 chars):', 
+          finalImageData instanceof Uint8Array 
+            ? new TextDecoder().decode(finalImageData.slice(0, 100)) + '...'
+            : String(finalImageData).substring(0, 100) + '...'
+        );
+        console.log('3. _token_uri_data_format:', finalFormat);
+        console.log('4. _title:', formData.title);
+        console.log('5. _description (metadata JSON):');
+        console.log(JSON.stringify(JSON.parse(metadataJSON), null, 2));
+        console.log('6. _as_artist:', true);
+        console.log('7. _other_party:', ethers.ZeroAddress);
+        console.log('8. _ai_generated:', aiGenerated);
+        console.log('9. _art_commission_hub:', ethers.ZeroAddress);
+        console.log('10. _is_profile_art:', false);
+        console.log('11. _off_chain_data:', '""');
+        console.log('=====================================');
+
+        // Use the full createArtPiece method with all parameters
+        tx = await profileContract["createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool,string)"](
+          artPieceTemplateAddress,           // _art_piece_template
+          finalImageData,                    // _token_uri_data
+          finalFormat,                       // _token_uri_data_format 
+          formData.title,                    // _title
+          metadataJSON,                      // _description
+          true,                              // _as_artist (true since they're creating personal art)
+          ethers.ZeroAddress,                // _other_party (zero address for personal art)
+          aiGenerated,                       // _ai_generated
+          ethers.ZeroAddress,                // _art_commission_hub (empty for personal art)
+          false,                             // _is_profile_art (false for regular art pieces)
+          ""                                 // _off_chain_data (empty for now)
         );
       } else {
-        const profileHubContract = new ethers.Contract((contractConfig.networks.mainnet.profileFactoryAndRegistry as any).address, ProfileFactoryABI, signer);
-        tx = await profileHubContract.createProfileAndArtPiece(
-          artPieceTemplateAddress,
-          finalImageData,
-          finalFormat,
-          formData.title,
-          metadataJSON,
-          true,
-          ethers.ZeroAddress,
-          artCommissionHubAddress,
-          aiGenerated
+        // User doesn't have profile - create profile first, then create art piece
+        const profileFactoryContract = new ethers.Contract(
+          profileFactoryRegistryAddress, 
+          ProfileFactoryABI, 
+          signer
+        );
+        
+        // First create the profile
+        console.log('=== CREATING PROFILE FIRST ===');
+        console.log('Profile Factory Address:', profileFactoryRegistryAddress);
+        console.log('User Address:', walletAddress);
+        console.log('===============================');
+        
+        const createProfileTx = await profileFactoryContract.createProfile();
+        await createProfileTx.wait();
+        
+        // Get the newly created profile address
+        const profileAddress = await profileFactoryContract.getProfile(walletAddress);
+        console.log('=== PROFILE CREATED ===');
+        console.log('New Profile Address:', profileAddress);
+        console.log('=======================');
+        
+        // Import Profile ABI and create art piece through profile
+        const ProfileABI = await import('../../assets/abis/Profile.json');
+        const profileContract = new ethers.Contract(profileAddress, ProfileABI.default, signer);
+        
+        // Log all parameters before creating art piece
+        console.log('=== CREATE ART PIECE PARAMETERS (NEW PROFILE) ===');
+        console.log('1. _art_piece_template:', artPieceTemplateAddress);
+        console.log('2. _token_uri_data (length):', finalImageData.length, 'bytes');
+        console.log('2. _token_uri_data (first 100 chars):', 
+          finalImageData instanceof Uint8Array 
+            ? new TextDecoder().decode(finalImageData.slice(0, 100)) + '...'
+            : String(finalImageData).substring(0, 100) + '...'
+        );
+        console.log('3. _token_uri_data_format:', finalFormat);
+        console.log('4. _title:', formData.title);
+        console.log('5. _description (metadata JSON):');
+        console.log(JSON.stringify(JSON.parse(metadataJSON), null, 2));
+        console.log('6. _as_artist:', true);
+        console.log('7. _other_party:', ethers.ZeroAddress);
+        console.log('8. _ai_generated:', aiGenerated);
+        console.log('9. _art_commission_hub:', ethers.ZeroAddress);
+        console.log('10. _is_profile_art:', false);
+        console.log('11. _off_chain_data:', '""');
+        console.log('=================================================');
+
+        // Now create the art piece through the profile
+        tx = await profileContract["createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool,string)"](
+          artPieceTemplateAddress,           // _art_piece_template
+          finalImageData,                    // _token_uri_data
+          finalFormat,                       // _token_uri_data_format
+          formData.title,                    // _title
+          metadataJSON,                      // _description
+          true,                              // _as_artist (true since they're creating personal art)
+          ethers.ZeroAddress,                // _other_party (zero address for personal art)
+          aiGenerated,                       // _ai_generated
+          ethers.ZeroAddress,                // _art_commission_hub (empty for personal art)
+          false,                             // _is_profile_art (false for regular art pieces)
+          ""                                 // _off_chain_data (empty for now)
         );
       }
       
       setTxHash(tx.hash);
       const receipt = await tx.wait();
 
+      // Look for ArtPieceCreated event to get the new art piece address
       if (receipt?.logs) {
         const ProfileFactoryInterface = new ethers.Interface(ProfileFactoryABI);
         const createdEvent = receipt.logs.map((log: any) => {
@@ -424,6 +514,9 @@ const ComprehensiveUpload: React.FC = () => {
       }
       
       setSaveSuccess(true);
+      
+      // Refresh profile status since we may have created a new profile
+      await checkUserProfile();
 
     } catch (err) {
       setError(`Failed to save artwork: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -438,11 +531,48 @@ const ComprehensiveUpload: React.FC = () => {
     <div className="comprehensive-upload-page">
       <div className="comprehensive-upload-container">
         <div className="upload-header">
-          <h1>Create Comprehensive NFT Artwork</h1>
-          <p>Upload your artwork with full metadata support including multimedia content</p>
+          <h1>
+            {userType === 'commissioner' 
+              ? 'Commission Artwork Creation' 
+              : 'Create Comprehensive NFT Artwork'
+            }
+          </h1>
+          <p>
+            {userType === 'commissioner'
+              ? 'Upload your artwork or commission new pieces with full metadata support including multimedia content'
+              : 'Upload your artwork with full metadata support including multimedia content'
+            }
+          </p>
           {!isConnected && <div className="wallet-warning">Please connect your wallet.</div>}
           {isConnected && hasProfile && <div className="profile-info success">Your artwork will be added to your profile.</div>}
           {isConnected && !hasProfile && <div className="profile-info warning">A profile will be created for you when you submit.</div>}
+          
+          {/* User type explanation */}
+          <div className={`user-type-explanation ${userType}`}>
+            {userType === 'commissioner' ? (
+              <div>
+                <h3>Creating as a Commissioner</h3>
+                <p>You're uploading artwork as a commissioner. This means you can either:</p>
+                <ul>
+                  <li>Upload artwork you've commissioned from artists</li>
+                  <li>Upload your own personal artwork collection</li>
+                  <li>Create NFTs to represent commissioned work</li>
+                </ul>
+                <p><strong>Note:</strong> When uploading commissioned work, make sure you have permission from the artist.</p>
+              </div>
+            ) : (
+              <div>
+                <h3>Creating as an Artist</h3>
+                <p>You're uploading artwork as an artist. This will:</p>
+                <ul>
+                  <li>Create an NFT of your original artwork</li>
+                  <li>Add the artwork to your artist profile</li>
+                  <li>Allow you to set up sales and editions later</li>
+                </ul>
+                <p><strong>Note:</strong> Only upload artwork that you created or have rights to.</p>
+              </div>
+            )}
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="comprehensive-upload-form">
@@ -543,7 +673,10 @@ const ComprehensiveUpload: React.FC = () => {
                   checked={aiGenerated} 
                   onChange={(e) => setAiGenerated(e.target.checked)} 
                 />
-                AI Generated Artwork
+                {userType === 'commissioner' 
+                  ? 'This artwork was created using AI tools' 
+                  : 'AI Generated Artwork'
+                }
               </label>
             </div>
           </section>
@@ -727,7 +860,7 @@ const ComprehensiveUpload: React.FC = () => {
 
           {/* Submit Actions */}
           <div className="form-actions">
-            <button type="button" className="back-button" onClick={() => window.history.back()}>
+            <button type="button" className="back-button" onClick={onBack || (() => window.history.back())}>
               Cancel
             </button>
             <button 
@@ -735,7 +868,10 @@ const ComprehensiveUpload: React.FC = () => {
               className="submit-button" 
               disabled={!isFormValid || isCompressing || isSaving}
             >
-              {isSaving ? 'Creating NFT...' : 'Create Comprehensive NFT'}
+              {isSaving 
+                ? (userType === 'commissioner' ? 'Creating Commission...' : 'Creating NFT...') 
+                : (userType === 'commissioner' ? 'Create Commission NFT' : 'Create Comprehensive NFT')
+              }
             </button>
           </div>
         </form>

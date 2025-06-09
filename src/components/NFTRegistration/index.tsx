@@ -60,47 +60,6 @@ const NFTRegistration: React.FC = () => {
     </div>
   );
 
-  const CommissionerForm = () => (
-    <div className="registration-form">
-      <h3>Commissioner Registration</h3>
-      <div className="form-instructions">
-        <p>As a commissioner, you can request and fund new commissioned artworks.</p>
-        {!isTrulyConnected && (
-          <p className="connect-reminder">
-            <span className="highlight">You can fill out the form now</span>, and connect your wallet when you're ready to register.
-          </p>
-        )}
-      </div>
-      <form>
-        <div className="form-content">
-          <div className="form-group">
-            <label>Commissioner form coming soon...</label>
-            <p>Fill out your details and register when you're ready.</p>
-          </div>
-        </div>
-        <div className="form-footer">
-          <button type="button" className="form-back-button" onClick={() => setUserType(null)}>
-            Back
-          </button>
-          <button
-            type="button"
-            className="submit-button"
-            onClick={() => {
-              if (!isTrulyConnected) {
-                alert("Please connect your wallet to register as a commissioner");
-                connectWallet();
-              } else {
-                alert("Commissioner registration would be processed here");
-              }
-            }}
-          >
-            Register as Commissioner
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-
   const renderContent = () => {
     if (userType === null) {
       return (
@@ -117,9 +76,9 @@ const NFTRegistration: React.FC = () => {
         </div>
       );
     } else if (userType === 'artist') {
-      return <ComprehensiveUpload />;
+      return <ComprehensiveUpload onBack={() => setUserType(null)} userType="artist" />;
     } else {
-      return <CommissionerForm />;
+      return <ComprehensiveUpload onBack={() => setUserType(null)} userType="commissioner" />;
     }
   };
 

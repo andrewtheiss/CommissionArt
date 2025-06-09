@@ -14,6 +14,26 @@
   {
     "inputs": [
       {
+        "name": "_profile_address",
+        "type": "address"
+      },
+      {
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "name": "_profile_factory_and_registry",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_erc1155",
         "type": "address"
       }
@@ -290,6 +310,64 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_base_uri",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      }
+    ],
+    "name": "createEditionFromArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      }
+    ],
+    "name": "hasEditions",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "profileAddress",
     "outputs": [
@@ -308,6 +386,30 @@
       {
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artEdition1155Template",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "initialized",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -401,16 +503,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "name": "_profile_address",
-        "type": "address"
-      },
-      {
-        "name": "_owner",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   }

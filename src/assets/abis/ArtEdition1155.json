@@ -4,50 +4,31 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "previous_owner",
-        "type": "address"
-      }
-    ],
-    "name": "OwnershipRescinded",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "l1_contract",
-        "type": "address"
-      }
-    ],
-    "name": "L1ContractSet",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "chain_id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "name": "nft_contract",
+        "name": "operator",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "token_id",
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "id",
         "type": "uint256"
       },
       {
         "indexed": false,
-        "name": "registry",
-        "type": "address"
+        "name": "value",
+        "type": "uint256"
       }
     ],
-    "name": "Initialized",
+    "name": "TransferSingle",
     "type": "event"
   },
   {
@@ -55,48 +36,70 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "chain_id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "name": "nft_contract",
+        "name": "operator",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "token_id",
-        "type": "uint256"
+        "name": "sender",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "receiver",
+        "type": "address"
       },
       {
         "indexed": false,
+        "name": "ids",
+        "type": "uint256[]"
+      },
+      {
+        "indexed": false,
+        "name": "values",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "TransferBatch",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "name": "owner",
         "type": "address"
-      }
-    ],
-    "name": "OwnershipUpdated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "art_piece",
-        "type": "address"
       },
       {
         "indexed": true,
-        "name": "submitter",
+        "name": "operator",
         "type": "address"
       },
       {
         "indexed": false,
-        "name": "verified",
+        "name": "approved",
         "type": "bool"
       }
     ],
-    "name": "CommissionSubmitted",
+    "name": "ApprovalForAll",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "value",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "URI",
     "type": "event"
   },
   {
@@ -104,33 +107,26 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "art_piece",
+        "name": "minter",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "verifier",
-        "type": "address"
-      }
-    ],
-    "name": "CommissionVerified",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "commissioner",
-        "type": "address"
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
         "indexed": false,
-        "name": "status",
-        "type": "bool"
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "payment",
+        "type": "uint256"
       }
     ],
-    "name": "CommissionerWhitelisted",
+    "name": "EditionMinted",
     "type": "event"
   },
   {
@@ -138,30 +134,44 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "art_piece_contract",
-        "type": "address"
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "oldPrice",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "newPrice",
+        "type": "uint256"
       }
     ],
-    "name": "ArtPieceContractWhitelisted",
+    "name": "PriceUpdated",
     "type": "event"
   },
   {
     "inputs": [
       {
-        "name": "_chain_id",
-        "type": "uint256"
-      },
-      {
-        "name": "_nft_contract",
+        "name": "_art_sales_1155",
         "type": "address"
       },
       {
-        "name": "_token_id",
-        "type": "uint256"
+        "name": "_art_piece",
+        "type": "address"
       },
       {
-        "name": "_registry",
-        "type": "address"
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "name": "_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_base_uri",
+        "type": "string"
       }
     ],
     "name": "initialize",
@@ -172,103 +182,172 @@
   {
     "inputs": [
       {
-        "name": "_chain_id",
+        "name": "_mint_price",
         "type": "uint256"
       },
       {
-        "name": "_nft_contract",
-        "type": "address"
+        "name": "_max_supply",
+        "type": "uint256"
       },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      }
+    ],
+    "name": "createEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
         "name": "_token_id",
         "type": "uint256"
       },
       {
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "mint",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_new_price",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMintPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_paused",
+        "type": "bool"
+      }
+    ],
+    "name": "setPaused",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_new_address",
+        "type": "address"
+      }
+    ],
+    "name": "updateProceedsAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_from",
+        "type": "address"
+      },
+      {
+        "name": "_to",
+        "type": "address"
+      },
+      {
+        "name": "_id",
+        "type": "uint256"
+      },
+      {
+        "name": "_value",
+        "type": "uint256"
+      },
+      {
+        "name": "_data",
+        "type": "bytes"
+      }
+    ],
+    "name": "safeTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_from",
+        "type": "address"
+      },
+      {
+        "name": "_to",
+        "type": "address"
+      },
+      {
+        "name": "_ids",
+        "type": "uint256[]"
+      },
+      {
+        "name": "_values",
+        "type": "uint256[]"
+      },
+      {
+        "name": "_data",
+        "type": "bytes"
+      }
+    ],
+    "name": "safeBatchTransferFrom",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_operator",
+        "type": "address"
+      },
+      {
+        "name": "_approved",
+        "type": "bool"
+      }
+    ],
+    "name": "setApprovalForAll",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_owner",
         "type": "address"
-      }
-    ],
-    "name": "updateRegistration",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
-        "name": "_azuki_id",
+        "name": "_id",
         "type": "uint256"
-      },
-      {
-        "name": "_image_contract",
-        "type": "address"
       }
     ],
-    "name": "registerImageData",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_l1_contract_address",
-        "type": "address"
-      }
-    ],
-    "name": "setL1Contract",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_art_piece_contract",
-        "type": "address"
-      }
-    ],
-    "name": "setWhitelistedArtPieceContract",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_art_piece",
-        "type": "address"
-      }
-    ],
-    "name": "submitCommission",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_art_piece",
-        "type": "address"
-      },
-      {
-        "name": "_submitter",
-        "type": "address"
-      }
-    ],
-    "name": "verifyCommission",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address"
-      }
-    ],
-    "name": "getUnverifiedCount",
+    "name": "balanceOf",
     "outputs": [
       {
         "name": "",
@@ -281,15 +360,19 @@
   {
     "inputs": [
       {
-        "name": "_count",
-        "type": "uint256"
+        "name": "_owners",
+        "type": "address[]"
+      },
+      {
+        "name": "_ids",
+        "type": "uint256[]"
       }
     ],
-    "name": "getLatestVerifiedArt",
+    "name": "balanceOfBatch",
     "outputs": [
       {
         "name": "",
-        "type": "address[]"
+        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",
@@ -298,19 +381,19 @@
   {
     "inputs": [
       {
-        "name": "_count",
-        "type": "uint256"
+        "name": "_owner",
+        "type": "address"
       },
       {
-        "name": "_page",
-        "type": "uint256"
+        "name": "_operator",
+        "type": "address"
       }
     ],
-    "name": "getLatestVerifiedArt",
+    "name": "isApprovedForAll",
     "outputs": [
       {
         "name": "",
-        "type": "address[]"
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -319,19 +402,15 @@
   {
     "inputs": [
       {
-        "name": "_start_idx",
-        "type": "uint256"
-      },
-      {
-        "name": "_count",
+        "name": "_id",
         "type": "uint256"
       }
     ],
-    "name": "getVerifiedArtPieces",
+    "name": "uri",
     "outputs": [
       {
         "name": "",
-        "type": "address[]"
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -340,19 +419,80 @@
   {
     "inputs": [
       {
-        "name": "_start_idx",
-        "type": "uint256"
-      },
-      {
-        "name": "_count",
-        "type": "uint256"
+        "name": "_interface_id",
+        "type": "bytes4"
       }
     ],
-    "name": "getUnverifiedArtPieces",
+    "name": "supportsInterface",
     "outputs": [
       {
         "name": "",
-        "type": "address[]"
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_token_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getEditionInfo",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "initialized",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artSales1155",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -372,19 +512,7 @@
   },
   {
     "inputs": [],
-    "name": "chainId",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "nftContract",
+    "name": "proceedsAddress",
     "outputs": [
       {
         "name": "",
@@ -396,7 +524,52 @@
   },
   {
     "inputs": [],
-    "name": "tokenId",
+    "name": "name",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "baseURI",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      },
+      {
+        "name": "arg1",
+        "type": "address"
+      }
+    ],
+    "name": "balances",
     "outputs": [
       {
         "name": "",
@@ -407,20 +580,17 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "registry",
-    "outputs": [
+    "inputs": [
       {
-        "name": "",
+        "name": "arg0",
+        "type": "address"
+      },
+      {
+        "name": "arg1",
         "type": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isInitialized",
+    "name": "operatorApprovals",
     "outputs": [
       {
         "name": "",
@@ -437,11 +607,33 @@
         "type": "uint256"
       }
     ],
-    "name": "imageDataContracts",
+    "name": "tokenIdToConfig",
     "outputs": [
       {
+        "components": [
+          {
+            "name": "mintPrice",
+            "type": "uint256"
+          },
+          {
+            "name": "maxSupply",
+            "type": "uint256"
+          },
+          {
+            "name": "currentSupply",
+            "type": "uint256"
+          },
+          {
+            "name": "isPaused",
+            "type": "bool"
+          },
+          {
+            "name": "royaltyPercent",
+            "type": "uint256"
+          }
+        ],
         "name": "",
-        "type": "address"
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -449,135 +641,7 @@
   },
   {
     "inputs": [],
-    "name": "l1Contract",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "isOwnershipRescinded",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "whitelistedArtPieceContract",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "uint256"
-      }
-    ],
-    "name": "latestVerifiedArt",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "uint256"
-      }
-    ],
-    "name": "verifiedArt",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "uint256"
-      }
-    ],
-    "name": "unverifiedArt",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "countVerifiedArt",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "countUnverifiedCommissions",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "nextLatestVerifiedArtIndex",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "address"
-      }
-    ],
-    "name": "unverifiedCountByUser",
+    "name": "nextTokenId",
     "outputs": [
       {
         "name": "",

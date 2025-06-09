@@ -77,6 +77,40 @@
     "inputs": [
       {
         "indexed": true,
+        "name": "previous_template",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "new_template",
+        "type": "address"
+      }
+    ],
+    "name": "ArtEdition1155TemplateUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "previous_template",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "new_template",
+        "type": "address"
+      }
+    ],
+    "name": "ArtSales1155TemplateUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "name": "profile",
         "type": "address"
       },
@@ -322,6 +356,30 @@
       }
     ],
     "name": "updateProfileSocialTemplateContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_new_template",
+        "type": "address"
+      }
+    ],
+    "name": "updateArtEdition1155TemplateContract",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_new_template",
+        "type": "address"
+      }
+    ],
+    "name": "updateArtSales1155TemplateContract",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -584,6 +642,30 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "artEdition1155Template",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artSales1155Template",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "name": "arg0",
@@ -687,6 +769,14 @@
       },
       {
         "name": "_commission_hub_template",
+        "type": "address"
+      },
+      {
+        "name": "_art_edition_1155_template",
+        "type": "address"
+      },
+      {
+        "name": "_art_sales_1155_template",
         "type": "address"
       }
     ],

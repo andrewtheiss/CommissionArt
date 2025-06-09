@@ -4,60 +4,101 @@
     "inputs": [
       {
         "indexed": true,
-        "name": "nft_contract",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "token_id",
+        "name": "updateNumber",
         "type": "uint256"
       },
       {
-        "indexed": false,
-        "name": "owner",
+        "indexed": true,
+        "name": "sender",
         "type": "address"
       },
       {
         "indexed": true,
-        "name": "commission_hub",
+        "name": "inputAddress",
         "type": "address"
       }
     ],
-    "name": "Registered",
+    "name": "CrossChainUpdateReceived",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "drainer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "FundsDrained",
     "type": "event"
   },
   {
     "inputs": [
       {
-        "name": "nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "token_id",
-        "type": "uint256"
-      },
-      {
-        "name": "owner",
+        "name": "_user_input_address",
         "type": "address"
       }
     ],
-    "name": "registerOwner",
+    "name": "crossChainUpdate",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "drainNativeTokens",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "getCurrentCounter",
+    "outputs": [
       {
-        "name": "nft_contract",
-        "type": "address"
-      },
-      {
-        "name": "token_id",
+        "name": "",
         "type": "uint256"
       }
     ],
-    "name": "getOwner",
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_update_number",
+        "type": "uint256"
+      }
+    ],
+    "name": "getSenderAtUpdate",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_update_number",
+        "type": "uint256"
+      }
+    ],
+    "name": "getUserInputAddressAtUpdate",
     "outputs": [
       {
         "name": "",
@@ -69,11 +110,11 @@
   },
   {
     "inputs": [],
-    "name": "l2relay",
+    "name": "getContractBalance",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -81,19 +122,24 @@
   },
   {
     "inputs": [],
-    "name": "commission_hub_template",
+    "name": "counter",
     "outputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "owner",
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "uint256"
+      }
+    ],
+    "name": "senderHistory",
     "outputs": [
       {
         "name": "",
@@ -107,14 +153,10 @@
     "inputs": [
       {
         "name": "arg0",
-        "type": "address"
-      },
-      {
-        "name": "arg1",
         "type": "uint256"
       }
     ],
-    "name": "commission_hubs",
+    "name": "userInputAddress",
     "outputs": [
       {
         "name": "",
@@ -125,37 +167,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "name": "arg0",
-        "type": "address"
-      },
-      {
-        "name": "arg1",
-        "type": "uint256"
-      }
-    ],
-    "name": "owners",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "initial_l2relay",
-        "type": "address"
-      },
-      {
-        "name": "initial_commission_hub_template",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   }

@@ -129,13 +129,13 @@ def createEdition(
     token_id: uint256 = self.nextTokenId
     self.nextTokenId += 1
     
-    self.tokenIdToConfig[token_id] = TokenConfig({
-        mintPrice: _mint_price,
-        maxSupply: _max_supply,
-        currentSupply: 0,
-        isPaused: False,
-        royaltyPercent: _royalty_percent
-    })
+    self.tokenIdToConfig[token_id] = TokenConfig(
+        mintPrice=_mint_price,
+        maxSupply=_max_supply,
+        currentSupply=0,
+        isPaused=False,
+        royaltyPercent=_royalty_percent
+    )
     
     log URI(self.baseURI, token_id)
     return token_id

@@ -272,6 +272,58 @@
   {
     "inputs": [
       {
+        "name": "_token_uri_data",
+        "type": "bytes"
+      },
+      {
+        "name": "_token_uri_data_format",
+        "type": "string"
+      },
+      {
+        "name": "_title_input",
+        "type": "string"
+      },
+      {
+        "name": "_description_input",
+        "type": "string"
+      },
+      {
+        "name": "_commissioner_input",
+        "type": "address"
+      },
+      {
+        "name": "_artist_input",
+        "type": "address"
+      },
+      {
+        "name": "_commission_hub",
+        "type": "address"
+      },
+      {
+        "name": "_ai_generated",
+        "type": "bool"
+      },
+      {
+        "name": "_original_uploader",
+        "type": "address"
+      },
+      {
+        "name": "_profile_factory_address",
+        "type": "address"
+      },
+      {
+        "name": "_off_chain_data",
+        "type": "string"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_owner",
         "type": "address"
       }
@@ -759,6 +811,18 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "name": "_license_address",
+        "type": "address"
+      }
+    ],
+    "name": "setArtPieceLicense",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "name",
     "outputs": [
@@ -1070,6 +1134,18 @@
       {
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "artPieceLicense",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
