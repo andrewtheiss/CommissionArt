@@ -136,6 +136,7 @@ export const compressImageWithFormat = async (
  * Compresses an image file to get as close to the target size as possible while staying under
  * Prioritizes higher quality formats (AVIF, WebP) over lower quality ones (JPEG)
  * Default target size is 43KB to ensure staying safely under the 45,000 bytes limit
+ * If the file is already below the threshold, returns the original file without compression
  */
 export const compressImage = async (
   file: File, 
@@ -144,6 +145,35 @@ export const compressImage = async (
   targetSizeKB = 43
 ): Promise<CompressionResult> => {
   return new Promise((resolve) => {
+    // Check if file is already below the threshold (with some buffer)
+    const fileSizeKB = file.size / 1024;
+    const sizeThreshold = targetSizeKB * 0.9; // 90% of target size as threshold
+    
+    if (fileSizeKB <= sizeThreshold) {
+      console.log(`File size (${fileSizeKB.toFixed(2)}KB) is already below threshold (${sizeThreshold.toFixed(2)}KB). Skipping compression.`);
+      
+      // Create a preview URL for the original file
+      const previewUrl = URL.createObjectURL(file);
+      
+      // Determine the format from file type
+      const originalFormat = file.type.replace('image/', '').toUpperCase();
+      
+      // Return original file without compression
+      resolve({
+        success: true,
+        originalSize: fileSizeKB,
+        compressedSize: fileSizeKB,
+        dimensions: { width: 0, height: 0 }, // Will be filled by the calling function if needed
+        targetReached: true,
+        format: originalFormat,
+        blob: file,
+        preview: previewUrl
+      });
+      return;
+    }
+    
+    console.log(`File size (${fileSizeKB.toFixed(2)}KB) exceeds threshold (${sizeThreshold.toFixed(2)}KB). Starting compression...`);
+    
     const img = new Image();
     const reader = new FileReader();
 

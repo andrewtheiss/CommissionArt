@@ -165,14 +165,14 @@ class EthersService {
           console.log(`[EthersService] Network not found in wallet, attempting to add...`);
           try {
             const addParams = {
-              chainId: chainIdHex,
-              chainName: targetNetwork.name,
-              rpcUrls: [targetNetwork.rpcUrl],
-              nativeCurrency: {
-                name: targetNetwork.currency || 'ETH',
-                symbol: targetNetwork.currency || 'ETH',
-                decimals: 18,
-              },
+                  chainId: chainIdHex,
+                  chainName: targetNetwork.name,
+                  rpcUrls: [targetNetwork.rpcUrl],
+                  nativeCurrency: {
+                    name: targetNetwork.currency || 'ETH',
+                    symbol: targetNetwork.currency || 'ETH',
+                    decimals: 18,
+                  },
             };
             console.log(`[EthersService] Adding network with params:`, addParams);
             

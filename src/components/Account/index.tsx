@@ -284,12 +284,46 @@ const Account: React.FC = () => {
       try {
         setProfileImageLoading(true);
         
-        const imageData = await profile.profileImage();
-        if (imageData && imageData.length > 0) {
-          // Convert bytes to data URL
-          const blob = new Blob([imageData], { type: 'image/avif' });
-          const imageUrl = URL.createObjectURL(blob);
-          setProfileImage(imageUrl);
+        // profileImage() returns an address of an ArtPiece contract, not bytes data
+        const profileImageAddress = await profile.profileImage();
+        
+        if (profileImageAddress && profileImageAddress !== ethers.ZeroAddress) {
+          // Create contract instance for the profile image art piece
+          const artPieceContract = new ethers.Contract(
+            profileImageAddress,
+            abiLoader.loadABI('ArtPiece'),
+            ethersService.getProvider()
+          );
+          
+          // Try to get the image data from the art piece
+          let imageData = null;
+          let format = 'avif'; // default format
+          
+          try {
+            // Try to get tokenURIData first
+            imageData = await artPieceContract.getTokenURIData();
+          } catch (err) {
+            // Fallback to getImageData if tokenURIData doesn't exist
+            try {
+              imageData = await artPieceContract.getImageData();
+            } catch (err2) {
+              console.log("No image data available for profile image");
+            }
+          }
+          
+          // Try to get format
+          try {
+            format = await artPieceContract.tokenURI_data_format();
+          } catch (err) {
+            // Keep default format
+          }
+          
+          if (imageData && imageData.length > 0) {
+            // Convert bytes to data URL
+            const blob = new Blob([imageData], { type: `image/${format}` });
+            const imageUrl = URL.createObjectURL(blob);
+            setProfileImage(imageUrl);
+          }
         }
       } catch (err) {
         console.error("Error loading profile image:", err);
@@ -327,8 +361,8 @@ const Account: React.FC = () => {
   const loadRecentCommissions = async (profileContract: ethers.Contract) => {
     try {
       setLoadingCommissions(true);
-      // Get recent commissions (page 0, 5 items per page)
-      const commissions = await profileContract.getRecentCommissions(0, 5);
+      // Get recent commissions using the new pagination method (offset=0, count=5, reverse=true for newest first)
+      const commissions = await profileContract.getCommissionsByOffset(0, 5, true);
       setRecentCommissions(commissions);
     } catch (err) {
       console.error("Error loading commissions:", err);
@@ -353,8 +387,8 @@ const Account: React.FC = () => {
         return;
       }
       
-      // Get the most recent 5 art pieces
-      const recentPieces = await profileContract.getLatestArtPieces();
+      // Get the most recent 5 art pieces using the new pagination method (offset=0, count=5, reverse=true for newest first)
+      const recentPieces = await profileContract.getArtPiecesByOffset(0, 5, true);
       setRecentArtPieces(recentPieces);
       
       // For each art piece, get its details

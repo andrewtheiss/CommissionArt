@@ -68,11 +68,30 @@ export const compressImage = async (file: File, options: CompressionOptions): Pr
 
   const byteArray = new Uint8Array(await result.blob.arrayBuffer());
 
+  // If dimensions are 0 (compression was skipped), get them from the original file
+  let width = result.dimensions.width;
+  let height = result.dimensions.height;
+  
+  if (width === 0 || height === 0) {
+    // Get dimensions from the original file
+    const img = document.createElement('img');
+    const dataUrl = await fileToDataUrl(file);
+    
+    await new Promise<void>((resolve) => {
+      img.onload = () => {
+        width = img.width;
+        height = img.height;
+        resolve();
+      };
+      img.src = dataUrl;
+    });
+  }
+
   return {
     dataUrl: result.preview,
     byteArray,
-    width: result.dimensions.width,
-    height: result.dimensions.height,
+    width,
+    height,
     sizeKB: result.compressedSize,
     format: result.format,
   };

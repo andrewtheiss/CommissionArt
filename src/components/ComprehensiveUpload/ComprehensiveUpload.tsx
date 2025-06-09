@@ -381,7 +381,24 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
       
       // Get contract addresses from config - use current network
       const currentNetwork = ethersService.getNetwork();
-      const environment = currentNetwork.name === "Sepolia" ? "testnet" : "mainnet";
+      
+      // Determine environment based on network configuration (same logic as profile service)
+      // Testnet: Arbitrum Sepolia (421614) or Ethereum Sepolia (11155111)
+      // Mainnet: AnimeChain (69000) or Ethereum Mainnet (1)
+      let environment: "testnet" | "mainnet";
+      
+      if (currentNetwork.chainId === 421614 || currentNetwork.chainId === 11155111) {
+        // Arbitrum Sepolia or Ethereum Sepolia
+        environment = "testnet";
+      } else if (currentNetwork.chainId === 69000 || currentNetwork.chainId === 1) {
+        // AnimeChain or Ethereum Mainnet
+        environment = "mainnet";
+      } else {
+        // Default fallback - determine by network name
+        environment = currentNetwork.name === "Sepolia" || currentNetwork.name === "Arbitrum Sepolia" ? "testnet" : "mainnet";
+      }
+      
+      console.log(`[ComprehensiveUpload] Network: ${currentNetwork.name} (${currentNetwork.chainId}) => Environment: ${environment}`);
       
       const artPieceTemplateAddress = contractConfig.networks[environment].artPiece.address;
       const profileFactoryRegistryAddress = contractConfig.networks[environment].profileFactoryAndRegistry.address;
@@ -398,47 +415,87 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
           signer
         );
         
-        const profileAddress = await profileFactoryContract.getProfile(walletAddress);
-        
-        // Import Profile ABI
-        const ProfileABI = await import('../../assets/abis/Profile.json');
-        const profileContract = new ethers.Contract(profileAddress, ProfileABI.default, signer);
-        
-        if (!profileContract) throw new Error("Profile contract not found");
+        let profileAddress;
+        try {
+          profileAddress = await profileFactoryContract.getProfile(walletAddress);
+          
+          // Check if profile address is valid (not zero address)
+          if (!profileAddress || profileAddress === ethers.ZeroAddress) {
+            console.log("Profile address is zero, user doesn't actually have a profile");
+            // Fall back to creating new profile and art piece
+            const profileFactoryContract = new ethers.Contract(
+              profileFactoryRegistryAddress, 
+              ProfileFactoryABI, 
+              signer
+            );
+            
+            console.log('=== CREATING PROFILE AND ART PIECE (FALLBACK) ===');
+            console.log('Profile Factory Address:', profileFactoryRegistryAddress);
+            console.log('User Address:', walletAddress);
+            console.log('Art Piece Template:', artPieceTemplateAddress);
+            console.log('=================================================');
+            
+            // Use the combined method to create profile and art piece in one transaction
+            tx = await profileFactoryContract.createNewArtPieceAndRegisterProfileAndAttachToHub(
+              artPieceTemplateAddress,           // _art_piece_template
+              finalImageData,                    // _token_uri_data
+              finalFormat,                       // _token_uri_data_format
+              formData.title,                    // _title
+              metadataJSON,                      // _description
+              true,                              // _is_artist (true since they're creating personal art)
+              ethers.ZeroAddress,                // _other_party (zero address for personal art)
+              ethers.ZeroAddress,                // _commission_hub (empty for personal art)
+              aiGenerated,                       // _ai_generated
+              1,                                 // _linked_to_art_commission_hub_chain_id (generic)
+              ethers.ZeroAddress,                // _linked_to_art_commission_hub_address (empty for no hub)
+              0                                  // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+            );
+          } else {
+            // Profile exists, proceed with normal flow
+            // Import Profile ABI
+            const ProfileABI = await import('../../assets/abis/Profile.json');
+            const profileContract = new ethers.Contract(profileAddress, ProfileABI.default, signer);
+            
+            if (!profileContract) throw new Error("Profile contract not found");
 
-        // Log all parameters before creating art piece
-        console.log('=== CREATE ART PIECE PARAMETERS ===');
-        console.log('1. _art_piece_template:', artPieceTemplateAddress);
-        console.log('2. _token_uri_data (length):', finalImageData.length, 'bytes');
-        console.log('2. _token_uri_data (first 100 chars):', 
-          finalImageData instanceof Uint8Array 
-            ? new TextDecoder().decode(finalImageData.slice(0, 100)) + '...'
-            : String(finalImageData).substring(0, 100) + '...'
-        );
-        console.log('3. _token_uri_data_format:', finalFormat);
-        console.log('4. _title:', formData.title);
-        console.log('5. _description (metadata JSON):');
-        console.log(JSON.stringify(JSON.parse(metadataJSON), null, 2));
-        console.log('6. _as_artist:', true);
-        console.log('7. _other_party:', ethers.ZeroAddress);
-        console.log('8. _ai_generated:', aiGenerated);
-        console.log('9. _art_commission_hub:', ethers.ZeroAddress);
-        console.log('10. _is_profile_art:', false);
-        console.log('=====================================');
+            // Log all parameters before creating art piece
+            console.log('=== CREATE ART PIECE PARAMETERS ===');
+            console.log('1. _art_piece_template:', artPieceTemplateAddress);
+            console.log('2. _token_uri_data (length):', finalImageData.length, 'bytes');
+            console.log('2. _token_uri_data (first 100 chars):', 
+              finalImageData instanceof Uint8Array 
+                ? new TextDecoder().decode(finalImageData.slice(0, 100)) + '...'
+                : String(finalImageData).substring(0, 100) + '...'
+            );
+            console.log('3. _token_uri_data_format:', finalFormat);
+            console.log('4. _title:', formData.title);
+            console.log('5. _description (metadata JSON):');
+            console.log(JSON.stringify(JSON.parse(metadataJSON), null, 2));
+            console.log('6. _as_artist:', true);
+            console.log('7. _other_party:', ethers.ZeroAddress);
+            console.log('8. _ai_generated:', aiGenerated);
+            console.log('9. _art_commission_hub:', ethers.ZeroAddress);
+            console.log('10. _is_profile_art:', false);
+            console.log('=====================================');
 
-        // Use the correct createArtPiece method signature from the Profile contract
-        tx = await profileContract.createArtPiece(
-          artPieceTemplateAddress,           // _art_piece_template
-          finalImageData,                    // _token_uri_data
-          finalFormat,                       // _token_uri_data_format 
-          formData.title,                    // _title
-          metadataJSON,                      // _description
-          true,                              // _as_artist (true since they're creating personal art)
-          ethers.ZeroAddress,                // _other_party (zero address for personal art)
-          aiGenerated,                       // _ai_generated
-          ethers.ZeroAddress,                // _art_commission_hub (empty for personal art)
-          false                              // _is_profile_art (false for regular art pieces)
-        );
+            // Use the specific createArtPiece method signature with 10 parameters to avoid ambiguity
+            tx = await profileContract['createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool)'](
+              artPieceTemplateAddress,           // _art_piece_template
+              finalImageData,                    // _token_uri_data
+              finalFormat,                       // _token_uri_data_format 
+              formData.title,                    // _title
+              metadataJSON,                      // _description
+              true,                              // _as_artist (true since they're creating personal art)
+              walletAddress,                     // _other_party (user's own address for personal art)
+              aiGenerated,                       // _ai_generated
+              ethers.ZeroAddress,                // _art_commission_hub (empty for personal art)
+              false                              // _is_profile_art (false for regular art pieces)
+            );
+          }
+        } catch (error) {
+          console.error("Error in profile check or art creation:", error);
+          throw error;
+        }
       } else {
         // User doesn't have profile - use the ProfileFactoryAndRegistry's combined creation method
         const profileFactoryContract = new ethers.Contract(
@@ -461,7 +518,7 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
           formData.title,                    // _title
           metadataJSON,                      // _description
           true,                              // _is_artist (true since they're creating personal art)
-          ethers.ZeroAddress,                // _other_party (zero address for personal art)
+          walletAddress,                     // _other_party (user's own address for personal art)
           ethers.ZeroAddress,                // _commission_hub (empty for personal art)
           aiGenerated,                       // _ai_generated
           1,                                 // _linked_to_art_commission_hub_chain_id (generic)

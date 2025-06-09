@@ -89,7 +89,7 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
       console.log(`[BlockchainContext] Starting switch to network: ${newNetworkType}`);
       
       // Switch the network in ethersService and request wallet network switch
-      const newNetwork = ethersService.switchNetwork(newNetworkType);
+    const newNetwork = ethersService.switchNetwork(newNetworkType);
       console.log(`[BlockchainContext] EthersService switched, now requesting wallet switch...`);
       
       // Request wallet to switch networks (this is async)
@@ -97,12 +97,12 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
       console.log(`[BlockchainContext] Wallet switch result: ${switchSuccess}`);
       
       if (switchSuccess) {
-        setNetworkType(newNetworkType);
-        setNetwork(newNetwork);
-        
-        // Check connection after switching
+    setNetworkType(newNetworkType);
+    setNetwork(newNetwork);
+    
+    // Check connection after switching
         const connected = await ethersService.isConnected();
-        setIsConnected(connected);
+      setIsConnected(connected);
         
         console.log(`[BlockchainContext] Successfully switched to network: ${newNetworkType}`);
       } else {

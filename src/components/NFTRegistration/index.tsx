@@ -52,9 +52,9 @@ const NFTRegistration: React.FC = () => {
           Connect Wallet
         </button>
       )}
-      {isTrulyConnected && networkType !== 'animechain' && (
+      {isTrulyConnected && networkType !== 'animechain' && networkType !== 'arbitrum_testnet' && (
         <div className="connection-error-message">
-          <p><strong>Wrong Network!</strong> Please switch to AnimeChain to register artwork.</p>
+          <p><strong>Wrong Network!</strong> Please switch to either Arbitrum Sepolia (Testnet) or AnimeChain (Mainnet) to register artwork.</p>
         </div>
       )}
     </div>

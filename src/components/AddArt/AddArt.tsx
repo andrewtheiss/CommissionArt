@@ -9,7 +9,7 @@ import {
 } from '../../utils/arweave';
 // Note: These are placeholder imports. You will need to create these services.
 // import profileService from '../../utils/profileService';
-// import ethersService from '../../utils/ethersService';
+import ethersService from '../../utils/ethers-service';
 import contractConfig from '../../assets/contract_config.json';
 import ProfileFactoryABI from '../../assets/abis/ProfileFactoryAndRegistry.json';
 import ArtPieceABI from '../../assets/abis/ArtPiece.json';
@@ -193,38 +193,65 @@ const AddArt: React.FC = () => {
 
       let tx;
       
-      const artPieceTemplateAddress = (contractConfig.networks.mainnet.artPiece as any).address;
-      const artCommissionHubAddress = (contractConfig.networks.mainnet.artCommissionHub as any).address;
+      // Get contract addresses from config - use current network
+      const currentNetwork = ethersService.getNetwork();
+      
+      // Determine environment based on network configuration (same logic as profile service)
+      // Testnet: Arbitrum Sepolia (421614) or Ethereum Sepolia (11155111)
+      // Mainnet: AnimeChain (69000) or Ethereum Mainnet (1)
+      let environment: "testnet" | "mainnet";
+      
+      if (currentNetwork.chainId === 421614 || currentNetwork.chainId === 11155111) {
+        // Arbitrum Sepolia or Ethereum Sepolia
+        environment = "testnet";
+      } else if (currentNetwork.chainId === 69000 || currentNetwork.chainId === 1) {
+        // AnimeChain or Ethereum Mainnet
+        environment = "mainnet";
+      } else {
+        // Default fallback - determine by network name
+        environment = currentNetwork.name === "Sepolia" || currentNetwork.name === "Arbitrum Sepolia" ? "testnet" : "mainnet";
+      }
+      
+      console.log(`[AddArt] Network: ${currentNetwork.name} (${currentNetwork.chainId}) => Environment: ${environment}`);
+      
+      const artPieceTemplateAddress = contractConfig.networks[environment].artPiece.address;
+      const artCommissionHubAddress = contractConfig.networks[environment].artCommissionHub.address;
 
       if (hasProfile) {
-        const profileAddress = await new ethers.Contract((contractConfig.networks.mainnet.profileFactoryAndRegistry as any).address, ProfileFactoryABI, signer).getProfile(walletAddress);
-        const profileContract = new ethers.Contract(profileAddress, ProfileFactoryABI, signer);
+        const profileFactoryContract = new ethers.Contract(contractConfig.networks[environment].profileFactoryAndRegistry.address, ProfileFactoryABI, signer);
+        const profileAddress = await profileFactoryContract.getProfile(walletAddress);
+        const ProfileABI = await import('../../assets/abis/Profile.json');
+        const profileContract = new ethers.Contract(profileAddress, ProfileABI.default, signer);
         
         if (!profileContract) throw new Error("Profile contract not found");
 
-        tx = await profileContract.createArtPiece(
-          artPieceTemplateAddress,
-          finalImageData,
-          finalFormat,
-          formData.title,
-          formData.description || '',
-          true,
-          ethers.ZeroAddress,
-          artCommissionHubAddress,
-          aiGenerated
+        tx = await profileContract['createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool)'](
+          artPieceTemplateAddress,      // _art_piece_template
+          finalImageData,               // _token_uri_data
+          finalFormat,                  // _token_uri_data_format
+          formData.title,               // _title
+          formData.description || '',   // _description
+          true,                         // _as_artist
+          walletAddress,                // _other_party (user's own address for personal art)
+          aiGenerated,                  // _ai_generated
+          artCommissionHubAddress,      // _art_commission_hub
+          false                         // _is_profile_art
         );
       } else {
-        const profileHubContract = new ethers.Contract((contractConfig.networks.mainnet.profileFactoryAndRegistry as any).address, ProfileFactoryABI, signer);
-        tx = await profileHubContract.createProfileAndArtPiece(
-          artPieceTemplateAddress,
-          finalImageData,
-          finalFormat,
-          formData.title,
-          formData.description || '',
-          true,
-          ethers.ZeroAddress,
-          artCommissionHubAddress,
-          aiGenerated
+        const profileHubContract = new ethers.Contract(contractConfig.networks[environment].profileFactoryAndRegistry.address, ProfileFactoryABI, signer);
+        tx = await profileHubContract.createNewArtPieceAndRegisterProfileAndAttachToHub(
+          artPieceTemplateAddress,      // _art_piece_template
+          finalImageData,               // _token_uri_data
+          finalFormat,                  // _token_uri_data_format
+          formData.title,               // _title
+          formData.description || '',   // _description
+          true,                         // _is_artist
+          walletAddress,                // _other_party (user's own address for personal art)
+          artCommissionHubAddress,      // _commission_hub
+          aiGenerated,                  // _ai_generated
+          1,                            // _linked_to_art_commission_hub_chain_id (generic)
+          ethers.ZeroAddress,           // _linked_to_art_commission_hub_address (empty for no hub)
+          0                             // _linked_to_art_commission_hub_token_id_or_generic_hub_account
         );
       }
       
