@@ -701,7 +701,7 @@ def createArtPiece(
     _ai_generated: bool,
     _art_commission_hub: address = empty(address),  # Register with art myCommission hub
     _is_profile_art: bool = False,
-    _off_chain_data: Bytes[500] = empty(Bytes[500])
+    _off_chain_data: String[2500] = empty(String[2500])
 ) -> address:
     """
     @notice Create a new art piece with optional profile art and myCommission registration

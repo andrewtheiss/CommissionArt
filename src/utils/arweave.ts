@@ -182,6 +182,15 @@ export const uploadToArWeave = async (
     
     console.log(`Upload timeout set to ${totalTimeoutMs / 1000 / 60} minutes for ${fileSizeMB.toFixed(2)}MB file`);
 
+    // Warn about very large files
+    if (fileSizeMB > 600) {
+      console.warn(`⚠️ Very large file detected (${fileSizeMB.toFixed(2)}MB). Upload may be slow or fail due to browser/ArConnect limitations.`);
+      console.warn('💡 For better success with files >600MB, consider:');
+      console.warn('   1. Using ArConnect\'s built-in upload feature');
+      console.warn('   2. Compressing the file before upload');
+      console.warn('   3. Uploading in smaller chunks');
+    }
+
     // Check extension availability
     const status = await checkArWeaveExtension();
     if (!status.extensionInstalled) {
@@ -275,11 +284,28 @@ export const uploadToArWeave = async (
 
       } catch (arConnectError) {
         console.log('ArConnect createTransaction failed, trying arweave-js approach...');
+        console.log('ArConnect error:', arConnectError);
         
-        // Fallback to arweave-js + ArConnect sign approach (recommended method)
-        const transaction = await arweave.createTransaction({
-          data: fileData
-        });
+        // For very large files (>500MB), the arweave-js approach might struggle
+        // Let's add more granular error handling and logging
+        if (fileSizeMB > 500) {
+          console.warn(`Large file detected (${fileSizeMB.toFixed(2)}MB) - arweave-js fallback may be slow or fail`);
+        }
+
+        console.log('Creating transaction with arweave-js...');
+        
+        // For very large files, this step can take a while or fail due to memory constraints
+        let transaction;
+        try {
+          transaction = await arweave.createTransaction({
+            data: fileData
+          });
+        } catch (createError) {
+          console.error('Failed to create transaction with arweave-js:', createError);
+          throw new Error(`Failed to create transaction for large file (${fileSizeMB.toFixed(2)}MB). This may be due to browser memory limitations. Try uploading a smaller file or using ArConnect's built-in upload feature.`);
+        }
+
+        console.log('Transaction created successfully, adding tags...');
 
         // Add tags to the transaction one by one
         for (const tag of transactionTags) {
@@ -290,13 +316,19 @@ export const uploadToArWeave = async (
           }
         }
 
-        console.log('Transaction created with arweave-js, signing with ArConnect...');
+        console.log('Tags added, signing with ArConnect...');
 
         // Use arweave.transactions.sign() which will automatically use ArConnect
         // This is the recommended approach from ArConnect docs
-        await arweave.transactions.sign(transaction);
+        // For large files, this step can also hang, so let's add specific handling
+        try {
+          await arweave.transactions.sign(transaction);
+        } catch (signError) {
+          console.error('Failed to sign transaction:', signError);
+          throw new Error(`Failed to sign transaction for large file (${fileSizeMB.toFixed(2)}MB). This may be due to ArConnect limitations with very large files. Try using a smaller file or ArConnect's built-in upload feature.`);
+        }
 
-        console.log('Transaction signed, posting to network...');
+        console.log('Transaction signed successfully, posting to network...');
 
         // Post the transaction directly to the network
         const postResponse = await arweave.transactions.post(transaction);

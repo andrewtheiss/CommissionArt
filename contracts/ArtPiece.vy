@@ -174,7 +174,7 @@ def initialize(
     _ai_generated: bool,
     _original_uploader: address,  # MUST already be a profile
     _profile_factory_address: address,
-    _off_chain_data: Bytes[500] = empty(Bytes[500]) # Optional extra off-chain data
+    _off_chain_data: String[2500] = empty(String[2500]) # Optional extra off-chain data
 ):
     """
     @notice Initialize the ArtPiece contract, can only be called once

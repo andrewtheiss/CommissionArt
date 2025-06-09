@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useBlockchain } from '../../utils/BlockchainContext';
 import { 
   shouldRecommendArWeave, 
@@ -42,8 +42,110 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<ArWeaveUploadResult | null>(null);
   const [showArWeaveOption, setShowArWeaveOption] = useState<boolean>(false);
+  const [fileUrl, setFileUrl] = useState<string>('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verifiedFileInfo, setVerifiedFileInfo] = useState<MultimediaData | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<string[]>([]);
+
+  // Cleanup object URLs
+  const cleanupObjectUrls = () => {
+    objectUrlsRef.current.forEach(url => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // Ignore errors when revoking URLs
+      }
+    });
+    objectUrlsRef.current = [];
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupObjectUrls();
+    };
+  }, []);
+
+  // Verify file from URL
+  const verifyFileFromUrl = async (url: string) => {
+    if (!url.trim()) {
+      setVerifiedFileInfo(null);
+      return;
+    }
+
+    setIsVerifying(true);
+    setError(null);
+
+    try {
+      // Try to fetch basic info about the URL
+      const response = await fetch(url, { method: 'HEAD' });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to verify URL: ${response.status} ${response.statusText}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      const contentLength = response.headers.get('content-length');
+      const filename = url.split('/').pop() || 'unknown';
+
+      // Create a mock file object for type detection
+      const mockFile = {
+        type: contentType,
+        name: filename,
+        size: contentLength ? parseInt(contentLength) : 0
+      } as File;
+
+      const mediaType = detectMediaType(mockFile);
+      
+      if (mediaType === 'unknown') {
+        throw new Error('Unsupported file type detected from URL');
+      }
+
+      // Create file info
+      const fileInfo: MultimediaData = {
+        file: mockFile,
+        mediaType,
+        preview: mediaType === 'image' ? url : undefined
+      };
+
+      setVerifiedFileInfo(fileInfo);
+      onFileSelect?.(fileInfo);
+
+    } catch (err) {
+      const errorMsg = `Failed to verify URL: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      setError(errorMsg);
+      onError?.(errorMsg);
+      setVerifiedFileInfo(null);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Handle URL input change
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setFileUrl(url);
+    
+    // Clear upload-related state when URL is entered
+    if (url.trim()) {
+      setSelectedFile(null);
+      setUploadResult(null);
+      setShowArWeaveOption(false);
+    }
+    
+    // Debounce URL verification
+    const timeoutId = setTimeout(() => {
+      if (url.trim()) {
+        verifyFileFromUrl(url);
+      } else {
+        setVerifiedFileInfo(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  };
 
   // Detect media type from file
   const detectMediaType = (file: File): MediaType => {
@@ -99,12 +201,11 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
         video.preload = 'metadata';
         
         video.onloadedmetadata = () => {
-          URL.revokeObjectURL(url);
           resolve({
-            preview: url,
             duration: video.duration,
             dimensions: { width: video.videoWidth, height: video.videoHeight }
           });
+          // Don't revoke URL immediately for video as we need it for playback
         };
         
         video.onerror = () => {
@@ -119,10 +220,10 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
         audio.preload = 'metadata';
         
         audio.onloadedmetadata = () => {
-          URL.revokeObjectURL(url);
           resolve({
             duration: audio.duration
           });
+          // Don't revoke URL immediately for audio as we need it for playback
         };
         
         audio.onerror = () => {
@@ -140,6 +241,9 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
   // Handle file selection
   const handleFileSelect = async (file: File) => {
     if (!file) return;
+
+    // Cleanup previous object URLs
+    cleanupObjectUrls();
 
     setError(null);
     setUploadResult(null);
@@ -260,6 +364,12 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
       setUploadResult(result);
 
       if (result.success) {
+        // Populate URL field with successful upload result
+        if (result.url) {
+          setFileUrl(result.url);
+          // Verify the uploaded file
+          await verifyFileFromUrl(result.url);
+        }
         onUploadComplete?.(result, selectedFile);
       } else {
         setError(result.error || 'Upload failed');
@@ -309,15 +419,112 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
       </div>
 
       <div className="multimedia-upload-section">
+        {/* URL Input Section */}
+        <div className="url-input-section">
+          <label htmlFor="file-url" className="url-label">
+            File URL (ArWeave, IPFS, or direct link)
+          </label>
+          <div className="url-input-wrapper">
+            <input
+              id="file-url"
+              type="url"
+              value={fileUrl}
+              onChange={handleUrlChange}
+              placeholder="https://arweave.net/transaction-id or https://example.com/file.mp4"
+              className="url-input"
+            />
+            {isVerifying && (
+              <div className="url-status verifying">
+                <span className="spinner"></span>
+                Verifying...
+              </div>
+            )}
+            {verifiedFileInfo && !isVerifying && (
+              <div className="url-status verified">
+                <span className="success-icon">✅</span>
+                {verifiedFileInfo.mediaType === 'image' ? 'Image ready for preview' :
+                 verifiedFileInfo.mediaType === 'video' ? 'Video ready to play' :
+                 verifiedFileInfo.mediaType === 'audio' ? 'Audio ready to play' :
+                 `Verified ${verifiedFileInfo.mediaType}`}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Upload Section - disabled when URL is present */}
+        <div className="upload-separator">
+          <span>OR</span>
+        </div>
+
         <div
-          className={`multimedia-dropzone ${isDragging ? 'active' : ''}`}
-          onClick={handleDropzoneClick}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
+          className={`multimedia-dropzone ${isDragging ? 'active' : ''} ${fileUrl.trim() ? 'disabled' : ''}`}
+          onClick={fileUrl.trim() ? undefined : handleDropzoneClick}
+          onDragEnter={fileUrl.trim() ? undefined : handleDragEnter}
+          onDragLeave={fileUrl.trim() ? undefined : handleDragLeave}
+          onDragOver={fileUrl.trim() ? undefined : handleDragOver}
+          onDrop={fileUrl.trim() ? undefined : handleDrop}
         >
-          {selectedFile ? (
+          {fileUrl.trim() ? (
+            <div className="url-file-display">
+              <div className="disabled-overlay">
+                <span>Upload disabled - using URL file</span>
+              </div>
+              {verifiedFileInfo && (
+                <div className="multimedia-preview">
+                  <div className="media-info">
+                    <div className="media-icon">{getMediaTypeIcon(verifiedFileInfo.mediaType)}</div>
+                    <div className="media-details">
+                      <h4>{verifiedFileInfo.file.name}</h4>
+                      <p>Type: {verifiedFileInfo.mediaType.toUpperCase()}</p>
+                      <p>Source: URL</p>
+                      {verifiedFileInfo.file.size > 0 && (
+                        <p>Size: {formatFileSize(verifiedFileInfo.file.size)}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Media Preview for URL files */}
+                  {verifiedFileInfo.mediaType === 'image' && (
+                    <div className="preview-container">
+                      <img src={fileUrl} alt="Preview" className="preview-image" />
+                    </div>
+                  )}
+                  {verifiedFileInfo.mediaType === 'video' && (
+                    <div className="preview-container">
+                      <video 
+                        controls 
+                        className="preview-video"
+                        preload="metadata"
+                        onError={(e) => {
+                          console.warn('Video preview failed:', e);
+                          setError('Video file appears to be corrupted or invalid format');
+                        }}
+                      >
+                        <source src={fileUrl} />
+                        Your browser does not support video playback.
+                      </video>
+                    </div>
+                  )}
+                  {verifiedFileInfo.mediaType === 'audio' && (
+                    <div className="preview-container">
+                      <audio 
+                        controls 
+                        className="preview-audio"
+                        preload="metadata"
+                        onError={(e) => {
+                          console.warn('Audio preview failed:', e);
+                          setError('Audio file appears to be corrupted or invalid format');
+                        }}
+                      >
+                        <source src={fileUrl} />
+                        Your browser does not support audio playback.
+                      </audio>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : selectedFile ? (
             <div className="multimedia-preview">
               <div className="media-info">
                 <div className="media-icon">{getMediaTypeIcon(selectedFile.mediaType)}</div>
@@ -334,9 +541,50 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
                 </div>
               </div>
               
+              {/* Media Preview for uploaded files */}
               {selectedFile.mediaType === 'image' && selectedFile.preview && (
                 <div className="preview-container">
                   <img src={selectedFile.preview} alt="Preview" className="preview-image" />
+                </div>
+              )}
+              {selectedFile.mediaType === 'video' && (
+                <div className="preview-container">
+                  <video 
+                    controls 
+                    className="preview-video"
+                    preload="metadata"
+                    onError={(e) => {
+                      console.warn('Video preview failed:', e);
+                      setError('Video file appears to be corrupted or invalid format');
+                    }}
+                  >
+                    <source src={(() => {
+                      const url = URL.createObjectURL(selectedFile.file);
+                      objectUrlsRef.current.push(url);
+                      return url;
+                    })()} />
+                    Your browser does not support video playback.
+                  </video>
+                </div>
+              )}
+              {selectedFile.mediaType === 'audio' && (
+                <div className="preview-container">
+                  <audio 
+                    controls 
+                    className="preview-audio"
+                    preload="metadata"
+                    onError={(e) => {
+                      console.warn('Audio preview failed:', e);
+                      setError('Audio file appears to be corrupted or invalid format');
+                    }}
+                  >
+                    <source src={(() => {
+                      const url = URL.createObjectURL(selectedFile.file);
+                      objectUrlsRef.current.push(url);
+                      return url;
+                    })()} />
+                    Your browser does not support audio playback.
+                  </audio>
                 </div>
               )}
             </div>
@@ -391,7 +639,7 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
         )}
 
         <div className="multimedia-actions">
-          {selectedFile && (
+          {selectedFile && !fileUrl.trim() && (
             <button
               onClick={handleUpload}
               disabled={isUploading || !isConnected}
@@ -411,7 +659,14 @@ const AddMultimedia: React.FC<AddMultimediaProps> = ({
             </button>
           )}
           
-          {!isConnected && (
+          {fileUrl.trim() && verifiedFileInfo && (
+            <div className="url-status-info">
+              <span className="success-icon">✅</span>
+              <span>File loaded from URL - ready to use</span>
+            </div>
+          )}
+          
+          {!isConnected && !fileUrl.trim() && (
             <p className="connection-warning">
               Connect your wallet to upload files
             </p>
