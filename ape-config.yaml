@@ -38,11 +38,17 @@ node:
       uri: https://eth-sepolia.g.alchemy.com/
     animechain:
       uri: https://rpc-animechain-39xf6m45e3.t.conduit.xyz
+    animechain_testnet:
+      uri: https://6900.rpc.thirdweb.com/${THIRDWEB_CLIENT_ID}
 
 networks:
   custom:
     - name: animechain
       chain_id: 69000
+      ecosystem: ethereum
+      default_provider: node
+    - name: animechain_testnet
+      chain_id: 6900
       ecosystem: ethereum
       default_provider: node
 

@@ -61,11 +61,11 @@ def sendToMainnetContractWithAnime(_user_input_address: address):
     
     # Check ANIME token allowance
     anime_token: IERC20 = IERC20(ANIME_TOKEN)
-    allowance: uint256 = anime_token.allowance(msg.sender, self)
+    allowance: uint256 = staticcall anime_token.allowance(msg.sender, self)
     assert allowance >= token_total_fee, "Insufficient ANIME token allowance"
     
     # Transfer ANIME tokens from user to this contract for gas payment
-    success: bool = anime_token.transferFrom(msg.sender, self, token_total_fee)
+    success: bool = extcall anime_token.transferFrom(msg.sender, self, token_total_fee)
     assert success, "ANIME token transfer failed"
     
     # Create function selector for crossChainUpdate(address)
@@ -122,10 +122,10 @@ def sendWithCustomAnimeAmount(
     
     # Check ANIME token allowance and transfer
     anime_token: IERC20 = IERC20(ANIME_TOKEN)
-    allowance: uint256 = anime_token.allowance(msg.sender, self)
+    allowance: uint256 = staticcall anime_token.allowance(msg.sender, self)
     assert allowance >= _anime_token_amount, "Insufficient ANIME token allowance"
     
-    success: bool = anime_token.transferFrom(msg.sender, self, _anime_token_amount)
+    success: bool = extcall anime_token.transferFrom(msg.sender, self, _anime_token_amount)
     assert success, "ANIME token transfer failed"
     
     # Create function selector and call data
@@ -194,7 +194,7 @@ def checkAnimeAllowance(_user: address) -> uint256:
     @return Current allowance amount
     """
     anime_token: IERC20 = IERC20(ANIME_TOKEN)
-    return anime_token.allowance(_user, self)
+    return staticcall anime_token.allowance(_user, self)
 
 @external
 @view
@@ -205,7 +205,7 @@ def checkAnimeBalance(_user: address) -> uint256:
     @return User's ANIME balance
     """
     anime_token: IERC20 = IERC20(ANIME_TOKEN)
-    return anime_token.balanceOf(_user)
+    return staticcall anime_token.balanceOf(_user)
 
 # Emergency function to return any stuck ANIME tokens
 @external
@@ -216,7 +216,7 @@ def returnAnimeTokens(_to: address, _amount: uint256):
     @param _amount Amount to return
     """
     anime_token: IERC20 = IERC20(ANIME_TOKEN)
-    success: bool = anime_token.transfer(_to, _amount)
+    success: bool = extcall anime_token.transfer(_to, _amount)
     assert success, "Token return failed"
 
 event AnimeMessageSent:

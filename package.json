@@ -12,6 +12,7 @@
   "dependencies": {
     "@arbitrum/sdk": "^4.0.4",
     "ape": "^0.3.8",
+    "arweave": "^1.15.7",
     "ethers": "^6.13.5",
     "pytest": "^1.0.0",
     "react": "^19.0.0",

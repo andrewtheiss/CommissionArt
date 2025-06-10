@@ -21,11 +21,13 @@ interface Profile:
         _token_uri_data: Bytes[45000], 
         _token_uri_data_format: String[10],
         _title: String[100], 
-        _description: String[200], 
-        _is_artist: bool, 
+        _description: String[400], 
+        _as_artist: bool, 
         _other_party: address, 
         _ai_generated: bool,
-        _commission_hub: address
+        _art_commission_hub: address,
+        _is_profile_art: bool,
+        _token_uri_json: String[2500]
     ) -> address: nonpayable
     def addCommissionHub(_hub: address): nonpayable
     def blacklist(_address: address) -> bool: view
@@ -184,14 +186,15 @@ def createNewArtPieceAndRegisterProfileAndAttachToHub(
     _token_uri_data: Bytes[45000],
     _token_uri_data_format: String[10],
     _title: String[100],
-    _description: String[200],
+    _description: String[400],
     _is_artist: bool,
     _other_party: address,
     _commission_hub: address,
     _ai_generated: bool,
     _linked_to_art_commission_hub_chain_id: uint256,  # use generic addresses for generic entry
     _linked_to_art_commission_hub_address: address,
-    _linked_to_art_commission_hub_token_id_or_generic_hub_account: uint256
+    _linked_to_art_commission_hub_token_id_or_generic_hub_account: uint256,
+    _token_uri_json: String[2500] = empty(String[2500])
 ) -> (address, address):
     """
     @notice Creates a new profile for the caller if needed, then creates a new art piece
@@ -284,7 +287,9 @@ def createNewArtPieceAndRegisterProfileAndAttachToHub(
         _is_artist,
         _other_party,
         _ai_generated,
-        commission_hub_to_use  # Use the determined hub (original or new)
+        commission_hub_to_use,  # Use the determined hub (original or new)
+        False,  # _is_profile_art (not a profile art piece)
+        _token_uri_json
     )
     
     log ArtPieceCreated(profile=profile, art_piece=art_piece, user=msg.sender)
@@ -299,11 +304,12 @@ def createProfilesAndArtPieceWithBothProfilesLinked(
     _token_uri_data: Bytes[45000],
     _token_uri_data_format: String[10],
     _title: String[100],
-    _description: String[200],
+    _description: String[400],
     _is_artist: bool,
     _other_party: address,
     _commission_hub: address,
-    _ai_generated: bool
+    _ai_generated: bool,
+    _token_uri_json: String[2500] = empty(String[2500])
 ) -> (address, address, address, address):
     """
     @notice Creates a new art piece linked to another party, creating profile for them if needed
@@ -353,7 +359,9 @@ def createProfilesAndArtPieceWithBothProfilesLinked(
         _is_artist,
         _other_party,
         _ai_generated,
-        commission_hub_to_use
+        commission_hub_to_use,
+        False,  # _is_profile_art (not a profile art piece)
+        _token_uri_json
     )
     
     log ArtPieceCreated(profile=caller_profile, art_piece=art_piece, user=msg.sender)

@@ -5,6 +5,7 @@ import { ethers } from 'ethers';
 import ArtDisplay from '../ArtDisplay';
 import { safeRevokeUrl, createImageDataUrl } from '../../utils/TokenURIDecoder';
 import ArtPieceDebugInfo from './ArtPieceDebugInfo';
+import CreateArtEdition from './CreateArtEdition';
 import abiLoader from '../../utils/abiLoader';
 import ethersService from '../../utils/ethers-service';
 import './Account.css';
@@ -19,7 +20,7 @@ const getInitialDebugMode = (): boolean => {
 };
 
 // Address displayed format
-const formatAddress = (address: string | null) => {
+const formatAddress = (address: string | null): string => {
   if (!address) return 'Not connected';
   return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
 };
@@ -60,6 +61,11 @@ const Account: React.FC = () => {
   // Create profile
   const [creatingProfile, setCreatingProfile] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [createAsArtist, setCreateAsArtist] = useState<boolean>(false);
+
+  // Art edition modal states
+  const [showEditionModal, setShowEditionModal] = useState<boolean>(false);
+  const [selectedArtPiece, setSelectedArtPiece] = useState<string | null>(null);
 
   // For wallet connection
   const isTrulyConnected = isConnected && !!walletAddress;
@@ -103,44 +109,64 @@ const Account: React.FC = () => {
     }
   }, []);
 
-  // Create a state to track profile layer changes
-  const [profileLayer, setProfileLayer] = useState<string>(
-    localStorage.getItem('profile-use-l2-testnet') === 'true' ? 'L2 Testnet' : 'L3 AnimeChain'
+  // Create a state to track profile environment changes
+  const [profileEnvironment, setProfileEnvironment] = useState<string>(
+    localStorage.getItem('profile-use-testnet') === 'true' ? 'Testnet' : 'Mainnet'
   );
 
-  // Watch for changes to the profile layer setting
+  // Watch for changes to the profile environment setting
   useEffect(() => {
-    const checkProfileLayer = () => {
-      const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
-      setProfileLayer(useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain');
+    const checkProfileEnvironment = () => {
+      const useTestnet = localStorage.getItem('profile-use-testnet') === 'true';
+      setProfileEnvironment(useTestnet ? 'Testnet' : 'Mainnet');
     };
 
     // Check initially
-    checkProfileLayer();
+    checkProfileEnvironment();
 
     // Set up event listener for storage changes
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'profile-use-l2-testnet') {
-        checkProfileLayer();
+      if (e.key === 'profile-use-testnet') {
+        checkProfileEnvironment();
       }
     };
     
     window.addEventListener('storage', handleStorageChange);
     
     // Custom event for local changes
-    const handleCustomEvent = () => checkProfileLayer();
-    window.addEventListener('profile-layer-changed', handleCustomEvent);
+    const handleCustomEvent = () => checkProfileEnvironment();
+    window.addEventListener('profile-environment-changed', handleCustomEvent);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('profile-layer-changed', handleCustomEvent);
+      window.removeEventListener('profile-environment-changed', handleCustomEvent);
     };
   }, []);
 
   const ConnectionBar = () => {
-    // Get the profile layer preference from localStorage
-    const useL2Testnet = localStorage.getItem('profile-use-l2-testnet') === 'true';
-    const profileLayer = useL2Testnet ? 'L2 Testnet' : 'L3 AnimeChain';
+    // Get the profile environment preference from localStorage
+    const useTestnet = localStorage.getItem('profile-use-testnet') === 'true';
+    const currentEnvironment = useTestnet ? 'Testnet' : 'Mainnet';
+    
+    // Better network name mapping
+    const getNetworkDisplayName = (networkType: string) => {
+      switch (networkType) {
+        case 'animechain':
+          return 'AnimeChain L3';
+        case 'arbitrum_testnet':
+          return 'Arbitrum Sepolia (L2)';
+        case 'arbitrum_mainnet':
+          return 'Arbitrum One (L2)';
+        case 'dev':
+          return 'Sepolia (L1)';
+        case 'prod':
+          return 'Ethereum (L1)';
+        case 'local':
+          return 'Local Network';
+        default:
+          return networkType;
+      }
+    };
     
     return (
       <div className="connection-bar">
@@ -166,11 +192,11 @@ const Account: React.FC = () => {
               <div className="connection-details">
                 <span className="status-text">
                   Connected to: <span className="network-name">
-                    {networkType === 'arbitrum_testnet' ? 'L3 (Arbitrum Sepolia)' : networkType}
+                    {getNetworkDisplayName(networkType)}
                   </span>
                 </span>
-                <span className="profile-layer">
-                  Profile Layer: <span className="layer-name">{profileLayer}</span>
+                <span className="profile-environment">
+                  Environment: <span className="environment-name">{currentEnvironment}</span>
                 </span>
                 <span className="wallet-address">
                   {walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not connected'}
@@ -231,7 +257,7 @@ const Account: React.FC = () => {
     };
     
     checkProfileStatus();
-  }, [isConnected, walletAddress, network, profileLayer]);
+  }, [isConnected, walletAddress, network, profileEnvironment]);
   
   // Load profile data after we have the profile contract
   useEffect(() => {
@@ -263,12 +289,46 @@ const Account: React.FC = () => {
       try {
         setProfileImageLoading(true);
         
-        const imageData = await profile.profileImage();
-        if (imageData && imageData.length > 0) {
-          // Convert bytes to data URL
-          const blob = new Blob([imageData], { type: 'image/avif' });
-          const imageUrl = URL.createObjectURL(blob);
-          setProfileImage(imageUrl);
+        // profileImage() returns an address of an ArtPiece contract, not bytes data
+        const profileImageAddress = await profile.profileImage();
+        
+        if (profileImageAddress && profileImageAddress !== ethers.ZeroAddress) {
+          // Create contract instance for the profile image art piece
+          const artPieceContract = new ethers.Contract(
+            profileImageAddress,
+            abiLoader.loadABI('ArtPiece'),
+            ethersService.getProvider()
+          );
+          
+          // Try to get the image data from the art piece
+          let imageData = null;
+          let format = 'avif'; // default format
+          
+          try {
+            // Try to get tokenURIData first
+            imageData = await artPieceContract.getTokenURIData();
+          } catch (err) {
+            // Fallback to getImageData if tokenURIData doesn't exist
+            try {
+              imageData = await artPieceContract.getImageData();
+            } catch (err2) {
+              console.log("No image data available for profile image");
+            }
+          }
+          
+          // Try to get format
+          try {
+            format = await artPieceContract.tokenURI_data_format();
+          } catch (err) {
+            // Keep default format
+          }
+          
+          if (imageData && imageData.length > 0) {
+            // Convert bytes to data URL
+            const blob = new Blob([imageData], { type: `image/${format}` });
+            const imageUrl = URL.createObjectURL(blob);
+            setProfileImage(imageUrl);
+          }
         }
       } catch (err) {
         console.error("Error loading profile image:", err);
@@ -306,8 +366,8 @@ const Account: React.FC = () => {
   const loadRecentCommissions = async (profileContract: ethers.Contract) => {
     try {
       setLoadingCommissions(true);
-      // Get recent commissions (page 0, 5 items per page)
-      const commissions = await profileContract.getRecentCommissions(0, 5);
+      // Get recent commissions using the new pagination method (offset=0, count=5, reverse=true for newest first)
+      const commissions = await profileContract.getCommissionsByOffset(0, 5, true);
       setRecentCommissions(commissions);
     } catch (err) {
       console.error("Error loading commissions:", err);
@@ -332,8 +392,8 @@ const Account: React.FC = () => {
         return;
       }
       
-      // Get the most recent 5 art pieces
-      const recentPieces = await profileContract.getLatestArtPieces();
+      // Get the most recent 5 art pieces using the new pagination method (offset=0, count=5, reverse=true for newest first)
+      const recentPieces = await profileContract.getArtPiecesByOffset(0, 5, true);
       setRecentArtPieces(recentPieces);
       
       // For each art piece, get its details
@@ -475,8 +535,8 @@ const Account: React.FC = () => {
       setCreatingProfile(true);
       setError(null);
       
-      // Create profile via the ProfileFactoryAndRegistry
-      const newProfileAddress = await profileService.createProfile();
+      // Create profile via the ProfileFactoryAndRegistry with artist status
+      const newProfileAddress = await profileService.createProfile(createAsArtist);
       console.log("Profile created at address:", newProfileAddress);
       
       // Refresh profile data
@@ -509,10 +569,11 @@ const Account: React.FC = () => {
     
     try {
       setProfileDataLoading(true);
-      // Call the contract method
-      const tx = await profile.setIsArtist(status);
-      // Wait for transaction to be mined
-      await tx.wait();
+      setError(null);
+      
+      // Use the profile service method
+      await profileService.setArtistStatus(status);
+      
       // Update state
       setIsArtist(status);
     } catch (err) {
@@ -521,6 +582,43 @@ const Account: React.FC = () => {
     } finally {
       setProfileDataLoading(false);
     }
+  };
+
+  // Handle art piece click for edition creation
+  const handleArtPieceClick = (artPieceAddress: string, event: React.MouseEvent) => {
+    // Prevent triggering if clicking on the "View Details" link
+    if ((event.target as HTMLElement).closest('.view-art-piece-link')) {
+      return;
+    }
+    
+    // Only allow artists to create editions
+    if (!isArtist) {
+      return;
+    }
+    
+    setSelectedArtPiece(artPieceAddress);
+    setShowEditionModal(true);
+  };
+
+  // Handle edition creation success
+  const handleEditionSuccess = (editionAddress: string) => {
+    console.log('Edition created successfully:', editionAddress);
+    // Optionally refresh the art pieces list
+    if (profile) {
+      loadArtPieces(profile);
+    }
+  };
+
+  // Handle edition creation error
+  const handleEditionError = (error: string) => {
+    console.error('Edition creation error:', error);
+    setError(error);
+  };
+
+  // Close edition modal
+  const handleEditionClose = () => {
+    setShowEditionModal(false);
+    setSelectedArtPiece(null);
   };
   
   return (
@@ -559,6 +657,22 @@ const Account: React.FC = () => {
           <h3>No Profile Found</h3>
           <p>You don't have a profile yet. Create one to start using the platform.</p>
           <p className="wallet-info">Connected wallet: {formatAddress(walletAddress)}</p>
+          
+          <div className="create-profile-options">
+            <label className="artist-checkbox">
+              <input 
+                type="checkbox" 
+                checked={createAsArtist} 
+                onChange={(e) => setCreateAsArtist(e.target.checked)}
+                disabled={creatingProfile}
+              />
+              <span className="checkbox-text">Create as Artist</span>
+            </label>
+            <p className="artist-help-text">
+              Artists can create and sell art pieces. You can change this setting later.
+            </p>
+          </div>
+          
           <button 
             className="create-profile-button" 
             onClick={handleCreateProfile}
@@ -638,6 +752,9 @@ const Account: React.FC = () => {
           
           <div className="account-card art-pieces-card">
             <h3>My Art Pieces {totalArtPieces > 0 && <span className="count-badge">{totalArtPieces}</span>}</h3>
+            {isArtist && (
+              <p className="art-pieces-subtitle">Click on any art piece to create an ERC1155 edition for sale</p>
+            )}
             {loadingArtPieces ? (
               <div className="loading-spinner">Loading art pieces...</div>
             ) : recentArtPieces.length > 0 ? (
@@ -648,7 +765,11 @@ const Account: React.FC = () => {
                     if (!address) return null; // Skip empty addresses
                     const details = artPieceDetails[address] || { title: 'Loading...', tokenURIData: null };
                     return (
-                      <div key={index} className="art-piece-item">
+                      <div 
+                        key={index} 
+                        className={`art-piece-item ${isArtist ? 'clickable' : ''}`}
+                        onClick={isArtist ? (e) => handleArtPieceClick(address, e) : undefined}
+                      >
                         {details.tokenURIData ? (
                           <>
                             <ArtDisplay
@@ -693,6 +814,11 @@ const Account: React.FC = () => {
                             </div>
                           </div>
                         )}
+                        {isArtist && (
+                          <div className="art-piece-overlay">
+                            <span className="edition-hint">Click to create edition</span>
+                          </div>
+                        )}
                         <a 
                           href={`#/art/${address}`} 
                           className="view-art-piece-link"
@@ -726,6 +852,57 @@ const Account: React.FC = () => {
           <p>Please connect your wallet to view your profile</p>
         </div>
       )}
+      
+      {/* Debug information */}
+      {debugMode && hasProfile && profile && (
+        <div className="account-card debug-card">
+          <h3>Debug Information</h3>
+          <div className="debug-info">
+            <p><strong>Profile Address:</strong> {profileAddress}</p>
+            <p><strong>Environment:</strong> {profileEnvironment}</p>
+            <p><strong>Network:</strong> {network.name}</p>
+            <p><strong>Is Artist:</strong> {isArtist ? 'Yes' : 'No'}</p>
+            <p><strong>Total Art Pieces:</strong> {totalArtPieces}</p>
+            <p><strong>Total Commissions:</strong> {recentCommissions.length}</p>
+            <div className="debug-actions">
+              <button 
+                className="debug-button"
+                onClick={async () => {
+                  try {
+                    const artistStatus = await profile.isArtist();
+                    const owner = await profile.owner();
+                    const artCount = await profile.myArtCount();
+                    console.log('Profile Debug Info:', {
+                      address: profileAddress,
+                      owner,
+                      isArtist: artistStatus,
+                      artCount: Number(artCount)
+                    });
+                    alert('Debug info logged to console');
+                  } catch (err) {
+                    console.error('Debug error:', err);
+                    alert('Debug failed - check console');
+                  }
+                }}
+              >
+                Log Profile Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Art Edition Creation Modal */}
+      <CreateArtEdition
+        isOpen={showEditionModal}
+        onClose={handleEditionClose}
+        onSuccess={handleEditionSuccess}
+        onError={handleEditionError}
+        selectedArtPiece={selectedArtPiece}
+        artPieceDetails={selectedArtPiece ? artPieceDetails[selectedArtPiece] || null : null}
+        profileContract={profile}
+        isArtist={isArtist}
+      />
     </div>
   );
 };

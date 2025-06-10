@@ -438,9 +438,9 @@ def test_combined_profile_method_with_existing_profile(setup):
             TEST_DESCRIPTION,
             True,  # As artist
             artist.address,  # Other party
-            TEST_AI_GENERATED,
             ZERO_ADDRESS,  # No commission hub
-            False,  # Not profile art
+            False,  # Not AI generated
+            "",  # Empty token_uri_json parameter
             sender=user1
         )
         
@@ -479,9 +479,9 @@ def test_combined_profile_and_commission_creation(setup):
             description,
             False,  # Not as artist (user1 is commissioner)
             artist.address,  # Artist
-            TEST_AI_GENERATED,
             ZERO_ADDRESS,  # No commission hub
-            False,  # Not profile art
+            False,  # Not AI generated
+            "",  # Empty token_uri_json parameter
             sender=user1
         )
         

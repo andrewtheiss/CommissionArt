@@ -154,10 +154,9 @@ def test_create_art_edition_success_via_sales_contract(setup):
         art_piece_address,
         "Test Edition",
         "TESTART",
-        "https://api.example.com/metadata/",
-        1000000000000000000,  # 1 ETH
-        100,
-        500,  # 5%
+        1000000000000000000,  # 1 ETH (mint price)
+        100,  # max supply
+        500,  # 5% royalty
         sender=artist
     )
     
@@ -217,10 +216,9 @@ def test_create_art_edition_via_profile_method(setup):
         art_piece_address,
         "Profile Edition",
         "PROFILE",
-        "https://api.example.com/profile/",
-        2000000000000000000,  # 2 ETH
-        50,
-        750,  # 7.5%
+        2000000000000000000,  # 2 ETH (mint price)
+        50,  # max supply
+        750,  # 7.5% royalty
         sender=artist
     )
     
@@ -264,10 +262,9 @@ def test_create_art_edition_requires_owner(setup):
             art_piece_address,
             "Unauthorized Edition",
             "UNAUTH",
-            "https://api.example.com/",
-            1000000000000000000,
-            10,
-            500,
+            1000000000000000000,  # mint price
+            10,  # max supply
+            500,  # royalty
             sender=owner
         )
 
@@ -304,10 +301,9 @@ def test_create_art_edition_requires_art_sales_contract(setup):
             art_piece_address,
             "No Sales Edition",
             "NOSALES",
-            "https://api.example.com/",
-            1000000000000000000,
-            10,
-            500,
+            1000000000000000000,  # mint price
+            10,  # max supply
+            500,  # royalty
             sender=owner
         )
 
@@ -325,10 +321,9 @@ def test_create_art_edition_requires_art_piece_in_profile(setup):
             fake_art_piece_address,
             "Fake Edition",
             "FAKE",
-            "https://api.example.com/",
-            1000000000000000000,
-            10,
-            500,
+            1000000000000000000,  # mint price
+            10,  # max supply
+            500,  # royalty
             sender=artist
         )
 
@@ -365,10 +360,9 @@ def test_multiple_editions_for_same_art_piece(setup):
         art_piece_address,
         "Edition 1",
         "ED1",
-        "https://api.example.com/1/",
-        1000000000000000000,
-        100,
-        500,
+        1000000000000000000,  # mint price
+        100,  # max supply
+        500,  # royalty
         sender=artist
     )
     

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import ethersService from './ethers-service';
+import profileService from './profile-service';
 import { NetworkConfig } from './config';
 import config from './config';
 import { ethers } from 'ethers';
@@ -25,10 +26,13 @@ interface BlockchainContextType {
   isLoading: boolean;
   networkType: NetworkType;
   network: NetworkConfig;
-  switchNetwork: (network: NetworkType) => void;
-  switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => void;
+  switchNetwork: (network: NetworkType) => Promise<void>;
+  switchToLayer: (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => Promise<void>;
   connectWallet: () => Promise<void>;
   walletAddress: string | null;
+  provider: ethers.BrowserProvider | null;
+  hasProfile: boolean;
+  checkUserProfile: () => Promise<void>;
 }
 
 const BlockchainContext = createContext<BlockchainContextType | undefined>(undefined);
@@ -40,48 +44,99 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
   const [network, setNetwork] = useState<NetworkConfig>(ethersService.getNetwork());
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  const [hasProfile, setHasProfile] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check connection status on mount
-    const checkConnection = async () => {
-      const connected = await ethersService.isConnected();
-      setIsConnected(connected);
+    const init = async () => {
+      const browserProvider = ethersService.getBrowserProvider();
+      if (browserProvider) {
+        setProvider(browserProvider);
+        const accounts = await browserProvider.listAccounts();
+        if (accounts.length > 0) {
+          const signer = await browserProvider.getSigner();
+          const address = await signer.getAddress();
+          setWalletAddress(address);
+          setIsConnected(true);
+          await checkUserProfile(address, browserProvider);
+        }
+      }
       setIsLoading(false);
     };
-    
-    checkConnection();
+    init();
   }, []);
 
+  const checkUserProfile = async (address?: string, p?: ethers.BrowserProvider) => {
+    const checkAddress = address || walletAddress;
+    const checkProvider = p || provider;
+    if (!checkAddress || !checkProvider) {
+      setHasProfile(false);
+      return;
+    }
+    
+    try {
+      // Use the profile service to check if user has a profile
+      const profileExists = await profileService.hasProfile();
+      setHasProfile(profileExists);
+      console.log(`Profile check for ${checkAddress}: ${profileExists ? 'Found' : 'Not found'}`);
+    } catch (error) {
+      console.error("Error checking profile:", error);
+      setHasProfile(false);
+    }
+  };
+
   const switchNetwork = async (newNetworkType: NetworkType) => {
+    try {
+      console.log(`[BlockchainContext] Starting switch to network: ${newNetworkType}`);
+      
+      // Switch the network in ethersService and request wallet network switch
     const newNetwork = ethersService.switchNetwork(newNetworkType);
+      console.log(`[BlockchainContext] EthersService switched, now requesting wallet switch...`);
+      
+      // Request wallet to switch networks (this is async)
+      const switchSuccess = await ethersService.requestWalletNetworkSwitch(newNetworkType);
+      console.log(`[BlockchainContext] Wallet switch result: ${switchSuccess}`);
+      
+      if (switchSuccess) {
     setNetworkType(newNetworkType);
     setNetwork(newNetwork);
     
     // Check connection after switching
-    ethersService.isConnected().then(connected => {
+        const connected = await ethersService.isConnected();
       setIsConnected(connected);
-    });
+        
+        console.log(`[BlockchainContext] Successfully switched to network: ${newNetworkType}`);
+      } else {
+        throw new Error(`Failed to switch to network: ${newNetworkType}`);
+      }
+    } catch (error) {
+      console.error('[BlockchainContext] Error switching network:', error);
+      throw error; // Re-throw so the caller can handle it
+    }
   };
 
-  const switchToLayer = (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => {
+  const switchToLayer = async (layer: 'l1' | 'l2' | 'l3', environment: 'testnet' | 'mainnet') => {
     const targetNetwork = mapLayerToNetwork(layer, environment);
     console.log(`Switching to layer ${layer} (${environment}) => network ${targetNetwork}`);
-    switchNetwork(targetNetwork);
+    await switchNetwork(targetNetwork);
   };
 
   const connectWallet = async () => {
     try {
-      const signer = await ethersService.getSigner();
-      if (signer) {
-        const address = await signer.getAddress();
-        setWalletAddress(address);
-        setIsConnected(true);
-        return;
+      const browserProvider = ethersService.getBrowserProvider();
+      if (!browserProvider) {
+        throw new Error("No browser wallet detected.");
       }
-      throw new Error('No wallet connected');
+      setProvider(browserProvider);
+      await browserProvider.send("eth_requestAccounts", []);
+      const signer = await browserProvider.getSigner();
+      const address = await signer.getAddress();
+      setWalletAddress(address);
+      setIsConnected(true);
+      await checkUserProfile(address, browserProvider);
     } catch (error) {
       console.error('Failed to connect wallet:', error);
       setWalletAddress(null);
+      setIsConnected(false);
     }
   };
 
@@ -94,7 +149,9 @@ export const BlockchainProvider = ({ children }: { children: ReactNode }) => {
     switchNetwork,
     switchToLayer,
     connectWallet,
-    walletAddress
+    walletAddress,
+    hasProfile,
+    checkUserProfile,
   };
 
   return (

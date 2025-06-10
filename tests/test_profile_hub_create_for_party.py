@@ -188,9 +188,9 @@ def test_commissioner_creates_art_for_existing_artist(setup):
         title,
         description,
         is_artist,
-        artist.address,  # Artist is the other party
-        commission_hub.address,  # Use commission hub
-        False,  # Not AI generated
+        artist.address,
+        commission_hub.address,
+        False,
         sender=commissioner
     )
     

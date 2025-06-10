@@ -513,6 +513,63 @@
   {
     "inputs": [
       {
+        "name": "_art_piece_template",
+        "type": "address"
+      },
+      {
+        "name": "_token_uri_data",
+        "type": "bytes"
+      },
+      {
+        "name": "_token_uri_data_format",
+        "type": "string"
+      },
+      {
+        "name": "_title",
+        "type": "string"
+      },
+      {
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "name": "_as_artist",
+        "type": "bool"
+      },
+      {
+        "name": "_other_party",
+        "type": "address"
+      },
+      {
+        "name": "_ai_generated",
+        "type": "bool"
+      },
+      {
+        "name": "_art_commission_hub",
+        "type": "address"
+      },
+      {
+        "name": "_is_profile_art",
+        "type": "bool"
+      },
+      {
+        "name": "_token_uri_json",
+        "type": "string"
+      }
+    ],
+    "name": "createArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_art_piece",
         "type": "address"
       }
@@ -666,6 +723,205 @@
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      }
+    ],
+    "name": "artPieceHasEditions",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
