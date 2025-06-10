@@ -173,11 +173,11 @@ def _createProfile(_new_profile_address: address, _is_artist: bool = False) -> (
 
 # Optionally on behalf of another user
 @external
-def createProfile(_owner: address = empty(address)):
+def createProfile(_owner: address = empty(address), _is_artist: bool = False):
     owner: address = _owner
     if (owner == empty(address)):
         owner = msg.sender
-    self._createProfile(owner)
+    self._createProfile(owner, _is_artist)
 
 @external
 @nonreentrant

@@ -111,6 +111,90 @@ def test_create_artist_profile(setup):
     profile.setIsArtist(True, sender=artist)
     assert profile.isArtist() is True
 
+def test_create_profile_with_artist_flag(setup):
+    """Test creating a profile with the artist flag set to True"""
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
+    deployer = setup["deployer"]
+    
+    # Use fresh accounts to avoid conflicts with other tests
+    fresh_artist = accounts.test_accounts[7]
+    fresh_commissioner = accounts.test_accounts[8] 
+    fresh_other_user = accounts.test_accounts[9]
+    
+    # Create a profile for the artist with _is_artist=True
+    profile_factory_and_registry.createProfile(fresh_artist.address, True, sender=deployer)
+    profile_address = profile_factory_and_registry.getProfile(fresh_artist.address)
+    profile = project.Profile.at(profile_address)
+    
+    # Profile should be created as an artist
+    assert profile.isArtist() is True
+    assert profile.owner() == fresh_artist.address
+    assert profile.myArtCount() == 0
+    assert profile.allowUnverifiedCommissions() is True
+    
+    # Create a profile for the commissioner with _is_artist=False (default)
+    profile_factory_and_registry.createProfile(fresh_commissioner.address, False, sender=deployer)
+    commissioner_profile_address = profile_factory_and_registry.getProfile(fresh_commissioner.address)
+    commissioner_profile = project.Profile.at(commissioner_profile_address)
+    
+    # Profile should be created as non-artist
+    assert commissioner_profile.isArtist() is False
+    assert commissioner_profile.owner() == fresh_commissioner.address
+    
+    # Create a profile for other_user with default _is_artist (should be False)
+    profile_factory_and_registry.createProfile(fresh_other_user.address, sender=deployer)
+    other_profile_address = profile_factory_and_registry.getProfile(fresh_other_user.address)
+    other_profile = project.Profile.at(other_profile_address)
+    
+    # Profile should be created as non-artist (default)
+    assert other_profile.isArtist() is False
+    assert other_profile.owner() == fresh_other_user.address
+
+def test_create_profile_self_with_artist_flag(setup):
+    """Test creating a profile for yourself with the artist flag"""
+    profile_factory_and_registry = setup["profile_factory_and_registry"]
+    
+    # Use accounts that are guaranteed to be fresh for this specific test
+    # Since accounts may be reused across tests, first check if they already have profiles
+    available_accounts = []
+    
+    # Find two accounts that don't have profiles yet
+    for i in range(10, 20):  # Use high indices to avoid conflicts with other tests
+        try:
+            test_account = accounts.test_accounts[i]
+            if not profile_factory_and_registry.hasProfile(test_account.address):
+                available_accounts.append(test_account)
+                if len(available_accounts) >= 2:
+                    break
+        except IndexError:
+            break
+    
+    if len(available_accounts) < 2:
+        # If we can't find fresh accounts, skip this test
+        # The functionality is already tested in test_create_profile_with_artist_flag
+        pytest.skip("Could not find enough fresh accounts for test isolation")
+    
+    fresh_artist, fresh_user = available_accounts[0], available_accounts[1]
+    
+    # Fresh artist creates their own profile with _is_artist=True
+    from ape.utils import ZERO_ADDRESS as ZERO_ADDR
+    profile_factory_and_registry.createProfile(ZERO_ADDR, True, sender=fresh_artist)
+    profile_address = profile_factory_and_registry.getProfile(fresh_artist.address)
+    profile = project.Profile.at(profile_address)
+    
+    # Profile should be created as an artist
+    assert profile.isArtist() is True
+    assert profile.owner() == fresh_artist.address
+    
+    # Test creating for yourself without specifying address but with artist flag
+    profile_factory_and_registry.createProfile(ZERO_ADDR, True, sender=fresh_user)
+    user_profile_address = profile_factory_and_registry.getProfile(fresh_user.address)
+    user_profile = project.Profile.at(user_profile_address)
+    
+    # Profile should be created as an artist
+    assert user_profile.isArtist() is True
+    assert user_profile.owner() == fresh_user.address
+
 def test_update_artist_profile(setup):
     """Test updating artist profile settings"""
     profile_factory_and_registry = setup["profile_factory_and_registry"]
@@ -910,3 +994,7 @@ def test_minimal_art_piece_creation(setup):
     
     # This should work for minimal pieces
     assert profile.myArtCount() == 1 
+
+
+
+ 
