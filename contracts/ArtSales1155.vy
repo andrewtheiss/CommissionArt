@@ -23,15 +23,18 @@ owner: public(address)
 artEdition1155Template: public(address)  # Template for creating ArtEdition1155 contracts
 initialized: public(bool)  # Flag to track initialization for minimal proxy pattern
 
-# Artist ERC1155s for sale
+# Artist ERC1155s for sale - O(1) operations pattern (like Profile.myArt)
 artistErc1155sToSell: public(DynArray[address, 10000000])
 artistErc1155sToSellCount: public(uint256)
-artistPieceToErc1155Map: public(HashMap[address, address])
+artistErc1155sToSellExistsAndPositionOffsetByOne: public(HashMap[address, uint256])
+artistPieceToErc1155Map: public(HashMap[address, address])  # Maps art piece → edition
 artistProceedsAddress: public(address)
 
-# Collector ERC1155s
+# Collector ERC1155s - O(1) operations pattern (like Profile.myArt)
 collectorErc1155s: public(DynArray[address, 10000000])
 collectorErc1155Count: public(uint256)
+collectorErc1155sExistsAndPositionOffsetByOne: public(HashMap[address, uint256])
+collectorErc1155ToArtPieceMap: public(HashMap[address, address])  # Maps collector edition → original art piece
 
 # Sale Types (matching ArtEdition1155)
 SALE_TYPE_FOREVER: constant(uint256) = 0      # No deadline, mint forever
@@ -46,6 +49,7 @@ struct PhaseConfig:
 
 # Events
 event ERC1155Added: erc1155: address
+event CollectorERC1155Added: erc1155: address
 event SaleStarted:
     erc1155: indexed(address)
     saleType: uint256
@@ -100,37 +104,90 @@ def initialize(_profile_address: address, _owner: address, _profile_factory_and_
     factory: ProfileFactoryAndRegistry = ProfileFactoryAndRegistry(_profile_factory_and_registry)
     self.artEdition1155Template = staticcall factory.artEdition1155Template()
 
-# Artist ERC1155s
+# ================================================================================================
+# ARTIST ERC1155s FOR SALE - O(1) OPERATIONS (following Profile.myArt pattern)
+# ================================================================================================
+
 @external
 def addAdditionalMintErc1155(_erc1155: address):
+    """
+    Add an ERC1155 to the artist's for-sale list. Only the owner can call.
+    O(1) operation using offset mapping pattern.
+    """
     assert msg.sender == self.owner, "Only owner can call"
-    assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] == 0, "ERC1155 already added"
+    
     self.artistErc1155sToSell.append(_erc1155)
     self.artistErc1155sToSellCount += 1
+    self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] = self.artistErc1155sToSellCount
+    
     log ERC1155Added(erc1155=_erc1155)
 
 @external
 def removeAdditionalMintErc1155(_erc1155: address):
+    """
+    Remove an ERC1155 from the artist's for-sale list. Only the owner can call.
+    O(1) operation using swap-and-pop pattern like Profile.removeArtPiece.
+    """
     assert msg.sender == self.owner, "Only owner can call"
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.artistErc1155sToSell), bound=1000):
-        if self.artistErc1155sToSell[i] == _erc1155:
-            index = i
-            found = True
-            break
-    assert found, "ERC1155 not found"
-    if index < len(self.artistErc1155sToSell) - 1:
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] != 0, "ERC1155 not found"
+    
+    # Get the position (subtract 1 for actual index)
+    index: uint256 = self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] - 1
+    
+    # Swap with the last element and pop
+    if index < len(self.artistErc1155sToSell) - 1:  # Not the last element
+        # Get the last item
         last_item: address = self.artistErc1155sToSell[len(self.artistErc1155sToSell) - 1]
+        # Replace the item to remove with the last item
         self.artistErc1155sToSell[index] = last_item
+        # Update mapping for the moved item
+        self.artistErc1155sToSellExistsAndPositionOffsetByOne[last_item] = index + 1  # offset by 1
+    
+    # Pop the last item (now a duplicate if we did the swap)
     self.artistErc1155sToSell.pop()
     self.artistErc1155sToSellCount -= 1
+    # Clear mapping for the removed item
+    self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] = 0
+
+@view
+@external
+def artistErc1155Exists(_erc1155: address) -> bool:
+    """
+    Check if an ERC1155 exists in the artist's for-sale collection.
+    O(1) operation.
+    """
+    return self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] != 0
+
+@view
+@external
+def getArtistErc1155Position(_erc1155: address) -> uint256:
+    """
+    Get the position of an ERC1155 in the artistErc1155sToSell array (0-indexed).
+    O(1) operation.
+    """
+    if self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] == 0:
+        return max_value(uint256)  # Return max value to indicate not found
+    return self.artistErc1155sToSellExistsAndPositionOffsetByOne[_erc1155] - 1
+
+@view
+@external
+def getArtistErc1155AtIndex(_index: uint256) -> address:
+    """
+    Get the ERC1155 address at a specific index.
+    O(1) operation.
+    """
+    return self.artistErc1155sToSell[_index]
 
 @view
 @external
 def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    """
+    Get artist ERC1155s with forward pagination.
+    Following the same pattern as Profile.getArtPiecesByOffset.
+    """
     result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.artistErc1155sToSell)
+    arr_len: uint256 = self.artistErc1155sToSellCount
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
     start: uint256 = _page * _page_size
@@ -142,8 +199,12 @@ def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[a
 @view
 @external
 def getRecentAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    """
+    Get recent artist ERC1155s with reverse pagination.
+    Following the same pattern as Profile.getArtPiecesByOffset with reverse=True.
+    """
     result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.artistErc1155sToSell)
+    arr_len: uint256 = self.artistErc1155sToSellCount
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
     start: uint256 = arr_len - 1 - (_page * _page_size)
@@ -152,7 +213,242 @@ def getRecentAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynA
         result.append(self.artistErc1155sToSell[start - i])
     return result
 
-# Map Commission to Mint ERC1155
+@view
+@external
+def getArtistErc1155sByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    Returns a paginated list of artist ERC1155s using offset-based pagination.
+    Identical to Profile.getArtPiecesByOffset pattern.
+    """
+    result: DynArray[address, 50] = []
+    array_length: uint256 = self.artistErc1155sToSellCount
+    
+    # Handle empty array
+    if array_length == 0:
+        return result
+    
+    if not reverse:
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
+        
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(0, count, bound=50):
+            result.append(self.artistErc1155sToSell[_offset + i])
+    else:
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.artistErc1155sToSell[index])
+    
+    return result
+
+# ================================================================================================
+# COLLECTOR ERC1155s - O(1) OPERATIONS (following Profile.myArt pattern)
+# ================================================================================================
+
+@external
+def addCollectorErc1155(_erc1155: address, _original_art_piece: address = empty(address)):
+    """
+    Add an ERC1155 to the collector list. Only the owner can call.
+    O(1) operation using offset mapping pattern.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
+    assert self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] == 0, "ERC1155 already added"
+    
+    self.collectorErc1155s.append(_erc1155)
+    self.collectorErc1155Count += 1
+    self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] = self.collectorErc1155Count
+    
+    # Map collector edition back to original art piece if provided
+    if _original_art_piece != empty(address):
+        self.collectorErc1155ToArtPieceMap[_erc1155] = _original_art_piece
+    
+    log CollectorERC1155Added(erc1155=_erc1155)
+
+@external
+def removeCollectorErc1155(_erc1155: address):
+    """
+    Remove an ERC1155 from the collector list. Only the owner can call.
+    O(1) operation using swap-and-pop pattern like Profile.removeArtPiece.
+    """
+    assert msg.sender == self.owner, "Only owner can call"
+    assert self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] != 0, "ERC1155 not found"
+    
+    # Get the position (subtract 1 for actual index)
+    index: uint256 = self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] - 1
+    
+    # Swap with the last element and pop
+    if index < len(self.collectorErc1155s) - 1:  # Not the last element
+        # Get the last item
+        last_item: address = self.collectorErc1155s[len(self.collectorErc1155s) - 1]
+        # Replace the item to remove with the last item
+        self.collectorErc1155s[index] = last_item
+        # Update mapping for the moved item
+        self.collectorErc1155sExistsAndPositionOffsetByOne[last_item] = index + 1  # offset by 1
+    
+    # Pop the last item (now a duplicate if we did the swap)
+    self.collectorErc1155s.pop()
+    self.collectorErc1155Count -= 1
+    # Clear mappings for the removed item
+    self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] = 0
+    self.collectorErc1155ToArtPieceMap[_erc1155] = empty(address)
+
+@view
+@external
+def collectorErc1155Exists(_erc1155: address) -> bool:
+    """
+    Check if an ERC1155 exists in the collector collection.
+    O(1) operation.
+    """
+    return self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] != 0
+
+@view
+@external
+def getCollectorErc1155Position(_erc1155: address) -> uint256:
+    """
+    Get the position of an ERC1155 in the collectorErc1155s array (0-indexed).
+    O(1) operation.
+    """
+    if self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] == 0:
+        return max_value(uint256)  # Return max value to indicate not found
+    return self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] - 1
+
+@view
+@external
+def getCollectorErc1155AtIndex(_index: uint256) -> address:
+    """
+    Get the ERC1155 address at a specific index.
+    O(1) operation.
+    """
+    return self.collectorErc1155s[_index]
+
+@view
+@external
+def getCollectorErc1155OriginalArtPiece(_erc1155: address) -> address:
+    """
+    Get the original art piece for a collector ERC1155.
+    O(1) operation.
+    """
+    return self.collectorErc1155ToArtPieceMap[_erc1155]
+
+@view
+@external
+def getCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    """
+    Get collector ERC1155s with forward pagination.
+    """
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = self.collectorErc1155Count
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    start: uint256 = _page * _page_size
+    items: uint256 = min(min(_page_size, arr_len - start), 100)
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.collectorErc1155s[start + i])
+    return result
+
+@view
+@external
+def getRecentCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
+    """
+    Get recent collector ERC1155s with reverse pagination.
+    """
+    result: DynArray[address, 100] = []
+    arr_len: uint256 = self.collectorErc1155Count
+    if arr_len == 0 or _page * _page_size >= arr_len:
+        return result
+    start: uint256 = arr_len - 1 - (_page * _page_size)
+    items: uint256 = min(min(_page_size, start + 1), 100)
+    for i: uint256 in range(0, items, bound=100):
+        result.append(self.collectorErc1155s[start - i])
+    return result
+
+@view
+@external
+def getCollectorErc1155sByOffset(_offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]:
+    """
+    Returns a paginated list of collector ERC1155s using offset-based pagination.
+    Identical to Profile.getArtPiecesByOffset pattern.
+    """
+    result: DynArray[address, 50] = []
+    array_length: uint256 = self.collectorErc1155Count
+    
+    # Handle empty array
+    if array_length == 0:
+        return result
+    
+    if not reverse:
+        # FORWARD PAGINATION: _offset is starting index
+        if _offset >= array_length:
+            return result  # Offset beyond array bounds
+        
+        available_items: uint256 = array_length - _offset
+        count: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(0, count, bound=50):
+            result.append(self.collectorErc1155s[_offset + i])
+    else:
+        # REVERSE PAGINATION: _offset is items to skip from end
+        if _offset >= array_length:
+            return result  # Skip more items than exist
+            
+        # Calculate starting index (skip _offset items from the end)
+        start_index: uint256 = array_length - 1 - _offset
+        available_items: uint256 = start_index + 1  # Items available going backwards
+        count: uint256 = min(min(_count, available_items), 50)
+        
+        for i: uint256 in range(0, count, bound=50):
+            index: uint256 = start_index - i
+            result.append(self.collectorErc1155s[index])
+    
+    return result
+
+@view
+@external
+def getLatestCollectorErc1155s() -> DynArray[address, 5]:
+    """
+    Get the latest 5 collector ERC1155s.
+    """
+    result: DynArray[address, 5] = []
+    if self.collectorErc1155Count == 0:
+        return result
+    items_to_return: uint256 = min(5, self.collectorErc1155Count)
+    for i: uint256 in range(0, items_to_return, bound=5):
+        if i < self.collectorErc1155Count:
+            idx: uint256 = self.collectorErc1155Count - 1 - i
+            result.append(self.collectorErc1155s[idx])
+    return result
+
+@view
+@external
+def isCollectorErc1155(_erc1155: address) -> bool:
+    """
+    Check if an address is in the collector ERC1155s list.
+    O(1) operation now instead of O(n) loop.
+    """
+    return self.collectorErc1155sExistsAndPositionOffsetByOne[_erc1155] != 0
+
+# ================================================================================================
+# LEGACY/COMPATIBILITY FUNCTIONS REMOVED
+# Note: Legacy functions addArtistErc1155ToSell and removeArtistErc1155ToSell have been removed.
+# Use addAdditionalMintErc1155 and removeAdditionalMintErc1155 instead.
+# ================================================================================================
+
+# ================================================================================================
+# ART PIECE TO ERC1155 MAPPING FUNCTIONS
+# ================================================================================================
+
 @external
 def mapCommissionToMintErc1155(_commission: address, _erc1155: address):
     """
@@ -172,116 +468,14 @@ def removeMapCommissionToMintErc1155(_commission: address):
 @view
 @external
 def getMapCommissionToMintErc1155(_commission: address) -> address:
+    """
+    Get the ERC1155 mapped to a commission/art piece.
+    """
     return self.artistPieceToErc1155Map[_commission]
 
-# Collector ERC1155s
-@external
-def addCollectorErc1155(_erc1155: address):
-    """
-    Add an ERC1155 to the collector list. Only the owner can call.
-    """
-    assert msg.sender == self.owner, "Only owner can call"
-    assert _erc1155 not in self.collectorErc1155s, "ERC1155 already added"
-    self.collectorErc1155s.append(_erc1155)
-    self.collectorErc1155Count += 1
-
-@external
-def removeCollectorErc1155(_erc1155: address):
-    """
-    Remove an ERC1155 from the collector list. Only the owner can call.
-    """
-    assert msg.sender == self.owner, "Only owner can call"
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
-        if self.collectorErc1155s[i] == _erc1155:
-            index = i
-            found = True
-            break
-    assert found, "ERC1155 not found"
-    if index < len(self.collectorErc1155s) - 1:
-        last_item: address = self.collectorErc1155s[len(self.collectorErc1155s) - 1]
-        self.collectorErc1155s[index] = last_item
-    self.collectorErc1155s.pop()
-    self.collectorErc1155Count -= 1
-
-@view
-@external
-def getCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.collectorErc1155s)
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    start: uint256 = _page * _page_size
-    items: uint256 = min(min(_page_size, arr_len - start), 100)
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.collectorErc1155s[start + i])
-    return result
-
-@view
-@external
-def getRecentCollectorErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]:
-    result: DynArray[address, 100] = []
-    arr_len: uint256 = len(self.collectorErc1155s)
-    if arr_len == 0 or _page * _page_size >= arr_len:
-        return result
-    start: uint256 = arr_len - 1 - (_page * _page_size)
-    items: uint256 = min(min(_page_size, start + 1), 100)
-    for i: uint256 in range(0, items, bound=100):
-        result.append(self.collectorErc1155s[start - i])
-    return result
-
-@view
-@external
-def getLatestCollectorErc1155s() -> DynArray[address, 5]:
-    result: DynArray[address, 5] = []
-    if self.collectorErc1155Count == 0:
-        return result
-    items_to_return: uint256 = min(5, self.collectorErc1155Count)
-    for i: uint256 in range(0, items_to_return, bound=5):
-        if i < self.collectorErc1155Count:
-            idx: uint256 = self.collectorErc1155Count - 1 - i
-            result.append(self.collectorErc1155s[idx])
-    return result
-
-@view
-@external
-def isCollectorErc1155(_erc1155: address) -> bool:
-    for i: uint256 in range(0, len(self.collectorErc1155s), bound=1000):
-        if self.collectorErc1155s[i] == _erc1155:
-            return True
-    return False
-
-@external
-def addArtistErc1155ToSell(_erc1155: address):
-    """
-    Add an ERC1155 to the artist's for-sale list. Only the owner can call.
-    """
-    assert msg.sender == self.owner, "Only owner can call"
-    assert _erc1155 not in self.artistErc1155sToSell, "ERC1155 already added"
-    self.artistErc1155sToSell.append(_erc1155)
-    self.artistErc1155sToSellCount += 1
-    log ERC1155Added(erc1155=_erc1155)
-
-@external
-def removeArtistErc1155ToSell(_erc1155: address):
-    """
-    Remove an ERC1155 from the artist's for-sale list. Only the owner can call.
-    """
-    assert msg.sender == self.owner, "Only owner can call"
-    index: uint256 = 0
-    found: bool = False
-    for i: uint256 in range(0, len(self.artistErc1155sToSell), bound=1000):
-        if self.artistErc1155sToSell[i] == _erc1155:
-            index = i
-            found = True
-            break
-    assert found, "ERC1155 not found"
-    if index < len(self.artistErc1155sToSell) - 1:
-        last_item: address = self.artistErc1155sToSell[len(self.artistErc1155sToSell) - 1]
-        self.artistErc1155sToSell[index] = last_item
-    self.artistErc1155sToSell.pop()
-    self.artistErc1155sToSellCount -= 1
+# ================================================================================================
+# COMMISSION/PROFILE INTEGRATION
+# ================================================================================================
 
 @external
 def addMyCommission(_commission: address):
@@ -319,6 +513,10 @@ def getArtistProceedsAddress() -> address:
     Get the current proceeds address for this artist's sales.
     """
     return self.artistProceedsAddress
+
+# ================================================================================================
+# EDITION CREATION
+# ================================================================================================
 
 @external
 def createEditionFromArtPiece(
@@ -362,9 +560,11 @@ def createEditionFromArtPiece(
     # Create the single edition with the specified parameters and sale configuration
     extcall edition.createEdition(_mint_price, _max_supply, _royalty_percent, _sale_type, _phases)
     
-    # Add to artist's ERC1155s for sale
-    self.artistErc1155sToSell.append(edition_contract)
-    self.artistErc1155sToSellCount += 1
+    # Add to artist's ERC1155s for sale using O(1) operation
+    if self.artistErc1155sToSellExistsAndPositionOffsetByOne[edition_contract] == 0:
+        self.artistErc1155sToSell.append(edition_contract)
+        self.artistErc1155sToSellCount += 1
+        self.artistErc1155sToSellExistsAndPositionOffsetByOne[edition_contract] = self.artistErc1155sToSellCount
     
     # Map the art piece to this edition
     self.artistPieceToErc1155Map[_art_piece] = edition_contract
@@ -381,7 +581,9 @@ def hasEditions(_art_piece: address) -> bool:
     """
     return self.artistPieceToErc1155Map[_art_piece] != empty(address)
 
-# Sales Management Functions (Simplified - no token IDs needed)
+# ================================================================================================
+# SALES MANAGEMENT FUNCTIONS
+# ================================================================================================
 
 @external
 def startSaleForEdition(_edition_address: address):
@@ -390,7 +592,7 @@ def startSaleForEdition(_edition_address: address):
     Only the owner can call this.
     """
     assert msg.sender == self.owner, "Only owner can start sales"
-    assert _edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_edition_address] != 0, "Edition not managed by this contract"
     
     edition: ArtEdition1155 = ArtEdition1155(_edition_address)
     extcall edition.startSale()
@@ -408,7 +610,7 @@ def pauseSaleForEdition(_edition_address: address):
     Only the owner can call this.
     """
     assert msg.sender == self.owner, "Only owner can pause sales"
-    assert _edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_edition_address] != 0, "Edition not managed by this contract"
     
     edition: ArtEdition1155 = ArtEdition1155(_edition_address)
     extcall edition.pauseSale()
@@ -422,7 +624,7 @@ def resumeSaleForEdition(_edition_address: address):
     Only the owner can call this.
     """
     assert msg.sender == self.owner, "Only owner can resume sales"
-    assert _edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_edition_address] != 0, "Edition not managed by this contract"
     
     edition: ArtEdition1155 = ArtEdition1155(_edition_address)
     extcall edition.resumeSale()
@@ -440,7 +642,7 @@ def batchStartSales(_edition_addresses: DynArray[address, 10]):
     
     for i: uint256 in range(len(_edition_addresses), bound=10):
         edition_address: address = _edition_addresses[i]
-        assert edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+        assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[edition_address] != 0, "Edition not managed by this contract"
         
         edition: ArtEdition1155 = ArtEdition1155(edition_address)
         extcall edition.startSale()
@@ -462,7 +664,7 @@ def batchPauseSales(_edition_addresses: DynArray[address, 10]):
     
     for i: uint256 in range(len(_edition_addresses), bound=10):
         edition_address: address = _edition_addresses[i]
-        assert edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+        assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[edition_address] != 0, "Edition not managed by this contract"
         
         edition: ArtEdition1155 = ArtEdition1155(edition_address)
         extcall edition.pauseSale()
@@ -479,14 +681,16 @@ def batchResumeSales(_edition_addresses: DynArray[address, 10]):
     
     for i: uint256 in range(len(_edition_addresses), bound=10):
         edition_address: address = _edition_addresses[i]
-        assert edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+        assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[edition_address] != 0, "Edition not managed by this contract"
         
         edition: ArtEdition1155 = ArtEdition1155(edition_address)
         extcall edition.resumeSale()
         
         log SaleResumed(erc1155=edition_address)
 
-# View Functions for Sales Management (Simplified)
+# ================================================================================================
+# VIEW FUNCTIONS FOR SALES MANAGEMENT
+# ================================================================================================
 
 @view
 @external
@@ -495,7 +699,7 @@ def getSaleInfo(_edition_address: address) -> (uint256, uint256, uint256, uint25
     Get sale information for an edition (always token ID 1).
     Returns (saleType, currentPrice, currentSupply, maxSupply, isPaused, currentPhase)
     """
-    assert _edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_edition_address] != 0, "Edition not managed by this contract"
     
     edition: ArtEdition1155 = ArtEdition1155(_edition_address)
     return staticcall edition.getSaleInfo()
@@ -506,7 +710,7 @@ def getPhaseInfo(_edition_address: address) -> DynArray[PhaseConfig, 5]:
     """
     Get phase configuration for an edition (always token ID 1).
     """
-    assert _edition_address in self.artistErc1155sToSell, "Edition not managed by this contract"
+    assert self.artistErc1155sToSellExistsAndPositionOffsetByOne[_edition_address] != 0, "Edition not managed by this contract"
     
     edition: ArtEdition1155 = ArtEdition1155(_edition_address)
     return staticcall edition.getPhases()
@@ -522,7 +726,7 @@ def getAllActiveSales(_page: uint256, _page_size: uint256) -> DynArray[address, 
     """
     result: DynArray[address, 20] = []
     
-    arr_len: uint256 = len(self.artistErc1155sToSell)
+    arr_len: uint256 = self.artistErc1155sToSellCount
     if arr_len == 0 or _page * _page_size >= arr_len:
         return result
     
@@ -547,7 +751,7 @@ def isSaleActive(_edition_address: address) -> bool:
     Check if a sale is currently active (not paused and edition exists).
     Much simpler now since each edition only has one token.
     """
-    if _edition_address not in self.artistErc1155sToSell:
+    if self.artistErc1155sToSellExistsAndPositionOffsetByOne[_edition_address] == 0:
         return False
     
     edition: ArtEdition1155 = ArtEdition1155(_edition_address)
@@ -562,7 +766,7 @@ def getAllManagedEditions() -> DynArray[address, 100]:
     Use for admin interfaces to see all editions.
     """
     result: DynArray[address, 100] = []
-    items_to_return: uint256 = min(100, len(self.artistErc1155sToSell))
+    items_to_return: uint256 = min(100, self.artistErc1155sToSellCount)
     
     for i: uint256 in range(0, items_to_return, bound=100):
         result.append(self.artistErc1155sToSell[i])

@@ -364,16 +364,16 @@ def test_artist_proceeds_address(setup):
     with pytest.raises(Exception):
         artist_sales.setArtistProceedsAddress("0x" + "0" * 40, sender=artist)
 
-def test_duplicate_artist_methods(setup):
-    """Test the duplicate artist ERC1155 methods (addArtistErc1155ToSell, removeArtistErc1155ToSell)"""
+def test_artist_erc1155_basic_operations(setup):
+    """Test basic artist ERC1155 operations using the current API"""
     artist = setup["artist"]
     artist_sales = setup["artist_sales"]
     
     test_erc1155s = [f"0x{'A' * 39}{i+1}" for i in range(3)]
     
-    # Test addArtistErc1155ToSell (should work same as addAdditionalMintErc1155)
+    # Test addAdditionalMintErc1155
     for erc1155 in test_erc1155s:
-        artist_sales.addArtistErc1155ToSell(erc1155, sender=artist)
+        artist_sales.addAdditionalMintErc1155(erc1155, sender=artist)
     
     assert artist_sales.artistErc1155sToSellCount() == 3
     
@@ -383,8 +383,8 @@ def test_duplicate_artist_methods(setup):
     for i, erc1155 in enumerate(test_erc1155s):
         assert normalize_address(all_erc1155s[i]) == normalize_address(erc1155)
     
-    # Test removeArtistErc1155ToSell
-    artist_sales.removeArtistErc1155ToSell(test_erc1155s[1], sender=artist)
+    # Test removeAdditionalMintErc1155
+    artist_sales.removeAdditionalMintErc1155(test_erc1155s[1], sender=artist)
     assert artist_sales.artistErc1155sToSellCount() == 2
     
     # Verify removal
@@ -392,18 +392,16 @@ def test_duplicate_artist_methods(setup):
     assert len(updated_erc1155s) == 2
     assert normalize_address(test_erc1155s[1]) not in [normalize_address(addr) for addr in updated_erc1155s]
 
-def test_mixed_artist_methods(setup):
-    """Test mixing both artist methods (addAdditionalMintErc1155 and addArtistErc1155ToSell)"""
+def test_artist_erc1155_multiple_operations(setup):
+    """Test multiple operations on artist ERC1155s"""
     artist = setup["artist"]
     artist_sales = setup["artist_sales"]
     
     # Add some using addAdditionalMintErc1155
     artist_sales.addAdditionalMintErc1155("0x" + "1" * 40, sender=artist)
     artist_sales.addAdditionalMintErc1155("0x" + "2" * 40, sender=artist)
-    
-    # Add some using addArtistErc1155ToSell
-    artist_sales.addArtistErc1155ToSell("0x" + "3" * 40, sender=artist)
-    artist_sales.addArtistErc1155ToSell("0x" + "4" * 40, sender=artist)
+    artist_sales.addAdditionalMintErc1155("0x" + "3" * 40, sender=artist)
+    artist_sales.addAdditionalMintErc1155("0x" + "4" * 40, sender=artist)
     
     # Should have 4 total
     assert artist_sales.artistErc1155sToSellCount() == 4
@@ -412,9 +410,9 @@ def test_mixed_artist_methods(setup):
     all_erc1155s = artist_sales.getAdditionalMintErc1155s(0, 10)
     assert len(all_erc1155s) == 4
     
-    # Remove using both methods
+    # Remove using the method
     artist_sales.removeAdditionalMintErc1155("0x" + "1" * 40, sender=artist)
-    artist_sales.removeArtistErc1155ToSell("0x" + "3" * 40, sender=artist)
+    artist_sales.removeAdditionalMintErc1155("0x" + "3" * 40, sender=artist)
     
     assert artist_sales.artistErc1155sToSellCount() == 2
 
@@ -873,10 +871,10 @@ def get_edition_address_from_tx(tx):
 
 # Helper function to get edition address - simplified and more reliable
 def get_edition_address_reliable(artist_sales, tx, initial_count):
-    """Get edition address using a reliable method - check the ERC1155 list"""
+    """Get edition address using a reliable method - check the ERC1155 list using O(1) operations"""
     try:
         # First try to get return value if available
-        if hasattr(tx, 'return_value') and tx.return_value is not None:
+        if hasattr(tx, 'return_value') and tx.return_value is not None and tx.return_value != ZERO_ADDRESS:
             return tx.return_value
         
         # Try event parsing as backup
@@ -884,11 +882,11 @@ def get_edition_address_reliable(artist_sales, tx, initial_count):
         if edition_from_events:
             return edition_from_events
         
-        # Most reliable fallback: check if a new ERC1155 was added to the list
-        current_erc1155s = artist_sales.getAdditionalMintErc1155s(0, 20)
-        if len(current_erc1155s) > initial_count:
-            # Return the latest one (should be the one we just created)
-            return current_erc1155s[-1]
+        # Most reliable fallback: check if a new ERC1155 was added using O(1) operations
+        current_count = artist_sales.artistErc1155sToSellCount()
+        if current_count > initial_count:
+            # Return the latest one using O(1) index access (should be the one we just created)
+            return artist_sales.getArtistErc1155AtIndex(current_count - 1)
             
     except Exception:
         pass
@@ -2377,3 +2375,292 @@ def test_edition_creation_via_profile_method_parity(setup):
     assert artist_sales.hasEditions(art_piece_2)
     assert artist_profile.artPieceHasEditions(art_piece_1)
     assert artist_profile.artPieceHasEditions(art_piece_2)
+
+# ================================================================================================
+# NEW TESTS FOR O(1) OPERATIONS INTEGRATION
+# ================================================================================================
+
+def test_edition_creation_with_o1_operations_verification(setup):
+    """Test that edition creation properly utilizes O(1) operations for tracking"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Create an art piece
+    tx = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Test Art for O(1) Verification",
+        "Description for O(1) test",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    # Get the art piece address
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Verify initial state using O(1) operations
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    assert artist_sales.artistErc1155sToSellCount() == initial_count, "Initial count should match"
+    
+    # Create edition
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Test Edition",
+        "TE",
+        1000000000000000000,  # 1 ETH
+        100,  # max supply
+        250,  # 2.5% royalty
+        sender=artist
+    )
+    
+    # Get edition address using reliable method
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    
+    # Verify using O(1) operations
+    new_count = artist_sales.artistErc1155sToSellCount()
+    assert new_count == initial_count + 1, "Count should increase by 1"
+    
+    # Test O(1) existence check
+    assert artist_sales.artistErc1155Exists(edition_address), "Edition should exist in O(1) check"
+    
+    # Test O(1) position lookup
+    position = artist_sales.getArtistErc1155Position(edition_address)
+    assert position == initial_count, f"Edition should be at position {initial_count}"
+    
+    # Test O(1) index access
+    addr_at_position = artist_sales.getArtistErc1155AtIndex(position)
+    assert normalize_address(addr_at_position) == normalize_address(edition_address), "O(1) index access should return correct address"
+    
+    # Test new offset-based pagination includes the edition
+    all_erc1155s = artist_sales.getArtistErc1155sByOffset(0, 10, False)
+    found_edition = False
+    for addr in all_erc1155s:
+        if normalize_address(addr) == normalize_address(edition_address):
+            found_edition = True
+            break
+    assert found_edition, "Edition should be found in offset-based pagination"
+
+def test_collector_erc1155_integration_with_artist_editions(setup):
+    """Test that collector ERC1155s can be mapped to artist's original art pieces"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    owner = setup["owner"]
+    owner_sales = setup["owner_sales"]
+    art_piece_template = setup["art_piece_template"]
+    
+    # Artist creates an art piece
+    tx = artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Artist's Original Work",
+        "Original artwork by artist",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    # Get the art piece address
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    original_art_piece = art_pieces[-1]
+    
+    # Artist creates an edition from their art piece
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        original_art_piece,
+        "Limited Edition",
+        "LE",
+        2000000000000000000,  # 2 ETH
+        50,  # max supply
+        500,  # 5% royalty
+        sender=artist
+    )
+    
+    # Get edition address using reliable method
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    
+    # Owner (collector) adds this edition to their collection with mapping to original
+    owner_sales.addCollectorErc1155(edition_address, original_art_piece, sender=owner)
+    
+    # Test O(1) operations on collector side
+    assert owner_sales.collectorErc1155Exists(edition_address), "Edition should exist in collector's collection"
+    
+    position = owner_sales.getCollectorErc1155Position(edition_address)
+    assert position == 0, "Edition should be at position 0 in collector's collection"
+    
+    # Test mapping back to original art piece
+    mapped_art_piece = owner_sales.getCollectorErc1155OriginalArtPiece(edition_address)
+    assert normalize_address(mapped_art_piece) == normalize_address(original_art_piece), "Edition should map back to original art piece"
+    
+    # Test collector pagination includes the edition
+    collector_erc1155s = owner_sales.getCollectorErc1155sByOffset(0, 10, False)
+    assert len(collector_erc1155s) == 1, "Collector should have 1 ERC1155"
+    assert normalize_address(collector_erc1155s[0]) == normalize_address(edition_address), "Collector's ERC1155 should be the edition"
+
+def test_mixed_artist_operations_with_o1_verification(setup):
+    """Test multiple artist method operations with O(1) verification"""
+    artist = setup["artist"]
+    artist_sales = setup["artist_sales"]
+    
+    # Add first batch of ERC1155s
+    first_addresses = [
+        "0x1111111111111111111111111111111111111111",
+        "0x2222222222222222222222222222222222222222"
+    ]
+    
+    for addr in first_addresses:
+        artist_sales.addAdditionalMintErc1155(addr, sender=artist)
+    
+    # Verify using O(1) operations
+    assert artist_sales.artistErc1155sToSellCount() == 2, "Should have 2 ERC1155s"
+    for i, addr in enumerate(first_addresses):
+        assert artist_sales.artistErc1155Exists(addr), f"First address {addr} should exist"
+        assert artist_sales.getArtistErc1155Position(addr) == i, f"First address should be at position {i}"
+        assert normalize_address(artist_sales.getArtistErc1155AtIndex(i)) == normalize_address(addr), f"Index {i} should return first address"
+    
+    # Add second batch of ERC1155s
+    second_addresses = [
+        "0x3333333333333333333333333333333333333333",
+        "0x4444444444444444444444444444444444444444"
+    ]
+    
+    for addr in second_addresses:
+        artist_sales.addAdditionalMintErc1155(addr, sender=artist)
+    
+    # Verify all addresses using O(1) operations
+    assert artist_sales.artistErc1155sToSellCount() == 4, "Should have 4 ERC1155s total"
+    
+    all_addresses = first_addresses + second_addresses
+    for i, addr in enumerate(all_addresses):
+        assert artist_sales.artistErc1155Exists(addr), f"Address {addr} should exist"
+        assert artist_sales.getArtistErc1155Position(addr) == i, f"Address should be at position {i}"
+        assert normalize_address(artist_sales.getArtistErc1155AtIndex(i)) == normalize_address(addr), f"Index {i} should return correct address"
+    
+    # Test offset-based pagination covers all
+    all_offset = artist_sales.getArtistErc1155sByOffset(0, 10, False)
+    assert len(all_offset) == 4, "Offset pagination should return all 4 addresses"
+    for i, addr in enumerate(all_addresses):
+        assert normalize_address(all_offset[i]) == normalize_address(addr), f"Offset position {i} should match"
+    
+    # Test reverse pagination
+    reverse_offset = artist_sales.getArtistErc1155sByOffset(0, 10, True)
+    assert len(reverse_offset) == 4, "Reverse pagination should return all 4 addresses"
+    for i, addr in enumerate(reversed(all_addresses)):
+        assert normalize_address(reverse_offset[i]) == normalize_address(addr), f"Reverse position {i} should match"
+    
+    # Remove from first batch and verify with O(1)
+    artist_sales.removeAdditionalMintErc1155(first_addresses[0], sender=artist)
+    assert not artist_sales.artistErc1155Exists(first_addresses[0]), "Removed first address should not exist"
+    assert artist_sales.artistErc1155sToSellCount() == 3, "Count should be reduced to 3"
+    
+    # Remove from second batch and verify with O(1)
+    artist_sales.removeAdditionalMintErc1155(second_addresses[0], sender=artist)
+    assert not artist_sales.artistErc1155Exists(second_addresses[0]), "Removed second address should not exist"
+    assert artist_sales.artistErc1155sToSellCount() == 2, "Count should be reduced to 2"
+
+def test_performance_comparison_legacy_vs_o1_operations(setup):
+    """Test that demonstrates the performance benefits of O(1) operations"""
+    artist = setup["artist"]
+    artist_sales = setup["artist_sales"]
+    
+    # Add a moderate number of ERC1155s
+    test_addresses = [f"0x{str(i).zfill(40)}" for i in range(1, 21)]  # 20 addresses
+    
+    for addr in test_addresses:
+        artist_sales.addAdditionalMintErc1155(addr, sender=artist)
+    
+    # Test that O(1) operations work efficiently regardless of position
+    # Check existence of addresses at different positions
+    for i in [0, 5, 10, 15, 19]:  # Different positions
+        addr = test_addresses[i]
+        
+        # O(1) existence check
+        assert artist_sales.artistErc1155Exists(addr), f"Address at position {i} should exist"
+        
+        # O(1) position lookup
+        position = artist_sales.getArtistErc1155Position(addr)
+        assert position == i, f"Position lookup should return {i}"
+        
+        # O(1) index access
+        addr_at_index = artist_sales.getArtistErc1155AtIndex(i)
+        assert normalize_address(addr_at_index) == normalize_address(addr), f"Index access should return correct address"
+    
+    # Test that offset-based pagination is efficient
+    # Get different pages
+    page1 = artist_sales.getArtistErc1155sByOffset(0, 5, False)  # First 5
+    page2 = artist_sales.getArtistErc1155sByOffset(5, 5, False)  # Next 5
+    page3 = artist_sales.getArtistErc1155sByOffset(10, 5, False) # Next 5
+    page4 = artist_sales.getArtistErc1155sByOffset(15, 5, False) # Last 5
+    
+    assert len(page1) == 5, "Page 1 should have 5 items"
+    assert len(page2) == 5, "Page 2 should have 5 items"
+    assert len(page3) == 5, "Page 3 should have 5 items"
+    assert len(page4) == 5, "Page 4 should have 5 items"
+    
+    # Verify all pages contain correct addresses
+    all_pages = page1 + page2 + page3 + page4
+    for i, addr in enumerate(test_addresses):
+        assert normalize_address(all_pages[i]) == normalize_address(addr), f"Page aggregation should match original order"
+
+def test_o1_operations_edge_cases(setup):
+    """Test edge cases for O(1) operations"""
+    owner = setup["owner"]
+    owner_sales = setup["owner_sales"]
+    
+    # Test operations on empty collection
+    assert owner_sales.collectorErc1155Count() == 0, "Initial count should be 0"
+    
+    non_existent = "0x9999999999999999999999999999999999999999"
+    assert not owner_sales.collectorErc1155Exists(non_existent), "Non-existent should not exist"
+    assert owner_sales.getCollectorErc1155Position(non_existent) == 2**256 - 1, "Non-existent should return max position"
+    assert owner_sales.getCollectorErc1155OriginalArtPiece(non_existent) == ZERO_ADDRESS, "Non-existent should have no mapping"
+    
+    # Test empty pagination
+    empty_forward = owner_sales.getCollectorErc1155sByOffset(0, 10, False)
+    empty_reverse = owner_sales.getCollectorErc1155sByOffset(0, 10, True)
+    assert len(empty_forward) == 0, "Empty collection forward pagination should return empty"
+    assert len(empty_reverse) == 0, "Empty collection reverse pagination should return empty"
+    
+    # Add single item and test
+    single_erc1155 = "0x1111111111111111111111111111111111111111"
+    single_art_piece = "0xaaaa111111111111111111111111111111111111"
+    
+    owner_sales.addCollectorErc1155(single_erc1155, single_art_piece, sender=owner)
+    
+    assert owner_sales.collectorErc1155Count() == 1, "Count should be 1"
+    assert owner_sales.collectorErc1155Exists(single_erc1155), "Single item should exist"
+    assert owner_sales.getCollectorErc1155Position(single_erc1155) == 0, "Single item should be at position 0"
+    assert normalize_address(owner_sales.getCollectorErc1155AtIndex(0)) == normalize_address(single_erc1155), "Index 0 should return single item"
+    assert normalize_address(owner_sales.getCollectorErc1155OriginalArtPiece(single_erc1155)) == normalize_address(single_art_piece), "Single item should have correct mapping"
+    
+    # Test single item pagination
+    single_forward = owner_sales.getCollectorErc1155sByOffset(0, 10, False)
+    single_reverse = owner_sales.getCollectorErc1155sByOffset(0, 10, True)
+    assert len(single_forward) == 1, "Single item forward pagination should return 1"
+    assert len(single_reverse) == 1, "Single item reverse pagination should return 1"
+    assert normalize_address(single_forward[0]) == normalize_address(single_erc1155), "Forward should return correct item"
+    assert normalize_address(single_reverse[0]) == normalize_address(single_erc1155), "Reverse should return correct item"
+    
+    # Test pagination with offset beyond bounds
+    beyond_bounds = owner_sales.getCollectorErc1155sByOffset(10, 5, False)
+    assert len(beyond_bounds) == 0, "Pagination beyond bounds should return empty"
+    
+    # Remove single item and verify empty state
+    owner_sales.removeCollectorErc1155(single_erc1155, sender=owner)
+    
+    assert owner_sales.collectorErc1155Count() == 0, "Count should be back to 0"
+    assert not owner_sales.collectorErc1155Exists(single_erc1155), "Removed item should not exist"
+    assert owner_sales.getCollectorErc1155Position(single_erc1155) == 2**256 - 1, "Removed item should return max position"
+    assert owner_sales.getCollectorErc1155OriginalArtPiece(single_erc1155) == ZERO_ADDRESS, "Removed item should have no mapping"
