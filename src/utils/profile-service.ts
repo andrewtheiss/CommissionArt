@@ -40,7 +40,7 @@ class ProfileService {
 
   /**
    * Create a new profile for the current wallet
-   * @param isArtist Whether to create the profile as an artist
+   * @param isArtist Whether to create the profile as an artist (sets during creation)
    * @returns Promise<string> Address of the created profile
    */
   public async createProfile(isArtist: boolean = false): Promise<string> {
@@ -65,29 +65,15 @@ class ProfileService {
       const hubContract = new ethers.Contract(hubAddress, hubAbi, signer);
       console.log("Creating profile via ProfileFactoryAndRegistry at:", hubAddress);
       
-      // Call createProfile with no parameters (defaults to msg.sender)
-      // Use the specific function signature to avoid ambiguity
-      const tx = await hubContract['createProfile()']();
+      // Call createProfile with the artist parameter
+      // Use the two-parameter version: createProfile(_owner, _is_artist)
+      // Pass empty address for _owner (defaults to msg.sender) and isArtist for _is_artist
+      const tx = await hubContract['createProfile(address,bool)'](ethers.ZeroAddress, isArtist);
       await tx.wait();
 
       // Get the newly created profile address
       const userAddress = await signer.getAddress();
       const profileAddress = await hubContract.getProfile(userAddress);
-      
-      // If the user wants to be an artist, set that status
-      if (isArtist && profileAddress !== ethers.ZeroAddress) {
-        try {
-          const profileContract = await this.getMyProfile();
-          if (profileContract) {
-            const artistTx = await profileContract.setIsArtist(true);
-            await artistTx.wait();
-            console.log("Artist status set successfully");
-          }
-        } catch (artistError) {
-          console.warn("Profile created but failed to set artist status:", artistError);
-          // Don't throw here, profile creation was successful
-        }
-      }
       
       return profileAddress;
     } catch (error) {

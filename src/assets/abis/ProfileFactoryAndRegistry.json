@@ -201,6 +201,22 @@
   {
     "inputs": [
       {
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "name": "_is_artist",
+        "type": "bool"
+      }
+    ],
+    "name": "createProfile",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_art_piece_template",
         "type": "address"
       },

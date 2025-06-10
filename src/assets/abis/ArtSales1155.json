@@ -15,6 +15,18 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": false,
+        "name": "erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "CollectorERC1155Added",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": true,
         "name": "erc1155",
         "type": "address"
@@ -121,6 +133,57 @@
   {
     "inputs": [
       {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "artistErc1155Exists",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "getArtistErc1155Position",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getArtistErc1155AtIndex",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "name": "_page",
         "type": "uint256"
       },
@@ -155,6 +218,235 @@
       {
         "name": "",
         "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_offset",
+        "type": "uint256"
+      },
+      {
+        "name": "_count",
+        "type": "uint256"
+      },
+      {
+        "name": "reverse",
+        "type": "bool"
+      }
+    ],
+    "name": "getArtistErc1155sByOffset",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "addCollectorErc1155",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      },
+      {
+        "name": "_original_art_piece",
+        "type": "address"
+      }
+    ],
+    "name": "addCollectorErc1155",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "removeCollectorErc1155",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "collectorErc1155Exists",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "getCollectorErc1155Position",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCollectorErc1155AtIndex",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "getCollectorErc1155OriginalArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCollectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "getRecentCollectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_offset",
+        "type": "uint256"
+      },
+      {
+        "name": "_count",
+        "type": "uint256"
+      },
+      {
+        "name": "reverse",
+        "type": "bool"
+      }
+    ],
+    "name": "getCollectorErc1155sByOffset",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getLatestCollectorErc1155s",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "isCollectorErc1155",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -203,125 +495,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_erc1155",
-        "type": "address"
-      }
-    ],
-    "name": "addCollectorErc1155",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_erc1155",
-        "type": "address"
-      }
-    ],
-    "name": "removeCollectorErc1155",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_page",
-        "type": "uint256"
-      },
-      {
-        "name": "_page_size",
-        "type": "uint256"
-      }
-    ],
-    "name": "getCollectorErc1155s",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_page",
-        "type": "uint256"
-      },
-      {
-        "name": "_page_size",
-        "type": "uint256"
-      }
-    ],
-    "name": "getRecentCollectorErc1155s",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getLatestCollectorErc1155s",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_erc1155",
-        "type": "address"
-      }
-    ],
-    "name": "isCollectorErc1155",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_erc1155",
-        "type": "address"
-      }
-    ],
-    "name": "addArtistErc1155ToSell",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "name": "_erc1155",
-        "type": "address"
-      }
-    ],
-    "name": "removeArtistErc1155ToSell",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -841,6 +1014,23 @@
         "type": "address"
       }
     ],
+    "name": "artistErc1155sToSellExistsAndPositionOffsetByOne",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
     "name": "artistPieceToErc1155Map",
     "outputs": [
       {
@@ -887,6 +1077,40 @@
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "collectorErc1155sExistsAndPositionOffsetByOne",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "collectorErc1155ToArtPieceMap",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

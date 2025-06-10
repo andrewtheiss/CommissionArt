@@ -6,6 +6,7 @@ import ArtDisplay from '../ArtDisplay';
 import { safeRevokeUrl, createImageDataUrl } from '../../utils/TokenURIDecoder';
 import ArtPieceDebugInfo from './ArtPieceDebugInfo';
 import CreateArtEdition from './CreateArtEdition';
+import MintArtEdition from './MintArtEdition';
 import abiLoader from '../../utils/abiLoader';
 import ethersService from '../../utils/ethers-service';
 import './Account.css';
@@ -67,11 +68,20 @@ const Account: React.FC = () => {
   const [showEditionModal, setShowEditionModal] = useState<boolean>(false);
   const [selectedArtPiece, setSelectedArtPiece] = useState<string | null>(null);
 
+  // Mint edition modal states
+  const [showMintModal, setShowMintModal] = useState<boolean>(false);
+  const [selectedMintArtPiece, setSelectedMintArtPiece] = useState<string | null>(null);
+  const [artEditions, setArtEditions] = useState<{[artPieceAddress: string]: string | null}>({});
+
   // For wallet connection
   const isTrulyConnected = isConnected && !!walletAddress;
 
   // Add debug mode toggle
   const [debugMode, setDebugMode] = useState<boolean>(getInitialDebugMode());
+
+  // Network change tracking
+  const [lastNetworkType, setLastNetworkType] = useState<string>(networkType);
+  const [lastWalletAddress, setLastWalletAddress] = useState<string | null>(walletAddress);
 
   // Toggle debug mode function
   const toggleDebugMode = () => {
@@ -79,6 +89,55 @@ const Account: React.FC = () => {
     setDebugMode(newMode);
     localStorage.setItem(DEBUG_MODE_KEY, String(newMode));
   };
+
+  // NETWORK CHANGE HANDLER - Reset all state when network or wallet changes
+  useEffect(() => {
+    const networkChanged = lastNetworkType !== networkType;
+    const walletChanged = lastWalletAddress !== walletAddress;
+    
+    if (networkChanged || walletChanged) {
+      console.log(`🔄 Network/Wallet Change Detected:`);
+      console.log(`  Network: ${lastNetworkType} → ${networkType}`);
+      console.log(`  Wallet: ${lastWalletAddress} → ${walletAddress}`);
+      console.log(`  🧹 Clearing all component state...`);
+      
+      // Reset ALL component state
+      setProfileAddress(null);
+      setProfile(null);
+      setHasProfile(false);
+      setIsArtist(false);
+      setProfileChecking(true);
+      setProfileDataLoading(false);
+      setProfileImageLoading(false);
+      setError(null);
+      setConfigError(null);
+      
+      // Reset data arrays
+      setRecentCommissions([]);
+      setRecentArtPieces([]);
+      setTotalArtPieces(0);
+      setArtPieceDetails({});
+      setArtEditions({});
+      setProfileImage(null);
+      
+      // Reset loading states
+      setLoadingCommissions(false);
+      setLoadingArtPieces(false);
+      
+      // Reset modal states
+      setShowEditionModal(false);
+      setShowMintModal(false);
+      setSelectedArtPiece(null);
+      setSelectedMintArtPiece(null);
+      setCreatingProfile(false);
+      
+      // Update tracking variables
+      setLastNetworkType(networkType);
+      setLastWalletAddress(walletAddress);
+      
+      console.log(`✅ State cleared, will re-check profile status`);
+    }
+  }, [networkType, walletAddress, lastNetworkType, lastWalletAddress]);
 
   const handleDisconnect = () => {
     if (window.ethereum && window.ethereum.removeAllListeners) {
@@ -418,41 +477,21 @@ const Account: React.FC = () => {
           // First try to get format if available
           try {
             format = await contract.tokenURI_data_format();
-            console.log(`Art piece ${address.substring(0, 6)}... format: ${format}`);
           } catch (formatErr) {
-            console.log(`No direct format data for art piece ${address.substring(0, 6)}...`);
             // Format will be detected later from the image data
           }
           
           // Try to get tokenURIData first
           try {
             tokenURIData = await contract.getTokenURIData();
-            console.log(`Got tokenURIData for art piece ${address.substring(0, 6)}..., length: ${tokenURIData ? tokenURIData.length : 0} bytes`);
-            
-            // Log the first few bytes to help with debugging
-            if (tokenURIData && tokenURIData.length > 0) {
-              const firstBytes = Array.from(tokenURIData.slice(0, 16))
-                .map((b: unknown) => (b as number).toString(16).padStart(2, '0'))
-                .join(' ');
-              console.log(`First bytes: ${firstBytes}`);
-            }
           } catch (err) {
-            console.log(`No tokenURIData for art piece ${address.substring(0, 6)}...`);
+            // No tokenURIData available
           }
           
           // If that fails, try legacy getImageData
           if (!tokenURIData) {
             try {
               imageData = await contract.getImageData();
-              console.log(`Got imageData for art piece ${address.substring(0, 6)}..., length: ${imageData ? imageData.length : 0} bytes`);
-              
-              // Log the first few bytes to help with debugging
-              if (imageData && imageData.length > 0) {
-                const firstBytes = Array.from(imageData.slice(0, 16))
-                  .map((b: unknown) => (b as number).toString(16).padStart(2, '0'))
-                  .join(' ');
-                console.log(`First bytes: ${firstBytes}`);
-              }
             } catch (err) {
               console.error(`Error getting image data for ${address}:`, err);
             }
@@ -483,7 +522,6 @@ const Account: React.FC = () => {
               else {
                 format = 'avif';
               }
-              console.log(`Detected format based on magic numbers: ${format}`);
             }
           }
           
@@ -500,11 +538,106 @@ const Account: React.FC = () => {
       }
       
       setArtPieceDetails(artDetails);
+      
+      // After loading art pieces, check for active sales - USE LOCAL VARIABLE, NOT STATE
+      console.log(`loadArtPieces: Loaded ${recentPieces.length} art pieces, now checking for editions...`);
+      await checkActiveSales(recentPieces);
     } catch (err) {
       console.error("Error loading art pieces:", err);
       setError("Failed to load art pieces. Please try again.");
     } finally {
       setLoadingArtPieces(false);
+    }
+  };
+
+  // Check for existing editions for art pieces (active or inactive)
+  const checkActiveSales = async (artPieces: string[]) => {
+    if (!profile || !isConnected) {
+      console.log("checkActiveSales: Missing profile or not connected");
+      return;
+    }
+    
+    try {
+      const signer = await ethersService.getSigner();
+      if (!signer) {
+        console.log("checkActiveSales: No signer available");
+        return;
+      }
+
+      const userAddress = await signer.getAddress();
+      console.log(`checkActiveSales: Checking ${artPieces.length} art pieces for user ${userAddress.substring(0, 6)}...`);
+      
+      // Get the user's ArtSales1155 contract address
+      const artSalesAddress = await profile.artSales1155();
+      console.log(`checkActiveSales: ArtSales1155 address: ${artSalesAddress}`);
+      
+      if (!artSalesAddress || artSalesAddress === ethers.ZeroAddress) {
+        console.log("checkActiveSales: No ArtSales1155 contract found for user");
+        return;
+      }
+
+      // Load ArtSales1155 ABI
+      const artSalesAbi = abiLoader.loadABI('ArtSales1155');
+      if (!artSalesAbi) {
+        console.error("checkActiveSales: ArtSales1155 ABI not found");
+        return;
+      }
+
+      const artSalesContract = new ethers.Contract(artSalesAddress, artSalesAbi, signer);
+      
+      // Get and log the total count of artist ERC1155s
+      try {
+        const erc1155Count = await artSalesContract.artistErc1155sToSellCount();
+        console.log(`checkActiveSales: ArtSales1155 has ${erc1155Count} total artist ERC1155s`);
+      } catch (err) {
+        console.error("checkActiveSales: Error getting artistErc1155sToSellCount:", err);
+      }
+      
+      const salesData: {[artPieceAddress: string]: string | null} = {};
+
+      // Check each art piece for active sales
+      for (const artPieceAddress of artPieces) {
+        if (!artPieceAddress) continue;
+        
+        try {
+          console.log(`checkActiveSales: Checking art piece ${artPieceAddress.substring(0, 6)}...`);
+          
+          // Check if this art piece has editions
+          const hasEditions = await artSalesContract.hasEditions(artPieceAddress);
+          console.log(`  → Has editions: ${hasEditions}`);
+          
+          if (!hasEditions) {
+            salesData[artPieceAddress] = null;
+            continue;
+          }
+
+          // Get the ERC1155 address for this art piece
+          const erc1155Address = await artSalesContract.artistPieceToErc1155Map(artPieceAddress);
+          console.log(`  → ERC1155 address: ${erc1155Address?.substring(0, 6)}...`);
+          
+          if (!erc1155Address || erc1155Address === ethers.ZeroAddress) {
+            salesData[artPieceAddress] = null;
+            continue;
+          }
+
+          // Check if sale is active (but we'll show button regardless)
+          const isActive = await artSalesContract.isSaleActive(erc1155Address);
+          console.log(`  → Sale active: ${isActive}`);
+          
+          // Store the ArtSales1155 address for any existing edition (active or not)
+          salesData[artPieceAddress] = artSalesAddress;
+          console.log(`✅ Edition found for art piece ${artPieceAddress.substring(0, 6)}... (active: ${isActive})`);
+        
+        } catch (err) {
+          console.error(`Error checking sales for art piece ${artPieceAddress}:`, err);
+          salesData[artPieceAddress] = null;
+        }
+      }
+
+      console.log("checkActiveSales: Final salesData:", salesData);
+      setArtEditions(salesData);
+    } catch (err) {
+      console.error("Error checking active sales:", err);
     }
   };
   
@@ -619,6 +752,33 @@ const Account: React.FC = () => {
   const handleEditionClose = () => {
     setShowEditionModal(false);
     setSelectedArtPiece(null);
+  };
+
+  // Handle mint button click
+  const handleMintClick = (artPieceAddress: string) => {
+    setSelectedMintArtPiece(artPieceAddress);
+    setShowMintModal(true);
+  };
+
+  // Handle mint success
+  const handleMintSuccess = (txHash: string) => {
+    console.log('Mint successful:', txHash);
+    // Optionally refresh the art editions data
+    if (profile && recentArtPieces.length > 0) {
+      checkActiveSales(recentArtPieces);
+    }
+  };
+
+  // Handle mint error
+  const handleMintError = (error: string) => {
+    console.error('Mint error:', error);
+    setError(error);
+  };
+
+  // Close mint modal
+  const handleMintClose = () => {
+    setShowMintModal(false);
+    setSelectedMintArtPiece(null);
   };
   
   return (
@@ -753,7 +913,7 @@ const Account: React.FC = () => {
           <div className="account-card art-pieces-card">
             <h3>My Art Pieces {totalArtPieces > 0 && <span className="count-badge">{totalArtPieces}</span>}</h3>
             {isArtist && (
-              <p className="art-pieces-subtitle">Click on any art piece to create an ERC1155 edition for sale</p>
+              <p className="art-pieces-subtitle">Click on any art piece image to create an ERC1155 edition for sale</p>
             )}
             {loadingArtPieces ? (
               <div className="loading-spinner">Loading art pieces...</div>
@@ -764,21 +924,31 @@ const Account: React.FC = () => {
                   {recentArtPieces.map((address, index) => {
                     if (!address) return null; // Skip empty addresses
                     const details = artPieceDetails[address] || { title: 'Loading...', tokenURIData: null };
+                    
                     return (
                       <div 
                         key={index} 
-                        className={`art-piece-item ${isArtist ? 'clickable' : ''}`}
-                        onClick={isArtist ? (e) => handleArtPieceClick(address, e) : undefined}
+                        className="art-piece-item"
                       >
                         {details.tokenURIData ? (
                           <>
-                            <ArtDisplay
-                              imageData={details.tokenURIData}
-                              title={details.title}
-                              contractAddress={address}
-                              className="art-piece-display"
-                              showDebug={debugMode}
-                            />
+                            <div 
+                              className={`art-piece-image-container ${isArtist ? 'clickable' : ''}`}
+                              onClick={isArtist ? (e) => handleArtPieceClick(address, e) : undefined}
+                            >
+                              <ArtDisplay
+                                imageData={details.tokenURIData}
+                                title={details.title}
+                                contractAddress={address}
+                                className="art-piece-display"
+                                showDebug={debugMode}
+                              />
+                              {isArtist && (
+                                <div className="art-piece-overlay">
+                                  <span className="edition-hint">Click to create edition</span>
+                                </div>
+                              )}
+                            </div>
                             {/* Add debug info component conditionally */}
                             {debugMode && (
                               <ArtPieceDebugInfo 
@@ -790,13 +960,23 @@ const Account: React.FC = () => {
                         ) : details.imageData ? (
                           // Handle raw image data format
                           <>
-                            <ArtDisplay
-                              imageData={details.imageData}
-                              title={details.title}
-                              contractAddress={address}
-                              className="art-piece-display"
-                              showDebug={debugMode}
-                            />
+                            <div 
+                              className={`art-piece-image-container ${isArtist ? 'clickable' : ''}`}
+                              onClick={isArtist ? (e) => handleArtPieceClick(address, e) : undefined}
+                            >
+                              <ArtDisplay
+                                imageData={details.imageData}
+                                title={details.title}
+                                contractAddress={address}
+                                className="art-piece-display"
+                                showDebug={debugMode}
+                              />
+                              {isArtist && (
+                                <div className="art-piece-overlay">
+                                  <span className="edition-hint">Click to create edition</span>
+                                </div>
+                              )}
+                            </div>
                             {debugMode && (
                               <div className="art-debug-info small">
                                 <div>Raw binary image data</div>
@@ -814,17 +994,23 @@ const Account: React.FC = () => {
                             </div>
                           </div>
                         )}
-                        {isArtist && (
-                          <div className="art-piece-overlay">
-                            <span className="edition-hint">Click to create edition</span>
-                          </div>
-                        )}
-                        <a 
-                          href={`#/art/${address}`} 
-                          className="view-art-piece-link"
-                        >
-                          View Details
-                        </a>
+                        <div className="art-actions">
+                          <a 
+                            href={`#/art/${address}`} 
+                            className="view-art-piece-link"
+                          >
+                            View Details
+                          </a>
+                          {artEditions[address] && (
+                            <button
+                              className="mint-edition-button"
+                              onClick={() => handleMintClick(address)}
+                              title="View and manage edition"
+                            >
+                              Manage Edition
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -902,6 +1088,16 @@ const Account: React.FC = () => {
         artPieceDetails={selectedArtPiece ? artPieceDetails[selectedArtPiece] || null : null}
         profileContract={profile}
         isArtist={isArtist}
+      />
+
+      {/* Mint Art Edition Modal */}
+      <MintArtEdition
+        isOpen={showMintModal}
+        onClose={handleMintClose}
+        onSuccess={handleMintSuccess}
+        onError={handleMintError}
+        artPieceAddress={selectedMintArtPiece}
+        artSales1155Address={selectedMintArtPiece ? artEditions[selectedMintArtPiece] || null : null}
       />
     </div>
   );

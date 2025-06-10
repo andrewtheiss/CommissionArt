@@ -323,14 +323,16 @@
 .art-piece-item {
   background: var(--bg-tertiary);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
   border: 1px solid var(--border-primary);
+  display: flex;
+  flex-direction: column;
 }
 
 .art-piece-item:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -338,6 +340,80 @@
   height: 180px;
   overflow: hidden;
   position: relative;
+  border-radius: 8px 8px 0 0;
+}
+
+/* Ensure ArtDisplay component fills the container */
+.art-piece-image-container .art-piece-display,
+.art-piece-image-container .art-display {
+  width: 100%;
+  height: 100%;
+}
+
+/* Ensure images within ArtDisplay fill the space */
+.art-piece-image-container .art-piece-display img,
+.art-piece-image-container .art-display img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Catch any other nested elements that might contain the image */
+.art-piece-image-container > * {
+  width: 100%;
+  height: 100%;
+}
+
+.art-piece-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Force height override with higher specificity */
+.art-piece-image-container > * > img,
+.art-piece-image-container div,
+.art-piece-image-container div > img {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 180px !important;
+  max-height: 180px !important;
+  object-fit: cover !important;
+}
+
+/* Specific override for any ArtDisplay wrapper */
+.art-pieces-grid .art-piece-item .art-piece-image-container,
+.art-pieces-grid .art-piece-item .art-piece-image-container > div,
+.art-pieces-grid .art-piece-item .art-piece-image-container img {
+  width: 100% !important;
+  height: 180px !important;
+  min-height: 180px !important;
+  object-fit: cover !important;
+}
+
+/* Handle any flex or display constraints */
+.art-piece-image-container * {
+  box-sizing: border-box !important;
+}
+
+/* Override any max-height or height constraints from child components */
+.art-piece-image-container .art-display-container,
+.art-piece-image-container .image-container,
+.art-piece-image-container [class*="display"],
+.art-piece-image-container [class*="image"] {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 180px !important;
+  max-height: none !important;
+}
+
+.art-piece-image-container.clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.art-piece-image-container.clickable:hover {
+  transform: scale(1.02);
 }
 
 .art-piece-image {
@@ -387,6 +463,14 @@
   word-break: break-all;
 }
 
+.art-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 0 12px 12px 12px;
+}
+
 .view-art-piece-link {
   display: block;
   text-align: center;
@@ -396,10 +480,33 @@
   text-decoration: none;
   font-size: 14px;
   transition: background 0.2s;
+  border-radius: 4px;
 }
 
 .view-art-piece-link:hover {
   background: var(--accent-secondary);
+}
+
+.mint-edition-button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-align: center;
+}
+
+.mint-edition-button:hover {
+  background: #45a049;
+}
+
+.mint-edition-button:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
 }
 
 .no-art-pieces {
@@ -763,14 +870,11 @@
 }
 
 .art-piece-item.clickable {
-  cursor: pointer;
-  position: relative;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* Styles moved to .art-piece-image-container.clickable */
 }
 
 .art-piece-item.clickable:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  /* Styles moved to .art-piece-image-container.clickable:hover */
 }
 
 .art-piece-overlay {
@@ -785,11 +889,11 @@
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s ease;
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
   pointer-events: none;
 }
 
-.art-piece-item.clickable:hover .art-piece-overlay {
+.art-piece-image-container.clickable:hover .art-piece-overlay {
   opacity: 1;
 }
 
