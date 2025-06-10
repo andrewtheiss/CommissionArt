@@ -82,6 +82,11 @@ artSales1155: public(address)
 # Artist status for this profile
 isArtist: public(bool)
 
+# Phase Configuration (matching ArtSales1155)
+struct PhaseConfig:
+    threshold: uint256  # Quantity threshold for QUANTITY_PHASES, timestamp for TIME_PHASES
+    price: uint256
+
 # Interface for ProfileFactoryAndRegistry
 interface ProfileFactoryAndRegistry:
     def artCommissionHubOwners() -> address: view
@@ -119,7 +124,7 @@ interface ArtCommissionHub:
 # Interface for ArtSales1155 (expanded)
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
-    def createEditionFromArtPiece(_art_piece: address, _edition_name: String[100], _edition_symbol: String[10], _base_uri: String[256], _mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256) -> address: nonpayable
+    def createEditionFromArtPiece(_art_piece: address, _edition_name: String[100], _edition_symbol: String[10], _mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256, _payment_currency: address, _sale_type: uint256, _phases: DynArray[PhaseConfig, 5]) -> address: nonpayable
     def hasEditions(_art_piece: address) -> bool: view
     def initialize(_profile_address: address, _owner: address, _profile_factory_and_registry: address): nonpayable
 
@@ -1188,14 +1193,17 @@ def createArtEdition(
     _art_piece: address,
     _edition_name: String[100],
     _edition_symbol: String[10],
-    _base_uri: String[256],
     _mint_price: uint256,
     _max_supply: uint256,
-    _royalty_percent: uint256
+    _royalty_percent: uint256,
+    _payment_currency: address = empty(address),
+    _sale_type: uint256 = 1,  # Default to SALE_TYPE_CAPPED
+    _phases: DynArray[PhaseConfig, 5] = []
 ) -> address:
     """
-    Create an ERC1155 edition from an art piece in this profile
+    Create an ERC1155 edition from an art piece in this profile with advanced sale configuration
     This is a convenience method that calls through to ArtSales1155
+    All metadata is automatically pulled from the linked ArtPiece contract
     """
     assert msg.sender == self.owner, "Only owner can create editions"
     assert self.artSales1155 != empty(address), "ArtSales1155 not set"
@@ -1208,16 +1216,18 @@ def createArtEdition(
     art_artist: address = staticcall art_piece.getArtist()
     assert art_artist == self.owner, "Must be the artist of the art piece"
     
-    # Call ArtSales1155 to create the edition
+    # Call ArtSales1155 to create the edition with advanced sale configuration
     sales_contract: ArtSales1155 = ArtSales1155(self.artSales1155)
     edition: address = extcall sales_contract.createEditionFromArtPiece(
         _art_piece,
         _edition_name,
         _edition_symbol,
-        _base_uri,
         _mint_price,
         _max_supply,
-        _royalty_percent
+        _royalty_percent,
+        _payment_currency,
+        _sale_type,
+        _phases
     )
     
     return edition

@@ -21,13 +21,31 @@ interface CreateArtEditionProps {
   isArtist: boolean;
 }
 
+// Sale Types (matching contract constants)
+enum SaleType {
+  FOREVER = 0,      // No deadline, mint forever
+  CAPPED = 1,       // Stop after maxSupply reached
+  QUANTITY_PHASES = 2,  // Price increases based on quantity sold
+  TIME_PHASES = 3   // Price increases based on time
+}
+
+interface PhaseConfig {
+  threshold: string; // Quantity for QUANTITY_PHASES, timestamp for TIME_PHASES
+  price: string;     // Price in ETH
+}
+
 interface EditionFormData {
   name: string;
   symbol: string;
-  baseUri: string;
   mintPrice: string;
   maxSupply: string;
   royaltyPercent: string;
+  paymentCurrency: string;
+  saleType: SaleType;
+  enableTimePhases: boolean;
+  enableQuantityPhases: boolean;
+  timePhases: PhaseConfig[];
+  quantityPhases: PhaseConfig[];
 }
 
 const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
@@ -43,10 +61,15 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
   const [formData, setFormData] = useState<EditionFormData>({
     name: '',
     symbol: '',
-    baseUri: '',
     mintPrice: '',
     maxSupply: '',
-    royaltyPercent: ''
+    royaltyPercent: '',
+    paymentCurrency: '',
+    saleType: SaleType.CAPPED,
+    enableTimePhases: false,
+    enableQuantityPhases: false,
+    timePhases: [],
+    quantityPhases: []
   });
   
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -65,14 +88,35 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       setFormData({
         name: `${artPieceDetails.title} Edition`,
         symbol: 'ART',
-        baseUri: 'https://api.example.com/metadata/',
         mintPrice: '0.01',
         maxSupply: '100',
-        royaltyPercent: '2.5'
+        royaltyPercent: '2.5',
+        paymentCurrency: '',
+        saleType: SaleType.CAPPED,
+        enableTimePhases: false,
+        enableQuantityPhases: false,
+        timePhases: [],
+        quantityPhases: []
       });
       checkForExistingEdition();
     }
   }, [artPieceDetails, selectedArtPiece]);
+
+  // Update sale type based on phase selections
+  useEffect(() => {
+    if (formData.enableTimePhases && !formData.enableQuantityPhases) {
+      setFormData(prev => ({ ...prev, saleType: SaleType.TIME_PHASES }));
+    } else if (formData.enableQuantityPhases && !formData.enableTimePhases) {
+      setFormData(prev => ({ ...prev, saleType: SaleType.QUANTITY_PHASES }));
+    } else if (!formData.enableTimePhases && !formData.enableQuantityPhases) {
+      // If max supply is set to a very high number, default to FOREVER, otherwise CAPPED
+      const maxSupply = parseInt(formData.maxSupply) || 100;
+      setFormData(prev => ({ 
+        ...prev, 
+        saleType: maxSupply >= 1000000 ? SaleType.FOREVER : SaleType.CAPPED 
+      }));
+    }
+  }, [formData.enableTimePhases, formData.enableQuantityPhases, formData.maxSupply]);
 
   // Check if art piece already has an edition
   const checkForExistingEdition = async () => {
@@ -84,7 +128,6 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       setHasExistingEdition(hasEditions);
     } catch (error) {
       console.error('Error checking for existing edition:', error);
-      // Don't show error for this check, just assume no existing edition
       setHasExistingEdition(false);
     } finally {
       setCheckingExistingEdition(false);
@@ -96,10 +139,15 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
     setFormData({
       name: '',
       symbol: '',
-      baseUri: '',
       mintPrice: '',
       maxSupply: '',
-      royaltyPercent: ''
+      royaltyPercent: '',
+      paymentCurrency: '',
+      saleType: SaleType.CAPPED,
+      enableTimePhases: false,
+      enableQuantityPhases: false,
+      timePhases: [],
+      quantityPhases: []
     });
     setFormError(null);
     setIsCreating(false);
@@ -108,16 +156,49 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
   };
 
   // Handle form input changes
-  const handleInputChange = (field: keyof EditionFormData, value: string) => {
+  const handleInputChange = (field: keyof EditionFormData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: field === 'symbol' ? value.toUpperCase() : value
     }));
     
-    // Clear error when user starts typing
     if (formError) {
       setFormError(null);
     }
+  };
+
+  // Handle phase changes
+  const handlePhaseChange = (type: 'time' | 'quantity', index: number, field: 'threshold' | 'price', value: string) => {
+    const phaseField = type === 'time' ? 'timePhases' : 'quantityPhases';
+    setFormData(prev => ({
+      ...prev,
+      [phaseField]: prev[phaseField].map((phase, i) => 
+        i === index ? { ...phase, [field]: value } : phase
+      )
+    }));
+  };
+
+  // Add new phase
+  const addPhase = (type: 'time' | 'quantity') => {
+    const phaseField = type === 'time' ? 'timePhases' : 'quantityPhases';
+    setFormData(prev => ({
+      ...prev,
+      [phaseField]: [...prev[phaseField], { threshold: '', price: '' }]
+    }));
+  };
+
+  // Remove phase
+  const removePhase = (type: 'time' | 'quantity', index: number) => {
+    const phaseField = type === 'time' ? 'timePhases' : 'quantityPhases';
+    setFormData(prev => ({
+      ...prev,
+      [phaseField]: prev[phaseField].filter((_, i) => i !== index)
+    }));
+  };
+
+  // Convert timestamp string to Unix timestamp
+  const convertToTimestamp = (dateTimeString: string): number => {
+    return Math.floor(new Date(dateTimeString).getTime() / 1000);
   };
 
   // Validate form data
@@ -143,7 +224,49 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
     if (Number(formData.royaltyPercent) > 10) {
       return 'Royalty percent cannot exceed 10%';
     }
-    
+
+    // Validate phases if enabled
+    if (formData.enableTimePhases) {
+      if (formData.timePhases.length === 0) {
+        return 'At least one time phase is required when time-based pricing is enabled';
+      }
+      for (let i = 0; i < formData.timePhases.length; i++) {
+        const phase = formData.timePhases[i];
+        if (!phase.threshold || !phase.price) {
+          return `Time phase ${i + 1} is incomplete`;
+        }
+        if (isNaN(Number(phase.price)) || Number(phase.price) < 0) {
+          return `Invalid price in time phase ${i + 1}`;
+        }
+        // Validate that it's a valid datetime
+        if (isNaN(convertToTimestamp(phase.threshold))) {
+          return `Invalid date/time in time phase ${i + 1}`;
+        }
+      }
+    }
+
+    if (formData.enableQuantityPhases) {
+      if (formData.quantityPhases.length === 0) {
+        return 'At least one quantity phase is required when quantity-based pricing is enabled';
+      }
+      for (let i = 0; i < formData.quantityPhases.length; i++) {
+        const phase = formData.quantityPhases[i];
+        if (!phase.threshold || !phase.price) {
+          return `Quantity phase ${i + 1} is incomplete`;
+        }
+        if (isNaN(Number(phase.price)) || Number(phase.price) < 0) {
+          return `Invalid price in quantity phase ${i + 1}`;
+        }
+        if (isNaN(Number(phase.threshold)) || Number(phase.threshold) < 1) {
+          return `Invalid quantity threshold in phase ${i + 1}`;
+        }
+      }
+    }
+
+    if (formData.enableTimePhases && formData.enableQuantityPhases) {
+      return 'Cannot enable both time-based and quantity-based pricing simultaneously';
+    }
+
     return null;
   };
 
@@ -154,7 +277,6 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       return;
     }
 
-    // Validate form
     const validationError = validateForm();
     if (validationError) {
       setFormError(validationError);
@@ -168,18 +290,35 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       // Convert form values to contract parameters
       const mintPriceWei = ethers.parseEther(formData.mintPrice);
       const maxSupply = parseInt(formData.maxSupply);
-      const royaltyBasisPoints = Math.floor(parseFloat(formData.royaltyPercent) * 100); // Convert percent to basis points
+      const royaltyBasisPoints = Math.floor(parseFloat(formData.royaltyPercent) * 100);
+
+      // Prepare phases array
+      let phases: Array<{threshold: bigint, price: bigint}> = [];
+      
+      if (formData.saleType === SaleType.TIME_PHASES && formData.timePhases.length > 0) {
+        phases = formData.timePhases.map(phase => ({
+          threshold: BigInt(convertToTimestamp(phase.threshold)),
+          price: ethers.parseEther(phase.price)
+        }));
+      } else if (formData.saleType === SaleType.QUANTITY_PHASES && formData.quantityPhases.length > 0) {
+        phases = formData.quantityPhases.map(phase => ({
+          threshold: BigInt(parseInt(phase.threshold)),
+          price: ethers.parseEther(phase.price)
+        }));
+      }
 
       console.log('Creating art edition with parameters:', {
         artPiece: selectedArtPiece,
         name: formData.name,
         symbol: formData.symbol,
-        baseUri: formData.baseUri,
         mintPrice: formData.mintPrice,
         mintPriceWei: mintPriceWei.toString(),
         maxSupply,
         royaltyPercent: formData.royaltyPercent,
-        royaltyBasisPoints
+        royaltyBasisPoints,
+        paymentCurrency: formData.paymentCurrency || 'Native ETH',
+        saleType: formData.saleType,
+        phases: phases.length
       });
 
       // Call the createArtEdition method on the profile contract
@@ -187,30 +326,25 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         selectedArtPiece,
         formData.name,
         formData.symbol,
-        formData.baseUri,
         mintPriceWei,
         maxSupply,
-        royaltyBasisPoints
+        royaltyBasisPoints,
+        formData.paymentCurrency || ethers.ZeroAddress,
+        formData.saleType,
+        phases
       );
 
       console.log('Transaction submitted:', tx.hash);
-
-      // Wait for transaction confirmation
       const receipt = await tx.wait();
       console.log('Transaction confirmed:', receipt);
 
-      // Extract the edition address from transaction logs or return value
+      // Extract edition address from logs
       let editionAddress = '';
       if (receipt.logs && receipt.logs.length > 0) {
-        // Try to find the edition address in the logs
         for (const log of receipt.logs) {
           try {
-            // This is a simplified approach - in a real implementation,
-            // you might want to parse the logs more carefully
             if (log.topics && log.topics.length > 0) {
-              // The actual edition address would be in the transaction return value
-              // For now, we'll use a placeholder that indicates success
-              editionAddress = 'created'; // This will be replaced with actual address parsing
+              editionAddress = 'created';
             }
           } catch (error) {
             console.log('Could not parse log:', error);
@@ -218,16 +352,12 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         }
       }
 
-      // Call success callback
       onSuccess(editionAddress || 'created');
-      
-      // Close the modal
       handleClose();
 
     } catch (error: any) {
       console.error('Error creating art edition:', error);
       
-      // Extract meaningful error message
       let errorMessage = 'Failed to create art edition';
       if (error.message) {
         if (error.message.includes('user rejected')) {
@@ -302,7 +432,6 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
             <div className="error-message">{formError}</div>
           )}
 
-          {/* Disable form if not artist */}
           {!isArtist && (
             <div className="warning-message">
               Only artists can create editions. Please activate artist mode first.
@@ -311,6 +440,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
 
           {/* Edition creation form */}
           <form className="edition-form" onSubmit={(e) => e.preventDefault()}>
+            {/* Basic Info */}
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="edition-name">Edition Name *</label>
@@ -339,24 +469,10 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="base-uri">Base URI</label>
-              <input
-                id="base-uri"
-                type="url"
-                value={formData.baseUri}
-                onChange={(e) => handleInputChange('baseUri', e.target.value)}
-                placeholder="https://api.example.com/metadata/"
-                disabled={isCreating || !isArtist}
-              />
-              <small className="form-help">
-                Optional: URL for token metadata. Can be updated later.
-              </small>
-            </div>
-
+            {/* Pricing and Supply */}
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="mint-price">Mint Price (ETH) *</label>
+                <label htmlFor="mint-price">Starting Price (ETH) *</label>
                 <input
                   id="mint-price"
                   type="number"
@@ -369,7 +485,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   required
                 />
                 <small className="form-help">
-                  Price per token in ETH
+                  Starting price per token in ETH
                 </small>
               </div>
               <div className="form-group">
@@ -385,28 +501,219 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   required
                 />
                 <small className="form-help">
-                  Maximum number of tokens that can be minted
+                  {formData.saleType === SaleType.FOREVER 
+                    ? 'Set high for unlimited minting (e.g., 999999999)'
+                    : 'Maximum tokens that can be minted'
+                  }
                 </small>
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="royalty-percent">Royalty Percentage *</label>
-              <input
-                id="royalty-percent"
-                type="number"
-                step="0.1"
-                min="0"
-                max="10"
-                value={formData.royaltyPercent}
-                onChange={(e) => handleInputChange('royaltyPercent', e.target.value)}
-                placeholder="2.5"
-                disabled={isCreating || !isArtist}
-                required
-              />
-              <small className="form-help">
-                Royalty on secondary sales (0-10%). Example: 2.5 = 2.5%
-              </small>
+            {/* Royalty and Payment */}
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="royalty-percent">Royalty (%) *</label>
+                <input
+                  id="royalty-percent"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={formData.royaltyPercent}
+                  onChange={(e) => handleInputChange('royaltyPercent', e.target.value)}
+                  placeholder="2.5"
+                  disabled={isCreating || !isArtist}
+                  required
+                />
+                <small className="form-help">
+                  Royalty percentage (0-10%)
+                </small>
+              </div>
+              <div className="form-group">
+                <label htmlFor="payment-currency">Payment Currency</label>
+                <input
+                  id="payment-currency"
+                  type="text"
+                  value={formData.paymentCurrency}
+                  onChange={(e) => handleInputChange('paymentCurrency', e.target.value)}
+                  placeholder="0x... (leave empty for native ETH)"
+                  disabled={isCreating || !isArtist}
+                />
+                <small className="form-help">
+                  ERC20 token address. Leave empty for native ETH.
+                </small>
+              </div>
+            </div>
+
+            {/* Sale Type Configuration */}
+            <div className="form-section">
+              <h4>Sale Configuration</h4>
+              
+              {/* Sale Type Display */}
+              <div className="sale-type-info">
+                <strong>Sale Type: </strong>
+                <span className="sale-type-label">
+                  {formData.saleType === SaleType.FOREVER && 'Unlimited Minting'}
+                  {formData.saleType === SaleType.CAPPED && 'Limited Supply'}
+                  {formData.saleType === SaleType.TIME_PHASES && 'Time-Based Pricing'}
+                  {formData.saleType === SaleType.QUANTITY_PHASES && 'Quantity-Based Pricing'}
+                </span>
+              </div>
+
+              {/* Dynamic Pricing Options */}
+              <div className="pricing-options">
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableTimePhases}
+                      onChange={(e) => {
+                        handleInputChange('enableTimePhases', e.target.checked);
+                        if (e.target.checked) {
+                          handleInputChange('enableQuantityPhases', false);
+                        }
+                      }}
+                      disabled={isCreating || !isArtist}
+                    />
+                    <span>Price adjusts by time</span>
+                  </label>
+                  <small className="form-help">
+                    Price increases at specific timestamps
+                  </small>
+                </div>
+
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableQuantityPhases}
+                      onChange={(e) => {
+                        handleInputChange('enableQuantityPhases', e.target.checked);
+                        if (e.target.checked) {
+                          handleInputChange('enableTimePhases', false);
+                        }
+                      }}
+                      disabled={isCreating || !isArtist}
+                    />
+                    <span>Price adjusts by sales</span>
+                  </label>
+                  <small className="form-help">
+                    Price increases after certain quantities sold
+                  </small>
+                </div>
+              </div>
+
+              {/* Time-Based Phases */}
+              {formData.enableTimePhases && (
+                <div className="phases-section">
+                  <div className="phases-header">
+                    <h5>Time-Based Price Phases</h5>
+                    <button
+                      type="button"
+                      className="add-phase-btn"
+                      onClick={() => addPhase('time')}
+                      disabled={formData.timePhases.length >= 5 || isCreating || !isArtist}
+                    >
+                      + Add Phase
+                    </button>
+                  </div>
+                  {formData.timePhases.map((phase, index) => (
+                    <div key={index} className="phase-config">
+                      <div className="phase-inputs">
+                        <div className="form-group">
+                          <label>Activation Date/Time</label>
+                          <input
+                            type="datetime-local"
+                            value={phase.threshold}
+                            onChange={(e) => handlePhaseChange('time', index, 'threshold', e.target.value)}
+                            disabled={isCreating || !isArtist}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Price (ETH)</label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            value={phase.price}
+                            onChange={(e) => handlePhaseChange('time', index, 'price', e.target.value)}
+                            placeholder="0.02"
+                            disabled={isCreating || !isArtist}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="remove-phase-btn"
+                          onClick={() => removePhase('time', index)}
+                          disabled={isCreating || !isArtist}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {formData.timePhases.length === 0 && (
+                    <p className="phase-help">Add time phases to increase price at specific dates/times</p>
+                  )}
+                </div>
+              )}
+
+              {/* Quantity-Based Phases */}
+              {formData.enableQuantityPhases && (
+                <div className="phases-section">
+                  <div className="phases-header">
+                    <h5>Quantity-Based Price Phases</h5>
+                    <button
+                      type="button"
+                      className="add-phase-btn"
+                      onClick={() => addPhase('quantity')}
+                      disabled={formData.quantityPhases.length >= 5 || isCreating || !isArtist}
+                    >
+                      + Add Phase
+                    </button>
+                  </div>
+                  {formData.quantityPhases.map((phase, index) => (
+                    <div key={index} className="phase-config">
+                      <div className="phase-inputs">
+                        <div className="form-group">
+                          <label>Sold Quantity Threshold</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={phase.threshold}
+                            onChange={(e) => handlePhaseChange('quantity', index, 'threshold', e.target.value)}
+                            placeholder="50"
+                            disabled={isCreating || !isArtist}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Price (ETH)</label>
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            value={phase.price}
+                            onChange={(e) => handlePhaseChange('quantity', index, 'price', e.target.value)}
+                            placeholder="0.02"
+                            disabled={isCreating || !isArtist}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="remove-phase-btn"
+                          onClick={() => removePhase('quantity', index)}
+                          disabled={isCreating || !isArtist}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {formData.quantityPhases.length === 0 && (
+                    <p className="phase-help">Add quantity phases to increase price after certain amounts are sold</p>
+                  )}
+                </div>
+              )}
             </div>
           </form>
         </div>
