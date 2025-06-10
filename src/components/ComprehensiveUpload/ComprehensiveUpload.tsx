@@ -277,9 +277,16 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
         ...prev,
         files: prev.files.filter(file => !file.type.startsWith('audio/'))
       }));
-      setSpecialProperties(prev => {
-        const { audio_url, ...rest } = prev;
-        return rest;
+      setVideoUrl(currentVideoUrl => {
+        setSpecialProperties(prev => {
+          const { audio_url, ...rest } = prev;
+          return {
+            ...rest,
+            // If audio is disabled, use video URL for animation_url if video exists
+            animation_url: currentVideoUrl.trim() ? currentVideoUrl : undefined
+          };
+        });
+        return currentVideoUrl; // Don't change videoUrl, just use it for reference
       });
     }
   };
@@ -293,9 +300,16 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
         ...prev,
         files: prev.files.filter(file => !file.type.startsWith('video/'))
       }));
-      setSpecialProperties(prev => {
-        const { animation_url, ...rest } = prev;
-        return rest;
+      setAudioUrl(currentAudioUrl => {
+        setSpecialProperties(prev => {
+          // If video is disabled, only keep animation_url if audio exists
+          const { animation_url, ...rest } = prev;
+          return {
+            ...rest,
+            animation_url: currentAudioUrl.trim() ? currentAudioUrl : undefined
+          };
+        });
+        return currentAudioUrl; // Don't change audioUrl, just use it for reference
       });
     }
   };
@@ -314,8 +328,20 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
           fileProperty
         ]
       }));
-      // Add to special properties
-      setSpecialProperties(prev => ({ ...prev, audio_url: url }));
+      // Add to special properties - audio gets priority for animation_url
+      setSpecialProperties(prev => ({ ...prev, audio_url: url, animation_url: url }));
+    } else {
+      // If audio URL is cleared, check if we have video to use for animation_url
+      setVideoUrl(currentVideoUrl => {
+        setSpecialProperties(prev => {
+          const { audio_url, ...rest } = prev;
+          return {
+            ...rest,
+            animation_url: currentVideoUrl.trim() ? currentVideoUrl : undefined
+          };
+        });
+        return currentVideoUrl; // Don't change videoUrl, just use it for reference
+      });
     }
   };
 
@@ -333,8 +359,23 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
           fileProperty
         ]
       }));
-      // Add to special properties
-      setSpecialProperties(prev => ({ ...prev, animation_url: url }));
+      // Add to special properties - only set animation_url if no audio exists
+      setAudioUrl(currentAudioUrl => {
+        setSpecialProperties(prev => ({ 
+          ...prev, 
+          animation_url: currentAudioUrl.trim() ? prev.animation_url : url 
+        }));
+        return currentAudioUrl; // Don't change audioUrl, just use it for reference
+      });
+    } else {
+      // If video URL is cleared and no audio exists, clear animation_url
+      setAudioUrl(currentAudioUrl => {
+        setSpecialProperties(prev => ({
+          ...prev,
+          animation_url: currentAudioUrl.trim() ? currentAudioUrl : undefined
+        }));
+        return currentAudioUrl; // Don't change audioUrl, just use it for reference
+      });
     }
   };
 
@@ -849,11 +890,11 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
                     } else if (data.mediaType === 'video') {
                       handleVideoUrlChange(result.url);
                       setEnableVideo(true);
-                      setSpecialProperties(prev => ({ ...prev, animation_url: result.url }));
+                      // The handleVideoUrlChange already handles the animation_url logic correctly
                     } else if (data.mediaType === 'audio') {
                       handleAudioUrlChange(result.url);
                       setEnableAudio(true);
-                      setSpecialProperties(prev => ({ ...prev, audio_url: result.url }));
+                      // The handleAudioUrlChange already handles the animation_url logic correctly
                     }
                   }
                 }}
