@@ -236,25 +236,43 @@ def resumeSale():
 def _updatePriceForPhases():
     """Update price based on current phase"""
     if self.saleType == SALE_TYPE_QUANTITY_PHASES:
-        # Check if we've moved to a new phase based on quantity
+        # Find the highest applicable phase based on quantity
+        new_phase: uint256 = 0  # 0 = using base price, 1+ = using phases[new_phase-1]
         for i: uint256 in range(len(self.phases), bound=MAX_PHASES):
-            if self.currentSupply >= self.phases[i].threshold and i > self.currentPhase:
-                self.currentPhase = i
-                old_price: uint256 = self.currentPrice
-                self.currentPrice = self.phases[i].price
-                log PhaseChanged(newPhase=i, newPrice=self.phases[i].price)
-                log PriceUpdated(oldPrice=old_price, newPrice=self.phases[i].price)
+            if self.currentSupply >= self.phases[i].threshold:
+                new_phase = i + 1  # Convert to 1-based indexing
+        
+        # Update if we've moved to a new phase
+        if new_phase != self.currentPhase:
+            old_phase: uint256 = self.currentPhase
+            old_price: uint256 = self.currentPrice
+            self.currentPhase = new_phase
+            if new_phase == 0:
+                self.currentPrice = self.basePrice
+            else:
+                self.currentPrice = self.phases[new_phase - 1].price
+            log PhaseChanged(newPhase=new_phase, newPrice=self.currentPrice)
+            log PriceUpdated(oldPrice=old_price, newPrice=self.currentPrice)
                 
     elif self.saleType == SALE_TYPE_TIME_PHASES:
-        # Check if we've moved to a new phase based on time
+        # Find the highest applicable phase based on time
         current_time: uint256 = block.timestamp
+        new_phase: uint256 = 0  # 0 = using base price, 1+ = using phases[new_phase-1]
         for i: uint256 in range(len(self.phases), bound=MAX_PHASES):
-            if current_time >= self.phases[i].threshold and i > self.currentPhase:
-                self.currentPhase = i
-                old_price: uint256 = self.currentPrice
-                self.currentPrice = self.phases[i].price
-                log PhaseChanged(newPhase=i, newPrice=self.phases[i].price)
-                log PriceUpdated(oldPrice=old_price, newPrice=self.phases[i].price)
+            if current_time >= self.phases[i].threshold:
+                new_phase = i + 1  # Convert to 1-based indexing
+        
+        # Update if we've moved to a new phase
+        if new_phase != self.currentPhase:
+            old_phase: uint256 = self.currentPhase
+            old_price: uint256 = self.currentPrice
+            self.currentPhase = new_phase
+            if new_phase == 0:
+                self.currentPrice = self.basePrice
+            else:
+                self.currentPrice = self.phases[new_phase - 1].price
+            log PhaseChanged(newPhase=new_phase, newPrice=self.currentPrice)
+            log PriceUpdated(oldPrice=old_price, newPrice=self.currentPrice)
 
 @view
 @internal
@@ -266,16 +284,18 @@ def _getCurrentPrice() -> uint256:
     # For time-based phases, check if price should update
     if self.saleType == SALE_TYPE_TIME_PHASES:
         current_time: uint256 = block.timestamp
-        for i: uint256 in range(len(self.phases) - 1, bound=MAX_PHASES):
-            if current_time >= self.phases[i].threshold:
-                return self.phases[i].price
+        for i: uint256 in range(len(self.phases), bound=MAX_PHASES):
+            phase_index: uint256 = len(self.phases) - 1 - i
+            if current_time >= self.phases[phase_index].threshold:
+                return self.phases[phase_index].price
         return self.basePrice
     
     # For quantity-based phases
     elif self.saleType == SALE_TYPE_QUANTITY_PHASES:
-        for i: uint256 in range(len(self.phases) - 1, bound=MAX_PHASES):
-            if self.currentSupply >= self.phases[i].threshold:
-                return self.phases[i].price
+        for i: uint256 in range(len(self.phases), bound=MAX_PHASES):
+            phase_index: uint256 = len(self.phases) - 1 - i
+            if self.currentSupply >= self.phases[phase_index].threshold:
+                return self.phases[phase_index].price
         return self.basePrice
     
     return self.currentPrice
