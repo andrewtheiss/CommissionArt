@@ -553,7 +553,7 @@
         "type": "bool"
       },
       {
-        "name": "_off_chain_data",
+        "name": "_token_uri_json",
         "type": "string"
       }
     ],

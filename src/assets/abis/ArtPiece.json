@@ -312,7 +312,7 @@
         "type": "address"
       },
       {
-        "name": "_off_chain_data",
+        "name": "_token_uri_json",
         "type": "string"
       }
     ],
@@ -975,6 +975,18 @@
       {
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tokenURIJson",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
