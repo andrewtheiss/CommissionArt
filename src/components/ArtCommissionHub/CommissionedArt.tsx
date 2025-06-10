@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import { useBlockchain } from '../../utils/BlockchainContext';
+import useContractConfig from '../../utils/useContractConfig';
 import ArtCommissionHubModal from './ArtCommissionHubModal';
 import './CommissionedArt.css';
 
@@ -19,6 +20,7 @@ interface ArtCommissionHubOwnersResult {
 
 const CommissionedArt: React.FC = () => {
   const { networkType, isConnected, connectWallet, switchToLayer } = useBlockchain();
+  const { getContractAddress } = useContractConfig();
   
   const [contractAddress, setContractAddress] = useState<string>('');
   const [chainId, setChainId] = useState<string>('1');
@@ -26,12 +28,28 @@ const CommissionedArt: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ArtCommissionHubOwnersResult | null>(null);
-  const [registryAddress, setRegistryAddress] = useState<string>('0x4904FA96366e15c66C21a2aE8D4a7D605089d5Da'); // Default address from contract_config.json
+  const [registryAddress, setRegistryAddress] = useState<string>('');
+
+  // Update registry address when contract config changes
+  useEffect(() => {
+    const l3Address = getContractAddress('l3');
+    if (l3Address) {
+      setRegistryAddress(l3Address);
+    }
+  }, [getContractAddress]);
   
   // For ArtCommissionHub modal
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [hubAddress, setHubAddress] = useState<string>('');
   const [directHubAddress, setDirectHubAddress] = useState<string>('');
+
+  // Update direct hub address with default from contract config
+  useEffect(() => {
+    const artCommissionHubAddress = getContractAddress('artCommissionHub');
+    if (artCommissionHubAddress && !directHubAddress) {
+      setDirectHubAddress(artCommissionHubAddress);
+    }
+  }, [getContractAddress, directHubAddress]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -10,6 +10,7 @@ import Account from './Account';
 import L2OwnershipRelayTester from './L2RelayTester';
 import L2L3Test from './L2L3Test';
 import { BlockchainProvider } from '../utils/BlockchainContext';
+import useContractConfig from '../utils/useContractConfig';
 import AddArt from './AddArt/AddArt';
 
 // ABI fragments for Registry contract functions we need
@@ -76,9 +77,12 @@ const SafeBlockchainProvider: React.FC<{children: React.ReactNode}> = ({ childre
   return <BlockchainProvider>{children}</BlockchainProvider>;
 };
 
-const MainTab: React.FC = () => {
-  // Hardcoded Registry contract address
-  const registryAddress = '0x5174f3e6F83CF2283b7677829356C8Bc6fCe578f';
+const MainTabContent: React.FC = () => {
+  const { getContractAddress } = useContractConfig();
+  
+  // Get registry address from config
+  const registryAddress = getContractAddress('profileFactoryAndRegistry') || '';
+  
   const [selectedAzukiId, setSelectedAzukiId] = useState<string>('');
   const [selectedContract, setSelectedContract] = useState<ImageContract | null>(null);
   const [loading, setLoading] = useState(true);
@@ -469,6 +473,10 @@ const MainTab: React.FC = () => {
       </div>
     </SafeBlockchainProvider>
   );
+};
+
+const MainTab: React.FC = () => {
+  return <MainTabContent />;
 };
 
 export default MainTab; 

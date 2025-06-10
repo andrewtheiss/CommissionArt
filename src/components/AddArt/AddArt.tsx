@@ -225,7 +225,7 @@ const AddArt: React.FC = () => {
         
         if (!profileContract) throw new Error("Profile contract not found");
 
-        tx = await profileContract['createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool)'](
+        tx = await profileContract['createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool,string)'](
           artPieceTemplateAddress,      // _art_piece_template
           finalImageData,               // _token_uri_data
           finalFormat,                  // _token_uri_data_format
@@ -235,7 +235,8 @@ const AddArt: React.FC = () => {
           walletAddress,                // _other_party (user's own address for personal art)
           aiGenerated,                  // _ai_generated
           artCommissionHubAddress,      // _art_commission_hub
-          false                         // _is_profile_art
+          false,                        // _is_profile_art
+          ''                            // _token_uri_json (empty for simple art pieces)
         );
       } else {
         const profileHubContract = new ethers.Contract(contractConfig.networks[environment].profileFactoryAndRegistry.address, ProfileFactoryABI, signer);
@@ -251,7 +252,8 @@ const AddArt: React.FC = () => {
           aiGenerated,                  // _ai_generated
           1,                            // _linked_to_art_commission_hub_chain_id (generic)
           ethers.ZeroAddress,           // _linked_to_art_commission_hub_address (empty for no hub)
-          0                             // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+          0,                            // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+          ''                            // _token_uri_json (empty for simple art pieces)
         );
       }
       

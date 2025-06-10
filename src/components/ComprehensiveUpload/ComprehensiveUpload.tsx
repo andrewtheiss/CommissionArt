@@ -80,8 +80,10 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
   // Multimedia toggles and URLs
   const [enableAudio, setEnableAudio] = useState(false);
   const [enableVideo, setEnableVideo] = useState(false);
+  const [enableImage, setEnableImage] = useState(false);
   const [audioUrl, setAudioUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   // Form states
   const [error, setError] = useState<string | null>(null);
@@ -336,6 +338,41 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
     }
   };
 
+  const handleImageToggle = (enabled: boolean) => {
+    setEnableImage(enabled);
+    if (!enabled) {
+      setImageUrl('');
+      // Remove image from properties and special properties
+      setProperties(prev => ({
+        ...prev,
+        files: prev.files.filter(file => !file.type.startsWith('image/'))
+      }));
+      setSpecialProperties(prev => {
+        const { image, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
+
+  const handleImageUrlChange = (url: string) => {
+    setImageUrl(url);
+    if (url.trim()) {
+      // Add to properties.files using OpenSea helper
+      const mimeType = getMimeTypeFromFile(url);
+      const fileProperty = createFileProperty(url, mimeType.startsWith('image/') ? mimeType : 'image/jpeg', url);
+      
+      setProperties(prev => ({
+        ...prev,
+        files: [
+          ...prev.files.filter(file => !file.type.startsWith('image/')),
+          fileProperty
+        ]
+      }));
+      // Add to special properties
+      setSpecialProperties(prev => ({ ...prev, image: url }));
+    }
+  };
+
   // Form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -357,7 +394,7 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
       const metadataInput: MetadataInput = {
         name: formData.title,
         description: formData.description,
-        image: formData.originalImageUrl || 'embedded',
+        image: specialProperties.image || formData.originalImageUrl || 'embedded',
         attributes: attributes,
         files: properties.files,
         category: properties.category,
@@ -441,14 +478,15 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
               finalImageData,                    // _token_uri_data
               finalFormat,                       // _token_uri_data_format
               formData.title,                    // _title
-              metadataJSON,                      // _description
+              formData.description || '',        // _description
               true,                              // _is_artist (true since they're creating personal art)
               ethers.ZeroAddress,                // _other_party (zero address for personal art)
               ethers.ZeroAddress,                // _commission_hub (empty for personal art)
               aiGenerated,                       // _ai_generated
               1,                                 // _linked_to_art_commission_hub_chain_id (generic)
               ethers.ZeroAddress,                // _linked_to_art_commission_hub_address (empty for no hub)
-              0                                  // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+              0,                                 // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+              metadataJSON                       // _token_uri_json (full metadata JSON)
             );
           } else {
             // Profile exists, proceed with normal flow
@@ -478,18 +516,19 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
             console.log('10. _is_profile_art:', false);
             console.log('=====================================');
 
-            // Use the specific createArtPiece method signature with 10 parameters to avoid ambiguity
-            tx = await profileContract['createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool)'](
+            // Use the specific createArtPiece method signature with 11 parameters to avoid ambiguity
+            tx = await profileContract['createArtPiece(address,bytes,string,string,string,bool,address,bool,address,bool,string)'](
               artPieceTemplateAddress,           // _art_piece_template
               finalImageData,                    // _token_uri_data
               finalFormat,                       // _token_uri_data_format 
               formData.title,                    // _title
-              metadataJSON,                      // _description
+              formData.description || '',        // _description
               true,                              // _as_artist (true since they're creating personal art)
               walletAddress,                     // _other_party (user's own address for personal art)
               aiGenerated,                       // _ai_generated
               ethers.ZeroAddress,                // _art_commission_hub (empty for personal art)
-              false                              // _is_profile_art (false for regular art pieces)
+              false,                             // _is_profile_art (false for regular art pieces)
+              metadataJSON                       // _token_uri_json (full metadata JSON)
             );
           }
         } catch (error) {
@@ -516,14 +555,15 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
           finalImageData,                    // _token_uri_data
           finalFormat,                       // _token_uri_data_format
           formData.title,                    // _title
-          metadataJSON,                      // _description
+          formData.description || '',        // _description
           true,                              // _is_artist (true since they're creating personal art)
           walletAddress,                     // _other_party (user's own address for personal art)
           ethers.ZeroAddress,                // _commission_hub (empty for personal art)
           aiGenerated,                       // _ai_generated
           1,                                 // _linked_to_art_commission_hub_chain_id (generic)
           ethers.ZeroAddress,                // _linked_to_art_commission_hub_address (empty for no hub)
-          0                                  // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+          0,                                 // _linked_to_art_commission_hub_token_id_or_generic_hub_account
+          metadataJSON                       // _token_uri_json (full metadata JSON)
         );
       }
       
@@ -714,9 +754,30 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
           {/* Multimedia Section */}
           <section className="multimedia-section">
             <h2>Additional Multimedia Content</h2>
-            <p className="section-description">Add video or audio content to enhance your NFT</p>
+            <p className="section-description">Add image, video or audio content to enhance your NFT</p>
             
             <div className="multimedia-toggles">
+              <div className="multimedia-toggle">
+                <label>
+                  <input 
+                    type="checkbox" 
+                    checked={enableImage} 
+                    onChange={(e) => handleImageToggle(e.target.checked)} 
+                  />
+                  Include Additional Image Content
+                </label>
+                {enableImage && (
+                  <div className="multimedia-url-input">
+                    <input
+                      type="url"
+                      placeholder="Image URL (ArWeave, IPFS, or direct link)"
+                      value={imageUrl}
+                      onChange={(e) => handleImageUrlChange(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="multimedia-toggle">
                 <label>
                   <input 
@@ -781,7 +842,11 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
                     }));
                     
                     // Also set specific URL fields and enable toggles
-                    if (data.mediaType === 'video') {
+                    if (data.mediaType === 'image') {
+                      handleImageUrlChange(result.url);
+                      setEnableImage(true);
+                      setSpecialProperties(prev => ({ ...prev, image: result.url }));
+                    } else if (data.mediaType === 'video') {
                       handleVideoUrlChange(result.url);
                       setEnableVideo(true);
                       setSpecialProperties(prev => ({ ...prev, animation_url: result.url }));
@@ -852,6 +917,41 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
             <p className="section-description">Additional URLs and external links</p>
             
             <div className="special-properties-grid">
+              <div className="form-group">
+                <label htmlFor="image_url">Image URL</label>
+                <input
+                  type="url"
+                  id="image_url"
+                  placeholder="https://ipfs.io/ipfs/... or https://..."
+                  value={specialProperties.image || ''}
+                  onChange={(e) => {
+                    const url = e.target.value;
+                    setSpecialProperties(prev => ({ ...prev, image: url }));
+                    // Also sync with multimedia toggle
+                    setImageUrl(url);
+                    setEnableImage(!!url.trim());
+                    // Update properties.files if URL is provided
+                    if (url.trim()) {
+                      const mimeType = getMimeTypeFromFile(url);
+                      const fileProperty = createFileProperty(url, mimeType.startsWith('image/') ? mimeType : 'image/jpeg', url);
+                      setProperties(prev => ({
+                        ...prev,
+                        files: [
+                          ...prev.files.filter(file => !file.type.startsWith('image/')),
+                          fileProperty
+                        ]
+                      }));
+                    } else {
+                      // Remove image files if URL is cleared
+                      setProperties(prev => ({
+                        ...prev,
+                        files: prev.files.filter(file => !file.type.startsWith('image/'))
+                      }));
+                    }
+                  }}
+                />
+              </div>
+              
               <div className="form-group">
                 <label htmlFor="external_url">External URL</label>
                 <input
