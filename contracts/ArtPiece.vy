@@ -106,7 +106,7 @@ IS_ON_CHAIN: public(constant(bool)) = True  # Constant to indicate this art piec
 tokenURI_data: Bytes[45000]  # Changed from imageData to tokenURI_data
 tokenURI_data_format: public(String[10])  # Format of the tokenURI_data   
 title: public(String[100])  # Title of the artwork
-description: public(String[200])  # Description with 200 byte limit
+description: public(String[400])  # Description with 200 byte limit
 artist: public(address)
 commissioner: public(address)  # Store the commissioner's address explicitly
 originalUploader: address  # Store the original uploader's address, do not need to expose
@@ -168,7 +168,7 @@ def initialize(
     _token_uri_data: Bytes[45000],
     _token_uri_data_format: String[10],  # Format of the tokenURI_data i.e. webp, avif, etc.
     _title_input: String[100], 
-    _description_input: String[200], 
+    _description_input: String[400], 
     _commissioner_input: address,
     _artist_input: address, 
     _commission_hub: address, 
@@ -340,7 +340,7 @@ def getTitle() -> String[100]:
 
 @external
 @view
-def getDescription() -> String[200]:
+def getDescription() -> String[400]:
     """
     @notice Get the description of the artwork
     @return The artwork description

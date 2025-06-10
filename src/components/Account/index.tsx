@@ -5,6 +5,7 @@ import { ethers } from 'ethers';
 import ArtDisplay from '../ArtDisplay';
 import { safeRevokeUrl, createImageDataUrl } from '../../utils/TokenURIDecoder';
 import ArtPieceDebugInfo from './ArtPieceDebugInfo';
+import CreateArtEdition from './CreateArtEdition';
 import abiLoader from '../../utils/abiLoader';
 import ethersService from '../../utils/ethers-service';
 import './Account.css';
@@ -61,6 +62,10 @@ const Account: React.FC = () => {
   const [creatingProfile, setCreatingProfile] = useState<boolean>(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [createAsArtist, setCreateAsArtist] = useState<boolean>(false);
+
+  // Art edition modal states
+  const [showEditionModal, setShowEditionModal] = useState<boolean>(false);
+  const [selectedArtPiece, setSelectedArtPiece] = useState<string | null>(null);
 
   // For wallet connection
   const isTrulyConnected = isConnected && !!walletAddress;
@@ -578,6 +583,43 @@ const Account: React.FC = () => {
       setProfileDataLoading(false);
     }
   };
+
+  // Handle art piece click for edition creation
+  const handleArtPieceClick = (artPieceAddress: string, event: React.MouseEvent) => {
+    // Prevent triggering if clicking on the "View Details" link
+    if ((event.target as HTMLElement).closest('.view-art-piece-link')) {
+      return;
+    }
+    
+    // Only allow artists to create editions
+    if (!isArtist) {
+      return;
+    }
+    
+    setSelectedArtPiece(artPieceAddress);
+    setShowEditionModal(true);
+  };
+
+  // Handle edition creation success
+  const handleEditionSuccess = (editionAddress: string) => {
+    console.log('Edition created successfully:', editionAddress);
+    // Optionally refresh the art pieces list
+    if (profile) {
+      loadArtPieces(profile);
+    }
+  };
+
+  // Handle edition creation error
+  const handleEditionError = (error: string) => {
+    console.error('Edition creation error:', error);
+    setError(error);
+  };
+
+  // Close edition modal
+  const handleEditionClose = () => {
+    setShowEditionModal(false);
+    setSelectedArtPiece(null);
+  };
   
   return (
     <div className="account-container">
@@ -710,6 +752,9 @@ const Account: React.FC = () => {
           
           <div className="account-card art-pieces-card">
             <h3>My Art Pieces {totalArtPieces > 0 && <span className="count-badge">{totalArtPieces}</span>}</h3>
+            {isArtist && (
+              <p className="art-pieces-subtitle">Click on any art piece to create an ERC1155 edition for sale</p>
+            )}
             {loadingArtPieces ? (
               <div className="loading-spinner">Loading art pieces...</div>
             ) : recentArtPieces.length > 0 ? (
@@ -720,7 +765,11 @@ const Account: React.FC = () => {
                     if (!address) return null; // Skip empty addresses
                     const details = artPieceDetails[address] || { title: 'Loading...', tokenURIData: null };
                     return (
-                      <div key={index} className="art-piece-item">
+                      <div 
+                        key={index} 
+                        className={`art-piece-item ${isArtist ? 'clickable' : ''}`}
+                        onClick={isArtist ? (e) => handleArtPieceClick(address, e) : undefined}
+                      >
                         {details.tokenURIData ? (
                           <>
                             <ArtDisplay
@@ -763,6 +812,11 @@ const Account: React.FC = () => {
                               <h4 className="art-piece-title">{details.title}</h4>
                               <div className="art-piece-address">{formatAddress(address)}</div>
                             </div>
+                          </div>
+                        )}
+                        {isArtist && (
+                          <div className="art-piece-overlay">
+                            <span className="edition-hint">Click to create edition</span>
                           </div>
                         )}
                         <a 
@@ -837,6 +891,18 @@ const Account: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Art Edition Creation Modal */}
+      <CreateArtEdition
+        isOpen={showEditionModal}
+        onClose={handleEditionClose}
+        onSuccess={handleEditionSuccess}
+        onError={handleEditionError}
+        selectedArtPiece={selectedArtPiece}
+        artPieceDetails={selectedArtPiece ? artPieceDetails[selectedArtPiece] || null : null}
+        profileContract={profile}
+        isArtist={isArtist}
+      />
     </div>
   );
 };

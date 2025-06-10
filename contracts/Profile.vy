@@ -101,7 +101,7 @@ interface ArtPiece:
     def getArtist() -> address: view
     def getCommissioner() -> address: view
     def getArtCommissionHubAddress() -> address: view
-    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[200], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool, _original_uploader: address, _profile_factory_address: address, _token_uri_json: String[2500]): nonpayable
+    def initialize(_token_uri_data: Bytes[45000], _token_uri_data_format: String[10], _title_input: String[100], _description_input: String[400], _commissioner_input: address, _artist_input: address, _commission_hub: address, _ai_generated: bool, _original_uploader: address, _profile_factory_address: address, _token_uri_json: String[2500]): nonpayable
     def verifyAsArtist(): nonpayable
     def verifyAsCommissioner(): nonpayable
     def isFullyVerifiedCommission() -> bool: view # returns true if the art piece is a VERIFIED commissioner != artist AND fully verified)
@@ -695,7 +695,7 @@ def createArtPiece(
     _token_uri_data: Bytes[45000],
     _token_uri_data_format: String[10],
     _title: String[100],
-    _description: String[200],
+    _description: String[400],
     _as_artist: bool,
     _other_party: address,
     _ai_generated: bool,

@@ -77,7 +77,7 @@ MAX_ROYALTY_PERCENT: constant(uint256) = 1000  # 10%
 interface ArtPiece:
     def getTokenURIData() -> Bytes[45000]: view
     def getTitle() -> String[100]: view
-    def getDescription() -> String[200]: view
+    def getDescription() -> String[400]: view
     def getArtist() -> address: view
     def getCommissioner() -> address: view
 
