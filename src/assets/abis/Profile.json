@@ -743,7 +743,40 @@
         "type": "string"
       },
       {
-        "name": "_base_uri",
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
         "type": "string"
       },
       {
@@ -757,6 +790,114 @@
       {
         "name": "_royalty_percent",
         "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
       }
     ],
     "name": "createArtEdition",

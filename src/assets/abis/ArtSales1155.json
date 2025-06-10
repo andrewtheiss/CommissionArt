@@ -12,6 +12,69 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "erc1155",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "saleType",
+        "type": "uint256"
+      }
+    ],
+    "name": "SaleStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "SalePaused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "erc1155",
+        "type": "address"
+      }
+    ],
+    "name": "SaleResumed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "erc1155",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "artPiece",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "saleType",
+        "type": "uint256"
+      }
+    ],
+    "name": "EditionCreated",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "name": "_profile_address",
@@ -324,10 +387,6 @@
         "type": "string"
       },
       {
-        "name": "_base_uri",
-        "type": "string"
-      },
-      {
         "name": "_mint_price",
         "type": "uint256"
       },
@@ -355,6 +414,151 @@
       {
         "name": "_art_piece",
         "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      }
+    ],
+    "name": "createEditionFromArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      }
+    ],
+    "name": "createEditionFromArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "createEditionFromArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
       }
     ],
     "name": "hasEditions",
@@ -362,6 +566,192 @@
       {
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_address",
+        "type": "address"
+      }
+    ],
+    "name": "startSaleForEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_address",
+        "type": "address"
+      }
+    ],
+    "name": "pauseSaleForEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_address",
+        "type": "address"
+      }
+    ],
+    "name": "resumeSaleForEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_addresses",
+        "type": "address[]"
+      }
+    ],
+    "name": "batchStartSales",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_addresses",
+        "type": "address[]"
+      }
+    ],
+    "name": "batchPauseSales",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_addresses",
+        "type": "address[]"
+      }
+    ],
+    "name": "batchResumeSales",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_address",
+        "type": "address"
+      }
+    ],
+    "name": "getSaleInfo",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_address",
+        "type": "address"
+      }
+    ],
+    "name": "getPhaseInfo",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_page",
+        "type": "uint256"
+      },
+      {
+        "name": "_page_size",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAllActiveSales",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_edition_address",
+        "type": "address"
+      }
+    ],
+    "name": "isSaleActive",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getAllManagedEditions",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]"
       }
     ],
     "stateMutability": "view",

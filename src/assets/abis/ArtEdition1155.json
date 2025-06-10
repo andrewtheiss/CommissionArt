@@ -111,11 +111,6 @@
         "type": "address"
       },
       {
-        "indexed": true,
-        "name": "tokenId",
-        "type": "uint256"
-      },
-      {
         "indexed": false,
         "name": "amount",
         "type": "uint256"
@@ -133,11 +128,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "name": "tokenId",
-        "type": "uint256"
-      },
-      {
         "indexed": false,
         "name": "oldPrice",
         "type": "uint256"
@@ -150,6 +140,83 @@
     ],
     "name": "PriceUpdated",
     "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "saleType",
+        "type": "uint256"
+      }
+    ],
+    "name": "SaleStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "paused",
+        "type": "bool"
+      }
+    ],
+    "name": "SalePaused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "resumed",
+        "type": "bool"
+      }
+    ],
+    "name": "SaleResumed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "name": "newPhase",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "newPrice",
+        "type": "uint256"
+      }
+    ],
+    "name": "PhaseChanged",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_sales_1155",
+        "type": "address"
+      },
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "name": "_symbol",
+        "type": "string"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
     "inputs": [
@@ -170,8 +237,8 @@
         "type": "string"
       },
       {
-        "name": "_base_uri",
-        "type": "string"
+        "name": "_payment_currency",
+        "type": "address"
       }
     ],
     "name": "initialize",
@@ -182,7 +249,7 @@
   {
     "inputs": [
       {
-        "name": "_mint_price",
+        "name": "_initial_price",
         "type": "uint256"
       },
       {
@@ -195,21 +262,95 @@
       }
     ],
     "name": "createEdition",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
+    "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_token_id",
+        "name": "_initial_price",
         "type": "uint256"
       },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      }
+    ],
+    "name": "createEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_initial_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "createEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "startSale",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pauseSale",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "resumeSale",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
         "name": "_amount",
         "type": "uint256"
@@ -223,15 +364,11 @@
   {
     "inputs": [
       {
-        "name": "_token_id",
-        "type": "uint256"
-      },
-      {
-        "name": "_new_price",
+        "name": "_amount",
         "type": "uint256"
       }
     ],
-    "name": "setMintPrice",
+    "name": "mintERC20",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -239,15 +376,39 @@
   {
     "inputs": [
       {
-        "name": "_token_id",
+        "name": "_amount",
         "type": "uint256"
       },
       {
-        "name": "_paused",
-        "type": "bool"
+        "name": "_deadline",
+        "type": "uint256"
+      },
+      {
+        "name": "_v",
+        "type": "uint8"
+      },
+      {
+        "name": "_r",
+        "type": "bytes32"
+      },
+      {
+        "name": "_s",
+        "type": "bytes32"
       }
     ],
-    "name": "setPaused",
+    "name": "mintWithPermit",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_new_price",
+        "type": "uint256"
+      }
+    ],
+    "name": "setCurrentPrice",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -262,6 +423,60 @@
     "name": "updateProceedsAddress",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getSaleInfo",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPhases",
+    "outputs": [
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -417,6 +632,54 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getArtPieceData",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      },
+      {
+        "name": "",
+        "type": "string"
+      },
+      {
+        "name": "",
+        "type": "address"
+      },
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getArtPieceImageData",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getArtPieceImageFormat",
+    "outputs": [
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "name": "_interface_id",
@@ -434,12 +697,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "name": "_token_id",
-        "type": "uint256"
-      }
-    ],
+    "inputs": [],
     "name": "getEditionInfo",
     "outputs": [
       {
@@ -460,6 +718,53 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getLinkedArtPiece",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isPaymentCurrencyValid",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getPaymentInfo",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      },
+      {
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "emergencyWithdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -524,6 +829,18 @@
   },
   {
     "inputs": [],
+    "name": "paymentCurrency",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "name",
     "outputs": [
       {
@@ -547,25 +864,9 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "baseURI",
-    "outputs": [
-      {
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "name": "arg0",
-        "type": "uint256"
-      },
-      {
-        "name": "arg1",
         "type": "address"
       }
     ],
@@ -601,34 +902,118 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "currentPrice",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "basePrice",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "maxSupply",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "currentSupply",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isPaused",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "royaltyPercent",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "saleType",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "saleStartTime",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "name": "arg0",
         "type": "uint256"
       }
     ],
-    "name": "tokenIdToConfig",
+    "name": "phases",
     "outputs": [
       {
         "components": [
           {
-            "name": "mintPrice",
+            "name": "threshold",
             "type": "uint256"
           },
           {
-            "name": "maxSupply",
-            "type": "uint256"
-          },
-          {
-            "name": "currentSupply",
-            "type": "uint256"
-          },
-          {
-            "name": "isPaused",
-            "type": "bool"
-          },
-          {
-            "name": "royaltyPercent",
+            "name": "price",
             "type": "uint256"
           }
         ],
@@ -641,7 +1026,7 @@
   },
   {
     "inputs": [],
-    "name": "nextTokenId",
+    "name": "currentPhase",
     "outputs": [
       {
         "name": "",

@@ -2,43 +2,43 @@
   "networks": {
     "testnet": {
       "l1": {
-        "address": "0x04C4fD0354C965B878Ae87ebf3cd1AB9F1519fEE",
+        "address": "0x093aCDF81D83a478268bE62D36A37F213518f0A5",
         "contract": "L1QueryOwnership"
       },
       "l2": {
-        "address": "0x0D24a00f41e0c45041589Ece7101b72d2d8e4697",
+        "address": "0x0A5e39162156313be027ff34FA311707F103ce6d",
         "contract": "L2OwnershipRelay"
       },
       "l3": {
-        "address": "0xA4E8eAF136c68266656096f916E140b2352d53aD",
+        "address": "0x6489eDCD7016d18667D0511d5E8c5B84708076F7",
         "contract": "ArtCommissionHubOwners"
       },
       "artCommissionHub": {
-        "address": "0xf61B7C9096f4dd6e84F4c8375D080A67Bb52eeE6",
+        "address": "0xaEEA9e94002B63C07f0768B7feF4eb4671D32e22",
         "contract": "ArtCommissionHub"
       },
       "artPiece": {
-        "address": "0x3720b12e6cBDE9883Be325253d3Db87609203d02",
+        "address": "0x814c95f0CD4002C85590eCb9B65A3647D67A0AE6",
         "contract": "ArtPiece"
       },
       "profileTemplate": {
-        "address": "0x4b6D506cDf12E71E25310Af2b78B134D9319Ee9A",
+        "address": "0x39878586D4F69fbb985FF7561D872a1A7c83D640",
         "contract": "Profile"
       },
       "profileFactoryAndRegistry": {
-        "address": "0x897F0656e7ad263DE865bcC336C4902C8C7c837E",
+        "address": "0xB75D8cc9D0F853827cFE765c39e0D142feaB247b",
         "contract": "ProfileFactoryAndRegistry"
       },
       "profileSocialTemplate": {
-        "address": "0xFc48A04Eb0dA11A29c751e0280F34B613677fD29",
+        "address": "0x975553Df55A54c8c365100Abd7c58102cF874F32",
         "contract": "ProfileSocial"
       },
       "artEdition1155Template": {
-        "address": "0x8A44279AefD60930cE05F3d750E7a524AAb3a3A8",
+        "address": "0x1FF88Dc9886739Ac557D2bD0E2Cf591626267977",
         "contract": "ArtEdition1155"
       },
       "artSales1155Template": {
-        "address": "0xe016f1F74fdc58738EF91e809d42F298826FaE29",
+        "address": "0x32828CC409364396784Fa1f91800874Fe3e4cEda",
         "contract": "ArtSales1155"
       }
     },
@@ -77,5 +77,5 @@
       }
     }
   },
-  "lastUpdated": "2025-06-09T16:57:38.425583"
+  "lastUpdated": "2025-06-10T05:53:15.529317"
 }
