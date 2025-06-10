@@ -456,8 +456,7 @@ def test_create_edition_from_art_piece_success(setup):
         art_piece_address,
         "Test Edition",
         "TE",
-        "https://example.com/metadata/",
-        1000000000000000000,  # 1 ETH in wei
+        1000000000000000000,  # 1 ETH in wei (mint price)
         100,  # max supply
         250,  # 2.5% royalty (250 basis points)
         sender=artist
@@ -520,8 +519,7 @@ def test_create_edition_from_art_piece_only_owner(setup):
             art_piece_address,
             "Test Edition",
             "TE",
-            "https://example.com/metadata/",
-            1000000000000000000,  # 1 ETH in wei
+            1000000000000000000,  # 1 ETH in wei (mint price)
             100,  # max supply
             250,  # 2.5% royalty
             sender=owner  # Wrong sender
@@ -559,8 +557,7 @@ def test_create_edition_requires_art_piece_ownership(setup):
             art_piece_address,
             "Test Edition",
             "TE",
-            "https://example.com/metadata/",
-            1000000000000000000,  # 1 ETH in wei
+            1000000000000000000,  # 1 ETH in wei (mint price)
             100,  # max supply
             250,  # 2.5% royalty
             sender=artist
@@ -639,8 +636,7 @@ def test_profile_create_art_edition_success(setup):
         art_piece_address,
         "Profile Test Edition",
         "PTE",
-        "https://example.com/profile-metadata/",
-        2000000000000000000,  # 2 ETH in wei
+        2000000000000000000,  # 2 ETH in wei (mint price)
         50,  # max supply
         500,  # 5% royalty (500 basis points)
         sender=artist
@@ -684,8 +680,7 @@ def test_profile_create_art_edition_only_owner(setup):
             art_piece_address,
             "Test Edition",
             "TE",
-            "https://example.com/metadata/",
-            1000000000000000000,  # 1 ETH in wei
+            1000000000000000000,  # 1 ETH in wei (mint price)
             100,  # max supply
             250,  # 2.5% royalty
             sender=owner  # Wrong sender
@@ -723,8 +718,7 @@ def test_profile_create_art_edition_requires_art_in_profile(setup):
             art_piece_address,
             "Test Edition",
             "TE",
-            "https://example.com/metadata/",
-            1000000000000000000,  # 1 ETH in wei
+            1000000000000000000,  # 1 ETH in wei (mint price)
             100,  # max supply
             250,  # 2.5% royalty
             sender=artist
@@ -787,8 +781,7 @@ def test_multiple_editions_same_art_piece_not_allowed(setup):
         art_piece_address,
         "First Edition",
         "FE",
-        "https://example.com/metadata1/",
-        1000000000000000000,  # 1 ETH in wei
+        1000000000000000000,  # 1 ETH in wei (mint price)
         100,  # max supply
         250,  # 2.5% royalty (250 basis points)
         sender=artist
@@ -804,8 +797,7 @@ def test_multiple_editions_same_art_piece_not_allowed(setup):
             art_piece_address,
             "Second Edition",
             "SE",
-            "https://example.com/metadata2/",
-            2000000000000000000,  # 2 ETH in wei
+            2000000000000000000,  # 2 ETH in wei (mint price)
             50,  # max supply
             500,  # 5% royalty (500 basis points)
             sender=artist

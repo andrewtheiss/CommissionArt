@@ -179,7 +179,7 @@ def createEdition(
         assert len(_phases) <= MAX_PHASES, "Too many phases"
         
         # Validate phase ordering
-        for i: uint256 in range(len(_phases)):
+        for i: uint256 in range(len(_phases), bound=MAX_PHASES):
             if i > 0:
                 assert _phases[i].threshold > _phases[i-1].threshold, "Phases must be in ascending order"
     
@@ -220,7 +220,7 @@ def pauseSale():
     assert not self.isPaused, "Sale already paused"
     
     self.isPaused = True
-    log SalePaused(edition=self)
+    log SalePaused(paused=True)
 
 @external
 def resumeSale():
@@ -230,14 +230,14 @@ def resumeSale():
     assert self.isPaused, "Sale not paused"
     
     self.isPaused = False
-    log SaleResumed(edition=self)
+    log SaleResumed(resumed=True)
 
 @internal
 def _updatePriceForPhases():
     """Update price based on current phase"""
     if self.saleType == SALE_TYPE_QUANTITY_PHASES:
         # Check if we've moved to a new phase based on quantity
-        for i: uint256 in range(len(self.phases)):
+        for i: uint256 in range(len(self.phases), bound=MAX_PHASES):
             if self.currentSupply >= self.phases[i].threshold and i > self.currentPhase:
                 self.currentPhase = i
                 old_price: uint256 = self.currentPrice
@@ -248,7 +248,7 @@ def _updatePriceForPhases():
     elif self.saleType == SALE_TYPE_TIME_PHASES:
         # Check if we've moved to a new phase based on time
         current_time: uint256 = block.timestamp
-        for i: uint256 in range(len(self.phases)):
+        for i: uint256 in range(len(self.phases), bound=MAX_PHASES):
             if current_time >= self.phases[i].threshold and i > self.currentPhase:
                 self.currentPhase = i
                 old_price: uint256 = self.currentPrice

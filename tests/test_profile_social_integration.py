@@ -175,7 +175,6 @@ def test_create_art_piece_and_register_profile(setup):
         1,  # chain_id (generic)
         "0x1000000000000000000000000000000000000001",  # generic hub contract address
         int(user3.address, 16),  # generic hub account (user's address as uint256)
-        "",  # Empty token_uri_json parameter
         sender=user3
     )
     
@@ -273,7 +272,6 @@ def test_create_art_piece_for_party(setup):
         user2.address,  # other_party (user2 is commissioner)
         commission_hub_addr,  # commission_hub
         False,  # ai_generated
-        "",  # Empty token_uri_json parameter
         sender=user1
     )
     
