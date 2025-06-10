@@ -322,7 +322,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       });
 
       // Call the createArtEdition method on the profile contract
-      const tx = await profileContract.createArtEdition(
+      const tx = await profileContract['createArtEdition(address,string,string,uint256,uint256,uint256,address,uint256,(uint256,uint256)[])'](
         selectedArtPiece,
         formData.name,
         formData.symbol,

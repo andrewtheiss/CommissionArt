@@ -240,7 +240,7 @@ const AddArt: React.FC = () => {
         );
       } else {
         const profileHubContract = new ethers.Contract(contractConfig.networks[environment].profileFactoryAndRegistry.address, ProfileFactoryABI, signer);
-        tx = await profileHubContract.createNewArtPieceAndRegisterProfileAndAttachToHub(
+        tx = await profileHubContract['createNewArtPieceAndRegisterProfileAndAttachToHub(address,bytes,string,string,string,bool,address,address,bool,uint256,address,uint256,string)'](
           artPieceTemplateAddress,      // _art_piece_template
           finalImageData,               // _token_uri_data
           finalFormat,                  // _token_uri_data_format

@@ -514,7 +514,7 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
             console.log('=================================================');
             
             // Use the combined method to create profile and art piece in one transaction
-            tx = await profileFactoryContract.createNewArtPieceAndRegisterProfileAndAttachToHub(
+            tx = await profileFactoryContract['createNewArtPieceAndRegisterProfileAndAttachToHub(address,bytes,string,string,string,bool,address,address,bool,uint256,address,uint256,string)'](
               artPieceTemplateAddress,           // _art_piece_template
               finalImageData,                    // _token_uri_data
               finalFormat,                       // _token_uri_data_format
@@ -591,7 +591,7 @@ const ComprehensiveUpload: React.FC<ComprehensiveUploadProps> = ({ onBack, userT
         console.log('==========================================');
         
         // Use the combined method to create profile and art piece in one transaction
-        tx = await profileFactoryContract.createNewArtPieceAndRegisterProfileAndAttachToHub(
+        tx = await profileFactoryContract['createNewArtPieceAndRegisterProfileAndAttachToHub(address,bytes,string,string,string,bool,address,address,bool,uint256,address,uint256,string)'](
           artPieceTemplateAddress,           // _art_piece_template
           finalImageData,                    // _token_uri_data
           finalFormat,                       // _token_uri_data_format
