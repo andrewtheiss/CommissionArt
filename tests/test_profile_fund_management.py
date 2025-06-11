@@ -6,10 +6,13 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 def create_unique_test_token(deployer, test_name=""):
     """Create a unique ERC20 token for each test to avoid file locking issues"""
-    # Use timestamp and test name to ensure uniqueness
-    timestamp = str(int(time.time() * 1000000))  # Microsecond precision
-    unique_name = f"TestToken_{test_name}_{timestamp}"
-    unique_symbol = f"TEST_{timestamp[-6:]}"  # Last 6 digits of timestamp
+    # Use timestamp to ensure uniqueness but keep strings short
+    timestamp = str(int(time.time() * 1000))  # Millisecond precision
+    
+    # Keep name under 50 characters and symbol under 10 characters
+    short_test_name = test_name[:15] if test_name else "test"  # Limit test name
+    unique_name = f"Token_{short_test_name}_{timestamp[-8:]}"  # Use last 8 digits of timestamp
+    unique_symbol = f"T{timestamp[-7:]}"  # Use last 7 digits to stay under 10 chars (T + 7 digits = 8 chars)
     
     return project.MockERC20.deploy(unique_name, unique_symbol, 18, sender=deployer)
 
