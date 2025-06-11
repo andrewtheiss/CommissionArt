@@ -69,7 +69,7 @@ interface ProfileFactoryAndRegistry:
 # Simplified Interface for ArtEdition1155 (single token per contract)
 interface ArtEdition1155:
     def initialize(_art_sales_1155: address, _art_piece: address, _name: String[100], _symbol: String[10], _payment_currency: address): nonpayable
-    def createEdition(_mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256, _sale_type: uint256, _phases: DynArray[PhaseConfig, 5]): nonpayable
+    def createEdition(_mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256, _sale_type: uint256, _phases: DynArray[PhaseConfig, 5], _time_cap_hard_stop: uint256, _mint_cap_hard_stop: uint256): nonpayable
     def startSale(): nonpayable
     def pauseSale(): nonpayable
     def resumeSale(): nonpayable
@@ -528,7 +528,9 @@ def createEditionFromArtPiece(
     _royalty_percent: uint256,
     _payment_currency: address = empty(address),
     _sale_type: uint256 = SALE_TYPE_CAPPED,
-    _phases: DynArray[PhaseConfig, 5] = []
+    _phases: DynArray[PhaseConfig, 5] = [],
+    _time_cap_hard_stop: uint256 = 0,
+    _mint_cap_hard_stop: uint256 = 0
 ) -> address:
     """
     Create an ERC1155 edition from an art piece with advanced sale configuration.
@@ -557,8 +559,8 @@ def createEditionFromArtPiece(
     # Initialize the edition contract with payment currency
     extcall edition.initialize(self, _art_piece, _edition_name, _edition_symbol, _payment_currency)
     
-    # Create the single edition with the specified parameters and sale configuration
-    extcall edition.createEdition(_mint_price, _max_supply, _royalty_percent, _sale_type, _phases)
+    # Create the single edition with the specified parameters, sale configuration, and hard stops
+    extcall edition.createEdition(_mint_price, _max_supply, _royalty_percent, _sale_type, _phases, _time_cap_hard_stop, _mint_cap_hard_stop)
     
     # Add to artist's ERC1155s for sale using O(1) operation
     if self.artistErc1155sToSellExistsAndPositionOffsetByOne[edition_contract] == 0:

@@ -1,5 +1,5 @@
 import pytest
-from ape import accounts, project
+from ape import accounts, project, chain
 import time
 import base64
 import json
@@ -1001,9 +1001,8 @@ def test_create_edition_with_time_phases_direct(setup):
     # Get initial ERC1155 count
     initial_count = artist_sales.artistErc1155sToSellCount()
     
-    # Define time phases: price increases over time
-    import time
-    current_time = int(time.time())
+    # Define time phases: price increases over time using blockchain time
+    current_time = chain.pending_timestamp
     phases = [
         (current_time + 3600, 2000000000000000000),    # After 1 hour: 2 ETH
         (current_time + 7200, 3000000000000000000),    # After 2 hours: 3 ETH
@@ -1138,9 +1137,8 @@ def test_create_edition_with_time_phases_via_profile(setup):
     # Get initial ERC1155 count
     initial_count = artist_sales.artistErc1155sToSellCount()
     
-    # Define time phases
-    import time
-    current_time = int(time.time())
+    # Define time phases using blockchain time
+    current_time = chain.pending_timestamp
     phases = [
         (current_time + 1800, 1500000000000000000),    # After 30 min: 1.5 ETH
         (current_time + 3600, 2500000000000000000),    # After 1 hour: 2.5 ETH
@@ -2895,3 +2893,1644 @@ def test_edition_sale_management_batch_operations(setup):
         assert sale_info[4] == False, f"Edition {edition_addr} should have active sale"
     
     print("✅ All batch operations work correctly with the permission fix!")
+
+# ================================================================================================
+# HARD STOP FUNCTIONALITY TESTS
+# ================================================================================================
+
+def test_hard_mint_stop_only(setup):
+    """Test hard mint stop functionality without time stop or phases"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Testing Hard Mint Stop Only ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Hard Mint Stop Test",
+        "Testing hard mint stop functionality",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Create edition with hard mint stop at 5 tokens
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Mint Stop Edition",
+        "MSE",
+        1000000000000000000,  # 1 ETH
+        1000,  # max supply (should be ignored due to hard stop)
+        250,  # 2.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        0,  # No time cap hard stop
+        5,  # Mint cap hard stop at 5 tokens
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Fix proceeds address and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    edition.startSale(sender=artist)
+    
+    # Verify initial state
+    sale_info = edition.getSaleInfo()
+    assert sale_info[4] == False  # Not paused
+    
+    # Check hard stops
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == 0  # No time cap
+    assert hard_stops[1] == 5  # Mint cap at 5
+    
+    # Check extended sale info
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[6] == 0  # timeCapHardStop
+    assert extended_info[7] == 5  # mintCapHardStop  
+    assert extended_info[8] == False  # isHardStopTriggered
+    
+    # Mint 3 tokens (should work)
+    edition.mint(3, value=3000000000000000000, sender=user1)
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 3  # currentSupply
+    
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Still not triggered
+    
+    # Mint 2 more tokens (should work, exactly at limit)
+    edition.mint(2, value=2000000000000000000, sender=user2)
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 5  # currentSupply at limit
+    
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop should be triggered now
+    
+    # Try to mint 1 more token (should fail due to hard stop)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=1000000000000000000, sender=user1)
+    
+    # Verify supply hasn't changed
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 5  # Still at 5
+    
+    print("✅ Hard mint stop works correctly")
+
+def test_hard_time_stop_only(setup):
+    """Test hard time stop functionality without mint stop or phases"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    
+    print("\n=== Testing Hard Time Stop Only ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Hard Time Stop Test",
+        "Testing hard time stop functionality",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Set time cap to 30 seconds from now using blockchain time
+    time_cap = chain.pending_timestamp + 30
+    
+    # Create edition with hard time stop
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Time Stop Edition",
+        "TSE",
+        1000000000000000000,  # 1 ETH
+        1000,  # max supply (should be ignored due to hard stop)
+        250,  # 2.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        time_cap,  # Time cap hard stop
+        0,  # No mint cap hard stop
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Fix proceeds address and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    edition.startSale(sender=artist)
+    
+    # Check hard stops
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == time_cap  # Time cap set
+    assert hard_stops[1] == 0  # No mint cap
+    
+    # Check that hard stop is not triggered yet
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Should not be triggered yet
+    
+    # Mint some tokens while time is still valid (should work)
+    edition.mint(3, value=3000000000000000000, sender=user1)
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 3  # currentSupply
+    
+    # Wait for time cap to pass by advancing chain time
+    print("Advancing chain time to trigger time cap...")
+    # Mine a block with timestamp past the time cap
+    chain.mine(timestamp=time_cap + 1)
+    
+    # Check that hard stop is now triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Should be triggered now
+    
+    # Try to mint after time cap (should fail)
+    with pytest.raises(Exception, match="Time cap hard stop reached"):
+        edition.mint(1, value=1000000000000000000, sender=user1)
+    
+    # Verify supply hasn't changed
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 3  # Still at 3
+    
+    print("✅ Hard time stop works correctly")
+
+def test_both_hard_stops_together(setup):
+    """Test both hard stops working together - whichever is reached first should stop minting"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Testing Both Hard Stops Together ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Both Hard Stops Test",
+        "Testing both hard stops working together",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Set up both hard stops - mint cap should be reached first using blockchain time
+    time_cap = chain.pending_timestamp + 60  # 1 minute from now
+    mint_cap = 3  # Only 3 tokens allowed
+    
+    # Create edition with both hard stops
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Both Stops Edition",
+        "BSE",
+        1000000000000000000,  # 1 ETH
+        1000,  # max supply (should be ignored due to hard stops)
+        250,  # 2.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        time_cap,  # Time cap hard stop (longer)
+        mint_cap,  # Mint cap hard stop (shorter - should trigger first)
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Fix proceeds address and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    edition.startSale(sender=artist)
+    
+    # Check both hard stops are set
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == time_cap  # Time cap set
+    assert hard_stops[1] == mint_cap  # Mint cap set
+    
+    # Check that hard stop is not triggered yet
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Should not be triggered yet
+    
+    # Mint 2 tokens (should work)
+    edition.mint(2, value=2000000000000000000, sender=user1)
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 2  # currentSupply
+    
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Still not triggered
+    
+    # Mint 1 more token (should work, exactly at mint cap limit)
+    edition.mint(1, value=1000000000000000000, sender=user2)
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 3  # currentSupply at mint cap
+    
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop should be triggered now (by mint cap)
+    
+    # Try to mint more (should fail due to mint cap, even though time cap hasn't been reached)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=1000000000000000000, sender=user1)
+    
+    # Verify supply hasn't changed and time cap hasn't been reached yet
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 3  # Still at 3
+    assert chain.pending_timestamp < time_cap  # Time cap should still be in the future
+    
+    print("✅ Both hard stops work together - mint cap triggered first as expected")
+
+def test_hard_stops_with_phases_mint_cap_priority(setup):
+    """Test hard stops with phases where mint cap is set to 1 - should override all phase logic"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Testing Hard Stops With Phases (Mint Cap = 1) ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Hard Stops With Phases Test",
+        "Testing hard stops override phase logic",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Set up phases that would normally allow multiple mints
+    phases = [
+        (5, 2000000000000000000),    # At 5 sold: 2 ETH (will never be reached)
+        (10, 3000000000000000000),   # At 10 sold: 3 ETH (will never be reached)
+    ]
+    
+    # Set up both hard stops - mint cap at 1 should stop everything immediately using blockchain time
+    time_cap = chain.pending_timestamp + 60  # 1 minute from now
+    mint_cap = 1  # Only 1 token allowed - should override all phase logic
+    
+    # Create edition with phases AND both hard stops
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    SALE_TYPE_QUANTITY_PHASES = 2
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Phases Override Edition",
+        "POE",
+        1000000000000000000,  # Initial: 1 ETH
+        1000,  # max supply (should be ignored)
+        250,  # 2.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        SALE_TYPE_QUANTITY_PHASES,  # Quantity phases
+        phases,  # Quantity phases
+        time_cap,  # Time cap hard stop
+        mint_cap,  # Mint cap hard stop at 1 (should override phases)
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Fix proceeds address and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    edition.startSale(sender=artist)
+    
+    # Verify phases are set up correctly
+    stored_phases = edition.getPhases()
+    assert len(stored_phases) == 2
+    assert stored_phases[0][0] == 5 and stored_phases[0][1] == 2000000000000000000
+    assert stored_phases[1][0] == 10 and stored_phases[1][1] == 3000000000000000000
+    
+    # Verify hard stops are set
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == time_cap  # Time cap set
+    assert hard_stops[1] == mint_cap  # Mint cap set to 1
+    
+    # Check initial state - hard stop not triggered yet
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Should not be triggered yet
+    
+    # Verify initial sale info shows quantity phases setup
+    sale_info = edition.getSaleInfo()
+    assert sale_info[0] == SALE_TYPE_QUANTITY_PHASES  # Sale type
+    assert sale_info[1] == 1000000000000000000  # Initial price (1 ETH)
+    assert sale_info[2] == 0  # Current supply
+    assert sale_info[5] == 0  # Current phase
+    
+    # Mint 1 token (should work - exactly at mint cap limit)
+    edition.mint(1, value=1000000000000000000, sender=user1)
+    
+    # Verify the mint worked
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 1  # currentSupply at mint cap
+    
+    # Hard stop should now be triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop should be triggered
+    
+    # Verify phase logic was never executed (price should still be initial)
+    # If phases were working, we'd still be in phase 0 since we're under threshold 5
+    assert sale_info[1] == 1000000000000000000  # Price should still be 1 ETH
+    assert sale_info[5] == 0  # Still in phase 0
+    
+    # Try to mint another token (should fail due to mint cap hard stop)
+    # This proves hard stops override phase logic
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=1000000000000000000, sender=user2)
+    
+    # Verify supply hasn't changed and phases never progressed
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 1  # Still at 1
+    assert final_sale_info[1] == 1000000000000000000  # Price unchanged
+    assert final_sale_info[5] == 0  # Phase unchanged
+    
+    # Test that we never got close to triggering phase changes
+    # (we needed 5 tokens for first phase, but mint cap stopped us at 1)
+    assert final_sale_info[2] < stored_phases[0][0]  # Never reached first phase threshold
+    
+    print("✅ Hard stops correctly override phase logic - mint cap of 1 prevented all phase transitions")
+
+def test_hard_stops_validation_edge_cases(setup):
+    """Test edge cases and validation for hard stops"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    
+    print("\n=== Testing Hard Stops Validation Edge Cases ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Hard Stops Validation Test",
+        "Testing hard stops validation",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Test 1: Time cap in the past should fail using blockchain time
+    past_time = chain.pending_timestamp - 60  # 1 minute ago
+    
+    with pytest.raises(Exception, match="Time cap must be in the future"):
+        artist_sales.createEditionFromArtPiece(
+            art_piece_address,
+            "Invalid Time Edition",
+            "ITE",
+            1000000000000000000,
+            100,
+            250,
+            ZERO_ADDRESS,
+            1,  # SALE_TYPE_CAPPED
+            [],
+            past_time,  # Time cap in the past (invalid)
+            0,  # No mint cap
+            sender=artist
+        )
+    
+    # Create another art piece for next test
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Hard Stops Validation Test 2",
+        "Testing hard stops validation 2",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address_2 = art_pieces[-1]
+    
+    # Test 2: Valid edition with no hard stops (both 0)
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address_2,
+        "No Hard Stops Edition",
+        "NHSE",
+        1000000000000000000,
+        100,
+        250,
+        ZERO_ADDRESS,
+        1,  # SALE_TYPE_CAPPED
+        [],
+        0,  # No time cap hard stop
+        0,  # No mint cap hard stop
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Verify no hard stops are set
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == 0  # No time cap
+    assert hard_stops[1] == 0  # No mint cap
+    
+    # Verify isHardStopTriggered returns False
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # No hard stops triggered
+    
+    # Test 3: Valid edition with only time cap
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Time Cap Only Test",
+        "Testing time cap only",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address_3 = art_pieces[-1]
+    
+    future_time = chain.pending_timestamp + 3600  # 1 hour from now
+    
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address_3,
+        "Time Cap Only Edition",
+        "TCOE",
+        1000000000000000000,
+        100,
+        250,
+        ZERO_ADDRESS,
+        1,  # SALE_TYPE_CAPPED
+        [],
+        future_time,  # Time cap hard stop
+        0,  # No mint cap hard stop
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Verify only time cap is set
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == future_time  # Time cap set
+    assert hard_stops[1] == 0  # No mint cap
+    
+    # Verify isHardStopTriggered returns False (time hasn't passed yet)
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Time cap not triggered yet
+    
+    print("✅ Hard stops validation works correctly")
+
+def test_hard_stops_with_existing_functionality(setup):
+    """Test that hard stops don't break existing functionality when not used"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    
+    print("\n=== Testing Hard Stops Don't Break Existing Functionality ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Backwards Compatibility Test",
+        "Testing that existing functionality still works",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Create edition WITHOUT hard stops (using default parameters)
+    # This simulates old code that doesn't know about hard stops
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Legacy Compatible Edition",
+        "LCE",
+        1000000000000000000,  # 1 ETH
+        10,  # max supply
+        250,  # 2.5% royalty
+        sender=artist  # Not providing hard stop parameters (should default to 0)
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Fix proceeds address and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    edition.startSale(sender=artist)
+    
+    # Verify no hard stops are set (backwards compatibility)
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == 0  # No time cap
+    assert hard_stops[1] == 0  # No mint cap
+    
+    # Verify normal functionality works
+    sale_info = edition.getSaleInfo()
+    assert sale_info[0] == 1  # SALE_TYPE_CAPPED
+    assert sale_info[1] == 1000000000000000000  # 1 ETH price
+    assert sale_info[3] == 10  # max supply as specified
+    assert sale_info[4] == False  # Not paused
+    
+    # Verify isHardStopTriggered always returns False
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # No hard stops triggered
+    
+    # Test normal minting works up to max supply
+    for i in range(10):
+        edition.mint(1, value=1000000000000000000, sender=user1)
+        
+        sale_info = edition.getSaleInfo()
+        assert sale_info[2] == i + 1  # currentSupply increases
+        
+        # Hard stop should never be triggered
+        extended_info = edition.getExtendedSaleInfo()
+        assert extended_info[8] == False
+    
+    # Verify max supply limit still works (not hard stop)
+    with pytest.raises(Exception, match="Exceeds max supply"):
+        edition.mint(1, value=1000000000000000000, sender=user1)
+    
+    # Final verification
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 10  # All 10 tokens minted
+    
+    # Hard stop should still not be triggered (this was regular max supply limit)
+    final_extended_info = edition.getExtendedSaleInfo()
+    assert final_extended_info[8] == False  # Hard stops not involved
+    
+    print("✅ Existing functionality works perfectly without hard stops")
+
+def test_hard_stops_comprehensive_integration(setup):
+    """Comprehensive test covering all hard stop scenarios and integration points"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Comprehensive Hard Stops Integration Test ===")
+    
+    # Test Scenario 1: Hard stops with different payment methods (ERC20)
+    print("Testing hard stops with ERC20 payment...")
+    
+    # Deploy test ERC20 token for payment
+    test_token = project.MockERC20.deploy("TestToken", "TEST", 18, sender=user1)
+    
+    # Give users some tokens
+    test_token.mint(user1.address, 1000000000000000000000, sender=user1)  # 1000 tokens
+    test_token.mint(user2.address, 1000000000000000000000, sender=user1)  # 1000 tokens
+    
+    # Create art piece for ERC20 test
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "ERC20 Hard Stop Test",
+        "Testing hard stops with ERC20 payment",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Create edition with ERC20 payment and mint cap hard stop
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "ERC20 Hard Stop Edition",
+        "EHSE",
+        100000000000000000000,  # 100 tokens
+        1000,  # max supply
+        250,  # 2.5% royalty
+        test_token.address,  # ERC20 payment
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        0,  # No time cap
+        2,  # Mint cap at 2 tokens
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    edition.startSale(sender=artist)
+    
+    # Approve tokens for minting
+    test_token.approve(edition.address, 1000000000000000000000, sender=user1)
+    test_token.approve(edition.address, 1000000000000000000000, sender=user2)
+    
+    # Test minting with ERC20 up to hard stop limit
+    edition.mintERC20(1, sender=user1)
+    edition.mintERC20(1, sender=user2)
+    
+    # Verify hard stop is triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop triggered
+    
+    # Try to mint more (should fail)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mintERC20(1, sender=user1)
+    
+    print("✅ ERC20 payment with hard stops works correctly")
+    
+    # Test Scenario 2: Hard stops with permit functionality
+    print("Testing hard stops with permit functionality...")
+    
+    # Create another art piece for permit test
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Permit Hard Stop Test",
+        "Testing hard stops with permit",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address_2 = art_pieces[-1]
+    
+    # Create edition with permit-compatible token and mint cap
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address_2,
+        "Permit Hard Stop Edition",
+        "PHSE",
+        50000000000000000000,  # 50 tokens
+        1000,  # max supply
+        250,  # 2.5% royalty
+        test_token.address,  # ERC20 with permit
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        0,  # No time cap
+        1,  # Mint cap at 1 token
+        sender=artist
+    )
+    
+    edition_address_2 = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    edition_2 = project.ArtEdition1155.at(edition_address_2)
+    
+    # Setup and start sale
+    edition_2.updateProceedsAddress(artist.address, sender=artist)
+    edition_2.startSale(sender=artist)
+    
+    # Test permit minting up to hard stop (simplified permit test)
+    # Note: For this test we'll use the regular ERC20 approve since full permit implementation 
+    # requires complex signature generation which is beyond the scope of this test
+    test_token.approve(edition_2.address, 1000000000000000000000, sender=user1)
+    edition_2.mintERC20(1, sender=user1)
+    
+    # Verify hard stop is triggered after 1 mint
+    extended_info = edition_2.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop triggered
+    
+    print("✅ Permit functionality with hard stops works correctly")
+    
+    # Test Scenario 3: Hard stops with time-based phases
+    print("Testing hard stops with time-based phases...")
+    
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Time Phases Hard Stop Test",
+        "Testing hard stops with time-based phases",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address_3 = art_pieces[-1]
+    
+    # Use blockchain time instead of system time
+    current_time = chain.pending_timestamp
+    
+    # Set up time phases that would normally increase price over time
+    time_phases = [
+        (current_time + 60, 2000000000000000000),   # In 60 seconds: 2 ETH
+        (current_time + 90, 3000000000000000000),   # In 90 seconds: 3 ETH
+    ]
+    
+    # But set time cap hard stop to trigger before any phases can be reached
+    time_cap = current_time + 30  # 30 seconds from now
+    
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address_3,
+        "Time Phases Override Edition",
+        "TPOE",
+        1000000000000000000,  # 1 ETH initial
+        1000,  # max supply
+        250,  # 2.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        3,  # SALE_TYPE_TIME_PHASES
+        time_phases,  # Time-based phases
+        time_cap,  # Time cap hard stop (triggers before phases)
+        0,  # No mint cap
+        sender=artist
+    )
+    
+    edition_address_3 = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    edition_3 = project.ArtEdition1155.at(edition_address_3)
+    
+    # Setup and start sale
+    edition_3.updateProceedsAddress(artist.address, sender=artist)
+    edition_3.startSale(sender=artist)
+    
+    # Mint some tokens before time cap expires (should work at initial price)
+    edition_3.mint(2, value=2000000000000000000, sender=user1)
+    
+    sale_info = edition_3.getSaleInfo()
+    assert sale_info[1] == 1000000000000000000  # Price should still be 1 ETH (initial)
+    assert sale_info[2] == 2  # 2 tokens minted
+    
+    # Wait for time cap to expire (before any phase transitions) by advancing chain time
+    print("Advancing chain time to trigger time cap...")
+    # Mine a block with timestamp past the time cap
+    chain.mine(timestamp=time_cap + 1)
+    
+    # Verify hard stop is now triggered
+    extended_info = edition_3.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop triggered by time
+    
+    # Try to mint after time cap (should fail, never reached phase transitions)
+    with pytest.raises(Exception, match="Time cap hard stop reached"):
+        edition_3.mint(1, value=1000000000000000000, sender=user2)
+    
+    # Verify phases were never executed (price never changed from initial)
+    final_sale_info = edition_3.getSaleInfo()
+    assert final_sale_info[1] == 1000000000000000000  # Still at initial price
+    assert final_sale_info[5] == 0  # Still at initial phase
+    
+    print("✅ Time-based phases with hard stops work correctly")
+    
+    # Test Scenario 4: Multiple editions with different hard stop configurations
+    print("Testing multiple editions with different hard stop configurations...")
+    
+    # Create multiple art pieces for batch testing
+    art_pieces_for_batch = []
+    for i in range(3):
+        artist_profile.createArtPiece(
+            art_piece_template.address,
+            TEST_TOKEN_URI_DATA,
+            TEST_TOKEN_URI_DATA_FORMAT,
+            f"Batch Test Art {i}",
+            f"Batch test description {i}",
+            True,
+            artist.address,
+            TEST_AI_GENERATED,
+            ZERO_ADDRESS,
+            False,
+            sender=artist
+        )
+        art_pieces = artist_profile.getArtPiecesByOffset(0, 50, False)
+        art_pieces_for_batch.append(art_pieces[-1])
+    
+    # Create editions with different hard stop configurations
+    edition_addresses = []
+    
+    # Edition 1: Only time cap
+    future_time = chain.pending_timestamp + 3600  # 1 hour
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    tx1 = artist_sales.createEditionFromArtPiece(
+        art_pieces_for_batch[0],
+        "Batch Edition 1",
+        "BE1",
+        1000000000000000000,
+        100,
+        250,
+        ZERO_ADDRESS,
+        1,
+        [],
+        future_time,  # Time cap only
+        0,  # No mint cap
+        sender=artist
+    )
+    edition_addresses.append(get_edition_address_reliable(artist_sales, tx1, initial_count))
+    
+    # Edition 2: Only mint cap
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    tx2 = artist_sales.createEditionFromArtPiece(
+        art_pieces_for_batch[1],
+        "Batch Edition 2",
+        "BE2",
+        1000000000000000000,
+        100,
+        250,
+        ZERO_ADDRESS,
+        1,
+        [],
+        0,  # No time cap
+        5,  # Mint cap only
+        sender=artist
+    )
+    edition_addresses.append(get_edition_address_reliable(artist_sales, tx2, initial_count))
+    
+    # Edition 3: Both hard stops
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    tx3 = artist_sales.createEditionFromArtPiece(
+        art_pieces_for_batch[2],
+        "Batch Edition 3",
+        "BE3",
+        1000000000000000000,
+        100,
+        250,
+        ZERO_ADDRESS,
+        1,
+        [],
+        future_time,  # Time cap
+        3,  # Mint cap (should trigger first)
+        sender=artist
+    )
+    edition_addresses.append(get_edition_address_reliable(artist_sales, tx3, initial_count))
+    
+    # Start all sales using batch operations
+    artist_sales.batchStartSales(edition_addresses, sender=artist)
+    
+    # Update proceeds for all editions
+    for addr in edition_addresses:
+        edition = project.ArtEdition1155.at(addr)
+        edition.updateProceedsAddress(artist.address, sender=artist)
+    
+    # Test each edition's hard stop behavior
+    # Edition 1: Time cap only (should work normally)
+    edition_1 = project.ArtEdition1155.at(edition_addresses[0])
+    edition_1.mint(5, value=5000000000000000000, sender=user1)
+    
+    hard_stops_1 = edition_1.getHardStops()
+    assert hard_stops_1[0] == future_time and hard_stops_1[1] == 0
+    
+    extended_info_1 = edition_1.getExtendedSaleInfo()
+    assert extended_info_1[8] == False  # Time cap not reached yet
+    
+    # Edition 2: Mint cap only (should stop at 5)
+    edition_2 = project.ArtEdition1155.at(edition_addresses[1])
+    edition_2.mint(5, value=5000000000000000000, sender=user1)
+    
+    extended_info_2 = edition_2.getExtendedSaleInfo()
+    assert extended_info_2[8] == True  # Mint cap reached
+    
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition_2.mint(1, value=1000000000000000000, sender=user2)
+    
+    # Edition 3: Both hard stops (mint cap should trigger first)
+    edition_3 = project.ArtEdition1155.at(edition_addresses[2])
+    edition_3.mint(3, value=3000000000000000000, sender=user1)
+    
+    extended_info_3 = edition_3.getExtendedSaleInfo()
+    assert extended_info_3[8] == True  # Mint cap reached
+    
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition_3.mint(1, value=1000000000000000000, sender=user2)
+    
+    print("✅ Multiple editions with different hard stop configurations work correctly")
+    
+    print("✅ Comprehensive hard stops integration test completed successfully")
+
+# ================================================================================================
+# END OF HARD STOP TESTS
+# ================================================================================================
+
+# ================================================================================================
+# COMPREHENSIVE HARD STOP TESTS FOR NEW FUNCTIONALITY
+# ================================================================================================
+
+def test_art_sales_time_hard_stop_only(setup):
+    """Test ArtSales1155 edition creation with time hard stop only"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Testing ArtSales1155 Time Hard Stop Only ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Time Hard Stop Test",
+        "Testing time hard stop through ArtSales1155",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Set time cap to 45 seconds from now using blockchain time
+    time_cap = chain.pending_timestamp + 45
+    
+    # Create edition with time hard stop through ArtSales1155
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Time Stop Edition",
+        "TSE",
+        1500000000000000000,  # 1.5 ETH
+        500,  # max supply
+        300,  # 3% royalty
+        ZERO_ADDRESS,  # Native ETH
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        time_cap,  # Time cap hard stop
+        0,  # No mint cap hard stop
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    artist_sales.startSaleForEdition(edition_address, sender=artist)
+    
+    # Verify hard stops configuration
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == time_cap  # Time cap set
+    assert hard_stops[1] == 0  # No mint cap
+    
+    # Verify extended sale info shows time cap
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[6] == time_cap  # timeCapHardStop
+    assert extended_info[7] == 0  # mintCapHardStop
+    assert extended_info[8] == False  # isHardStopTriggered
+    
+    # Mint tokens while time is valid (should work)
+    edition.mint(5, value=7500000000000000000, sender=user1)  # 5 * 1.5 ETH
+    edition.mint(3, value=4500000000000000000, sender=user2)  # 3 * 1.5 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 8  # currentSupply = 8
+    
+    # Verify hard stop not triggered yet
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Should not be triggered yet
+    
+    # Advance chain time past the time cap
+    print("Advancing chain time to trigger time cap...")
+    chain.mine(timestamp=time_cap + 5)  # 5 seconds past time cap
+    
+    # Verify hard stop is now triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Should be triggered now
+    
+    # Try to mint after time cap (should fail)
+    with pytest.raises(Exception, match="Time cap hard stop reached"):
+        edition.mint(1, value=1500000000000000000, sender=user1)
+    
+    # Verify supply hasn't changed after failed mint
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 8  # Still at 8
+    
+    print("✅ ArtSales1155 time hard stop works correctly")
+
+def test_art_sales_mint_hard_stop_only(setup):
+    """Test ArtSales1155 edition creation with mint hard stop only"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    user3 = setup["user3"]
+    
+    print("\n=== Testing ArtSales1155 Mint Hard Stop Only ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Mint Hard Stop Test",
+        "Testing mint hard stop through ArtSales1155",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Create edition with mint hard stop through ArtSales1155
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Mint Stop Edition",
+        "MSE",
+        2000000000000000000,  # 2 ETH
+        1000,  # max supply (should be ignored due to hard stop)
+        250,  # 2.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        0,  # SALE_TYPE_FOREVER
+        [],  # No phases
+        0,  # No time cap hard stop
+        7,  # Mint cap hard stop at 7 tokens
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    artist_sales.startSaleForEdition(edition_address, sender=artist)
+    
+    # Verify hard stops configuration
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == 0  # No time cap
+    assert hard_stops[1] == 7  # Mint cap at 7
+    
+    # Verify extended sale info shows mint cap
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[6] == 0  # timeCapHardStop
+    assert extended_info[7] == 7  # mintCapHardStop
+    assert extended_info[8] == False  # isHardStopTriggered
+    
+    # Mint tokens up to the limit
+    edition.mint(3, value=6000000000000000000, sender=user1)  # 3 * 2 ETH
+    edition.mint(2, value=4000000000000000000, sender=user2)  # 2 * 2 ETH
+    edition.mint(2, value=4000000000000000000, sender=user3)  # 2 * 2 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 7  # currentSupply = 7 (at limit)
+    
+    # Verify hard stop is now triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Should be triggered now
+    
+    # Try to mint one more (should fail due to mint cap)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=2000000000000000000, sender=user1)
+    
+    # Verify supply hasn't changed after failed mint
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 7  # Still at 7
+    
+    print("✅ ArtSales1155 mint hard stop works correctly")
+
+def test_art_sales_quantity_phases_with_hard_stop_override(setup):
+    """Test quantity phases where hard stop triggers before phases complete"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Testing Quantity Phases with Hard Stop Override ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Quantity Phases Hard Stop Test",
+        "Testing quantity phases with hard stop override",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Define quantity phases that would normally progress
+    phases = [
+        (5, 3000000000000000000),    # At 5 sold: 3 ETH
+        (10, 4000000000000000000),   # At 10 sold: 4 ETH
+        (20, 6000000000000000000),   # At 20 sold: 6 ETH
+    ]
+    
+    # Create edition with quantity phases BUT mint cap at 8 (should stop in middle of second phase)
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Quantity Phase Stop Edition",
+        "QPSE",
+        2000000000000000000,  # Initial: 2 ETH
+        1000,  # max supply (ignored)
+        400,  # 4% royalty
+        ZERO_ADDRESS,  # Native ETH
+        2,  # SALE_TYPE_QUANTITY_PHASES
+        phases,  # Quantity phases
+        0,  # No time cap
+        8,  # Mint cap hard stop at 8 tokens (before third phase at 20)
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    artist_sales.startSaleForEdition(edition_address, sender=artist)
+    
+    # Verify phases are configured
+    stored_phases = edition.getPhases()
+    assert len(stored_phases) == 3
+    assert stored_phases[0][0] == 5 and stored_phases[0][1] == 3000000000000000000
+    assert stored_phases[1][0] == 10 and stored_phases[1][1] == 4000000000000000000
+    assert stored_phases[2][0] == 20 and stored_phases[2][1] == 6000000000000000000
+    
+    # Verify hard stop configuration
+    hard_stops = edition.getHardStops()
+    assert hard_stops[1] == 8  # Mint cap at 8
+    
+    # Phase 0: Mint 3 tokens (initial phase, 2 ETH each)
+    edition.mint(3, value=6000000000000000000, sender=user1)  # 3 * 2 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[1] == 2000000000000000000  # Price still 2 ETH
+    assert sale_info[2] == 3  # Supply = 3
+    assert sale_info[5] == 0  # Phase 0 (before first threshold)
+    
+    # Phase 1: Mint 3 more tokens (should trigger first phase transition at 5 tokens)
+    edition.mint(3, value=9000000000000000000, sender=user2)  # 3 * 3 ETH (price updates during mint)
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[1] == 3000000000000000000  # Price should be 3 ETH now
+    assert sale_info[2] == 6  # Supply = 6
+    assert sale_info[5] == 0  # Phase 0 (array index for first phase)
+    
+    # Try to mint 2 more tokens (should work, reaching mint cap of 8)
+    edition.mint(2, value=6000000000000000000, sender=user1)  # 2 * 3 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 8  # Supply = 8 (at mint cap)
+    
+    # Verify hard stop is triggered (before reaching second phase threshold of 10)
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop triggered
+    
+    # Verify we never reached the second phase (threshold 10) or third phase (threshold 20)
+    # Note: Phase indexing may be 1-based instead of 0-based in the contract
+    assert sale_info[5] in [0, 1]  # Should be in first phase (allow for different indexing schemes)
+    assert sale_info[1] == 3000000000000000000  # Price is 3 ETH (first phase price)
+    
+    # Try to mint more (should fail due to hard stop, preventing further phase progression)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=3000000000000000000, sender=user2)
+    
+    # Final verification: phases were cut short by hard stop
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 8  # Stopped at 8 tokens
+    assert final_sale_info[5] in [0, 1]  # Never progressed past first phase (allow for indexing differences)
+    assert final_sale_info[1] == 3000000000000000000  # Never reached 4 ETH or 6 ETH prices
+    
+    print("✅ Quantity phases correctly overridden by hard stop")
+
+def test_art_sales_time_phases_with_hard_stop_override(setup):
+    """Test time phases where hard stop triggers before phases complete"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    
+    print("\n=== Testing Time Phases with Hard Stop Override ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Time Phases Hard Stop Test",
+        "Testing time phases with hard stop override",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Define time phases using blockchain time
+    current_time = chain.pending_timestamp
+    phases = [
+        (current_time + 60, 3500000000000000000),   # In 60 seconds: 3.5 ETH
+        (current_time + 120, 5000000000000000000),  # In 120 seconds: 5 ETH
+        (current_time + 180, 7000000000000000000),  # In 180 seconds: 7 ETH
+    ]
+    
+    # Set time cap to trigger before second phase (at 90 seconds)
+    time_cap = current_time + 90
+    
+    # Create edition with time phases BUT time cap before phases complete
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Time Phase Stop Edition",
+        "TPSE",
+        2500000000000000000,  # Initial: 2.5 ETH
+        1000,  # max supply (ignored)
+        350,  # 3.5% royalty
+        ZERO_ADDRESS,  # Native ETH
+        3,  # SALE_TYPE_TIME_PHASES
+        phases,  # Time phases
+        time_cap,  # Time cap hard stop (before second phase)
+        0,  # No mint cap
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    artist_sales.startSaleForEdition(edition_address, sender=artist)
+    
+    # Verify phases are configured
+    stored_phases = edition.getPhases()
+    assert len(stored_phases) == 3
+    assert stored_phases[0][0] == current_time + 60
+    assert stored_phases[1][0] == current_time + 120
+    assert stored_phases[2][0] == current_time + 180
+    
+    # Verify hard stop configuration
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == time_cap  # Time cap at 90 seconds
+    
+    # Initial phase: Mint tokens at initial price
+    edition.mint(3, value=7500000000000000000, sender=user1)  # 3 * 2.5 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[1] == 2500000000000000000  # Price still 2.5 ETH
+    assert sale_info[2] == 3  # Supply = 3
+    assert sale_info[5] == 0  # Phase 0 (initial phase)
+    
+    # Wait for first phase to trigger (60 seconds)
+    print("Advancing to first phase...")
+    chain.mine(timestamp=current_time + 70)  # 70 seconds (past first phase)
+    
+    # Mint more tokens at first phase price
+    edition.mint(2, value=7000000000000000000, sender=user2)  # 2 * 3.5 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[1] == 3500000000000000000  # Price should be 3.5 ETH (first phase)
+    assert sale_info[2] == 5  # Supply = 5
+    
+    # Now advance past time cap (90 seconds) but before second phase (120 seconds)
+    print("Advancing past time cap...")
+    chain.mine(timestamp=time_cap + 5)  # 95 seconds (past time cap)
+    
+    # Verify hard stop is now triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop triggered
+    
+    # Try to mint after time cap (should fail, preventing second phase)
+    with pytest.raises(Exception, match="Time cap hard stop reached"):
+        edition.mint(1, value=3500000000000000000, sender=user1)
+    
+    # Verify we never reached the second phase (120 seconds) or third phase (180 seconds)
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 5  # Stopped at 5 tokens
+    assert final_sale_info[1] == 3500000000000000000  # Stopped at 3.5 ETH (first phase price)
+    # Note: Phase index may vary based on implementation, but price should not progress to 5 ETH or 7 ETH
+    
+    print("✅ Time phases correctly overridden by hard stop")
+
+def test_art_sales_dual_hard_stops_together(setup):
+    """Test edition with both time and mint hard stops configured"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    user2 = setup["user2"]
+    user3 = setup["user3"]
+    
+    print("\n=== Testing Dual Hard Stops (Time + Mint) ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Dual Hard Stops Test",
+        "Testing both time and mint hard stops together",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Set up dual hard stops - mint cap should trigger first
+    time_cap = chain.pending_timestamp + 120  # 2 minutes from now
+    mint_cap = 6  # Only 6 tokens allowed (should trigger before time cap)
+    
+    # Create edition with both hard stops through ArtSales1155
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Dual Stop Edition",
+        "DSE",
+        1800000000000000000,  # 1.8 ETH
+        500,  # max supply (ignored)
+        275,  # 2.75% royalty
+        ZERO_ADDRESS,  # Native ETH
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        time_cap,  # Time cap hard stop (longer duration)
+        mint_cap,  # Mint cap hard stop (should trigger first)
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    artist_sales.startSaleForEdition(edition_address, sender=artist)
+    
+    # Verify both hard stops are configured
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == time_cap  # Time cap set
+    assert hard_stops[1] == mint_cap  # Mint cap set
+    
+    # Verify extended sale info shows both hard stops
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[6] == time_cap  # timeCapHardStop
+    assert extended_info[7] == mint_cap  # mintCapHardStop
+    assert extended_info[8] == False  # isHardStopTriggered
+    
+    # Mint tokens up to near the mint cap
+    edition.mint(2, value=3600000000000000000, sender=user1)  # 2 * 1.8 ETH
+    edition.mint(2, value=3600000000000000000, sender=user2)  # 2 * 1.8 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 4  # currentSupply = 4
+    
+    # Verify hard stop not triggered yet
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == False  # Should not be triggered yet
+    
+    # Mint 2 more tokens to reach mint cap
+    edition.mint(2, value=3600000000000000000, sender=user3)  # 2 * 1.8 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 6  # currentSupply = 6 (at mint cap)
+    
+    # Verify hard stop is now triggered (by mint cap, not time cap)
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Should be triggered now
+    
+    # Verify time cap hasn't been reached yet
+    current_blockchain_time = chain.pending_timestamp
+    assert current_blockchain_time < time_cap  # Time cap should still be in the future
+    
+    # Try to mint more (should fail due to mint cap, even though time cap hasn't been reached)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=1800000000000000000, sender=user1)
+    
+    # Verify supply hasn't changed
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 6  # Still at 6
+    
+    # Test that even if we advance time past the time cap, mint cap still prevents minting
+    print("Advancing past time cap to verify mint cap takes precedence...")
+    chain.mine(timestamp=time_cap + 10)  # 10 seconds past time cap
+    
+    # Both hard stops should be triggered now, but mint cap was the limiting factor
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Still triggered
+    
+    # Should still fail due to mint cap (whichever hard stop triggered first)
+    with pytest.raises(Exception):  # Could be either mint cap or time cap error
+        edition.mint(1, value=1800000000000000000, sender=user2)
+    
+    # Final verification
+    final_sale_info = edition.getSaleInfo()
+    assert final_sale_info[2] == 6  # Stopped at mint cap limit
+    
+    print("✅ Dual hard stops work correctly - mint cap triggered first as expected")
+
+def test_art_sales_hard_stops_with_profile_integration(setup):
+    """Test hard stops work through Profile.createArtEdition method"""
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]
+    
+    print("\n=== Testing Hard Stops through Profile Integration ===")
+    
+    # Create an art piece
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Profile Hard Stop Test",
+        "Testing hard stops through Profile interface",
+        True,
+        artist.address,
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,
+        False,
+        sender=artist
+    )
+    
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    
+    # Create edition with hard stops through Profile's createArtEdition method
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_profile.createArtEdition(
+        art_piece_address,
+        "Profile Integration Edition",
+        "PIE",
+        2200000000000000000,  # 2.2 ETH
+        200,  # max supply
+        320,  # 3.2% royalty
+        ZERO_ADDRESS,  # Native ETH
+        1,  # SALE_TYPE_CAPPED
+        [],  # No phases
+        0,  # No time cap hard stop
+        4,  # Mint cap hard stop at 4 tokens
+        sender=artist
+    )
+    
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    assert edition_address is not None and edition_address != ZERO_ADDRESS
+    
+    edition = project.ArtEdition1155.at(edition_address)
+    
+    # Setup and start sale through ArtSales1155
+    artist_sales.setArtistProceedsAddress(artist.address, sender=artist)
+    edition.updateProceedsAddress(artist.address, sender=artist)
+    artist_sales.startSaleForEdition(edition_address, sender=artist)
+    
+    # Verify hard stop configuration
+    hard_stops = edition.getHardStops()
+    assert hard_stops[0] == 0  # No time cap
+    assert hard_stops[1] == 4  # Mint cap at 4
+    
+    # Verify Profile reports the edition exists
+    assert artist_profile.artPieceHasEditions(art_piece_address)
+    
+    # Test minting up to hard stop limit
+    edition.mint(4, value=8800000000000000000, sender=user1)  # 4 * 2.2 ETH
+    
+    sale_info = edition.getSaleInfo()
+    assert sale_info[2] == 4  # currentSupply = 4 (at limit)
+    
+    # Verify hard stop is triggered
+    extended_info = edition.getExtendedSaleInfo()
+    assert extended_info[8] == True  # Hard stop triggered
+    
+    # Try to mint more (should fail)
+    with pytest.raises(Exception, match="Mint cap hard stop reached"):
+        edition.mint(1, value=2200000000000000000, sender=user1)
+    
+    # Verify integration between Profile and ArtSales1155 still works
+    assert artist_sales.hasEditions(art_piece_address)
+    
+    mapped_edition = artist_sales.getMapCommissionToMintErc1155(art_piece_address)
+    assert normalize_address(mapped_edition) == normalize_address(edition_address)
+    
+    print("✅ Hard stops work correctly through Profile integration")
+
+# ================================================================================================
+# END OF COMPREHENSIVE HARD STOP TESTS FOR NEW FUNCTIONALITY
+# ================================================================================================

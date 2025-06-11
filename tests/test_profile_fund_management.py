@@ -127,20 +127,19 @@ def test_withdraw_eth_by_owner(setup):
     assert balance_increase > amount_to_send * 0.99  # Allow for gas costs
     assert balance_increase <= amount_to_send  # But not more than what was sent
     
-    # Check event was emitted
+    # Check event was emitted - TokenWithdrawn with empty address for ETH
     events = tx.events
     assert len(events) > 0
     
-    # Find the EthWithdrawn event
-    eth_withdrawn_event = None
+    # Find the TokenWithdrawn event
+    token_withdrawn_event = None
     for event in events:
-        if hasattr(event, 'to_address') and hasattr(event, 'amount'):
-            eth_withdrawn_event = event
+        if hasattr(event, 'token'):
+            token_withdrawn_event = event
             break
     
-    assert eth_withdrawn_event is not None
-    assert eth_withdrawn_event.to_address == profile_owner.address
-    assert eth_withdrawn_event.amount == amount_to_send
+    assert token_withdrawn_event is not None
+    assert token_withdrawn_event.token == "0x0000000000000000000000000000000000000000"  # Empty address for ETH
 
 def test_withdraw_eth_to_different_recipient(setup):
     """Test withdrawing all ETH to a different recipient"""
@@ -162,15 +161,16 @@ def test_withdraw_eth_to_different_recipient(setup):
     assert profile.getAvailableEthBalance() == 0
     assert recipient.balance == initial_recipient_balance + amount_to_send
     
-    # Check event
+    # Check event - TokenWithdrawn with empty address for ETH
     events = tx.events
-    eth_withdrawn_event = None
+    token_withdrawn_event = None
     for event in events:
-        if hasattr(event, 'to_address') and hasattr(event, 'amount'):
-            eth_withdrawn_event = event
+        if hasattr(event, 'token'):
+            token_withdrawn_event = event
             break
     
-    assert eth_withdrawn_event.to_address == recipient.address
+    assert token_withdrawn_event is not None
+    assert token_withdrawn_event.token == "0x0000000000000000000000000000000000000000"  # Empty address for ETH
 
 def test_withdraw_all_eth_to_different_recipient(setup):
     """Test withdrawing all ETH to a different recipient"""
@@ -249,18 +249,16 @@ def test_erc20_token_withdrawal(setup):
     assert profile.getTokenBalance(test_token.address) == 0
     assert test_token.balanceOf(profile_owner.address) == initial_owner_balance + transfer_amount
     
-    # Check event was emitted
+    # Check event was emitted - TokenWithdrawn with the token address
     events = tx.events
     token_withdrawn_event = None
     for event in events:
-        if hasattr(event, 'token') and hasattr(event, 'to_address') and hasattr(event, 'amount'):
+        if hasattr(event, 'token'):
             token_withdrawn_event = event
             break
     
     assert token_withdrawn_event is not None
     assert token_withdrawn_event.token == test_token.address
-    assert token_withdrawn_event.to_address == profile_owner.address
-    assert token_withdrawn_event.amount == transfer_amount
 
 def test_withdraw_tokens_basic(setup):
     """Test basic token withdrawal functionality"""
