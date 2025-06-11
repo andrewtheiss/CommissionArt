@@ -31,7 +31,7 @@ enum SaleType {
 
 interface PhaseConfig {
   threshold: string; // Quantity for QUANTITY_PHASES, timestamp for TIME_PHASES
-  price: string;     // Price in ETH
+  price: string;     // Price in base currency
 }
 
 interface EditionFormData {
@@ -46,6 +46,14 @@ interface EditionFormData {
   enableQuantityPhases: boolean;
   timePhases: PhaseConfig[];
   quantityPhases: PhaseConfig[];
+}
+
+// ERC20 Token Info Interface
+interface TokenInfo {
+  symbol: string;
+  name: string;
+  decimals: number;
+  isERC20: boolean;
 }
 
 const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
@@ -76,10 +84,94 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [hasExistingEdition, setHasExistingEdition] = useState<boolean>(false);
   const [checkingExistingEdition, setCheckingExistingEdition] = useState<boolean>(false);
+  
+  // Add token info state
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo>({
+    symbol: 'ETH',
+    name: 'Ethereum',
+    decimals: 18,
+    isERC20: false
+  });
+  const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState<boolean>(false);
 
   // Format address for display
   const formatAddress = (address: string): string => {
     return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+  };
+
+  // Fetch token information for ERC20 tokens
+  const fetchTokenInfo = async (tokenAddress: string): Promise<TokenInfo> => {
+    if (!tokenAddress || tokenAddress === ethers.ZeroAddress) {
+      return {
+        symbol: 'ETH',
+        name: 'Ethereum',
+        decimals: 18,
+        isERC20: false
+      };
+    }
+
+    try {
+      setIsLoadingTokenInfo(true);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      
+      // ERC20 ABI for symbol, name, and decimals
+      const erc20Abi = [
+        'function symbol() view returns (string)',
+        'function name() view returns (string)',
+        'function decimals() view returns (uint8)'
+      ];
+      
+      const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+      
+      const [symbol, name, decimals] = await Promise.all([
+        tokenContract.symbol(),
+        tokenContract.name(),
+        tokenContract.decimals()
+      ]);
+      
+      return {
+        symbol,
+        name,
+        decimals: Number(decimals),
+        isERC20: true
+      };
+    } catch (error) {
+      console.error('Error fetching token info:', error);
+      // Fallback for invalid token addresses
+      return {
+        symbol: 'TOKEN',
+        name: 'Unknown Token',
+        decimals: 18,
+        isERC20: true
+      };
+    } finally {
+      setIsLoadingTokenInfo(false);
+    }
+  };
+
+  // Update token info when payment currency changes
+  useEffect(() => {
+    const updateTokenInfo = async () => {
+      const info = await fetchTokenInfo(formData.paymentCurrency);
+      setTokenInfo(info);
+    };
+    
+    updateTokenInfo();
+  }, [formData.paymentCurrency]);
+
+  // Convert price to correct decimal format
+  const convertPriceToTokenUnits = (price: string): bigint => {
+    if (!price || isNaN(Number(price))) {
+      return BigInt(0);
+    }
+    
+    if (tokenInfo.isERC20) {
+      // For ERC20 tokens, use the token's decimals
+      return ethers.parseUnits(price, tokenInfo.decimals);
+    } else {
+      // For native ETH, use 18 decimals
+      return ethers.parseEther(price);
+    }
   };
 
   // Initialize form data when art piece changes
@@ -152,6 +244,12 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
     setFormError(null);
     setIsCreating(false);
     setHasExistingEdition(false);
+    setTokenInfo({
+      symbol: 'ETH',
+      name: 'Ethereum',
+      decimals: 18,
+      isERC20: false
+    });
     onClose();
   };
 
@@ -287,23 +385,23 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       setIsCreating(true);
       setFormError(null);
 
-      // Convert form values to contract parameters
-      const mintPriceWei = ethers.parseEther(formData.mintPrice);
+      // Convert form values to contract parameters using correct decimals
+      const mintPriceTokenUnits = convertPriceToTokenUnits(formData.mintPrice);
       const maxSupply = parseInt(formData.maxSupply);
       const royaltyBasisPoints = Math.floor(parseFloat(formData.royaltyPercent) * 100);
 
-      // Prepare phases array
+      // Prepare phases array with correct decimal conversions
       let phases: Array<{threshold: bigint, price: bigint}> = [];
       
       if (formData.saleType === SaleType.TIME_PHASES && formData.timePhases.length > 0) {
         phases = formData.timePhases.map(phase => ({
           threshold: BigInt(convertToTimestamp(phase.threshold)),
-          price: ethers.parseEther(phase.price)
+          price: convertPriceToTokenUnits(phase.price)
         }));
       } else if (formData.saleType === SaleType.QUANTITY_PHASES && formData.quantityPhases.length > 0) {
         phases = formData.quantityPhases.map(phase => ({
           threshold: BigInt(parseInt(phase.threshold)),
-          price: ethers.parseEther(phase.price)
+          price: convertPriceToTokenUnits(phase.price)
         }));
       }
 
@@ -312,11 +410,12 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         name: formData.name,
         symbol: formData.symbol,
         mintPrice: formData.mintPrice,
-        mintPriceWei: mintPriceWei.toString(),
+        mintPriceTokenUnits: mintPriceTokenUnits.toString(),
         maxSupply,
         royaltyPercent: formData.royaltyPercent,
         royaltyBasisPoints,
         paymentCurrency: formData.paymentCurrency || 'Native ETH',
+        tokenInfo,
         saleType: formData.saleType,
         phases: phases.length
       });
@@ -326,7 +425,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         selectedArtPiece,
         formData.name,
         formData.symbol,
-        mintPriceWei,
+        mintPriceTokenUnits,
         maxSupply,
         royaltyBasisPoints,
         formData.paymentCurrency || ethers.ZeroAddress,
@@ -472,7 +571,10 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
             {/* Pricing and Supply */}
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="mint-price">Starting Price (ETH) *</label>
+                <label htmlFor="mint-price">
+                  Starting Price ({tokenInfo.symbol}) *
+                  {isLoadingTokenInfo && <span className="loading-indicator">🔄</span>}
+                </label>
                 <input
                   id="mint-price"
                   type="number"
@@ -480,12 +582,13 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   min="0"
                   value={formData.mintPrice}
                   onChange={(e) => handleInputChange('mintPrice', e.target.value)}
-                  placeholder="0.01"
+                  placeholder={tokenInfo.isERC20 ? "100" : "0.01"}
                   disabled={isCreating || !isArtist}
                   required
                 />
                 <small className="form-help">
-                  Starting price per token in ETH
+                  Starting price per token in {tokenInfo.symbol}
+                  {tokenInfo.isERC20 && ` (${tokenInfo.name})`}
                 </small>
               </div>
               <div className="form-group">
@@ -541,6 +644,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                 />
                 <small className="form-help">
                   ERC20 token address. Leave empty for native ETH.
+                  {tokenInfo.isERC20 && ` Current: ${tokenInfo.name} (${tokenInfo.symbol})`}
                 </small>
               </div>
             </div>
@@ -630,14 +734,14 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                           />
                         </div>
                         <div className="form-group">
-                          <label>Price (ETH)</label>
+                          <label>Price ({tokenInfo.symbol})</label>
                           <input
                             type="number"
                             step="0.001"
                             min="0"
                             value={phase.price}
                             onChange={(e) => handlePhaseChange('time', index, 'price', e.target.value)}
-                            placeholder="0.02"
+                            placeholder={tokenInfo.isERC20 ? "200" : "0.02"}
                             disabled={isCreating || !isArtist}
                           />
                         </div>
@@ -687,14 +791,14 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                           />
                         </div>
                         <div className="form-group">
-                          <label>Price (ETH)</label>
+                          <label>Price ({tokenInfo.symbol})</label>
                           <input
                             type="number"
                             step="0.001"
                             min="0"
                             value={phase.price}
                             onChange={(e) => handlePhaseChange('quantity', index, 'price', e.target.value)}
-                            placeholder="0.02"
+                            placeholder={tokenInfo.isERC20 ? "200" : "0.02"}
                             disabled={isCreating || !isArtist}
                           />
                         </div>

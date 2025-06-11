@@ -14,6 +14,13 @@ interface MintArtEditionProps {
   artSales1155Address: string | null;
 }
 
+interface TokenInfo {
+  symbol: string;
+  name: string;
+  decimals: number;
+  isERC20: boolean;
+}
+
 const MintArtEdition: React.FC<MintArtEditionProps> = ({
   isOpen,
   onClose,
@@ -37,11 +44,27 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
     paymentCurrency: string;
     saleActive: boolean;
     erc1155Address: string;
+    saleType: number;
+    currentPhase: number;
+    basePrice: string;
+  } | null>(null);
+
+  // Phase pricing state
+  const [phaseInfo, setPhaseInfo] = useState<{
+    phases: Array<{ threshold: number; price: string }>;
+    nextPhase: { threshold: number; price: string; type: 'quantity' | 'time' } | null;
   } | null>(null);
   
   // Real-time pricing state
   const [realTimePrice, setRealTimePrice] = useState<string | null>(null);
   const [priceLoading, setPriceLoading] = useState<boolean>(false);
+
+  // ERC20 token state
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+  const [tokenBalance, setTokenBalance] = useState<string>('0');
+  const [tokenAllowance, setTokenAllowance] = useState<string>('0');
+  const [needsApproval, setNeedsApproval] = useState<boolean>(false);
+  const [approvingToken, setApprovingToken] = useState<boolean>(false);
 
       // State for sale management
     const [managingSale, setManagingSale] = useState<boolean>(false);
@@ -58,8 +81,161 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
   useEffect(() => {
     if (editionInfo?.saleActive && editionInfo?.erc1155Address) {
       updateRealTimePrice();
+      checkTokenBalanceAndAllowance();
+      // Reload phase info in case supply changes affect phase calculations
+      loadPhaseInfo(editionInfo.erc1155Address);
     }
-  }, [mintAmount, editionInfo?.erc1155Address, editionInfo?.saleActive]);
+  }, [mintAmount, editionInfo?.erc1155Address, editionInfo?.saleActive, tokenInfo]);
+
+  // Reformat cached price when token info becomes available 
+  useEffect(() => {
+    if (tokenInfo && editionInfo && !realTimePrice) {
+      // If we have token info but the price might be formatted with wrong decimals
+      console.log('[MintArtEdition] Reformatting cached price with correct token decimals');
+      updateRealTimePrice();
+    }
+  }, [tokenInfo, editionInfo]);
+
+  // Fetch ERC20 token information
+  // Helper function to format prices using correct token decimals
+  const formatPrice = (priceWei: bigint, decimals?: number): string => {
+    const actualDecimals = decimals ?? tokenInfo?.decimals ?? 18;
+    return ethers.formatUnits(priceWei, actualDecimals);
+  };
+
+  // Helper functions for unlimited supply handling
+  const isUnlimitedSupply = (maxSupply: number): boolean => {
+    return maxSupply > 1e15; // Very large number indicates unlimited
+  };
+
+  const getRemainingSupply = (maxSupply: number, currentSupply: number): number => {
+    return isUnlimitedSupply(maxSupply) ? 999999 : maxSupply - currentSupply;
+  };
+
+  const canIncrementMintAmount = (mintAmount: number, maxSupply: number, currentSupply: number): boolean => {
+    if (isUnlimitedSupply(maxSupply)) {
+      return mintAmount < 999999; // Arbitrary large limit
+    }
+    return mintAmount < (maxSupply - currentSupply);
+  };
+
+  const isSoldOut = (maxSupply: number, currentSupply: number): boolean => {
+    if (isUnlimitedSupply(maxSupply)) {
+      return false; // Never sold out for unlimited
+    }
+    return currentSupply >= maxSupply;
+  };
+
+  const fetchTokenInfo = async (tokenAddress: string): Promise<TokenInfo> => {
+    const defaultEthInfo: TokenInfo = {
+      symbol: 'ETH',
+      name: 'Ethereum',
+      decimals: 18,
+      isERC20: false
+    };
+
+    if (tokenAddress === ethers.ZeroAddress) {
+      setTokenInfo(defaultEthInfo);
+      return defaultEthInfo;
+    }
+
+    try {
+      const provider = ethersService.getProvider();
+      if (!provider) throw new Error("No provider available");
+
+      // Standard ERC20 ABI for basic info
+      const erc20Abi = [
+        'function symbol() view returns (string)',
+        'function name() view returns (string)',
+        'function decimals() view returns (uint8)',
+        'function balanceOf(address) view returns (uint256)',
+        'function allowance(address owner, address spender) view returns (uint256)',
+        'function approve(address spender, uint256 amount) returns (bool)'
+      ];
+
+      const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+      
+      const [symbol, name, decimals] = await Promise.all([
+        tokenContract.symbol(),
+        tokenContract.name(),
+        tokenContract.decimals()
+      ]);
+
+      console.log('[MintArtEdition] ERC20 Token Info:', { symbol, name, decimals });
+
+      const tokenInfoData: TokenInfo = {
+        symbol,
+        name,
+        decimals: Number(decimals),
+        isERC20: true
+      };
+
+      setTokenInfo(tokenInfoData);
+      return tokenInfoData;
+
+    } catch (error) {
+      console.error('[MintArtEdition] Error fetching token info:', error);
+      // Fallback for unknown tokens
+      const fallbackInfo: TokenInfo = {
+        symbol: 'TOKEN',
+        name: 'Unknown Token',
+        decimals: 18,
+        isERC20: true
+      };
+      setTokenInfo(fallbackInfo);
+      return fallbackInfo;
+    }
+  };
+
+  // Check token balance and allowance for ERC20
+  const checkTokenBalanceAndAllowance = async () => {
+    if (!tokenInfo?.isERC20 || !editionInfo || !walletAddress) return;
+
+    try {
+      const signer = await ethersService.getSigner();
+      if (!signer) return;
+
+      const erc20Abi = [
+        'function balanceOf(address) view returns (uint256)',
+        'function allowance(address owner, address spender) view returns (uint256)'
+      ];
+
+      const tokenContract = new ethers.Contract(editionInfo.paymentCurrency, erc20Abi, signer);
+      
+      const [balance, allowance] = await Promise.all([
+        tokenContract.balanceOf(walletAddress),
+        tokenContract.allowance(walletAddress, editionInfo.erc1155Address)
+      ]);
+
+      setTokenBalance(ethers.formatUnits(balance, tokenInfo.decimals));
+      setTokenAllowance(ethers.formatUnits(allowance, tokenInfo.decimals));
+
+      // Calculate total cost needed
+      const priceToUse = realTimePrice || editionInfo.mintPrice;
+      const totalCost = parseFloat(priceToUse) * mintAmount;
+      const allowanceAmount = parseFloat(ethers.formatUnits(allowance, tokenInfo.decimals));
+
+      console.log('[MintArtEdition] Token allowance calculation:', {
+        priceToUse,
+        mintAmount,
+        totalCost,
+        allowanceAmount,
+        needsApproval: allowanceAmount < totalCost
+      });
+
+      setNeedsApproval(allowanceAmount < totalCost);
+
+      console.log('[MintArtEdition] Token balance check:', {
+        balance: ethers.formatUnits(balance, tokenInfo.decimals),
+        allowance: ethers.formatUnits(allowance, tokenInfo.decimals),
+        totalCostNeeded: totalCost,
+        needsApproval: allowanceAmount < totalCost
+      });
+
+    } catch (error) {
+      console.error('[MintArtEdition] Error checking token balance/allowance:', error);
+    }
+  };
 
   const loadEditionInfo = async () => {
     console.log('[MintArtEdition] === LOAD EDITION INFO ===');
@@ -126,41 +302,66 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       const name = await editionContract.name();
       const symbol = await editionContract.symbol();
       
-      // Get royalty percentage from edition contract
+      // Get royalty percentage and base price from edition contract
       const royaltyPercent = await editionContract.royaltyPercent();
+      const basePrice = await editionContract.basePrice();
       console.log('[MintArtEdition] Royalty percent from edition contract:', royaltyPercent.toString());
+      console.log('[MintArtEdition] Base price from edition contract:', basePrice.toString());
       
       // Get payment currency (if applicable)
-      let paymentCurrency = "ETH"; // Default
+      let paymentCurrency = ethers.ZeroAddress; // Default to ETH
       try {
         const currencyAddress = await editionContract.paymentCurrency();
         if (currencyAddress && currencyAddress !== ethers.ZeroAddress) {
-          // Could load ERC20 contract to get symbol, for now just show address
           paymentCurrency = currencyAddress;
         }
       } catch (err) {
         // Payment currency might not be implemented or might be ETH
-        console.log("Payment currency not available or ETH");
+        console.log("Payment currency not available, defaulting to ETH");
       }
+
+      console.log('[MintArtEdition] Payment currency address:', paymentCurrency);
+
+      // Fetch token info based on payment currency FIRST
+      const fetchedTokenInfo = await fetchTokenInfo(paymentCurrency);
+      
+      // Use the returned token info directly to avoid state timing issues
+      const tokenDecimals = fetchedTokenInfo.decimals;
+      const tokenSymbol = fetchedTokenInfo.symbol;
+
+      // Format the mint price using the payment token's actual decimals
+      const formattedMintPrice = formatPrice(mintPrice, tokenDecimals);
+      
+      console.log('[MintArtEdition] Initial price formatting debug:', {
+        rawMintPrice: mintPrice.toString(),
+        formattedMintPrice,
+        tokenSymbol,
+        tokenDecimals,
+        explanation: 'Using token-specific decimals for price formatting'
+      });
 
       const editionData = {
         name,
         symbol,
-        mintPrice: ethers.formatEther(mintPrice),
+        mintPrice: formattedMintPrice,
         maxSupply: Number(maxSupply),
         currentSupply: Number(currentSupply),
         royaltyPercent: Number(royaltyPercent) / 100, // Convert from basis points to percentage
         paymentCurrency,
         saleActive,
-        erc1155Address
+        erc1155Address,
+        saleType: Number(saleType),
+        currentPhase: Number(currentPhase),
+        basePrice: formatPrice(basePrice, tokenDecimals)
       };
       
       console.log('[MintArtEdition] ✅ Edition info loaded successfully:', editionData);
       setEditionInfo(editionData);
 
-      // Fetch real-time price after setting edition info
+      // Fetch real-time price and phase info after setting edition info
       if (saleActive) {
         await updateRealTimePrice(erc1155Address);
+        await loadPhaseInfo(erc1155Address);
       }
 
     } catch (err: any) {
@@ -195,9 +396,21 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       const realTimeSaleInfo = await editionContract.getSaleInfo();
       const [, realTimePriceWei, , , , ] = realTimeSaleInfo;
       
-      const realTimePriceEth = ethers.formatEther(realTimePriceWei);
-      console.log('[MintArtEdition] Updated real-time price:', realTimePriceEth, 'ETH');
-      setRealTimePrice(realTimePriceEth);
+      const tokenSymbol = tokenInfo?.symbol || 'ETH';
+      
+      // Format price using the payment token's actual decimals
+      const realTimePriceFormatted = formatPrice(realTimePriceWei);
+      
+      console.log('[MintArtEdition] Price conversion debug:', {
+        rawPriceWei: realTimePriceWei.toString(),
+        formattedPrice: realTimePriceFormatted,
+        tokenSymbol,
+        tokenDecimals: tokenInfo?.decimals,
+        explanation: 'Using token-specific decimals for price formatting'
+      });
+      
+      console.log('[MintArtEdition] Updated real-time price:', realTimePriceFormatted, tokenSymbol);
+      setRealTimePrice(realTimePriceFormatted);
 
     } catch (err: any) {
       console.error("Error fetching real-time price:", err);
@@ -205,6 +418,125 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       setRealTimePrice(null);
     } finally {
       setPriceLoading(false);
+    }
+  };
+
+  // Load phase information for phased pricing
+  const loadPhaseInfo = async (erc1155Address: string) => {
+    if (!editionInfo) return;
+
+    try {
+      const provider = ethersService.getProvider();
+      if (!provider) throw new Error("No provider available");
+
+      const artEditionAbi = abiLoader.loadABI('ArtEdition1155');
+      if (!artEditionAbi) throw new Error("ArtEdition1155 ABI not found");
+
+      const editionContract = new ethers.Contract(erc1155Address, artEditionAbi, provider);
+      
+      // Get phases from the contract
+      const contractPhases = await editionContract.getPhases();
+      console.log('[MintArtEdition] Raw phases from contract:', contractPhases);
+
+      // Format phases using token-specific decimals
+      const formattedPhases = contractPhases.map((phase: { threshold: bigint; price: bigint }) => ({
+        threshold: Number(phase.threshold),
+        price: formatPrice(phase.price)
+      }));
+
+      // Calculate next phase based on sale type
+      let nextPhase = null;
+      const currentSupply = editionInfo.currentSupply;
+      const saleType = editionInfo.saleType;
+
+      if (formattedPhases.length > 0) {
+        if (saleType === 2) { // SALE_TYPE_QUANTITY_PHASES
+          // Find next quantity threshold
+          const nextQuantityPhase = formattedPhases.find((phase: { threshold: number; price: string }) => phase.threshold > currentSupply);
+          if (nextQuantityPhase) {
+            nextPhase = {
+              threshold: nextQuantityPhase.threshold,
+              price: nextQuantityPhase.price,
+              type: 'quantity' as const
+            };
+          }
+        } else if (saleType === 3) { // SALE_TYPE_TIME_PHASES
+          // Find next time threshold
+          const currentTime = Math.floor(Date.now() / 1000);
+          const nextTimePhase = formattedPhases.find((phase: { threshold: number; price: string }) => phase.threshold > currentTime);
+          if (nextTimePhase) {
+            nextPhase = {
+              threshold: nextTimePhase.threshold,
+              price: nextTimePhase.price,
+              type: 'time' as const
+            };
+          }
+        }
+      }
+
+      const phaseData = {
+        phases: formattedPhases,
+        nextPhase
+      };
+
+      console.log('[MintArtEdition] Processed phase info:', phaseData);
+      setPhaseInfo(phaseData);
+
+    } catch (error) {
+      console.error('[MintArtEdition] Error loading phase info:', error);
+      setPhaseInfo(null);
+    }
+  };
+
+  // Handle ERC20 token approval
+  const handleApproval = async () => {
+    if (!editionInfo || !tokenInfo?.isERC20) return;
+
+    try {
+      setApprovingToken(true);
+
+      const signer = await ethersService.getSigner();
+      if (!signer) throw new Error("Wallet not connected");
+
+      const erc20Abi = [
+        'function approve(address spender, uint256 amount) returns (bool)'
+      ];
+
+      const tokenContract = new ethers.Contract(editionInfo.paymentCurrency, erc20Abi, signer);
+      
+      // Calculate total cost needed
+      const priceToUse = realTimePrice || editionInfo.mintPrice;
+      const totalCost = parseFloat(priceToUse) * mintAmount;
+      const totalCostWei = ethers.parseUnits(totalCost.toString(), tokenInfo.decimals);
+
+      console.log('[MintArtEdition] Approving tokens:', {
+        amount: totalCost,
+        amountWei: totalCostWei.toString(),
+        spender: editionInfo.erc1155Address,
+        token: editionInfo.paymentCurrency
+      });
+
+      const tx = await tokenContract.approve(editionInfo.erc1155Address, totalCostWei);
+      const receipt = await tx.wait();
+
+      console.log("Token approval successful:", receipt);
+
+      // Refresh allowance
+      await checkTokenBalanceAndAllowance();
+
+    } catch (err: any) {
+      console.error("Error approving tokens:", err);
+      let errorMessage = "Failed to approve tokens";
+      
+      if (err.message?.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for approval";
+      } else if (err.reason) {
+        errorMessage = err.reason;
+      }
+      
+      onError(errorMessage);
+    } finally {
+      setApprovingToken(false);
     }
   };
 
@@ -231,9 +563,13 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       console.log('[MintArtEdition] Getting real-time sale info for accurate pricing...');
       const realTimeSaleInfo = await editionContract.getSaleInfo();
       const [saleType, realTimePrice, currentSupply, maxSupply, isPaused, currentPhase] = realTimeSaleInfo;
-      console.log('[MintArtEdition] Real-time price (wei):', realTimePrice.toString());
-      console.log('[MintArtEdition] Cached price (ETH):', editionInfo.mintPrice);
-      console.log('[MintArtEdition] Real-time price (ETH):', ethers.formatEther(realTimePrice));
+      // Get proper token decimals for logging  
+      const logTokenDecimals = tokenInfo?.decimals || 18;
+      const logTokenSymbol = tokenInfo?.symbol || 'ETH';
+      
+      console.log('[MintArtEdition] Real-time price (raw):', realTimePrice.toString());
+      console.log('[MintArtEdition] Cached price:', editionInfo.mintPrice, logTokenSymbol);
+      console.log('[MintArtEdition] Real-time price (formatted):', ethers.formatUnits(realTimePrice, logTokenDecimals), logTokenSymbol);
       
       // Enhanced debugging of contract state
       console.log('[MintArtEdition] === DETAILED CONTRACT STATE ===');
@@ -260,7 +596,8 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
         throw new Error("Sale is currently paused");
       }
       
-      if (Number(currentSupply) + mintAmount > Number(maxSupply) && Number(maxSupply) !== 0) {
+      // Check if the mint would exceed max supply (only for limited editions)
+      if (!isUnlimitedSupply(Number(maxSupply)) && Number(currentSupply) + mintAmount > Number(maxSupply)) {
         throw new Error(`Mint amount would exceed max supply. Current: ${currentSupply}, Max: ${maxSupply}, Requested: ${mintAmount}`);
       }
       
@@ -274,15 +611,49 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       
       // Calculate total cost using real-time price
       const totalCost = realTimePrice * BigInt(mintAmount);
-      console.log('[MintArtEdition] Total cost for', mintAmount, 'tokens:', ethers.formatEther(totalCost), 'ETH');
+      const tokenSymbol = tokenInfo?.symbol || 'ETH';
+      const tokenDecimals = tokenInfo?.decimals || 18;
+      const isERC20Payment = tokenInfo?.isERC20 || false;
       
-      // Check wallet balance
-      const walletBalance = await signer.provider.getBalance(await signer.getAddress());
-      console.log('[MintArtEdition] Wallet balance:', ethers.formatEther(walletBalance), 'ETH');
-      console.log('[MintArtEdition] Has sufficient balance:', walletBalance >= totalCost);
+      console.log('[MintArtEdition] Total cost for', mintAmount, 'tokens:', ethers.formatUnits(totalCost, tokenDecimals), tokenSymbol);
       
-      if (walletBalance < totalCost) {
-        throw new Error(`Insufficient wallet balance. Need ${ethers.formatEther(totalCost)} ETH, have ${ethers.formatEther(walletBalance)} ETH`);
+      // Check appropriate balance based on payment type
+      let hasInsufficientBalance = false;
+      let balanceErrorMessage = '';
+      
+      if (isERC20Payment) {
+        // Check ERC20 token balance
+        const currentBalance = parseFloat(tokenBalance);
+        const requiredAmount = parseFloat(ethers.formatUnits(totalCost, tokenDecimals));
+        
+        console.log('[MintArtEdition] ERC20 balance check:', {
+          currentBalance,
+          requiredAmount,
+          tokenSymbol,
+          hasEnough: currentBalance >= requiredAmount
+        });
+        
+        if (currentBalance < requiredAmount) {
+          hasInsufficientBalance = true;
+          balanceErrorMessage = `Insufficient ${tokenSymbol} balance. Need ${requiredAmount.toFixed(6)} ${tokenSymbol}, have ${currentBalance.toFixed(6)} ${tokenSymbol}`;
+        }
+      } else {
+        // Check ETH balance
+        const walletBalance = await signer.provider.getBalance(await signer.getAddress());
+        console.log('[MintArtEdition] ETH balance check:', {
+          walletBalance: ethers.formatUnits(walletBalance, tokenDecimals),
+          totalCost: ethers.formatUnits(totalCost, tokenDecimals),
+          hasEnough: walletBalance >= totalCost
+        });
+        
+        if (walletBalance < totalCost) {
+          hasInsufficientBalance = true;
+          balanceErrorMessage = `Insufficient ${tokenSymbol} balance. Need ${ethers.formatUnits(totalCost, tokenDecimals)} ${tokenSymbol}, have ${ethers.formatUnits(walletBalance, tokenDecimals)} ${tokenSymbol}`;
+        }
+      }
+      
+      if (hasInsufficientBalance) {
+        throw new Error(balanceErrorMessage);
       }
       
       // CONTRACT VERIFICATION: Check if the contract actually exists and has expected functions
@@ -344,19 +715,36 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       // LOW-LEVEL CONTRACT CALL: Try calling with raw transaction data
       console.log('[MintArtEdition] === LOW-LEVEL CONTRACT CALL ===');
       try {
-        // Build the transaction data manually
-        const mintSelector = '0xa0712d68'; // mint(uint256) selector
-        const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [mintAmount]);
-        const callData = mintSelector + encodedAmount.slice(2); // Remove 0x prefix from encoded amount
+        // Build the transaction data manually based on payment type
+        let callData;
+        let expectedCall;
+        if (paymentCurrency === ethers.ZeroAddress) {
+          console.log('[MintArtEdition] Building ETH mint call data...');
+          const mintSelector = '0xa0712d68'; // mint(uint256) selector
+          const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [mintAmount]);
+          callData = mintSelector + encodedAmount.slice(2);
+          expectedCall = await editionContract.mint.populateTransaction(mintAmount);
+        } else {
+          console.log('[MintArtEdition] Building ERC20 mint call data...');
+          // Get the correct selector from the interface
+          const mintERC20Function = editionContract.interface.getFunction('mintERC20');
+          if (!mintERC20Function) {
+            throw new Error('mintERC20 function not found in contract interface');
+          }
+          const mintERC20Selector = mintERC20Function.selector;
+          const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [mintAmount]);
+          callData = mintERC20Selector + encodedAmount.slice(2);
+          expectedCall = await editionContract.mintERC20.populateTransaction(mintAmount);
+        }
         
         console.log('[MintArtEdition] Manual call data:', callData);
-        console.log('[MintArtEdition] Expected call data from ethers:', await editionContract.mint.populateTransaction(mintAmount));
+        console.log('[MintArtEdition] Expected call data from ethers:', expectedCall);
         
         // Try a low-level call to get better error info
         const result = await signer.provider.call({
           to: editionInfo.erc1155Address,
           data: callData,
-          value: ethers.toQuantity(totalCost),
+          value: paymentCurrency === ethers.ZeroAddress ? ethers.toQuantity(totalCost) : undefined,
           from: await signer.getAddress()
         });
         
@@ -382,7 +770,7 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
           
           // Check proceeds address balance
           const proceedsBalance = await signer.provider.getBalance(proceedsAddress);
-          console.log('[MintArtEdition] Proceeds address balance:', ethers.formatEther(proceedsBalance), 'ETH');
+          console.log('[MintArtEdition] Proceeds address balance:', ethers.formatUnits(proceedsBalance, tokenDecimals), tokenSymbol);
           
           if (isContract) {
             console.log('[MintArtEdition] ⚠️ Proceeds address is a contract - checking if it can receive ETH...');
@@ -415,11 +803,18 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
         try {
           console.log('[MintArtEdition] Trying mint with manual gas limit...');
           
-          // Try with a higher gas limit
-          const gasEstimateAlternative = await editionContract.mint.estimateGas(mintAmount, {
-            value: totalCost,
-            gasLimit: 500000 // Manual gas limit
-          });
+          // Try with a higher gas limit using the correct function
+          let gasEstimateAlternative;
+          if (paymentCurrency === ethers.ZeroAddress) {
+            gasEstimateAlternative = await editionContract.mint.estimateGas(mintAmount, {
+              value: totalCost,
+              gasLimit: 500000 // Manual gas limit
+            });
+          } else {
+            gasEstimateAlternative = await editionContract.mintERC20.estimateGas(mintAmount, {
+              gasLimit: 500000 // Manual gas limit
+            });
+          }
           console.log('[MintArtEdition] Alternative gas estimate with manual limit:', gasEstimateAlternative.toString());
           
         } catch (altError) {
@@ -429,10 +824,19 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       // MANUAL GAS ESTIMATION: Try to estimate gas before the actual transaction
       console.log('[MintArtEdition] === MANUAL GAS ESTIMATION ===');
       try {
-        const gasEstimate = await editionContract.mint.estimateGas(mintAmount, {
-          value: totalCost,
-          from: await signer.getAddress()
-        });
+        let gasEstimate;
+        if (paymentCurrency === ethers.ZeroAddress) {
+          console.log('[MintArtEdition] Estimating gas for ETH mint...');
+          gasEstimate = await editionContract.mint.estimateGas(mintAmount, {
+            value: totalCost,
+            from: await signer.getAddress()
+          });
+        } else {
+          console.log('[MintArtEdition] Estimating gas for ERC20 mint...');
+          gasEstimate = await editionContract.mintERC20.estimateGas(mintAmount, {
+            from: await signer.getAddress()
+          });
+        }
         console.log('[MintArtEdition] Gas estimate for mint:', gasEstimate.toString());
       } catch (gasError) {
         console.error('[MintArtEdition] Gas estimation failed:', gasError);
@@ -440,10 +844,16 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
         // Try to get more specific error by calling the contract read-only
         try {
           console.log('[MintArtEdition] Trying static call to see detailed error...');
-          await editionContract.mint.staticCall(mintAmount, {
-            value: totalCost,
-            from: await signer.getAddress()
-          });
+          if (paymentCurrency === ethers.ZeroAddress) {
+            await editionContract.mint.staticCall(mintAmount, {
+              value: totalCost,
+              from: await signer.getAddress()
+            });
+          } else {
+            await editionContract.mintERC20.staticCall(mintAmount, {
+              from: await signer.getAddress()
+            });
+          }
         } catch (staticError) {
           console.error('[MintArtEdition] Static call failed with detailed error:', staticError);
           throw new Error(`Transaction would fail: ${staticError instanceof Error ? staticError.message : String(staticError)}`);
@@ -834,13 +1244,27 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                     {priceLoading ? (
                       "Loading..."
                     ) : (
-                      `${parseFloat(realTimePrice || editionInfo.mintPrice).toFixed(6)} ${editionInfo.paymentCurrency === "ETH" ? "ETH" : "tokens"}`
+                      `${parseFloat(realTimePrice || editionInfo.mintPrice).toFixed(6)} ${tokenInfo?.symbol || 'ETH'}`
                     )}
                   </span>
                 </div>
+                {tokenInfo?.isERC20 && (
+                  <div className="info-row">
+                    <span className="label">Payment Token:</span>
+                    <span className="value">{tokenInfo.name} ({tokenInfo.symbol})</span>
+                  </div>
+                )}
+                {tokenInfo?.isERC20 && (
+                  <div className="info-row">
+                    <span className="label">Your Balance:</span>
+                    <span className="value">{parseFloat(tokenBalance).toFixed(6)} {tokenInfo.symbol}</span>
+                  </div>
+                )}
                 <div className="info-row">
                   <span className="label">Supply:</span>
-                  <span className="value">{editionInfo.currentSupply} / {editionInfo.maxSupply}</span>
+                  <span className="value">
+                    {editionInfo.currentSupply} / {editionInfo.maxSupply > 1e15 ? 'Unlimited' : editionInfo.maxSupply.toLocaleString()}
+                  </span>
                 </div>
                 <div className="info-row">
                   <span className="label">Royalty:</span>
@@ -852,6 +1276,36 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                     {editionInfo.saleActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
+                {editionInfo.saleType === 2 && phaseInfo?.phases && phaseInfo.phases.length > 0 && (
+                  <div className="info-row">
+                    <span className="label">Pricing Phases:</span>
+                    <div className="value" style={{fontSize: '0.9em'}}>
+                      <div>Base: {parseFloat(editionInfo.basePrice).toFixed(6)} {tokenInfo?.symbol || 'ETH'}</div>
+                      {phaseInfo.phases.map((phase, index) => (
+                        <div key={index} style={{color: editionInfo.currentSupply >= phase.threshold ? 'green' : 'var(--text-secondary)'}}>
+                          {editionInfo.currentSupply >= phase.threshold ? '✅' : '⏳'} At {phase.threshold}: {parseFloat(phase.price).toFixed(6)} {tokenInfo?.symbol || 'ETH'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {editionInfo.saleType === 3 && phaseInfo?.phases && phaseInfo.phases.length > 0 && (
+                  <div className="info-row">
+                    <span className="label">Time-based Phases:</span>
+                    <div className="value" style={{fontSize: '0.9em'}}>
+                      <div>Base: {parseFloat(editionInfo.basePrice).toFixed(6)} {tokenInfo?.symbol || 'ETH'}</div>
+                      {phaseInfo.phases.map((phase, index) => {
+                        const phaseTime = new Date(phase.threshold * 1000);
+                        const isPast = Date.now() > phase.threshold * 1000;
+                        return (
+                          <div key={index} style={{color: isPast ? 'green' : 'var(--text-secondary)'}}>
+                            {isPast ? '✅' : '⏳'} {phaseTime.toLocaleString()}: {parseFloat(phase.price).toFixed(6)} {tokenInfo?.symbol || 'ETH'}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {editionInfo.saleActive ? (
@@ -870,7 +1324,7 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                         id="mint-amount"
                         type="number"
                         min="1"
-                        max={editionInfo.maxSupply - editionInfo.currentSupply}
+                        max={getRemainingSupply(editionInfo.maxSupply, editionInfo.currentSupply)}
                         value={mintAmount}
                         onChange={(e) => setMintAmount(Math.max(1, parseInt(e.target.value) || 1))}
                         className="amount-input"
@@ -878,8 +1332,8 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                       />
                       <button 
                         className="amount-button"
-                        onClick={() => setMintAmount(Math.min(editionInfo.maxSupply - editionInfo.currentSupply, mintAmount + 1))}
-                        disabled={loading || mintAmount >= (editionInfo.maxSupply - editionInfo.currentSupply)}
+                        onClick={() => setMintAmount(Math.min(getRemainingSupply(editionInfo.maxSupply, editionInfo.currentSupply), mintAmount + 1))}
+                        disabled={loading || !canIncrementMintAmount(mintAmount, editionInfo.maxSupply, editionInfo.currentSupply)}
                       >
                         +
                       </button>
@@ -894,30 +1348,66 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                         const priceToUse = realTimePrice || editionInfo.mintPrice;
                         const totalCost = parseFloat(priceToUse) * mintAmount;
                         return totalCost.toFixed(6);
-                      })()} {editionInfo.paymentCurrency === "ETH" ? "ETH" : "tokens"}</strong>
+                      })()} {tokenInfo?.symbol || 'ETH'}</strong>
                     )}
                     {realTimePrice && realTimePrice !== editionInfo.mintPrice && (
                       <div style={{fontSize: '0.8em', color: 'var(--text-secondary)', marginTop: '4px'}}>
-                        Real-time price: {parseFloat(realTimePrice).toFixed(6)} ETH per token
+                        Real-time price: {parseFloat(realTimePrice).toFixed(6)} {tokenInfo?.symbol || 'ETH'} per token
                       </div>
                     )}
+                                    {tokenInfo?.isERC20 && needsApproval && (
+                  <div style={{fontSize: '0.8em', color: 'orange', marginTop: '4px'}}>
+                    ⚠️ Token approval required before minting
+                  </div>
+                )}
+                {phaseInfo?.nextPhase && (
+                  <div style={{fontSize: '0.8em', color: 'var(--text-secondary)', marginTop: '4px'}}>
+                    📈 Next price: {parseFloat(phaseInfo.nextPhase.price).toFixed(6)} {tokenInfo?.symbol || 'ETH'} 
+                    {phaseInfo.nextPhase.type === 'quantity' 
+                      ? ` at ${phaseInfo.nextPhase.threshold} sold`
+                      : ` at ${new Date(phaseInfo.nextPhase.threshold * 1000).toLocaleString()}`
+                    }
+                  </div>
+                )}
                   </div>
 
                   <div className="modal-actions">
                     <button 
                       className="cancel-button" 
                       onClick={handleClose}
-                      disabled={loading}
+                      disabled={loading || approvingToken}
                     >
                       Cancel
                     </button>
-                    <button 
-                      className="mint-button" 
-                      onClick={handleMint}
-                      disabled={loading || !editionInfo.saleActive || editionInfo.currentSupply >= editionInfo.maxSupply}
-                    >
-                      {loading ? 'Minting...' : 'Mint Edition'}
-                    </button>
+                    
+                    {tokenInfo?.isERC20 && needsApproval ? (
+                      <>
+                        <button 
+                          className="approve-button" 
+                          onClick={handleApproval}
+                          disabled={loading || approvingToken || !editionInfo.saleActive}
+                          style={{backgroundColor: 'orange', color: 'white'}}
+                        >
+                          {approvingToken ? 'Approving...' : `Approve ${tokenInfo.symbol}`}
+                        </button>
+                        <button 
+                          className="mint-button" 
+                          onClick={handleMint}
+                          disabled={true}
+                          style={{opacity: 0.5}}
+                        >
+                          Mint Edition (Approval Required)
+                        </button>
+                      </>
+                    ) : (
+                      <button 
+                        className="mint-button" 
+                        onClick={handleMint}
+                        disabled={loading || approvingToken || !editionInfo.saleActive || isSoldOut(editionInfo.maxSupply, editionInfo.currentSupply)}
+                      >
+                        {loading ? 'Minting...' : 'Mint Edition'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
