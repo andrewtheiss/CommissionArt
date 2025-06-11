@@ -2,7 +2,7 @@
   "networks": {
     "testnet": {
       "l1": {
-        "address": "0x5569B687Bf2070511A65AaEF0A162C4622C5b915",
+        "address": "0x06e9e218cbF43F8E3026E9f714919417F6f66ECf",
         "contract": "L1QueryOwnership"
       },
       "l2": {
@@ -77,5 +77,5 @@
       }
     }
   },
-  "lastUpdated": "2025-06-11T06:17:00.335693"
+  "lastUpdated": "2025-06-11T06:19:40.529020"
 }
