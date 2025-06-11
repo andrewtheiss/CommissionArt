@@ -73,6 +73,16 @@ const Account: React.FC = () => {
   const [selectedMintArtPiece, setSelectedMintArtPiece] = useState<string | null>(null);
   const [artEditions, setArtEditions] = useState<{[artPieceAddress: string]: string | null}>({});
 
+  // Withdrawal states
+  const [ethBalance, setEthBalance] = useState<string>('0');
+  const [withdrawing, setWithdrawing] = useState<boolean>(false);
+  const [tokenAddress, setTokenAddress] = useState<string>('');
+  const [tokenBalance, setTokenBalance] = useState<string>('0');
+  const [tokenSymbol, setTokenSymbol] = useState<string>('');
+  const [tokenDecimals, setTokenDecimals] = useState<number>(18);
+  const [loadingTokenInfo, setLoadingTokenInfo] = useState<boolean>(false);
+  const [showWithdrawal, setShowWithdrawal] = useState<boolean>(false);
+
   // For wallet connection
   const isTrulyConnected = isConnected && !!walletAddress;
 
@@ -421,6 +431,13 @@ const Account: React.FC = () => {
     
     loadArtPieces(profile);
   }, [profile]);
+
+  // Load profile balances when profile changes
+  useEffect(() => {
+    if (!profile) return;
+    
+    loadProfileBalances();
+  }, [profile, tokenAddress, tokenDecimals]);
   
   const loadRecentCommissions = async (profileContract: ethers.Contract) => {
     try {
@@ -780,7 +797,181 @@ const Account: React.FC = () => {
     setShowMintModal(false);
     setSelectedMintArtPiece(null);
   };
-  
+
+  // Load profile balances
+  const loadProfileBalances = async () => {
+    if (!profile) return;
+    
+    try {
+      // Load ETH balance
+      const ethBal = await profile.getAvailableEthBalance();
+      setEthBalance(ethers.formatEther(ethBal));
+      
+      // If we have a token address, load token balance
+      if (tokenAddress && ethers.isAddress(tokenAddress)) {
+        const tokenBal = await profile.getTokenBalance(tokenAddress);
+        setTokenBalance(ethers.formatUnits(tokenBal, tokenDecimals));
+      }
+    } catch (err) {
+      console.error("Error loading profile balances:", err);
+    }
+  };
+
+  // Load token information
+  const loadTokenInfo = async (tokenAddr: string) => {
+    if (!tokenAddr || !ethers.isAddress(tokenAddr)) {
+      setTokenSymbol('');
+      setTokenDecimals(18);
+      setTokenBalance('0');
+      return;
+    }
+
+    try {
+      setLoadingTokenInfo(true);
+      
+      // Create ERC20 contract to get token info
+      const tokenContract = new ethers.Contract(
+        tokenAddr,
+        [
+          'function symbol() view returns (string)',
+          'function decimals() view returns (uint8)',
+          'function balanceOf(address) view returns (uint256)'
+        ],
+        ethersService.getProvider()
+      );
+
+      const [symbol, decimals] = await Promise.all([
+        tokenContract.symbol(),
+        tokenContract.decimals()
+      ]);
+
+      setTokenSymbol(symbol);
+      setTokenDecimals(Number(decimals));
+
+      // Load balance using profile contract
+      if (profile) {
+        const tokenBal = await profile.getTokenBalance(tokenAddr);
+        setTokenBalance(ethers.formatUnits(tokenBal, decimals));
+      }
+    } catch (err) {
+      console.error("Error loading token info:", err);
+      setTokenSymbol('UNKNOWN');
+      setTokenDecimals(18);
+      setTokenBalance('0');
+    } finally {
+      setLoadingTokenInfo(false);
+    }
+  };
+
+  // Handle ETH withdrawal
+  const handleWithdrawEth = async () => {
+    if (!profile) return;
+    
+    try {
+      setWithdrawing(true);
+      setError(null);
+      
+      // Check if there's ETH to withdraw
+      if (parseFloat(ethBalance) <= 0) {
+        setError("No ETH available to withdraw");
+        return;
+      }
+
+      console.log("Withdrawing ETH from profile...");
+      const tx = await profile.withdrawEth();
+      console.log("Withdrawal transaction:", tx.hash);
+      
+      // Wait for transaction confirmation
+      await tx.wait();
+      console.log("ETH withdrawal confirmed");
+      
+      // Refresh balance
+      loadProfileBalances();
+      
+    } catch (err: any) {
+      console.error("Error withdrawing ETH:", err);
+      if (err.message?.includes("No ETH to withdraw")) {
+        setError("No ETH available to withdraw");
+      } else if (err.message?.includes("Only owner can withdraw")) {
+        setError("Only the profile owner can withdraw funds");
+      } else {
+        setError("Failed to withdraw ETH. Please try again.");
+      }
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  // Handle ERC20 token withdrawal
+  const handleWithdrawTokens = async () => {
+    if (!profile || !tokenAddress || !ethers.isAddress(tokenAddress)) {
+      setError("Please enter a valid token address");
+      return;
+    }
+    
+    try {
+      setWithdrawing(true);
+      setError(null);
+      
+      // Check if there are tokens to withdraw
+      if (parseFloat(tokenBalance) <= 0) {
+        setError(`No ${tokenSymbol} tokens available to withdraw`);
+        return;
+      }
+
+      console.log(`Withdrawing ${tokenSymbol} tokens from profile...`);
+      const tx = await profile.withdrawTokens(tokenAddress);
+      console.log("Token withdrawal transaction:", tx.hash);
+      
+      // Wait for transaction confirmation
+      await tx.wait();
+      console.log("Token withdrawal confirmed");
+      
+      // Refresh balance
+      loadProfileBalances();
+      
+    } catch (err: any) {
+      console.error("Error withdrawing tokens:", err);
+      if (err.message?.includes("No tokens to withdraw")) {
+        setError(`No ${tokenSymbol} tokens available to withdraw`);
+      } else if (err.message?.includes("Only owner can withdraw")) {
+        setError("Only the profile owner can withdraw funds");
+      } else if (err.message?.includes("Invalid token address")) {
+        setError("Invalid token address");
+      } else {
+        setError("Failed to withdraw tokens. Please try again.");
+      }
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
+  // Handle token address change
+  const handleTokenAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const addr = e.target.value.trim();
+    setTokenAddress(addr);
+    
+    if (addr && ethers.isAddress(addr)) {
+      loadTokenInfo(addr);
+    } else {
+      setTokenSymbol('');
+      setTokenDecimals(18);
+      setTokenBalance('0');
+    }
+  };
+
+  // Toggle withdrawal section visibility
+  const toggleWithdrawalSection = () => {
+    setShowWithdrawal(!showWithdrawal);
+    
+    // If opening for the first time and no token address set, pre-fill it
+    if (!showWithdrawal && !tokenAddress) {
+      const defaultTokenAddress = '0xdafcF0d6fc4a43cf8595f2172c07CEa7f273531D';
+      setTokenAddress(defaultTokenAddress);
+      loadTokenInfo(defaultTokenAddress);
+    }
+  };
+
   return (
     <div className="account-container">
       <h2>Your Account</h2>
@@ -884,6 +1075,85 @@ const Account: React.FC = () => {
                   )}
                 </div>
               </div>
+            </div>
+            
+            {/* Withdrawal Section - Collapsible */}
+            <div className="withdrawal-section">
+              <div className="withdrawal-toggle" onClick={toggleWithdrawalSection}>
+                <h4>Fund Withdrawal</h4>
+                <div className="withdrawal-summary">
+                  <span className="balance-summary">{parseFloat(ethBalance).toFixed(4)} ETH</span>
+                  {tokenSymbol && <span className="token-summary">{parseFloat(tokenBalance).toFixed(4)} {tokenSymbol}</span>}
+                  <span className={`toggle-icon ${showWithdrawal ? 'expanded' : ''}`}>▼</span>
+                </div>
+              </div>
+              
+              {showWithdrawal && (
+                <div className="withdrawal-content">
+                  {/* ETH Withdrawal */}
+                  <div className="withdrawal-group">
+                    <div className="balance-display">
+                      <span className="balance-label">ETH Balance:</span>
+                      <span className="balance-amount">{parseFloat(ethBalance).toFixed(6)} ETH</span>
+                    </div>
+                    <button 
+                      className="withdrawal-button eth-withdrawal"
+                      onClick={handleWithdrawEth}
+                      disabled={withdrawing || parseFloat(ethBalance) <= 0}
+                    >
+                      {withdrawing ? 'Withdrawing...' : `Withdraw ETH`}
+                    </button>
+                  </div>
+
+                  {/* ERC20 Token Withdrawal */}
+                  <div className="withdrawal-group">
+                    <div className="token-input-section">
+                      <input
+                        type="text"
+                        placeholder="0xdafcF0d6fc4a43cf8595f2172c07CEa7f273531D"
+                        value={tokenAddress}
+                        onChange={handleTokenAddressChange}
+                        className="token-address-input"
+                        disabled={withdrawing}
+                      />
+                      {loadingTokenInfo && <div className="token-loading">Loading token info...</div>}
+                    </div>
+                    
+                    {tokenSymbol && (
+                      <div className="balance-display">
+                        <span className="balance-label">{tokenSymbol} Balance:</span>
+                        <span className="balance-amount">{parseFloat(tokenBalance).toFixed(6)} {tokenSymbol}</span>
+                      </div>
+                    )}
+                    
+                    <button 
+                      className="withdrawal-button token-withdrawal"
+                      onClick={handleWithdrawTokens}
+                      disabled={withdrawing || !tokenAddress || !ethers.isAddress(tokenAddress) || parseFloat(tokenBalance) <= 0}
+                    >
+                      {withdrawing ? 'Withdrawing...' : `Withdraw ${tokenSymbol || 'Tokens'}`}
+                    </button>
+                  </div>
+
+                  <div className="withdrawal-actions">
+                    <button 
+                      className="refresh-balance-button"
+                      onClick={loadProfileBalances}
+                      disabled={withdrawing}
+                      title="Refresh balance information"
+                    >
+                      🔄 Refresh Balances
+                    </button>
+                  </div>
+
+                  <div className="withdrawal-help">
+                    <p className="help-text">
+                      Withdraw funds that have accumulated in your profile from sales and commissions.
+                      ETH withdrawals are instant. For ERC20 tokens, enter the token contract address.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           

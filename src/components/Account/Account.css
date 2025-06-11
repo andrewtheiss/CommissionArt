@@ -903,4 +903,334 @@
   font-size: 0.9rem;
   text-align: center;
   padding: 0 16px;
+}
+
+/* Withdrawal Section Styles */
+.withdrawal-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.withdrawal-section h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.withdrawal-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 0;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.withdrawal-toggle:hover {
+  background-color: #f8f9fa;
+}
+
+.dark-mode .withdrawal-toggle:hover {
+  background-color: #2a2a2a !important;
+}
+
+.withdrawal-toggle h4 {
+  margin: 0;
+  flex-grow: 1;
+}
+
+.withdrawal-summary {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 14px;
+}
+
+.balance-summary {
+  font-weight: 600;
+  color: #627eea;
+  font-family: 'Courier New', monospace;
+}
+
+.token-summary {
+  font-weight: 600;
+  color: #28a745;
+  font-family: 'Courier New', monospace;
+}
+
+.toggle-icon {
+  font-size: 12px;
+  color: #666;
+  transition: transform 0.3s ease;
+  margin-left: 10px;
+}
+
+.toggle-icon.expanded {
+  transform: rotate(180deg);
+}
+
+.withdrawal-content {
+  margin-top: 15px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+.withdrawal-group {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+}
+
+.balance-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 0;
+}
+
+.balance-label {
+  font-weight: 500;
+  color: #666;
+}
+
+.balance-amount {
+  font-weight: 600;
+  color: #333;
+  font-family: 'Courier New', monospace;
+}
+
+.withdrawal-button {
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 5px;
+}
+
+.withdrawal-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.eth-withdrawal {
+  background: linear-gradient(135deg, #627eea, #4f5dbf);
+  color: white;
+}
+
+.eth-withdrawal:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5670d9, #444baa);
+  transform: translateY(-1px);
+}
+
+.token-withdrawal {
+  background: linear-gradient(135deg, #28a745, #20803a);
+  color: white;
+}
+
+.token-withdrawal:hover:not(:disabled) {
+  background: linear-gradient(135deg, #229537, #1b6d2f);
+  transform: translateY(-1px);
+}
+
+.token-input-section {
+  margin-bottom: 10px;
+}
+
+.token-address-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.token-address-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.token-address-input::placeholder {
+  color: #999;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.token-loading {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  font-style: italic;
+}
+
+.withdrawal-help {
+  margin-top: 15px;
+  padding: 10px;
+  background: #e7f3ff;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+}
+
+.help-text {
+  margin: 0;
+  font-size: 13px;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.withdrawal-actions {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.refresh-balance-button {
+  padding: 8px 16px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-balance-button:hover:not(:disabled) {
+  background: #5a6268;
+  transform: translateY(-1px);
+}
+
+.refresh-balance-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Dark mode support for withdrawal section */
+.dark-mode .withdrawal-section {
+  border-top-color: #444;
+}
+
+.dark-mode .withdrawal-section h4 {
+  color: #fff;
+}
+
+.dark-mode .balance-summary {
+  color: #7c9aef;
+}
+
+.dark-mode .token-summary {
+  color: #34d058;
+}
+
+.dark-mode .toggle-icon {
+  color: #ccc;
+}
+
+.dark-mode .withdrawal-group {
+  background: #2a2a2a !important;
+  border-color: #444 !important;
+}
+
+.dark-mode .balance-label {
+  color: #ccc !important;
+}
+
+.dark-mode .balance-amount {
+  color: #fff !important;
+}
+
+.dark-mode .token-address-input {
+  background: #3a3a3a !important;
+  border-color: #555 !important;
+  color: #fff !important;
+}
+
+.dark-mode .token-address-input::placeholder {
+  color: #999 !important;
+}
+
+.dark-mode .token-address-input:focus {
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
+}
+
+.dark-mode .token-loading {
+  color: #ccc !important;
+}
+
+.dark-mode .withdrawal-help {
+  background: #2d3748 !important;
+  border-color: #4a5568 !important;
+}
+
+.dark-mode .help-text {
+  color: #a0aec0 !important;
+}
+
+.dark-mode .refresh-balance-button {
+  background: #4a5568 !important;
+}
+
+.dark-mode .refresh-balance-button:hover:not(:disabled) {
+  background: #2d3748 !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .withdrawal-section {
+    margin-top: 15px;
+    padding-top: 15px;
+  }
+  
+  .withdrawal-toggle {
+    padding: 8px 0;
+  }
+  
+  .withdrawal-summary {
+    gap: 10px;
+    font-size: 13px;
+  }
+  
+  .withdrawal-content {
+    margin-top: 10px;
+  }
+  
+  .withdrawal-group {
+    margin-bottom: 15px;
+    padding: 12px;
+  }
+  
+  .balance-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .withdrawal-button {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
 } 

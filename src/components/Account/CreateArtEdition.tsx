@@ -319,8 +319,8 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
     if (!formData.royaltyPercent || isNaN(Number(formData.royaltyPercent)) || Number(formData.royaltyPercent) < 0) {
       return 'Valid royalty percent is required';
     }
-    if (Number(formData.royaltyPercent) > 10) {
-      return 'Royalty percent cannot exceed 10%';
+    if (Number(formData.royaltyPercent) > 100) {
+      return 'Royalty percent cannot exceed 100%';
     }
 
     // Validate phases if enabled
@@ -621,7 +621,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  max="10"
+                  max="100"
                   value={formData.royaltyPercent}
                   onChange={(e) => handleInputChange('royaltyPercent', e.target.value)}
                   placeholder="2.5"
@@ -629,7 +629,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   required
                 />
                 <small className="form-help">
-                  Royalty percentage (0-10%)
+                  Royalty percentage (0-100%)
                 </small>
               </div>
               <div className="form-group">
