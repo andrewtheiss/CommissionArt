@@ -1,7 +1,20 @@
 import pytest
 from ape import accounts, project
+import time
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+def create_unique_test_token(deployer, test_name=""):
+    """Create a unique ERC20 token for each test to avoid file locking issues"""
+    # Use timestamp to ensure uniqueness but keep strings short
+    timestamp = str(int(time.time() * 1000))  # Millisecond precision
+    
+    # Keep name under 50 characters and symbol under 10 characters
+    short_test_name = test_name[:15] if test_name else "test"  # Limit test name
+    unique_name = f"Token_{short_test_name}_{timestamp[-8:]}"  # Use last 8 digits of timestamp
+    unique_symbol = f"T{timestamp[-7:]}"  # Use last 7 digits to stay under 10 chars (T + 7 digits = 8 chars)
+    
+    return project.MockERC20.deploy(unique_name, unique_symbol, 18, sender=deployer)
 
 @pytest.fixture
 def setup():
@@ -49,8 +62,7 @@ def setup():
     profile_address = profile_factory_and_registry.getProfile(profile_owner.address)
     profile = project.Profile.at(profile_address)
     
-    # Deploy a test ERC20 token for testing
-    test_token = project.MockERC20.deploy("Test Token", "TEST", 18, sender=deployer)
+    # DON'T deploy test_token here - let each test create its own unique instance
     
     return {
         "deployer": deployer,
@@ -58,8 +70,8 @@ def setup():
         "other_user": other_user,
         "recipient": recipient,
         "profile": profile,
-        "test_token": test_token,
-        "profile_factory_and_registry": profile_factory_and_registry
+        "profile_factory_and_registry": profile_factory_and_registry,
+        "create_test_token": lambda test_name="": create_unique_test_token(deployer, test_name)
     }
 
 def test_profile_receives_eth(setup):
@@ -127,20 +139,19 @@ def test_withdraw_eth_by_owner(setup):
     assert balance_increase > amount_to_send * 0.99  # Allow for gas costs
     assert balance_increase <= amount_to_send  # But not more than what was sent
     
-    # Check event was emitted
+    # Check event was emitted - TokenWithdrawn with empty address for ETH
     events = tx.events
     assert len(events) > 0
     
-    # Find the EthWithdrawn event
-    eth_withdrawn_event = None
+    # Find the TokenWithdrawn event
+    token_withdrawn_event = None
     for event in events:
-        if hasattr(event, 'to_address') and hasattr(event, 'amount'):
-            eth_withdrawn_event = event
+        if hasattr(event, 'token'):
+            token_withdrawn_event = event
             break
     
-    assert eth_withdrawn_event is not None
-    assert eth_withdrawn_event.to_address == profile_owner.address
-    assert eth_withdrawn_event.amount == amount_to_send
+    assert token_withdrawn_event is not None
+    assert token_withdrawn_event.token == "0x0000000000000000000000000000000000000000"  # Empty address for ETH
 
 def test_withdraw_eth_to_different_recipient(setup):
     """Test withdrawing all ETH to a different recipient"""
@@ -162,15 +173,16 @@ def test_withdraw_eth_to_different_recipient(setup):
     assert profile.getAvailableEthBalance() == 0
     assert recipient.balance == initial_recipient_balance + amount_to_send
     
-    # Check event
+    # Check event - TokenWithdrawn with empty address for ETH
     events = tx.events
-    eth_withdrawn_event = None
+    token_withdrawn_event = None
     for event in events:
-        if hasattr(event, 'to_address') and hasattr(event, 'amount'):
-            eth_withdrawn_event = event
+        if hasattr(event, 'token'):
+            token_withdrawn_event = event
             break
     
-    assert eth_withdrawn_event.to_address == recipient.address
+    assert token_withdrawn_event is not None
+    assert token_withdrawn_event.token == "0x0000000000000000000000000000000000000000"  # Empty address for ETH
 
 def test_withdraw_all_eth_to_different_recipient(setup):
     """Test withdrawing all ETH to a different recipient"""
@@ -226,7 +238,7 @@ def test_erc20_token_withdrawal(setup):
     """Test ERC20 token withdrawal functionality"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("erc20_withdrawal")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Mint tokens to deployer first
@@ -249,24 +261,22 @@ def test_erc20_token_withdrawal(setup):
     assert profile.getTokenBalance(test_token.address) == 0
     assert test_token.balanceOf(profile_owner.address) == initial_owner_balance + transfer_amount
     
-    # Check event was emitted
+    # Check event was emitted - TokenWithdrawn with the token address
     events = tx.events
     token_withdrawn_event = None
     for event in events:
-        if hasattr(event, 'token') and hasattr(event, 'to_address') and hasattr(event, 'amount'):
+        if hasattr(event, 'token'):
             token_withdrawn_event = event
             break
     
     assert token_withdrawn_event is not None
     assert token_withdrawn_event.token == test_token.address
-    assert token_withdrawn_event.to_address == profile_owner.address
-    assert token_withdrawn_event.amount == transfer_amount
 
 def test_withdraw_tokens_basic(setup):
     """Test basic token withdrawal functionality"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("withdraw_basic")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Mint and transfer tokens to profile
@@ -288,7 +298,7 @@ def test_withdraw_tokens_to_different_recipient(setup):
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
     recipient = setup["recipient"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("different_recipient")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Setup tokens
@@ -310,7 +320,7 @@ def test_only_owner_can_withdraw_tokens(setup):
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
     other_user = setup["other_user"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("only_owner")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Setup tokens
@@ -344,7 +354,7 @@ def test_withdraw_tokens_with_no_balance_fails(setup):
     """Test that withdrawing tokens fails when balance is zero"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("no_balance")  # Create unique token for this test
     
     # Profile has no tokens
     assert profile.getTokenBalance(test_token.address) == 0
@@ -384,7 +394,7 @@ def test_combined_eth_and_token_operations(setup):
     """Test combined ETH and token operations"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("combined_ops")  # Create unique token for this test
     other_user = setup["other_user"]
     deployer = setup["deployer"]
     

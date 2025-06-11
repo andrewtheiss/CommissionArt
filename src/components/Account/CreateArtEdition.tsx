@@ -46,6 +46,10 @@ interface EditionFormData {
   enableQuantityPhases: boolean;
   timePhases: PhaseConfig[];
   quantityPhases: PhaseConfig[];
+  timeCapHardStop: string;     // Date/time string for hard time stop
+  mintCapHardStop: string;     // Number string for hard mint count stop
+  enableTimeCapHardStop: boolean;
+  enableMintCapHardStop: boolean;
 }
 
 // ERC20 Token Info Interface
@@ -77,7 +81,11 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
     enableTimePhases: false,
     enableQuantityPhases: false,
     timePhases: [],
-    quantityPhases: []
+    quantityPhases: [],
+    timeCapHardStop: '',
+    mintCapHardStop: '',
+    enableTimeCapHardStop: false,
+    enableMintCapHardStop: false
   });
   
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -188,7 +196,11 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         enableTimePhases: false,
         enableQuantityPhases: false,
         timePhases: [],
-        quantityPhases: []
+        quantityPhases: [],
+        timeCapHardStop: '',
+        mintCapHardStop: '',
+        enableTimeCapHardStop: false,
+        enableMintCapHardStop: false
       });
       checkForExistingEdition();
     }
@@ -239,7 +251,11 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
       enableTimePhases: false,
       enableQuantityPhases: false,
       timePhases: [],
-      quantityPhases: []
+      quantityPhases: [],
+      timeCapHardStop: '',
+      mintCapHardStop: '',
+      enableTimeCapHardStop: false,
+      enableMintCapHardStop: false
     });
     setFormError(null);
     setIsCreating(false);
@@ -319,8 +335,28 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
     if (!formData.royaltyPercent || isNaN(Number(formData.royaltyPercent)) || Number(formData.royaltyPercent) < 0) {
       return 'Valid royalty percent is required';
     }
-    if (Number(formData.royaltyPercent) > 10) {
-      return 'Royalty percent cannot exceed 10%';
+    if (Number(formData.royaltyPercent) > 100) {
+      return 'Royalty percent cannot exceed 100%';
+    }
+
+    // Validate hard stops
+    if (formData.enableTimeCapHardStop) {
+      if (!formData.timeCapHardStop) {
+        return 'Time cap hard stop date/time is required when enabled';
+      }
+      const hardStopTimestamp = convertToTimestamp(formData.timeCapHardStop);
+      if (isNaN(hardStopTimestamp)) {
+        return 'Invalid time cap hard stop date/time';
+      }
+      if (hardStopTimestamp <= Date.now() / 1000) {
+        return 'Time cap hard stop must be in the future';
+      }
+    }
+    
+    if (formData.enableMintCapHardStop) {
+      if (!formData.mintCapHardStop || isNaN(Number(formData.mintCapHardStop)) || Number(formData.mintCapHardStop) < 1) {
+        return 'Valid mint cap hard stop (minimum 1) is required when enabled';
+      }
     }
 
     // Validate phases if enabled
@@ -405,6 +441,15 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         }));
       }
 
+      // Prepare hard stops
+      const timeCapHardStop = formData.enableTimeCapHardStop && formData.timeCapHardStop 
+        ? BigInt(convertToTimestamp(formData.timeCapHardStop))
+        : BigInt(0);
+      
+      const mintCapHardStop = formData.enableMintCapHardStop && formData.mintCapHardStop
+        ? BigInt(parseInt(formData.mintCapHardStop))
+        : BigInt(0);
+
       console.log('Creating art edition with parameters:', {
         artPiece: selectedArtPiece,
         name: formData.name,
@@ -417,11 +462,13 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         paymentCurrency: formData.paymentCurrency || 'Native ETH',
         tokenInfo,
         saleType: formData.saleType,
-        phases: phases.length
+        phases: phases.length,
+        timeCapHardStop: timeCapHardStop.toString(),
+        mintCapHardStop: mintCapHardStop.toString()
       });
 
-      // Call the createArtEdition method on the profile contract
-      const tx = await profileContract['createArtEdition(address,string,string,uint256,uint256,uint256,address,uint256,(uint256,uint256)[])'](
+      // Call the createArtEdition method on the profile contract with hard stops
+      const tx = await profileContract['createArtEdition(address,string,string,uint256,uint256,uint256,address,uint256,(uint256,uint256)[],uint256,uint256)'](
         selectedArtPiece,
         formData.name,
         formData.symbol,
@@ -430,7 +477,9 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
         royaltyBasisPoints,
         formData.paymentCurrency || ethers.ZeroAddress,
         formData.saleType,
-        phases
+        phases,
+        timeCapHardStop,
+        mintCapHardStop
       );
 
       console.log('Transaction submitted:', tx.hash);
@@ -621,7 +670,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   type="number"
                   step="0.1"
                   min="0"
-                  max="10"
+                  max="100"
                   value={formData.royaltyPercent}
                   onChange={(e) => handleInputChange('royaltyPercent', e.target.value)}
                   placeholder="2.5"
@@ -629,7 +678,7 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                   required
                 />
                 <small className="form-help">
-                  Royalty percentage (0-10%)
+                  Royalty percentage (0-100%)
                 </small>
               </div>
               <div className="form-group">
@@ -705,6 +754,76 @@ const CreateArtEdition: React.FC<CreateArtEditionProps> = ({
                     Price increases after certain quantities sold
                   </small>
                 </div>
+              </div>
+
+              {/* Hard Stop Options */}
+              <div className="hard-stops-section">
+                <h5>Hard Stop Options</h5>
+                <small className="form-help">
+                  Hard stops completely end minting when triggered, regardless of phases or other settings
+                </small>
+                
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableTimeCapHardStop}
+                      onChange={(e) => handleInputChange('enableTimeCapHardStop', e.target.checked)}
+                      disabled={isCreating || !isArtist}
+                    />
+                    <span>Time Cap Hard Stop</span>
+                  </label>
+                  <small className="form-help">
+                    Minting stops completely at a specific date/time
+                  </small>
+                </div>
+
+                {formData.enableTimeCapHardStop && (
+                  <div className="form-group">
+                    <label>Hard Stop Date/Time</label>
+                    <input
+                      type="datetime-local"
+                      value={formData.timeCapHardStop}
+                      onChange={(e) => handleInputChange('timeCapHardStop', e.target.value)}
+                      disabled={isCreating || !isArtist}
+                    />
+                    <small className="form-help">
+                      Minting will be permanently disabled after this time
+                    </small>
+                  </div>
+                )}
+
+                <div className="checkbox-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={formData.enableMintCapHardStop}
+                      onChange={(e) => handleInputChange('enableMintCapHardStop', e.target.checked)}
+                      disabled={isCreating || !isArtist}
+                    />
+                    <span>Mint Cap Hard Stop</span>
+                  </label>
+                  <small className="form-help">
+                    Minting stops after a specific number of mints
+                  </small>
+                </div>
+
+                {formData.enableMintCapHardStop && (
+                  <div className="form-group">
+                    <label>Maximum Mints</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.mintCapHardStop}
+                      onChange={(e) => handleInputChange('mintCapHardStop', e.target.value)}
+                      placeholder="1000"
+                      disabled={isCreating || !isArtist}
+                    />
+                    <small className="form-help">
+                      Minting will be permanently disabled after this many tokens are minted
+                    </small>
+                  </div>
+                )}
               </div>
 
               {/* Time-Based Phases */}

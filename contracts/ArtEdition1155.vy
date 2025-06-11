@@ -91,6 +91,10 @@ saleStartTime: public(uint256)
 phases: public(DynArray[PhaseConfig, 5])
 currentPhase: public(uint256)
 
+# Hard Stop Configuration
+timeCapHardStop: public(uint256)    # Timestamp after which minting stops (0 = disabled)
+mintCapHardStop: public(uint256)    # Maximum number of mints allowed (0 = disabled)
+
 # Sale Types
 SALE_TYPE_FOREVER: constant(uint256) = 0      # No deadline, mint forever
 SALE_TYPE_CAPPED: constant(uint256) = 1       # Stop after maxSupply reached
@@ -165,7 +169,9 @@ def createEdition(
     _max_supply: uint256,
     _royalty_percent: uint256,
     _sale_type: uint256 = SALE_TYPE_CAPPED,
-    _phases: DynArray[PhaseConfig, 5] = []
+    _phases: DynArray[PhaseConfig, 5] = [],
+    _time_cap_hard_stop: uint256 = 0,
+    _mint_cap_hard_stop: uint256 = 0
 ):
     """Create the single edition for this contract with sale configuration"""
     assert msg.sender == self.owner or msg.sender == self.artSales1155, "Only owner or ArtSales1155"
@@ -183,6 +189,12 @@ def createEdition(
             if i > 0:
                 assert _phases[i].threshold > _phases[i-1].threshold, "Phases must be in ascending order"
     
+    # Validate hard stops
+    if _time_cap_hard_stop > 0:
+        assert _time_cap_hard_stop > block.timestamp, "Time cap must be in the future"
+    if _mint_cap_hard_stop > 0:
+        assert _mint_cap_hard_stop > 0, "Mint cap must be greater than 0"
+    
     # Set edition configuration
     self.currentPrice = _initial_price
     self.basePrice = _initial_price
@@ -194,6 +206,10 @@ def createEdition(
     self.saleStartTime = 0
     self.phases = _phases
     self.currentPhase = 0
+    
+    # Set hard stops
+    self.timeCapHardStop = _time_cap_hard_stop
+    self.mintCapHardStop = _mint_cap_hard_stop
     
     # Emit URI event
     art_piece_contract: ArtPiece = ArtPiece(self.artPiece)
@@ -231,6 +247,17 @@ def resumeSale():
     
     self.isPaused = False
     log SaleResumed(resumed=True)
+
+@internal
+def _checkHardStops(_amount: uint256):
+    """Check if hard stops would be triggered by this mint"""
+    # Check time cap hard stop
+    if self.timeCapHardStop > 0:
+        assert block.timestamp < self.timeCapHardStop, "Time cap hard stop reached - minting ended"
+    
+    # Check mint cap hard stop
+    if self.mintCapHardStop > 0:
+        assert self.currentSupply + _amount <= self.mintCapHardStop, "Mint cap hard stop reached - minting ended"
 
 @internal
 def _updatePriceForPhases():
@@ -308,11 +335,14 @@ def mint(_amount: uint256):
     assert self.basePrice > 0, "Edition does not exist"
     assert not self.isPaused, "Sale is paused"
     
+    # Check hard stops first - these override all other logic
+    self._checkHardStops(_amount)
+    
     # Check supply limit for capped sales
     if self.saleType == SALE_TYPE_CAPPED:
         assert self.currentSupply + _amount <= self.maxSupply, "Exceeds max supply"
     
-    # Update price for phased sales before calculating cost
+    # Update price for phased sales before calculating cost (only if hard stops not triggered)
     self._updatePriceForPhases()
     
     # Get current price (may have been updated)
@@ -341,11 +371,14 @@ def mintERC20(_amount: uint256):
     assert self.basePrice > 0, "Edition does not exist"
     assert not self.isPaused, "Sale is paused"
     
+    # Check hard stops first - these override all other logic
+    self._checkHardStops(_amount)
+    
     # Check supply limit for capped sales
     if self.saleType == SALE_TYPE_CAPPED:
         assert self.currentSupply + _amount <= self.maxSupply, "Exceeds max supply"
     
-    # Update price for phased sales before calculating cost
+    # Update price for phased sales before calculating cost (only if hard stops not triggered)
     self._updatePriceForPhases()
     
     # Get current price (may have been updated)
@@ -379,11 +412,14 @@ def mintWithPermit(
     assert self.basePrice > 0, "Edition does not exist"
     assert not self.isPaused, "Sale is paused"
     
+    # Check hard stops first - these override all other logic
+    self._checkHardStops(_amount)
+    
     # Check supply limit for capped sales
     if self.saleType == SALE_TYPE_CAPPED:
         assert self.currentSupply + _amount <= self.maxSupply, "Exceeds max supply"
     
-    # Update price for phased sales before calculating cost
+    # Update price for phased sales before calculating cost (only if hard stops not triggered)
     self._updatePriceForPhases()
     
     # Get current price (may have been updated)
@@ -436,6 +472,43 @@ def getSaleInfo() -> (uint256, uint256, uint256, uint256, bool, uint256):
 def getPhases() -> DynArray[PhaseConfig, 5]:
     """Get all phases for this edition"""
     return self.phases
+
+@view
+@external
+def getHardStops() -> (uint256, uint256):
+    """Returns (timeCapHardStop, mintCapHardStop)"""
+    return (self.timeCapHardStop, self.mintCapHardStop)
+
+@view
+@external
+def isHardStopTriggered() -> bool:
+    """Check if either hard stop condition is currently active"""
+    # Check time cap
+    if self.timeCapHardStop > 0 and block.timestamp >= self.timeCapHardStop:
+        return True
+    
+    # Check mint cap
+    if self.mintCapHardStop > 0 and self.currentSupply >= self.mintCapHardStop:
+        return True
+    
+    return False
+
+@view
+@external
+def getExtendedSaleInfo() -> (uint256, uint256, uint256, uint256, bool, uint256, uint256, uint256, bool):
+    """Returns (saleType, currentPrice, currentSupply, maxSupply, isPaused, currentPhase, timeCapHardStop, mintCapHardStop, isHardStopTriggered)"""
+    current_price: uint256 = self._getCurrentPrice()
+    
+    # Check if either hard stop condition is currently active (inline logic)
+    hard_stop_triggered: bool = False
+    # Check time cap
+    if self.timeCapHardStop > 0 and block.timestamp >= self.timeCapHardStop:
+        hard_stop_triggered = True
+    # Check mint cap
+    if self.mintCapHardStop > 0 and self.currentSupply >= self.mintCapHardStop:
+        hard_stop_triggered = True
+    
+    return (self.saleType, current_price, self.currentSupply, self.maxSupply, self.isPaused, self.currentPhase, self.timeCapHardStop, self.mintCapHardStop, hard_stop_triggered)
 
 # ERC1155 Standard Functions (simplified for single token)
 

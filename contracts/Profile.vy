@@ -16,11 +16,6 @@
 event CommissionLinked:
     profile: indexed(address)
     art_piece: indexed(address)
-    is_artist: bool
-
-event UnverifiedCommissionLinked:
-    profile: indexed(address)
-    art_piece: indexed(address)
 
 event CommissionVerified:
     profile: indexed(address)
@@ -30,24 +25,13 @@ event CommissionUnverified:
     profile: indexed(address)
     art_piece: indexed(address)
 
-event CommissionFailedToLink:
+event CommissionFailedLink:
     profile: indexed(address)
     art_piece: indexed(address)
     reason: String[100]
 
-# Fund management events
-event EthReceived:
-    from_address: indexed(address)
-    amount: uint256
-
-event EthWithdrawn:
-    to_address: indexed(address)
-    amount: uint256
-
 event TokenWithdrawn:
     token: indexed(address)
-    to_address: indexed(address)
-    amount: uint256
 
 # Constants for standardized pagination and unified array capacities
 PAGE_SIZE: constant(uint256) = 20
@@ -139,7 +123,7 @@ interface ArtCommissionHub:
 # Interface for ArtSales1155 (expanded)
 interface ArtSales1155:
     def getAdditionalMintErc1155s(_page: uint256, _page_size: uint256) -> DynArray[address, 100]: view
-    def createEditionFromArtPiece(_art_piece: address, _edition_name: String[100], _edition_symbol: String[10], _mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256, _payment_currency: address, _sale_type: uint256, _phases: DynArray[PhaseConfig, 5]) -> address: nonpayable
+    def createEditionFromArtPiece(_art_piece: address, _edition_name: String[100], _edition_symbol: String[10], _mint_price: uint256, _max_supply: uint256, _royalty_percent: uint256, _payment_currency: address, _sale_type: uint256, _phases: DynArray[PhaseConfig, 5], _time_cap_hard_stop: uint256, _mint_cap_hard_stop: uint256) -> address: nonpayable
     def hasEditions(_art_piece: address) -> bool: view
     def initialize(_profile_address: address, _owner: address, _profile_factory_and_registry: address): nonpayable
 
@@ -154,12 +138,6 @@ interface IERC20:
     def transfer(_to: address, _value: uint256) -> bool: nonpayable
     def balanceOf(_owner: address) -> uint256: view
 
-
-# Event for myCommission verification in profile context
-event CommissionVerifiedInProfile:
-    profile: indexed(address)
-    art_piece: indexed(address)
-    is_artist: bool
 
 # Constructor
 @deploy
@@ -184,10 +162,8 @@ def initialize(_owner: address, _profile_social: address, _profile_factory_and_r
     self.myCommissionCount = 0
     self.myUnverifiedCommissionCount = 0
     self.myArtCount = 0
-    
-    # If this is an artist profile, ensure ArtSales1155 exists
-    if _is_artist:
-        self._assuresArtSalesExists()
+
+    self._assuresArtSalesExists()
 
 # Internal function to get deployer address
 @internal
@@ -313,21 +289,21 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     assert is_profile_owner or is_system or is_art_piece_self or is_valid_profile_caller, "No permission to add commission"
 
     if self.myCommissionExistsAndPositionOffsetByOne[_art_piece] != 0:
-        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added")
+        log CommissionFailedLink(profile=self, art_piece=_art_piece, reason="Commission already added")
         return False
 
     if not is_potential_commission:
-        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Not a commission art piece")
+        log CommissionFailedLink(profile=self, art_piece=_art_piece, reason="Not a commission art piece")
         return False
     
     # If artist/commissioner are blacklisted by THIS profile, reject the commission
     if (self.blacklist[commissioner] or self.blacklist[art_artist]):
-        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is on blacklist")
+        log CommissionFailedLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is on blacklist")
         return False
 
     # For profile callers (not owner/system/art piece), require whitelisting
     if is_valid_profile_caller and not (self.whitelist[commissioner] or self.whitelist[art_artist]):
-        log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is not whitelisted")
+        log CommissionFailedLink(profile=self, art_piece=_art_piece, reason="Artist or commissioner is not whitelisted")
         return False
     
     # Add to myArt collection if the profile owner is the commissioner
@@ -356,10 +332,10 @@ def linkArtPieceAsMyCommission(_art_piece: address) -> bool:
     # Add to myUnverified list
     else:
         if not self.allowUnverifiedCommissions:
-            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Unverified commissions are disallowed by this Profile.")
+            log CommissionFailedLink(profile=self, art_piece=_art_piece, reason="Unverified commissions are disallowed by this Profile.")
             return False
         if self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] != 0:
-            log CommissionFailedToLink(profile=self, art_piece=_art_piece, reason="Commission already added, but unverified.  Please verify.")
+            log CommissionFailedLink(profile=self, art_piece=_art_piece, reason="Commission already added, but unverified.  Please verify.")
             return False
         self._addToUnverifiedList(_art_piece)
 
@@ -372,7 +348,7 @@ def _addToUnverifiedList(_art_piece: address):
     self.myUnverifiedCommissionCount += 1
     self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
     self.myUnverifiedCommissionsExistsAndPositionOffsetByOne[_art_piece] = self.myUnverifiedCommissionCount
-    log UnverifiedCommissionLinked(profile=self, art_piece=_art_piece)
+    log CommissionLinked(profile=self, art_piece=_art_piece)
 
 @internal
 def _addToVerifiedList(_art_piece: address):
@@ -381,7 +357,7 @@ def _addToVerifiedList(_art_piece: address):
     self.myCommissionCount += 1
     self.myCommissionRole[_art_piece] = (self.owner == staticcall art_piece.getArtist())
     self.myCommissionExistsAndPositionOffsetByOne[_art_piece] = self.myCommissionCount
-    log CommissionLinked(profile=self, art_piece=_art_piece, is_artist=self.isArtist)
+    log CommissionLinked(profile=self, art_piece=_art_piece)
 
 #
 # verifyArtLinkedToMyCommission
@@ -491,7 +467,7 @@ def verifyArtLinkedToMyCommission(_art_piece: address):
                     profile_interface: Profile = Profile(other_profile)
                     extcall profile_interface.updateCommissionVerificationStatus(_art_piece)
     
-    log CommissionVerifiedInProfile(profile=self, art_piece=_art_piece, is_artist=is_artist)
+    log CommissionVerified(profile=self, art_piece=_art_piece)
 
 #
 # removeArtLinkToMyCommission
@@ -1048,10 +1024,7 @@ def setIsArtist(_is_artist: bool):
     """
     assert msg.sender == self.owner, "Only owner can set artist status"
     self.isArtist = _is_artist
-    
-    # If becoming an artist, ensure ArtSales1155 exists
-    if _is_artist:
-        self._assuresArtSalesExists()
+    self._assuresArtSalesExists()
 
 @external
 def updateCommissionVerificationStatus(_commission_art_piece: address):
@@ -1173,7 +1146,7 @@ def updateCommissionVerificationStatus(_commission_art_piece: address):
                     profile_interface: Profile = Profile(other_profile)
                     extcall profile_interface.updateCommissionVerificationStatus(_commission_art_piece)
     
-    log CommissionVerifiedInProfile(profile=self, art_piece=_commission_art_piece, is_artist=is_artist)
+    log CommissionVerified(profile=self, art_piece=_commission_art_piece)
 
 
 # NEW: Helper to get registry
@@ -1218,7 +1191,9 @@ def createArtEdition(
     _royalty_percent: uint256,
     _payment_currency: address = empty(address),
     _sale_type: uint256 = 1,  # Default to SALE_TYPE_CAPPED
-    _phases: DynArray[PhaseConfig, 5] = []
+    _phases: DynArray[PhaseConfig, 5] = [],
+    _time_cap_hard_stop: uint256 = 0,
+    _mint_cap_hard_stop: uint256 = 0
 ) -> address:
     """
     Create an ERC1155 edition from an art piece in this profile with advanced sale configuration
@@ -1236,7 +1211,7 @@ def createArtEdition(
     art_artist: address = staticcall art_piece.getArtist()
     assert art_artist == self.owner, "Must be the artist of the art piece"
     
-    # Call ArtSales1155 to create the edition with advanced sale configuration
+    # Call ArtSales1155 to create the edition with advanced sale configuration and hard stops
     sales_contract: ArtSales1155 = ArtSales1155(self.artSales1155)
     edition: address = extcall sales_contract.createEditionFromArtPiece(
         _art_piece,
@@ -1247,7 +1222,9 @@ def createArtEdition(
         _royalty_percent,
         _payment_currency,
         _sale_type,
-        _phases
+        _phases,
+        _time_cap_hard_stop,
+        _mint_cap_hard_stop
     )
     
     return edition
@@ -1295,7 +1272,7 @@ def withdrawEth(_to: address = empty(address)):
     # Send all ETH
     send(recipient, current_balance)
     
-    log EthWithdrawn(to_address=recipient, amount=current_balance)
+    log TokenWithdrawn(token=empty(address))
 
 @external
 def withdrawTokens(_token: address, _to: address = empty(address)):
@@ -1315,10 +1292,9 @@ def withdrawTokens(_token: address, _to: address = empty(address)):
     assert token_balance > 0, "No tokens to withdraw"
     
     # Transfer all tokens
-    success: bool = extcall token.transfer(recipient, token_balance)
-    assert success, "Token transfer failed"
+    extcall token.transfer(recipient, token_balance)
     
-    log TokenWithdrawn(token=_token, to_address=recipient, amount=token_balance)
+    log TokenWithdrawn(token=_token)
 
 @view
 @external
