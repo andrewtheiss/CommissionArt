@@ -329,6 +329,94 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "name": "_initial_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      },
+      {
+        "name": "_time_cap_hard_stop",
+        "type": "uint256"
+      }
+    ],
+    "name": "createEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_initial_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      },
+      {
+        "name": "_time_cap_hard_stop",
+        "type": "uint256"
+      },
+      {
+        "name": "_mint_cap_hard_stop",
+        "type": "uint256"
+      }
+    ],
+    "name": "createEdition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "startSale",
     "outputs": [],
@@ -474,6 +562,78 @@
         ],
         "name": "",
         "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getHardStops",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isHardStopTriggered",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getExtendedSaleInfo",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -1027,6 +1187,30 @@
   {
     "inputs": [],
     "name": "currentPhase",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "timeCapHardStop",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintCapHardStop",
     "outputs": [
       {
         "name": "",

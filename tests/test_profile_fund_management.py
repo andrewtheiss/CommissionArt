@@ -1,7 +1,17 @@
 import pytest
 from ape import accounts, project
+import time
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+def create_unique_test_token(deployer, test_name=""):
+    """Create a unique ERC20 token for each test to avoid file locking issues"""
+    # Use timestamp and test name to ensure uniqueness
+    timestamp = str(int(time.time() * 1000000))  # Microsecond precision
+    unique_name = f"TestToken_{test_name}_{timestamp}"
+    unique_symbol = f"TEST_{timestamp[-6:]}"  # Last 6 digits of timestamp
+    
+    return project.MockERC20.deploy(unique_name, unique_symbol, 18, sender=deployer)
 
 @pytest.fixture
 def setup():
@@ -49,8 +59,7 @@ def setup():
     profile_address = profile_factory_and_registry.getProfile(profile_owner.address)
     profile = project.Profile.at(profile_address)
     
-    # Deploy a test ERC20 token for testing
-    test_token = project.MockERC20.deploy("Test Token", "TEST", 18, sender=deployer)
+    # DON'T deploy test_token here - let each test create its own unique instance
     
     return {
         "deployer": deployer,
@@ -58,8 +67,8 @@ def setup():
         "other_user": other_user,
         "recipient": recipient,
         "profile": profile,
-        "test_token": test_token,
-        "profile_factory_and_registry": profile_factory_and_registry
+        "profile_factory_and_registry": profile_factory_and_registry,
+        "create_test_token": lambda test_name="": create_unique_test_token(deployer, test_name)
     }
 
 def test_profile_receives_eth(setup):
@@ -226,7 +235,7 @@ def test_erc20_token_withdrawal(setup):
     """Test ERC20 token withdrawal functionality"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("erc20_withdrawal")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Mint tokens to deployer first
@@ -264,7 +273,7 @@ def test_withdraw_tokens_basic(setup):
     """Test basic token withdrawal functionality"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("withdraw_basic")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Mint and transfer tokens to profile
@@ -286,7 +295,7 @@ def test_withdraw_tokens_to_different_recipient(setup):
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
     recipient = setup["recipient"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("different_recipient")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Setup tokens
@@ -308,7 +317,7 @@ def test_only_owner_can_withdraw_tokens(setup):
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
     other_user = setup["other_user"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("only_owner")  # Create unique token for this test
     deployer = setup["deployer"]
     
     # Setup tokens
@@ -342,7 +351,7 @@ def test_withdraw_tokens_with_no_balance_fails(setup):
     """Test that withdrawing tokens fails when balance is zero"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("no_balance")  # Create unique token for this test
     
     # Profile has no tokens
     assert profile.getTokenBalance(test_token.address) == 0
@@ -382,7 +391,7 @@ def test_combined_eth_and_token_operations(setup):
     """Test combined ETH and token operations"""
     profile = setup["profile"]
     profile_owner = setup["profile_owner"]
-    test_token = setup["test_token"]
+    test_token = setup["create_test_token"]("combined_ops")  # Create unique token for this test
     other_user = setup["other_user"]
     deployer = setup["deployer"]
     

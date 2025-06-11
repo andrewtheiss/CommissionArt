@@ -11,31 +11,9 @@
         "indexed": true,
         "name": "art_piece",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "is_artist",
-        "type": "bool"
       }
     ],
     "name": "CommissionLinked",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "profile",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "art_piece",
-        "type": "address"
-      }
-    ],
-    "name": "UnverifiedCommissionLinked",
     "type": "event"
   },
   {
@@ -91,41 +69,7 @@
         "type": "string"
       }
     ],
-    "name": "CommissionFailedToLink",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "from_address",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "EthReceived",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "to_address",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "EthWithdrawn",
+    "name": "CommissionFailedLink",
     "type": "event"
   },
   {
@@ -135,41 +79,9 @@
         "indexed": true,
         "name": "token",
         "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "to_address",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "amount",
-        "type": "uint256"
       }
     ],
     "name": "TokenWithdrawn",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "profile",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "art_piece",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "is_artist",
-        "type": "bool"
-      }
-    ],
-    "name": "CommissionVerifiedInProfile",
     "type": "event"
   },
   {
@@ -954,6 +866,136 @@
         ],
         "name": "_phases",
         "type": "tuple[]"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      },
+      {
+        "name": "_time_cap_hard_stop",
+        "type": "uint256"
+      }
+    ],
+    "name": "createArtEdition",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "_art_piece",
+        "type": "address"
+      },
+      {
+        "name": "_edition_name",
+        "type": "string"
+      },
+      {
+        "name": "_edition_symbol",
+        "type": "string"
+      },
+      {
+        "name": "_mint_price",
+        "type": "uint256"
+      },
+      {
+        "name": "_max_supply",
+        "type": "uint256"
+      },
+      {
+        "name": "_royalty_percent",
+        "type": "uint256"
+      },
+      {
+        "name": "_payment_currency",
+        "type": "address"
+      },
+      {
+        "name": "_sale_type",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "name": "threshold",
+            "type": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256"
+          }
+        ],
+        "name": "_phases",
+        "type": "tuple[]"
+      },
+      {
+        "name": "_time_cap_hard_stop",
+        "type": "uint256"
+      },
+      {
+        "name": "_mint_cap_hard_stop",
+        "type": "uint256"
       }
     ],
     "name": "createArtEdition",

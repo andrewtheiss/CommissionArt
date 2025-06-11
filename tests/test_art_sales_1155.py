@@ -22,6 +22,15 @@ def get_test_token_uri_json():
 
 TEST_TOKEN_URI_JSON = get_test_token_uri_json()
 
+def create_unique_test_token(deployer, test_name=""):
+    """Create a unique ERC20 token to avoid file locking issues in parallel tests"""
+    # Use timestamp and test name to ensure uniqueness
+    timestamp = str(int(time.time() * 1000000))  # Microsecond precision
+    unique_name = f"TestToken_{test_name}_{timestamp}"
+    unique_symbol = f"TEST_{timestamp[-6:]}"  # Last 6 digits of timestamp
+    
+    return project.MockERC20.deploy(unique_name, unique_symbol, 18, sender=deployer)
+
 # --- Fixture for ArtSales1155 tests ---
 @pytest.fixture
 def setup():
@@ -3562,8 +3571,8 @@ def test_hard_stops_comprehensive_integration(setup):
     # Test Scenario 1: Hard stops with different payment methods (ERC20)
     print("Testing hard stops with ERC20 payment...")
     
-    # Deploy test ERC20 token for payment
-    test_token = project.MockERC20.deploy("TestToken", "TEST", 18, sender=user1)
+    # Deploy test ERC20 token for payment with unique name to avoid file locking
+    test_token = create_unique_test_token(user1, "comprehensive_integration")
     
     # Give users some tokens
     test_token.mint(user1.address, 1000000000000000000000, sender=user1)  # 1000 tokens
