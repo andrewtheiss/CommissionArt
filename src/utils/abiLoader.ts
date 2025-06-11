@@ -9,6 +9,7 @@ import ArtPieceLicenseABI from '../assets/abis/ArtPieceLicense.json';
 import ArtSales1155ABI from '../assets/abis/ArtSales1155.json';
 import L1QueryOwnershipABI from '../assets/abis/L1QueryOwnership.json';
 import L2OwnershipRelayABI from '../assets/abis/L2OwnershipRelay.json';
+import MockERC20ABI from '../assets/abis/MockERC20.json';
 import ProfileABI from '../assets/abis/Profile.json';
 import ProfileFactoryAndRegistryABI from '../assets/abis/ProfileFactoryAndRegistry.json';
 import ProfileSocialABI from '../assets/abis/ProfileSocial.json';
@@ -28,6 +29,7 @@ const abiMap: { [key: string]: any } = {
   'ArtSales1155': ArtSales1155ABI,
   'L1QueryOwnership': L1QueryOwnershipABI,
   'L2OwnershipRelay': L2OwnershipRelayABI,
+  'MockERC20': MockERC20ABI,
   'Profile': ProfileABI,
   'ProfileFactoryAndRegistry': ProfileFactoryAndRegistryABI,
   'ProfileSocial': ProfileSocialABI,

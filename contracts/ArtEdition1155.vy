@@ -103,7 +103,7 @@ struct PhaseConfig:
     price: uint256
 
 # Constants
-MAX_ROYALTY_PERCENT: constant(uint256) = 1000
+MAX_ROYALTY_PERCENT: constant(uint256) = 10000  # Allow up to 100.00% (10000 basis points)
 MAX_PHASES: constant(uint256) = 5
 TOKEN_ID: constant(uint256) = 1  # Always use token ID 1
 
@@ -203,7 +203,7 @@ def createEdition(
 @external
 def startSale():
     """Start the sale for this edition"""
-    assert msg.sender == self.owner, "Only owner"
+    assert msg.sender == self.owner or msg.sender == self.artSales1155, "Only owner or ArtSales1155"
     assert self.basePrice > 0, "Edition does not exist"
     assert self.isPaused, "Sale already active"
     
@@ -215,7 +215,7 @@ def startSale():
 @external
 def pauseSale():
     """Pause the sale for this edition"""
-    assert msg.sender == self.owner, "Only owner"
+    assert msg.sender == self.owner or msg.sender == self.artSales1155, "Only owner or ArtSales1155"
     assert self.basePrice > 0, "Edition does not exist"
     assert not self.isPaused, "Sale already paused"
     
@@ -225,7 +225,7 @@ def pauseSale():
 @external
 def resumeSale():
     """Resume a paused sale"""
-    assert msg.sender == self.owner, "Only owner"
+    assert msg.sender == self.owner or msg.sender == self.artSales1155, "Only owner or ArtSales1155"
     assert self.basePrice > 0, "Edition does not exist"
     assert self.isPaused, "Sale not paused"
     
@@ -322,7 +322,8 @@ def mint(_amount: uint256):
     
     # Send proceeds to artist
     if msg.value > 0:
-        send(self.proceedsAddress, msg.value)
+        raw_call(self.proceedsAddress, b"", value=msg.value) 
+        # Note: raw_call will revert on failure, so no need to check success
     
     # Update supply
     self.currentSupply += _amount

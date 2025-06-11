@@ -2664,3 +2664,234 @@ def test_o1_operations_edge_cases(setup):
     assert not owner_sales.collectorErc1155Exists(single_erc1155), "Removed item should not exist"
     assert owner_sales.getCollectorErc1155Position(single_erc1155) == 2**256 - 1, "Removed item should return max position"
     assert owner_sales.getCollectorErc1155OriginalArtPiece(single_erc1155) == ZERO_ADDRESS, "Removed item should have no mapping"
+
+def test_edition_sale_management_permissions_fix(setup):
+    """
+    Test that ArtSales1155 can call sale management methods on ArtEdition1155.
+    
+    This test specifically addresses the bug where ArtEdition1155.startSale(), 
+    pauseSale(), and resumeSale() only allowed the direct owner, but should 
+    also allow the ArtSales1155 contract to call them.
+    
+    Before the fix: ArtSales1155.startSaleForEdition() would fail with "Only owner"
+    After the fix: ArtSales1155.startSaleForEdition() should work correctly
+    """
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"] 
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    user1 = setup["user1"]  # Unauthorized user
+    
+    print("\n=== Testing Edition Sale Management Permissions Fix ===")
+    
+    # Step 1: Create an art piece
+    print("Step 1: Creating art piece...")
+    artist_profile.createArtPiece(
+        art_piece_template.address,
+        TEST_TOKEN_URI_DATA,
+        TEST_TOKEN_URI_DATA_FORMAT,
+        "Sale Management Test Art",
+        "Testing sale management permissions",
+        True,  # as artist
+        artist.address,  # other party (same as artist for personal piece)
+        TEST_AI_GENERATED,
+        ZERO_ADDRESS,  # No commission hub
+        False,  # Not profile art
+        sender=artist
+    )
+    
+    # Get the art piece address
+    art_pieces = artist_profile.getArtPiecesByOffset(0, 10, False)
+    art_piece_address = art_pieces[-1]
+    print(f"Created art piece: {art_piece_address}")
+    
+    # Step 2: Create edition via ArtSales1155.createEditionFromArtPiece()
+    print("Step 2: Creating edition...")
+    initial_count = artist_sales.artistErc1155sToSellCount()
+    edition_tx = artist_sales.createEditionFromArtPiece(
+        art_piece_address,
+        "Sale Management Test Edition", 
+        "SMTE",
+        1000000000000000000,  # 1 ETH in wei
+        100,  # max supply
+        250,  # 2.5% royalty
+        sender=artist
+    )
+    edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+    print(f"Created edition: {edition_address}")
+    assert edition_address is not None and edition_address != ZERO_ADDRESS, "Edition address should be valid"
+    
+    # Get the edition contract instance
+    edition_contract = project.ArtEdition1155.at(edition_address)
+    
+    # Verify initial state: sale should be paused (default state)
+    sale_info = edition_contract.getSaleInfo()
+    print(f"Initial sale info: {sale_info}")
+    assert sale_info[4] == True, "Sale should initially be paused"  # isPaused should be True
+    
+    # Step 3: Test that ArtSales1155.startSaleForEdition() works 
+    # (This was failing before the fix with "Only owner")
+    print("Step 3: Testing ArtSales1155.startSaleForEdition()...")
+    
+    # This is the critical test - this call should now work
+    start_sale_tx = artist_sales.startSaleForEdition(edition_address, sender=artist)
+    print(f"Start sale transaction: {start_sale_tx}")
+    
+    # Verify sale is now active
+    sale_info_after_start = edition_contract.getSaleInfo()
+    print(f"Sale info after start: {sale_info_after_start}")
+    assert sale_info_after_start[4] == False, "Sale should now be active (not paused)"
+    
+    # Step 4: Test pause sale via ArtSales1155
+    print("Step 4: Testing ArtSales1155.pauseSaleForEdition()...")
+    pause_sale_tx = artist_sales.pauseSaleForEdition(edition_address, sender=artist)
+    print(f"Pause sale transaction: {pause_sale_tx}")
+    
+    # Verify sale is paused
+    sale_info_after_pause = edition_contract.getSaleInfo()
+    assert sale_info_after_pause[4] == True, "Sale should be paused"
+    
+    # Step 5: Test resume sale via ArtSales1155  
+    print("Step 5: Testing ArtSales1155.resumeSaleForEdition()...")
+    resume_sale_tx = artist_sales.resumeSaleForEdition(edition_address, sender=artist)
+    print(f"Resume sale transaction: {resume_sale_tx}")
+    
+    # Verify sale is active again
+    sale_info_after_resume = edition_contract.getSaleInfo()
+    assert sale_info_after_resume[4] == False, "Sale should be active again"
+    
+    # Step 6: Test direct owner access still works
+    print("Step 6: Testing direct owner access...")
+    
+    # Pause directly on the edition contract (as owner)
+    edition_contract.pauseSale(sender=artist)
+    sale_info_direct_pause = edition_contract.getSaleInfo()
+    assert sale_info_direct_pause[4] == True, "Direct pause should work"
+    
+    # Resume directly on the edition contract (as owner)  
+    edition_contract.resumeSale(sender=artist)
+    sale_info_direct_resume = edition_contract.getSaleInfo()
+    assert sale_info_direct_resume[4] == False, "Direct resume should work"
+    
+    # Step 7: Test unauthorized user cannot call methods
+    print("Step 7: Testing unauthorized access...")
+    
+    # Unauthorized user should not be able to call ArtSales1155 methods
+    with pytest.raises(Exception, match="Only owner"):
+        artist_sales.startSaleForEdition(edition_address, sender=user1)
+    
+    with pytest.raises(Exception, match="Only owner"):
+        artist_sales.pauseSaleForEdition(edition_address, sender=user1)
+        
+    with pytest.raises(Exception, match="Only owner"):
+        artist_sales.resumeSaleForEdition(edition_address, sender=user1)
+    
+    # Unauthorized user should not be able to call ArtEdition1155 methods directly
+    with pytest.raises(Exception, match="Only owner or ArtSales1155"):
+        edition_contract.startSale(sender=user1)
+        
+    with pytest.raises(Exception, match="Only owner or ArtSales1155"):
+        edition_contract.pauseSale(sender=user1)
+        
+    with pytest.raises(Exception, match="Only owner or ArtSales1155"):
+        edition_contract.resumeSale(sender=user1)
+    
+    # Step 8: Verify edition ownership and relationship 
+    print("Step 8: Verifying contract relationships...")
+    
+    # Verify the edition owner is the artist
+    edition_owner = edition_contract.owner()
+    assert edition_owner == artist.address, f"Edition owner should be {artist.address}, got {edition_owner}"
+    
+    # Verify the edition's artSales1155 address matches
+    edition_art_sales = edition_contract.artSales1155()
+    assert edition_art_sales == artist_sales.address, f"Edition's artSales1155 should be {artist_sales.address}, got {edition_art_sales}"
+    
+    # Verify the edition is linked to the correct art piece
+    linked_art_piece = edition_contract.getLinkedArtPiece()
+    assert linked_art_piece == art_piece_address, f"Edition should link to {art_piece_address}, got {linked_art_piece}"
+    
+    print("✅ All sale management permission tests passed!")
+    print("✅ The bug fix allows ArtSales1155 to manage sales while preserving security!")
+
+def test_edition_sale_management_batch_operations(setup):
+    """
+    Test batch sale management operations work correctly with the permission fix.
+    """
+    artist = setup["artist"]
+    artist_profile = setup["artist_profile"]
+    artist_sales = setup["artist_sales"]
+    art_piece_template = setup["art_piece_template"]
+    
+    print("\n=== Testing Batch Sale Management Operations ===")
+    
+    # Create multiple art pieces and editions
+    edition_addresses = []
+    for i in range(3):
+        # Create art piece
+        artist_profile.createArtPiece(
+            art_piece_template.address,
+            TEST_TOKEN_URI_DATA,
+            TEST_TOKEN_URI_DATA_FORMAT,
+            f"Batch Test Art {i+1}",
+            f"Testing batch operations {i+1}",
+            True,  # as artist
+            artist.address,
+            TEST_AI_GENERATED,
+            ZERO_ADDRESS,
+            False,
+            sender=artist
+        )
+        
+        # Get art piece address
+        art_pieces = artist_profile.getArtPiecesByOffset(0, 20, False)
+        art_piece_address = art_pieces[-1]
+        
+        # Create edition
+        initial_count = artist_sales.artistErc1155sToSellCount()
+        edition_tx = artist_sales.createEditionFromArtPiece(
+            art_piece_address,
+            f"Batch Edition {i+1}",
+            f"BE{i+1}",
+            1000000000000000000,  # 1 ETH
+            100,  # max supply
+            250,  # 2.5% royalty
+            sender=artist
+        )
+        edition_address = get_edition_address_reliable(artist_sales, edition_tx, initial_count)
+        assert edition_address is not None and edition_address != ZERO_ADDRESS, f"Edition {i+1} address should be valid"
+        edition_addresses.append(edition_address)
+    
+    print(f"Created {len(edition_addresses)} editions for batch testing")
+    
+    # Test batch start sales
+    print("Testing batch start sales...")
+    artist_sales.batchStartSales(edition_addresses, sender=artist)
+    
+    # Verify all sales are active
+    for edition_addr in edition_addresses:
+        edition = project.ArtEdition1155.at(edition_addr)
+        sale_info = edition.getSaleInfo()
+        assert sale_info[4] == False, f"Edition {edition_addr} should have active sale"
+    
+    # Test batch pause sales
+    print("Testing batch pause sales...")
+    artist_sales.batchPauseSales(edition_addresses, sender=artist)
+    
+    # Verify all sales are paused
+    for edition_addr in edition_addresses:
+        edition = project.ArtEdition1155.at(edition_addr)
+        sale_info = edition.getSaleInfo()
+        assert sale_info[4] == True, f"Edition {edition_addr} should have paused sale"
+    
+    # Test batch resume sales
+    print("Testing batch resume sales...")
+    artist_sales.batchResumeSales(edition_addresses, sender=artist)
+    
+    # Verify all sales are active again
+    for edition_addr in edition_addresses:
+        edition = project.ArtEdition1155.at(edition_addr)
+        sale_info = edition.getSaleInfo()
+        assert sale_info[4] == False, f"Edition {edition_addr} should have active sale"
+    
+    print("✅ All batch operations work correctly with the permission fix!")

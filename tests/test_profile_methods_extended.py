@@ -155,8 +155,8 @@ def test_getProfileErc1155sForSale(setup):
     
     try:
         print("Adding ERC1155 for sale")
-        print("Using addArtistErc1155ToSell method...")
-        tx = artist_sales.addArtistErc1155ToSell(art_piece_addr, sender=artist)
+        print("Using addAdditionalMintErc1155 method...")
+        tx = artist_sales.addAdditionalMintErc1155(art_piece_addr, sender=artist)
         print(f"ERC1155 added with transaction {tx}")
         
         # Print the count of ERC1155s for sale

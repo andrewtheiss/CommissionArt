@@ -35,6 +35,20 @@ event CommissionFailedToLink:
     art_piece: indexed(address)
     reason: String[100]
 
+# Fund management events
+event EthReceived:
+    from_address: indexed(address)
+    amount: uint256
+
+event EthWithdrawn:
+    to_address: indexed(address)
+    amount: uint256
+
+event TokenWithdrawn:
+    token: indexed(address)
+    to_address: indexed(address)
+    amount: uint256
+
 # Constants for standardized pagination and unified array capacities
 PAGE_SIZE: constant(uint256) = 20
 MAX_ITEMS: constant(uint256) = 10**8  # unified max length for all item lists (adjusted if needed to original limits)
@@ -81,6 +95,7 @@ artSales1155: public(address)
 
 # Artist status for this profile
 isArtist: public(bool)
+
 
 # Phase Configuration (matching ArtSales1155)
 struct PhaseConfig:
@@ -133,6 +148,11 @@ interface ArtCommissionHubOwners:
     def getCommissionHubCountByOwner(_owner: address) -> uint256: view
     def getCommissionHubsByOwnerWithOffset(_owner: address, _offset: uint256, _count: uint256, reverse: bool) -> DynArray[address, 50]: view
     def artCommissionHubsByOwnerIndexOffsetByOne(_owner: address, _hub: address) -> uint256: view
+
+# Interface for ERC20 tokens
+interface IERC20:
+    def transfer(_to: address, _value: uint256) -> bool: nonpayable
+    def balanceOf(_owner: address) -> uint256: view
 
 
 # Event for myCommission verification in profile context
@@ -1242,5 +1262,71 @@ def artPieceHasEditions(_art_piece: address) -> bool:
     
     sales_contract: ArtSales1155 = ArtSales1155(self.artSales1155)
     return staticcall sales_contract.hasEditions(_art_piece)
+
+# ================================================================================================
+# FUND MANAGEMENT - ETH and ERC20 receiving and withdrawal
+# ================================================================================================
+
+@payable
+@external
+def __default__():
+    pass
+
+@view
+@external
+def getAvailableEthBalance() -> uint256:
+    """Get the current ETH balance available for withdrawal"""
+    return self.balance
+
+@external
+def withdrawEth(_to: address = empty(address)):
+    """
+    Withdraw all available ETH from this profile
+    Only the profile owner can withdraw funds
+    """
+    assert msg.sender == self.owner, "Only owner can withdraw ETH"
+    
+    current_balance: uint256 = self.balance
+    assert current_balance > 0, "No ETH to withdraw"
+    
+    # Default to owner's address if no recipient specified
+    recipient: address = _to if _to != empty(address) else self.owner
+
+    # Send all ETH
+    send(recipient, current_balance)
+    
+    log EthWithdrawn(to_address=recipient, amount=current_balance)
+
+@external
+def withdrawTokens(_token: address, _to: address = empty(address)):
+    """
+    Withdraw all ERC20 tokens of a specific type from this profile
+    Only the profile owner can withdraw tokens
+    """
+    assert msg.sender == self.owner, "Only owner can withdraw tokens"
+    assert _token != empty(address), "Invalid token address"
+    
+    # Default to owner's address if no recipient specified
+    recipient: address = _to if _to != empty(address) else self.owner
+    
+    # Get all tokens of this type
+    token: IERC20 = IERC20(_token)
+    token_balance: uint256 = staticcall token.balanceOf(self)
+    assert token_balance > 0, "No tokens to withdraw"
+    
+    # Transfer all tokens
+    success: bool = extcall token.transfer(recipient, token_balance)
+    assert success, "Token transfer failed"
+    
+    log TokenWithdrawn(token=_token, to_address=recipient, amount=token_balance)
+
+@view
+@external
+def getTokenBalance(_token: address) -> uint256:
+    """Get the balance of a specific ERC20 token held by this profile"""
+    assert _token != empty(address), "Invalid token address"
+    
+    token: IERC20 = IERC20(_token)
+    return staticcall token.balanceOf(self)
 
 # NOTE: For any myCommission art piece attached to a hub and fully verified, the true owner is always the hub's owner (as set by ArtCommissionHubOwners). The Profile contract should never override this; always query the hub for the current owner if needed.

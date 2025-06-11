@@ -38,6 +38,10 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
     saleActive: boolean;
     erc1155Address: string;
   } | null>(null);
+  
+  // Real-time pricing state
+  const [realTimePrice, setRealTimePrice] = useState<string | null>(null);
+  const [priceLoading, setPriceLoading] = useState<boolean>(false);
 
       // State for sale management
     const [managingSale, setManagingSale] = useState<boolean>(false);
@@ -50,10 +54,27 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
     }
   }, [isOpen, artSales1155Address, artPieceAddress]);
 
+  // Update real-time price when mint amount changes (for phased pricing)
+  useEffect(() => {
+    if (editionInfo?.saleActive && editionInfo?.erc1155Address) {
+      updateRealTimePrice();
+    }
+  }, [mintAmount, editionInfo?.erc1155Address, editionInfo?.saleActive]);
+
   const loadEditionInfo = async () => {
-    if (!artSales1155Address || !artPieceAddress) return;
+    console.log('[MintArtEdition] === LOAD EDITION INFO ===');
+    console.log('[MintArtEdition] artSales1155Address:', artSales1155Address);
+    console.log('[MintArtEdition] artPieceAddress:', artPieceAddress);
+    
+    if (!artSales1155Address || !artPieceAddress) {
+      console.log('[MintArtEdition] ❌ Missing required addresses, returning early');
+      console.log('[MintArtEdition] artSales1155Address missing:', !artSales1155Address);
+      console.log('[MintArtEdition] artPieceAddress missing:', !artPieceAddress);
+      return;
+    }
     
     try {
+      console.log('[MintArtEdition] ✅ Starting edition info load...');
       setLoading(true);
       
       const signer = await ethersService.getSigner();
@@ -70,13 +91,17 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       const artSalesContract = new ethers.Contract(artSales1155Address, artSalesAbi, signer);
       
       // Check if this art piece has an edition
+      console.log('[MintArtEdition] Checking if art piece has editions...');
       const hasEditions = await artSalesContract.hasEditions(artPieceAddress);
+      console.log('[MintArtEdition] hasEditions result:', hasEditions);
       if (!hasEditions) {
         throw new Error("No editions found for this art piece");
       }
 
       // Get the ERC1155 address mapped to this art piece
+      console.log('[MintArtEdition] Getting ERC1155 address mapping...');
       const erc1155Address = await artSalesContract.artistPieceToErc1155Map(artPieceAddress);
+      console.log('[MintArtEdition] ERC1155 address from mapping:', erc1155Address);
       if (!erc1155Address || erc1155Address === ethers.ZeroAddress) {
         throw new Error("No ERC1155 contract found for this art piece");
       }
@@ -84,9 +109,10 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       // Check if sale is active
       const saleActive = await artSalesContract.isSaleActive(erc1155Address);
       
-      // Get sale info
+      // Get sale info - ArtSales1155.getSaleInfo returns (saleType, currentPrice, currentSupply, maxSupply, isPaused, currentPhase)
       const saleInfo = await artSalesContract.getSaleInfo(erc1155Address);
-      const [mintPrice, maxSupply, currentSupply, royaltyPercent, , saleType] = saleInfo;
+      const [saleType, mintPrice, currentSupply, maxSupply, isPaused, currentPhase] = saleInfo;
+      console.log('[MintArtEdition] Sale info from ArtSales1155:', {saleType, mintPrice: mintPrice.toString(), currentSupply, maxSupply, isPaused, currentPhase});
 
       // Load ArtEdition1155 ABI to get edition details
       const artEditionAbi = abiLoader.loadABI('ArtEdition1155');
@@ -99,6 +125,10 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
       // Get edition name and symbol
       const name = await editionContract.name();
       const symbol = await editionContract.symbol();
+      
+      // Get royalty percentage from edition contract
+      const royaltyPercent = await editionContract.royaltyPercent();
+      console.log('[MintArtEdition] Royalty percent from edition contract:', royaltyPercent.toString());
       
       // Get payment currency (if applicable)
       let paymentCurrency = "ETH"; // Default
@@ -113,23 +143,68 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
         console.log("Payment currency not available or ETH");
       }
 
-      setEditionInfo({
+      const editionData = {
         name,
         symbol,
         mintPrice: ethers.formatEther(mintPrice),
         maxSupply: Number(maxSupply),
         currentSupply: Number(currentSupply),
-        royaltyPercent: Number(royaltyPercent),
+        royaltyPercent: Number(royaltyPercent) / 100, // Convert from basis points to percentage
         paymentCurrency,
         saleActive,
         erc1155Address
-      });
+      };
+      
+      console.log('[MintArtEdition] ✅ Edition info loaded successfully:', editionData);
+      setEditionInfo(editionData);
+
+      // Fetch real-time price after setting edition info
+      if (saleActive) {
+        await updateRealTimePrice(erc1155Address);
+      }
 
     } catch (err: any) {
       console.error("Error loading edition info:", err);
       onError(`Failed to load edition information: ${err.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateRealTimePrice = async (erc1155Address?: string) => {
+    if (!erc1155Address && !editionInfo?.erc1155Address) return;
+    
+    const contractAddress = erc1155Address || editionInfo!.erc1155Address;
+    
+    try {
+      setPriceLoading(true);
+      
+      const provider = ethersService.getProvider();
+      if (!provider) {
+        throw new Error("No provider available");
+      }
+
+      const artEditionAbi = abiLoader.loadABI('ArtEdition1155');
+      if (!artEditionAbi) {
+        throw new Error("ArtEdition1155 ABI not found");
+      }
+
+      const editionContract = new ethers.Contract(contractAddress, artEditionAbi, provider);
+      
+      // Get real-time sale info
+      const realTimeSaleInfo = await editionContract.getSaleInfo();
+      const [, realTimePriceWei, , , , ] = realTimeSaleInfo;
+      
+      const realTimePriceEth = ethers.formatEther(realTimePriceWei);
+      console.log('[MintArtEdition] Updated real-time price:', realTimePriceEth, 'ETH');
+      setRealTimePrice(realTimePriceEth);
+
+    } catch (err: any) {
+      console.error("Error fetching real-time price:", err);
+      // Don't show error to user, just fallback to cached price
+      setRealTimePrice(null);
+    } finally {
+      setPriceLoading(false);
     }
   };
 
@@ -152,21 +227,243 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
 
       const editionContract = new ethers.Contract(editionInfo.erc1155Address, artEditionAbi, signer);
       
-      // Calculate total cost
-      const mintPriceWei = ethers.parseEther(editionInfo.mintPrice);
-      const totalCost = mintPriceWei * BigInt(mintAmount);
+      // Get real-time sale info to account for phased pricing
+      console.log('[MintArtEdition] Getting real-time sale info for accurate pricing...');
+      const realTimeSaleInfo = await editionContract.getSaleInfo();
+      const [saleType, realTimePrice, currentSupply, maxSupply, isPaused, currentPhase] = realTimeSaleInfo;
+      console.log('[MintArtEdition] Real-time price (wei):', realTimePrice.toString());
+      console.log('[MintArtEdition] Cached price (ETH):', editionInfo.mintPrice);
+      console.log('[MintArtEdition] Real-time price (ETH):', ethers.formatEther(realTimePrice));
+      
+      // Enhanced debugging of contract state
+      console.log('[MintArtEdition] === DETAILED CONTRACT STATE ===');
+      console.log('[MintArtEdition] Sale type:', saleType.toString());
+      console.log('[MintArtEdition] Current supply:', currentSupply.toString());
+      console.log('[MintArtEdition] Max supply:', maxSupply.toString());
+      console.log('[MintArtEdition] Is paused:', isPaused);
+      console.log('[MintArtEdition] Current phase:', currentPhase.toString());
+      console.log('[MintArtEdition] Mint amount requested:', mintAmount);
+      console.log('[MintArtEdition] Supply after mint would be:', Number(currentSupply) + mintAmount);
+      
+      // Check payment currency details
+      const paymentCurrency = await editionContract.paymentCurrency();
+      const basePrice = await editionContract.basePrice();
+      const proceedsAddress = await editionContract.proceedsAddress();
+      console.log('[MintArtEdition] Payment currency address:', paymentCurrency);
+      console.log('[MintArtEdition] Base price (wei):', basePrice.toString());
+      console.log('[MintArtEdition] Payment currency is zero address (ETH):', paymentCurrency === ethers.ZeroAddress);
+      console.log('[MintArtEdition] Proceeds address:', proceedsAddress);
+      console.log('[MintArtEdition] Proceeds address is valid:', proceedsAddress !== ethers.ZeroAddress);
+      
+      // Validate mint conditions before attempting
+      if (isPaused) {
+        throw new Error("Sale is currently paused");
+      }
+      
+      if (Number(currentSupply) + mintAmount > Number(maxSupply) && Number(maxSupply) !== 0) {
+        throw new Error(`Mint amount would exceed max supply. Current: ${currentSupply}, Max: ${maxSupply}, Requested: ${mintAmount}`);
+      }
+      
+      if (realTimePrice === 0n) {
+        throw new Error("Edition price is zero - edition may not be properly initialized");
+      }
+      
+      if (proceedsAddress === ethers.ZeroAddress) {
+        throw new Error("Proceeds address is not set - edition may not be properly initialized");
+      }
+      
+      // Calculate total cost using real-time price
+      const totalCost = realTimePrice * BigInt(mintAmount);
+      console.log('[MintArtEdition] Total cost for', mintAmount, 'tokens:', ethers.formatEther(totalCost), 'ETH');
+      
+      // Check wallet balance
+      const walletBalance = await signer.provider.getBalance(await signer.getAddress());
+      console.log('[MintArtEdition] Wallet balance:', ethers.formatEther(walletBalance), 'ETH');
+      console.log('[MintArtEdition] Has sufficient balance:', walletBalance >= totalCost);
+      
+      if (walletBalance < totalCost) {
+        throw new Error(`Insufficient wallet balance. Need ${ethers.formatEther(totalCost)} ETH, have ${ethers.formatEther(walletBalance)} ETH`);
+      }
+      
+      // CONTRACT VERIFICATION: Check if the contract actually exists and has expected functions
+      console.log('[MintArtEdition] === CONTRACT VERIFICATION ===');
+      try {
+        // Check if contract exists by checking code
+        const contractCode = await signer.provider.getCode(editionInfo.erc1155Address);
+        console.log('[MintArtEdition] Contract code exists:', contractCode !== '0x');
+        console.log('[MintArtEdition] Contract code length:', contractCode.length);
+        
+        if (contractCode === '0x') {
+          throw new Error('Contract does not exist at this address');
+        }
+        
+        // Test view functions to verify ABI
+        const initialized = await editionContract.initialized();
+        const owner = await editionContract.owner();
+        const artPiece = await editionContract.artPiece();
+        
+        console.log('[MintArtEdition] Contract verification checks:');
+        console.log('[MintArtEdition] - Initialized:', initialized);
+        console.log('[MintArtEdition] - Owner:', owner);
+        console.log('[MintArtEdition] - ArtPiece:', artPiece);
+        
+        // Check if we can estimate gas for a simpler view function
+        console.log('[MintArtEdition] Testing gas estimation for balanceOf...');
+        const balanceOfGas = await editionContract.balanceOf.estimateGas(await signer.getAddress(), 1);
+        console.log('[MintArtEdition] balanceOf gas estimate:', balanceOfGas.toString());
+        
+      } catch (verificationError) {
+        console.error('[MintArtEdition] Contract verification failed:', verificationError);
+        throw new Error(`Contract verification failed: ${verificationError instanceof Error ? verificationError.message : String(verificationError)}`);
+      }
+      
+      // FUNCTION SELECTOR VERIFICATION
+      console.log('[MintArtEdition] === FUNCTION SELECTOR VERIFICATION ===');
+      try {
+        // Check if the mint function exists with correct selector
+        const mintFunction = editionContract.interface.getFunction('mint');
+        if (mintFunction) {
+          console.log('[MintArtEdition] Mint function selector:', mintFunction.selector);
+          console.log('[MintArtEdition] Mint function signature:', mintFunction.format());
+        } else {
+          console.log('[MintArtEdition] Mint function not found in ABI');
+        }
+        
+        // Also check what functions are available
+        const allFunctions = editionContract.interface.fragments.filter(f => f.type === 'function');
+        console.log('[MintArtEdition] Available functions in ABI:', allFunctions.map(f => f.format()));
+        
+        // Try to see if there's a different mint function
+        const mintFunctions = allFunctions.filter(f => f.format().includes('mint'));
+        console.log('[MintArtEdition] Mint-related functions:', mintFunctions.map(f => f.format()));
+        
+      } catch (selectorError) {
+        console.error('[MintArtEdition] Function selector verification failed:', selectorError);
+      }
+      
+      // LOW-LEVEL CONTRACT CALL: Try calling with raw transaction data
+      console.log('[MintArtEdition] === LOW-LEVEL CONTRACT CALL ===');
+      try {
+        // Build the transaction data manually
+        const mintSelector = '0xa0712d68'; // mint(uint256) selector
+        const encodedAmount = ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [mintAmount]);
+        const callData = mintSelector + encodedAmount.slice(2); // Remove 0x prefix from encoded amount
+        
+        console.log('[MintArtEdition] Manual call data:', callData);
+        console.log('[MintArtEdition] Expected call data from ethers:', await editionContract.mint.populateTransaction(mintAmount));
+        
+        // Try a low-level call to get better error info
+        const result = await signer.provider.call({
+          to: editionInfo.erc1155Address,
+          data: callData,
+          value: ethers.toQuantity(totalCost),
+          from: await signer.getAddress()
+        });
+        
+        console.log('[MintArtEdition] Low-level call result:', result);
+        
+              } catch (lowLevelError) {
+          console.error('[MintArtEdition] Low-level call failed:', lowLevelError);
+          
+          // The error might give us more details
+          if (lowLevelError instanceof Error && lowLevelError.message.includes('revert')) {
+            console.log('[MintArtEdition] Contract reverted, checking for specific revert reason...');
+          }
+        }
+        
+        // PROCEEDS ADDRESS VERIFICATION: Check if the proceeds address can receive ETH
+        console.log('[MintArtEdition] === PROCEEDS ADDRESS VERIFICATION ===');
+        try {
+          // Check if proceeds address is a contract
+          const proceedsCode = await signer.provider.getCode(proceedsAddress);
+          const isContract = proceedsCode !== '0x';
+          console.log('[MintArtEdition] Proceeds address is contract:', isContract);
+          console.log('[MintArtEdition] Proceeds code length:', proceedsCode.length);
+          
+          // Check proceeds address balance
+          const proceedsBalance = await signer.provider.getBalance(proceedsAddress);
+          console.log('[MintArtEdition] Proceeds address balance:', ethers.formatEther(proceedsBalance), 'ETH');
+          
+          if (isContract) {
+            console.log('[MintArtEdition] ⚠️ Proceeds address is a contract - checking if it can receive ETH...');
+            
+            // Try to send a tiny amount of ETH to test if it can receive
+            try {
+              await signer.estimateGas({
+                to: proceedsAddress,
+                value: 1n, // 1 wei
+                data: '0x'
+              });
+              console.log('[MintArtEdition] ✅ Proceeds address can receive ETH');
+            } catch (receiveError) {
+              console.error('[MintArtEdition] ❌ Proceeds address CANNOT receive ETH:', receiveError);
+              throw new Error(`Proceeds address ${proceedsAddress} cannot receive ETH. This is likely the cause of the mint failure.`);
+            }
+          } else {
+            console.log('[MintArtEdition] ✅ Proceeds address is EOA, should be able to receive ETH');
+          }
+          
+        } catch (proceedsError) {
+          console.error('[MintArtEdition] Proceeds address verification failed:', proceedsError);
+          if (proceedsError instanceof Error && proceedsError.message.includes('cannot receive ETH')) {
+            throw proceedsError; // Re-throw the specific error
+          }
+        }
+        
+        // ALTERNATIVE MINT ATTEMPT: Try with different gas settings
+        console.log('[MintArtEdition] === ALTERNATIVE MINT ATTEMPT ===');
+        try {
+          console.log('[MintArtEdition] Trying mint with manual gas limit...');
+          
+          // Try with a higher gas limit
+          const gasEstimateAlternative = await editionContract.mint.estimateGas(mintAmount, {
+            value: totalCost,
+            gasLimit: 500000 // Manual gas limit
+          });
+          console.log('[MintArtEdition] Alternative gas estimate with manual limit:', gasEstimateAlternative.toString());
+          
+        } catch (altError) {
+          console.error('[MintArtEdition] Alternative gas estimation also failed:', altError);
+        }
+      
+      // MANUAL GAS ESTIMATION: Try to estimate gas before the actual transaction
+      console.log('[MintArtEdition] === MANUAL GAS ESTIMATION ===');
+      try {
+        const gasEstimate = await editionContract.mint.estimateGas(mintAmount, {
+          value: totalCost,
+          from: await signer.getAddress()
+        });
+        console.log('[MintArtEdition] Gas estimate for mint:', gasEstimate.toString());
+      } catch (gasError) {
+        console.error('[MintArtEdition] Gas estimation failed:', gasError);
+        
+        // Try to get more specific error by calling the contract read-only
+        try {
+          console.log('[MintArtEdition] Trying static call to see detailed error...');
+          await editionContract.mint.staticCall(mintAmount, {
+            value: totalCost,
+            from: await signer.getAddress()
+          });
+        } catch (staticError) {
+          console.error('[MintArtEdition] Static call failed with detailed error:', staticError);
+          throw new Error(`Transaction would fail: ${staticError instanceof Error ? staticError.message : String(staticError)}`);
+        }
+        
+        throw new Error(`Gas estimation failed: ${gasError instanceof Error ? gasError.message : String(gasError)}`);
+      }
       
       // Check if payment is in ETH or ERC20
       let tx;
-      if (editionInfo.paymentCurrency === "ETH") {
-        // Mint with ETH
-        tx = await editionContract.mint(walletAddress, mintAmount, {
+      if (paymentCurrency === ethers.ZeroAddress) {
+        console.log('[MintArtEdition] Using ETH payment...');
+        // Mint with ETH - contract mints to msg.sender automatically
+        tx = await editionContract.mint(mintAmount, {
           value: totalCost
         });
       } else {
-        // For ERC20 payments, we'd need to approve first
-        // This is a simplified version - in reality you'd need to handle ERC20 approvals
-        tx = await editionContract.mint(walletAddress, mintAmount);
+        console.log('[MintArtEdition] Using ERC20 payment...');
+        // For ERC20 payments - use mintERC20 function
+        tx = await editionContract.mintERC20(mintAmount);
       }
       
       // Wait for transaction
@@ -200,12 +497,38 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
     if (!artSales1155Address || !editionInfo || !isConnected) return;
     
     try {
+      console.log('[MintArtEdition] === STARTING SALE ===');
+      console.log('[MintArtEdition] Edition address:', editionInfo.erc1155Address);
+      
+      // Check current network BEFORE any wallet operations
+      const provider = ethersService.getProvider();
+      if (provider) {
+        const network = await provider.getNetwork();
+        const currentChainId = Number(network.chainId);
+        console.log('[MintArtEdition] Pre-transaction network:', currentChainId, network.name);
+        
+        // Compare with debug network if available
+        if (debugInfo?.currentNetwork?.chainId && debugInfo.currentNetwork.chainId !== currentChainId) {
+          console.warn('[MintArtEdition] ⚠️ NETWORK MISMATCH DETECTED!');
+          console.warn('[MintArtEdition] Debug showed network:', debugInfo.currentNetwork.chainId, debugInfo.currentNetwork.name);
+          console.warn('[MintArtEdition] But transaction network is:', currentChainId, network.name);
+          
+          // Stop here to prevent transaction on wrong network
+          throw new Error(`Network mismatch: Debug analyzed contracts on ${debugInfo.currentNetwork.name} (${debugInfo.currentNetwork.chainId}) but transaction would go to ${network.name} (${currentChainId})`);
+        }
+      }
+      
       setManagingSale(true);
       
       const signer = await ethersService.getSigner();
       if (!signer) {
         throw new Error("Wallet not connected");
       }
+      
+      // Double-check network after getting signer
+      const signerNetwork = await signer.provider.getNetwork();
+      const signerChainId = Number(signerNetwork.chainId);
+      console.log('[MintArtEdition] Signer network:', signerChainId, signerNetwork.name);
 
       // Load ArtSales1155 ABI for sale management
       const artSalesAbi = abiLoader.loadABI('ArtSales1155');
@@ -246,6 +569,7 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
     if (!loading && !managingSale) {
       setMintAmount(1);
       setEditionInfo(null);
+      setRealTimePrice(null);
       setManagingSale(false);
       onClose();
     }
@@ -255,34 +579,217 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
   const checkOwnership = async () => {
     try {
       console.log('[MintArtEdition] Checking ownership...');
-      const provider = ethersService.getProvider();
-      if (!provider) throw new Error('No provider available');
-
-      const signer = await provider.getSigner();
-      const currentAddress = await signer.getAddress();
-      console.log('[MintArtEdition] Current wallet address:', currentAddress);
-
-      if (!artSales1155Address) {
-        console.log('[MintArtEdition] No ArtSales1155 address available');
+      
+      // Check if wallet is connected
+      if (!isConnected || !walletAddress) {
+        setDebugInfo({ error: 'Wallet not connected' });
         return;
       }
 
-      const ArtSales1155ABI = (await import('../../assets/abis/ArtSales1155.json')).default;
-      const salesContract = new ethers.Contract(artSales1155Address, ArtSales1155ABI, provider);
+      const provider = ethersService.getProvider();
+      if (!provider) {
+        setDebugInfo({ error: 'No provider available' });
+        return;
+      }
 
-      const contractOwner = await salesContract.owner();
+      console.log('[MintArtEdition] Current wallet address:', walletAddress);
+
+      // Get current network info
+      const network = await provider.getNetwork();
+      const currentChainId = Number(network.chainId);
+      const currentNetworkName = network.name;
+      
+      console.log('[MintArtEdition] === DEBUG CONTEXT ===');
+      console.log('[MintArtEdition] editionInfo:', editionInfo);
+      console.log('[MintArtEdition] editionInfo.erc1155Address:', editionInfo?.erc1155Address);
+      console.log('[MintArtEdition] artPieceAddress:', artPieceAddress);
+      console.log('[MintArtEdition] artSales1155Address:', artSales1155Address);
+      
+      console.log('[MintArtEdition] === Current Network ===');
+      console.log('[MintArtEdition] Chain ID:', currentChainId);
+      console.log('[MintArtEdition] Network name:', currentNetworkName);
+      console.log('[MintArtEdition] Network object:', network);
+
+      if (!artSales1155Address) {
+        console.log('[MintArtEdition] No ArtSales1155 address available');
+        setDebugInfo({ 
+          error: 'No ArtSales1155 address available',
+          currentNetwork: {
+            chainId: currentChainId,
+            name: currentNetworkName
+          }
+        });
+        return;
+      }
+
+      // Load all necessary ABIs
+      const [ArtSales1155ABI, ProfileABI, ArtPieceABI, ArtEdition1155ABI] = await Promise.all([
+        import('../../assets/abis/ArtSales1155.json').then(m => m.default),
+        import('../../assets/abis/Profile.json').then(m => m.default),
+        import('../../assets/abis/ArtPiece.json').then(m => m.default),
+        import('../../assets/abis/ArtEdition1155.json').then(m => m.default)
+      ]);
+
+      // ArtSales1155 contract details
+      const salesContract = new ethers.Contract(artSales1155Address, ArtSales1155ABI, provider);
+      const salesOwner = await salesContract.owner();
       const profileAddress = await salesContract.profileAddress();
       
-      console.log('[MintArtEdition] ArtSales1155 contract owner:', contractOwner);
+      console.log('[MintArtEdition] === ArtSales1155 Details ===');
+      console.log('[MintArtEdition] ArtSales1155 address:', artSales1155Address);
+      console.log('[MintArtEdition] ArtSales1155 owner:', salesOwner);
       console.log('[MintArtEdition] ArtSales1155 profile address:', profileAddress);
-      console.log('[MintArtEdition] Current wallet matches owner:', currentAddress.toLowerCase() === contractOwner.toLowerCase());
+
+      // Profile contract details
+      let profileOwner = '';
+      let profileIsArtist = false;
+      let profileArtSales1155 = '';
+      if (profileAddress && profileAddress !== ethers.ZeroAddress) {
+        try {
+          const profileContract = new ethers.Contract(profileAddress, ProfileABI, provider);
+          profileOwner = await profileContract.owner();
+          profileIsArtist = await profileContract.isArtist();
+          profileArtSales1155 = await profileContract.artSales1155();
+          
+          console.log('[MintArtEdition] === Profile Details ===');
+          console.log('[MintArtEdition] Profile address:', profileAddress);
+          console.log('[MintArtEdition] Profile owner:', profileOwner);
+          console.log('[MintArtEdition] Profile isArtist:', profileIsArtist);
+          console.log('[MintArtEdition] Profile artSales1155:', profileArtSales1155);
+        } catch (error) {
+          console.error('[MintArtEdition] Error reading profile:', error);
+        }
+      }
+
+      // Art piece details
+      let artPieceArtist = '';
+      let artPieceOwner = '';
+      let artPieceTitle = '';
+      if (artPieceAddress) {
+        try {
+          const artPieceContract = new ethers.Contract(artPieceAddress, ArtPieceABI, provider);
+          artPieceArtist = await artPieceContract.getArtist();
+          artPieceOwner = await artPieceContract.getOwner();
+          artPieceTitle = await artPieceContract.getTitle();
+          
+          console.log('[MintArtEdition] === Art Piece Details ===');
+          console.log('[MintArtEdition] Art piece address:', artPieceAddress);
+          console.log('[MintArtEdition] Art piece title:', artPieceTitle);
+          console.log('[MintArtEdition] Art piece artist:', artPieceArtist);
+          console.log('[MintArtEdition] Art piece owner:', artPieceOwner);
+        } catch (error) {
+          console.error('[MintArtEdition] Error reading art piece:', error);
+        }
+      }
+
+      // Edition details
+      let editionOwner = '';
+      let editionArtSales1155 = '';
+      let editionArtPiece = '';
+      let editionSaleInfo = null;
+      if (editionInfo?.erc1155Address) {
+        try {
+          const editionContract = new ethers.Contract(editionInfo.erc1155Address, ArtEdition1155ABI, provider);
+          editionOwner = await editionContract.owner();
+          editionArtSales1155 = await editionContract.artSales1155();
+          editionArtPiece = await editionContract.getLinkedArtPiece();
+          editionSaleInfo = await editionContract.getSaleInfo();
+          
+          console.log('[MintArtEdition] === Edition Details ===');
+          console.log('[MintArtEdition] Edition address:', editionInfo.erc1155Address);
+          console.log('[MintArtEdition] Edition owner:', editionOwner);
+          console.log('[MintArtEdition] Edition artSales1155:', editionArtSales1155);
+          console.log('[MintArtEdition] Edition linked art piece:', editionArtPiece);
+          console.log('[MintArtEdition] Edition sale info:', editionSaleInfo);
+          
+          // CRITICAL DEBUG: Compare owners
+          console.log('[MintArtEdition] 🔍 OWNERSHIP COMPARISON:');
+          console.log('[MintArtEdition] Your wallet:', walletAddress);
+          console.log('[MintArtEdition] ArtSales1155 owner:', salesOwner);  
+          console.log('[MintArtEdition] ArtEdition1155 owner:', editionOwner);
+          console.log('[MintArtEdition] ArtSales1155 === Edition owner?', salesOwner.toLowerCase() === editionOwner.toLowerCase());
+          console.log('[MintArtEdition] Your wallet === Edition owner?', walletAddress.toLowerCase() === editionOwner.toLowerCase());
+        } catch (error) {
+          console.error('[MintArtEdition] Error reading edition:', error);
+        }
+      }
+
+      // Ownership checks (with null safety)
+      const walletIsProfileOwner = profileOwner && walletAddress.toLowerCase() === profileOwner.toLowerCase();
+      const walletIsSalesOwner = salesOwner && walletAddress.toLowerCase() === salesOwner.toLowerCase();
+      const walletIsArtist = artPieceArtist && walletAddress.toLowerCase() === artPieceArtist.toLowerCase();
+      const walletIsArtOwner = artPieceOwner && walletAddress.toLowerCase() === artPieceOwner.toLowerCase();
+      const walletIsEditionOwner = editionOwner && walletAddress.toLowerCase() === editionOwner.toLowerCase();
+
+      console.log('[MintArtEdition] === Ownership Analysis ===');
+      console.log('[MintArtEdition] Wallet is Profile owner:', walletIsProfileOwner);
+      console.log('[MintArtEdition] Wallet is ArtSales1155 owner:', walletIsSalesOwner);
+      console.log('[MintArtEdition] Wallet is Art piece artist:', walletIsArtist);
+      console.log('[MintArtEdition] Wallet is Art piece owner:', walletIsArtOwner);
+      console.log('[MintArtEdition] Wallet is Edition owner:', walletIsEditionOwner);
+
+      // Contract relationship checks
+      const profileLinksToSales = profileArtSales1155 && artSales1155Address && 
+        profileArtSales1155.toLowerCase() === artSales1155Address.toLowerCase();
+      const salesLinksToProfile = profileAddress && salesOwner && true; // Always true if both exist
+      const editionLinksToArtPiece = editionArtPiece && artPieceAddress && 
+        editionArtPiece.toLowerCase() === artPieceAddress.toLowerCase();
+
+      console.log('[MintArtEdition] === Contract Relationships ===');
+      console.log('[MintArtEdition] Profile links to correct ArtSales1155:', profileLinksToSales);
+      console.log('[MintArtEdition] ArtSales1155 links to correct Profile:', salesLinksToProfile);
+      console.log('[MintArtEdition] Edition links to correct Art piece:', editionLinksToArtPiece);
 
       setDebugInfo({
-        currentWallet: currentAddress,
-        contractOwner,
+        currentWallet: walletAddress,
+        
+        // Network info
+        currentNetwork: {
+          chainId: currentChainId,
+          name: currentNetworkName,
+          isArbitrumSepolia: currentChainId === 421614
+        },
+        
+        // ArtSales1155 info
+        artSales1155Address,
+        salesOwner,
+        salesProfileAddress: profileAddress,
+        
+        // Profile info
         profileAddress,
-        isOwner: currentAddress.toLowerCase() === contractOwner.toLowerCase(),
-        artSalesAddress: artSales1155Address
+        profileOwner,
+        profileIsArtist,
+        profileArtSales1155,
+        
+        // Art piece info
+        artPieceAddress,
+        artPieceTitle,
+        artPieceArtist,
+        artPieceOwner,
+        
+        // Edition info
+        editionAddress: editionInfo?.erc1155Address || '',
+        editionOwner,
+        editionArtSales1155,
+        editionArtPiece,
+        editionSaleInfo,
+        
+        // Ownership checks
+        walletIsProfileOwner,
+        walletIsSalesOwner,
+        walletIsArtist,
+        walletIsArtOwner,
+        walletIsEditionOwner,
+        
+        // Relationship checks
+        profileLinksToSales,
+        salesLinksToProfile,
+        editionLinksToArtPiece,
+        
+        // Overall assessment
+        canStartSale: walletIsSalesOwner || walletIsArtist,
+        whyCantStartSale: !walletIsSalesOwner && !walletIsArtist ? 
+          'Wallet is neither ArtSales1155 owner nor original artist' : ''
       });
 
     } catch (error) {
@@ -291,12 +798,12 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
     }
   };
 
-     // Check ownership when modal opens
+     // Check ownership when modal opens or wallet connection changes
    useEffect(() => {
-     if (isOpen && artSales1155Address) {
+     if (isOpen && isConnected && artSales1155Address) {
        checkOwnership();
      }
-   }, [isOpen, artSales1155Address]);
+   }, [isOpen, isConnected, walletAddress, artSales1155Address, editionInfo]);
 
   if (!isOpen) return null;
 
@@ -323,7 +830,13 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                 <h3>{editionInfo.name} ({editionInfo.symbol})</h3>
                 <div className="info-row">
                   <span className="label">Price per mint:</span>
-                  <span className="value">{editionInfo.mintPrice} {editionInfo.paymentCurrency === "ETH" ? "ETH" : "tokens"}</span>
+                  <span className="value">
+                    {priceLoading ? (
+                      "Loading..."
+                    ) : (
+                      `${parseFloat(realTimePrice || editionInfo.mintPrice).toFixed(6)} ${editionInfo.paymentCurrency === "ETH" ? "ETH" : "tokens"}`
+                    )}
+                  </span>
                 </div>
                 <div className="info-row">
                   <span className="label">Supply:</span>
@@ -374,7 +887,20 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
                   </div>
 
                   <div className="total-cost">
-                    <strong>Total Cost: {(parseFloat(editionInfo.mintPrice) * mintAmount).toFixed(6)} {editionInfo.paymentCurrency === "ETH" ? "ETH" : "tokens"}</strong>
+                    {priceLoading ? (
+                      <strong>Calculating real-time price...</strong>
+                    ) : (
+                      <strong>Total Cost: {(() => {
+                        const priceToUse = realTimePrice || editionInfo.mintPrice;
+                        const totalCost = parseFloat(priceToUse) * mintAmount;
+                        return totalCost.toFixed(6);
+                      })()} {editionInfo.paymentCurrency === "ETH" ? "ETH" : "tokens"}</strong>
+                    )}
+                    {realTimePrice && realTimePrice !== editionInfo.mintPrice && (
+                      <div style={{fontSize: '0.8em', color: 'var(--text-secondary)', marginTop: '4px'}}>
+                        Real-time price: {parseFloat(realTimePrice).toFixed(6)} ETH per token
+                      </div>
+                    )}
                   </div>
 
                   <div className="modal-actions">
@@ -429,15 +955,122 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
 
           {debugInfo && (
             <div className="debug-info">
-              <h4>Debug Information:</h4>
-              <div>Current Wallet: {debugInfo.currentWallet}</div>
-              <div>Contract Owner: {debugInfo.contractOwner}</div>
-              <div>Profile Address: {debugInfo.profileAddress}</div>
-              <div>ArtSales1155: {debugInfo.artSalesAddress}</div>
-              <div>Is Owner: {debugInfo.isOwner ? 'YES' : 'NO'}</div>
-              {debugInfo.error && <div style={{color: 'red'}}>Error: {debugInfo.error}</div>}
-              <button onClick={checkOwnership} className="debug-button">
-                Refresh Debug Info
+              <h4>🔍 Contract Analysis</h4>
+              
+              {debugInfo.error ? (
+                <div style={{color: 'red'}}>Error: {debugInfo.error}</div>
+              ) : (
+                <div>
+                  <div><strong>📱 Your Wallet:</strong> {debugInfo.currentWallet}</div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>🌐 Current Network:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div>Chain ID: {debugInfo.currentNetwork?.chainId}</div>
+                    <div>Name: {debugInfo.currentNetwork?.name}</div>
+                    <div style={{color: debugInfo.currentNetwork?.isArbitrumSepolia ? 'orange' : 'green'}}>
+                      {debugInfo.currentNetwork?.isArbitrumSepolia ? '⚠️ Arbitrum Sepolia' : '✅ Other Network'}
+                    </div>
+                  </div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>🏪 ArtSales1155 Contract:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div>Address: {debugInfo.artSales1155Address}</div>
+                    <div>Owner: {debugInfo.salesOwner}</div>
+                    <div style={{color: debugInfo.walletIsSalesOwner ? 'green' : 'red'}}>
+                      You are owner: {debugInfo.walletIsSalesOwner ? '✅ YES' : '❌ NO'}
+                    </div>
+                  </div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>👤 Profile Contract:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div>Address: {debugInfo.profileAddress}</div>
+                    <div>Owner: {debugInfo.profileOwner}</div>
+                    <div>Is Artist: {debugInfo.profileIsArtist ? 'Yes' : 'No'}</div>
+                    <div>ArtSales1155: {debugInfo.profileArtSales1155}</div>
+                    <div style={{color: debugInfo.walletIsProfileOwner ? 'green' : 'red'}}>
+                      You are owner: {debugInfo.walletIsProfileOwner ? '✅ YES' : '❌ NO'}
+                    </div>
+                  </div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>🎨 Art Piece Contract:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div>Address: {debugInfo.artPieceAddress}</div>
+                    <div>Title: {debugInfo.artPieceTitle}</div>
+                    <div>Artist: {debugInfo.artPieceArtist}</div>
+                    <div>Owner: {debugInfo.artPieceOwner}</div>
+                    <div style={{color: debugInfo.walletIsArtist ? 'green' : 'orange'}}>
+                      You are artist: {debugInfo.walletIsArtist ? '✅ YES' : '❌ NO'}
+                    </div>
+                    <div style={{color: debugInfo.walletIsArtOwner ? 'green' : 'orange'}}>
+                      You are owner: {debugInfo.walletIsArtOwner ? '✅ YES' : '❌ NO'}
+                    </div>
+                  </div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>🎯 Edition Contract:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div>Address: {debugInfo.editionAddress}</div>
+                    <div>Owner: {debugInfo.editionOwner}</div>
+                    <div>ArtSales1155: {debugInfo.editionArtSales1155}</div>
+                    <div>Linked Art Piece: {debugInfo.editionArtPiece}</div>
+                    <div style={{color: debugInfo.walletIsEditionOwner ? 'green' : 'red'}}>
+                      You are owner: {debugInfo.walletIsEditionOwner ? '✅ YES' : '❌ NO'}
+                    </div>
+                    
+                    <div style={{marginTop: '8px', padding: '8px', background: 'rgba(255,215,0,0.1)', border: '1px solid orange', borderRadius: '4px'}}>
+                      <div style={{fontWeight: 'bold', color: 'orange'}}>🔍 CRITICAL OWNERSHIP ANALYSIS:</div>
+                      <div style={{fontSize: '0.8em', marginTop: '4px'}}>
+                        <div>ArtSales1155 owner: {debugInfo.salesOwner}</div>
+                        <div>ArtEdition1155 owner: {debugInfo.editionOwner}</div>
+                        <div style={{color: debugInfo.salesOwner && debugInfo.editionOwner && debugInfo.salesOwner.toLowerCase() === debugInfo.editionOwner.toLowerCase() ? 'green' : 'red', fontWeight: 'bold'}}>
+                          Owners match: {debugInfo.salesOwner && debugInfo.editionOwner && debugInfo.salesOwner.toLowerCase() === debugInfo.editionOwner.toLowerCase() ? '✅ YES' : '❌ NO - THIS IS THE BUG!'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>🔗 Contract Relationships:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div style={{color: debugInfo.profileLinksToSales ? 'green' : 'red'}}>
+                      Profile → ArtSales1155: {debugInfo.profileLinksToSales ? '✅ Linked' : '❌ Broken'}
+                    </div>
+                    <div style={{color: debugInfo.editionLinksToArtPiece ? 'green' : 'red'}}>
+                      Edition → Art Piece: {debugInfo.editionLinksToArtPiece ? '✅ Linked' : '❌ Broken'}
+                    </div>
+                  </div>
+                  
+                  <hr style={{margin: '10px 0', border: '1px solid var(--border-secondary)'}} />
+                  
+                  <div><strong>⚖️ Authorization Analysis:</strong></div>
+                  <div style={{marginLeft: '10px', fontSize: '0.85em'}}>
+                    <div style={{color: debugInfo.canStartSale ? 'green' : 'red', fontWeight: 'bold'}}>
+                      Can start sale: {debugInfo.canStartSale ? '✅ YES' : '❌ NO'}
+                    </div>
+                    {debugInfo.whyCantStartSale && (
+                      <div style={{color: 'red', fontSize: '0.9em'}}>
+                        Why not: {debugInfo.whyCantStartSale}
+                      </div>
+                    )}
+                    <div style={{fontSize: '0.8em', marginTop: '5px', color: 'var(--text-secondary)'}}>
+                      Required: Be ArtSales1155 owner OR original artist
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <button onClick={checkOwnership} className="debug-button" style={{marginTop: '10px'}}>
+                🔄 Refresh Analysis
               </button>
             </div>
           )}
