@@ -114,6 +114,7 @@ struct PhaseConfig:
 MAX_ROYALTY_PERCENT: constant(uint256) = 10000  # Allow up to 100.00% (10000 basis points)
 MAX_PHASES: constant(uint256) = 5
 TOKEN_ID: constant(uint256) = 1  # Always use token ID 1
+CROSS_CHAIN_CONTRACT_ADDRESS: constant(address) = 0x025Ab1A3c7A5e4a9Bf4ABED580aeD349660022CC
 
 # Interfaces
 interface IERC20:
@@ -138,6 +139,14 @@ interface ArtPiece:
 interface ArtSales1155:
     def owner() -> address: view
     def artistProceedsAddress() -> address: view
+
+interface ICrossChainContract:
+    def sendRetryableTicketToCrossChainUpdateMethod(
+        _l3_deliver_to: address, 
+        _gas_limit: uint256, 
+        _max_fee_per_gas: uint256, 
+        _token_total_fee_amount: uint256,
+        _cross_chain_update_input: address): nonpayable
 
 @deploy
 def __init__():
@@ -403,6 +412,51 @@ def mintERC20(_amount: uint256):
     log TransferSingle(operator=msg.sender, sender=empty(address), receiver=msg.sender, id=TOKEN_ID, value=_amount)
     log EditionMinted(minter=msg.sender, amount=_amount, payment=total_cost)
 
+@external
+def mintERC20CrossChain(_amount: uint256, _l3_deliver_to: address):
+    
+    """Mint tokens using ERC20 payment and send cross-chain message"""
+    assert self.paymentCurrency != empty(address), "This edition only accepts ERC20 tokens"
+    assert self.basePrice > 0, "Edition does not exist"
+    assert not self.isPaused, "Sale is paused"
+    
+    # Check hard stops first - these override all other logic
+    self._checkHardStops(_amount)
+    
+    # Check supply limit for capped sales
+    if self.saleType == SALE_TYPE_CAPPED:
+        assert self.currentSupply + _amount <= self.maxSupply, "Exceeds max supply"
+    
+    # Update price for phased sales before calculating cost (only if hard stops not triggered)
+    self._updatePriceForPhases()
+    
+    # Get current price (may have been updated)
+    current_price: uint256 = self._getCurrentPrice()
+    total_cost: uint256 = current_price * _amount
+    
+    # Transfer ERC20 tokens
+    token: IERC20 = IERC20(self.paymentCurrency)
+    success: bool = extcall token.transferFrom(msg.sender, self.proceedsAddress, total_cost)
+    assert success, "ERC20 transfer failed"
+    
+    # Update supply
+    self.currentSupply += _amount
+    
+    # Mint tokens
+    self.balances[msg.sender] += _amount
+    
+    log TransferSingle(operator=msg.sender, sender=empty(address), receiver=msg.sender, id=TOKEN_ID, value=_amount)
+    log EditionMinted(minter=msg.sender, amount=_amount, payment=total_cost)
+
+    # 0x025Ab1A3c7A5e4a9Bf4ABED580aeD349660022CC deployed on L2
+    cross_chain_contract: ICrossChainContract = ICrossChainContract(CROSS_CHAIN_CONTRACT_ADDRESS)
+    extcall cross_chain_contract.sendRetryableTicketToCrossChainUpdateMethod(
+        _l3_deliver_to,
+        180000,
+        500000000000,
+        100000000000000000,
+        msg.sender
+    )
 
 #========================= TEMP FUNCTIONS =========================
 # ======================================
