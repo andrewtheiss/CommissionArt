@@ -24,21 +24,6 @@ interface IERC20:
     def allowance(owner: address, spender: address) -> uint256: view
 
 
-
-
-interface IERC20Inbox:
-    def createRetryableTicket(
-        to: address,
-        l2CallValue: uint256,
-        maxSubmissionCost: uint256,
-        excessFeeRefundAddress: address,
-        callValueRefundAddress: address,
-        gasLimit: uint256,
-        maxFeePerGas: uint256,
-        tokenTotalFeeAmount: uint256,  # This was missing!
-        data: Bytes[256]
-    ) -> uint256: payable
-
 # Confirmed working L3 Inbox address from mainnet transactions
 # Need to approve this Inbox to spend ANIME tokens for L2 to L3 messaging
 INBOX: constant(address) = 0xA203252940839c8482dD4b938b4178f842E343D7
@@ -53,6 +38,10 @@ whitelisted: public(HashMap[address, bool])
 @deploy
 def __init__():
     self.owner = msg.sender
+    anime_token: IERC20 = IERC20(ANIME_TOKEN)
+    max_amount: uint256 = max_value(uint256)
+    success: bool = extcall anime_token.approve(INBOX, max_amount)
+    self.whitelisted[msg.sender] = True
 
 @internal
 def _allowedAccess():
@@ -61,19 +50,6 @@ def _allowedAccess():
     @dev Reverts if msg.sender is not whitelisted
     """
     assert self.whitelisted[msg.sender], "Access denied: caller not whitelisted"
-
-@external
-def approveMaxAnimeForMessaging():
-    """
-    @notice Approve the INBOX contract to spend maximum ANIME tokens from this contract for L2 to L3 messaging
-    @dev Sets allowance to maximum uint256 value for the INBOX contract to spend this contract's ANIME tokens
-    """
-    assert msg.sender == self.owner
-    
-    anime_token: IERC20 = IERC20(ANIME_TOKEN)
-    max_amount: uint256 = max_value(uint256)
-    success: bool = extcall anime_token.approve(INBOX, 220000000000000000)
-    assert success, "ANIME token approval failed"
 
 @external
 @view
@@ -91,43 +67,67 @@ def getAnimeBalance() -> uint256:
 
 
 @external
-def sendStaticRetryableTicket():
+def sendRetryableTicketToCrossChainUpdateMethod(
+    _l3_deliver_to: address, 
+    _gas_limit: uint256, 
+    _max_fee_per_gas: uint256, 
+    _token_total_fee_amount: uint256,
+    _cross_chain_update_input: address):
     """
     @notice Send a retryable ticket with hardcoded parameters using direct raw call
     @dev Calls createRetryableTicket directly on the INBOX contract with specific parameters
     """
-    assert msg.sender == self.owner, "Only owner can call this function"
+    self._allowedAccess()
     
     # Hardcoded parameters
-    to: address = 0x96eF33e25FdDA3808F35CC5fa62286120FF285a9
+    to: address = _l3_deliver_to # 0x96eF33e25FdDA3808F35CC5fa62286120FF285a9
     l2_call_value: uint256 = 0
-    max_submission_cost: uint256 = 60000000000000000  # 0.06 ETH
-    excess_fee_refund_address: address = 0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA
-    call_value_refund_address: address = 0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA
-    gas_limit: uint256 = 300000
-    max_fee_per_gas: uint256 = 500000000000  # 500 gwei
-    token_total_fee_amount: uint256 = 220000000000000000  # 0.22 tokens
+    max_submission_cost: uint256 = 20000000000000  # 0.00002 ETH
+    excess_fee_refund_address: address = 0x2D68643fC11D8952324ca051fFa5c7DB5F9219D8 # hard code deployer for now
+    call_value_refund_address: address = 0x2D68643fC11D8952324ca051fFa5c7DB5F9219D8 # hard code deployer for now
+    gas_limit: uint256 = _gas_limit # 180000
+    max_fee_per_gas: uint256 = _max_fee_per_gas # 500000000000  # 500 gwei
+    token_total_fee_amount: uint256 = _token_total_fee_amount# 100000000000000000  # 0.1 tokens
     
     # Hardcoded data: 0x73252838000000000000000000000000aca5be80ce2db9cf01530d95bc80c1f1db7071fa
     func_selector: bytes4 = 0x73252838  # crossChainUpdate(address)
-    address_param: bytes32 = convert(0xaca5be80ce2db9cf01530d95bc80c1f1db7071fa, bytes32)
-    l3_calldata: Bytes[36] = concat(func_selector, address_param)
+    
+    # Create 12 bytes of zeros for LEFT padding (this is the key!)
+    zeros: bytes32 = empty(bytes32)  # All zeros
+    padding: Bytes[12] = slice(zeros, 0, 12)
+
+
+    # CORRECT - slice directly from the bytes32
+    addr_bytes: Bytes[20] = slice(
+        convert(_cross_chain_update_input, bytes32),
+        0,
+        20
+    )
+
+    
+    
+    # Construct properly encoded calldata: selector + padding + address
+    l3_calldata: Bytes[36] = concat(
+        func_selector,      # 4 bytes: 73252838
+        padding,            # 12 bytes: 000000000000000000000000
+        addr_bytes          # 20 bytes: aca5be80ce2db9cf01530d95bc80c1f1db7071fa
+    )
 
 
     method_sig: bytes4 = 0x549e8426
     # Encode all parameters
-    encoded_call: Bytes[420] = concat(
+    encoded_call: Bytes[1024] = concat(  # was 420 exactly
         method_sig,
-        convert(0x96eF33e25FdDA3808F35CC5fa62286120FF285a9, bytes32),  # to
+        convert(to, bytes32),  # to
         convert(0, bytes32),  # l2CallValue
-        convert(60000000000000000, bytes32),  # maxSubmissionCost
-        convert(0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA, bytes32),  # excessFeeRefundAddress
-        convert(0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA, bytes32),  # callValueRefundAddress
-        convert(300000, bytes32),  # gasLimit
-        convert(500000000000, bytes32),  # maxFeePerGas
-        convert(220000000000000000, bytes32),  # tokenTotalFeeAmount
-        convert(288, bytes32),  # offset for bytes parameter (9 * 32)
-        convert(36, bytes32),  # length of l3_calldata
+        convert(max_submission_cost, bytes32),  # maxSubmissionCost
+        convert(excess_fee_refund_address, bytes32),  # excessFeeRefundAddress
+        convert(call_value_refund_address, bytes32),  # callValueRefundAddress
+        convert(gas_limit, bytes32),  # gasLimit
+        convert(max_fee_per_gas, bytes32),  # maxFeePerGas
+        convert(token_total_fee_amount, bytes32),  # tokenTotalFeeAmount
+        convert(288, bytes32),  # offset pointer that tells the decoder where the dynamic data begins
+        convert(36, bytes32),  # length of that dynamic byte array
         l3_calldata
     )
 
