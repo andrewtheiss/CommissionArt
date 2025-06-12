@@ -19,6 +19,11 @@
 
 interface IERC20:
     def approve(spender: address, amount: uint256) -> bool: nonpayable
+    def balanceOf(owner: address) -> uint256: view
+    def transfer(to: address, amount: uint256) -> bool: nonpayable
+    def allowance(owner: address, spender: address) -> uint256: view
+
+
 
 
 interface IERC20Inbox:
@@ -30,98 +35,134 @@ interface IERC20Inbox:
         callValueRefundAddress: address,
         gasLimit: uint256,
         maxFeePerGas: uint256,
+        tokenTotalFeeAmount: uint256,  # This was missing!
         data: Bytes[256]
     ) -> uint256: payable
 
 # Confirmed working L3 Inbox address from mainnet transactions
+# Need to approve this Inbox to spend ANIME tokens for L2 to L3 messaging
 INBOX: constant(address) = 0xA203252940839c8482dD4b938b4178f842E343D7
 
 # ANIME token address on Arbitrum L2
 ANIME_TOKEN: constant(address) = 0x37a645648dF29205C6261289983FB04ECD70b4B3
 
+# State variables for access control
+owner: public(address)
+whitelisted: public(HashMap[address, bool])
+
 @deploy
 def __init__():
+    self.owner = msg.sender
+
+@internal
+def _allowedAccess():
     """
-    @notice Initialize the L2 to L3 message sender contract
+    @notice Internal method to check if caller has whitelisted access
+    @dev Reverts if msg.sender is not whitelisted
     """
-    pass
+    assert self.whitelisted[msg.sender], "Access denied: caller not whitelisted"
 
 @external
 def approveMaxAnimeForMessaging():
     """
-    @notice Approve this contract to spend maximum ANIME tokens for L2 to L3 messaging
-    @dev Sets allowance to maximum uint256 value for convenience
+    @notice Approve the INBOX contract to spend maximum ANIME tokens from this contract for L2 to L3 messaging
+    @dev Sets allowance to maximum uint256 value for the INBOX contract to spend this contract's ANIME tokens
     """
+    assert msg.sender == self.owner
+    
     anime_token: IERC20 = IERC20(ANIME_TOKEN)
     max_amount: uint256 = max_value(uint256)
-    success: bool = extcall anime_token.approve(self, max_amount)
+    success: bool = extcall anime_token.approve(INBOX, 220000000000000000)
     assert success, "ANIME token approval failed"
-    
-    log AnimeApprovedForMessaging(
-        user=msg.sender,
-        amount=max_amount
-    )
 
 @external
-@payable
-def sendMessageToL3(
-    _l3_receiver: address,              # The L3 contract address to receive the message
-    _user_input_address: address,       # The address parameter to pass to the L3 contract
-    _l3_call_value: uint256,           # ETH value to send with the L3 call (usually 0)
-    _max_submission_cost: uint256,      # Maximum cost for submitting the retryable ticket (e.g., 0.01 ETH = 10**16)
-    _gas_limit: uint256,               # Gas limit for L3 execution (e.g., 300000)
-    _max_fee_per_gas: uint256          # Maximum fee per gas for L3 execution (e.g., 2000000000 = 2 gwei)
-    ):
+@view
+def getAnimeBalance() -> uint256:
     """
-    @notice Send L2 to L3 message with full parameter control
-    @dev Creates retryable ticket to send crossChainUpdate message to L3
-    @param _l3_receiver The L3 contract address to receive the message (use 0x08Fa26D7C129Ea51CCFf87109C382a532605E120 for mainnet)
-    @param _user_input_address The address to pass as parameter to crossChainUpdate function on L3
-    @param _l3_call_value The ETH value to send with the L3 call (typically 0)
-    @param _max_submission_cost Maximum cost for submitting the retryable ticket to L3
-    @param _gas_limit Gas limit for the L3 execution
-    @param _max_fee_per_gas Maximum fee per gas for L3 execution
+    @notice Get the ANIME token balance of this contract
+    @return The amount of ANIME tokens held by this contract
     """
+    assert msg.sender == self.owner
     
-    # Create function selector for crossChainUpdate(address)
-    func_selector: Bytes[4] = slice(keccak256("crossChainUpdate(address)"), 0, 4)
-    
-    # Encode the user input address as the parameter
-    data: Bytes[36] = concat(
-        func_selector,
-        convert(_user_input_address, bytes32)
-    )
-
-    assert msg.value >= _l3_call_value, "Insufficient ETH for l3CallValue"
-    
-    # Create retryable ticket to L3
-    ticket_id: uint256 = extcall IERC20Inbox(INBOX).createRetryableTicket(
-        _l3_receiver,           # L3 contract address to receive the call
-        _l3_call_value,         # ETH to send with L3 call (usually 0)
-        _max_submission_cost,   # Cost to submit ticket (e.g., 0.01 ETH = 10**16)
-        msg.sender,             # Excess fee refund address (caller)
-        msg.sender,             # Call value refund address (caller)
-        _gas_limit,             # Gas limit for L3 execution (e.g., 300000)
-        _max_fee_per_gas,       # Max fee per gas (e.g., 2000000000 = 2 gwei)
-        data,                   # Encoded function call data
-        value=msg.value         # Total ETH sent (covers submission + gas costs)
-    )
-    
-    log L2ToL3MessageSent(
-        l3_receiver=_l3_receiver, 
-        user_input_address=_user_input_address, 
-        sender=msg.sender, 
-        ticket_id=ticket_id
-    )
+    anime_token: IERC20 = IERC20(ANIME_TOKEN)
+    return staticcall anime_token.balanceOf(self)
 
 # ========== EVENTS ==========
 
-event AnimeApprovedForMessaging:
-    user: indexed(address)
-    amount: uint256
 
-event L2ToL3MessageSent:
-    l3_receiver: indexed(address)
-    user_input_address: indexed(address)
-    sender: address
-    ticket_id: uint256 
+@external
+def sendStaticRetryableTicket():
+    """
+    @notice Send a retryable ticket with hardcoded parameters using direct raw call
+    @dev Calls createRetryableTicket directly on the INBOX contract with specific parameters
+    """
+    assert msg.sender == self.owner, "Only owner can call this function"
+    
+    # Hardcoded parameters
+    to: address = 0x96eF33e25FdDA3808F35CC5fa62286120FF285a9
+    l2_call_value: uint256 = 0
+    max_submission_cost: uint256 = 60000000000000000  # 0.06 ETH
+    excess_fee_refund_address: address = 0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA
+    call_value_refund_address: address = 0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA
+    gas_limit: uint256 = 300000
+    max_fee_per_gas: uint256 = 500000000000  # 500 gwei
+    token_total_fee_amount: uint256 = 220000000000000000  # 0.22 tokens
+    
+    # Hardcoded data: 0x73252838000000000000000000000000aca5be80ce2db9cf01530d95bc80c1f1db7071fa
+    func_selector: bytes4 = 0x73252838  # crossChainUpdate(address)
+    address_param: bytes32 = convert(0xaca5be80ce2db9cf01530d95bc80c1f1db7071fa, bytes32)
+    l3_calldata: Bytes[36] = concat(func_selector, address_param)
+
+
+    method_sig: bytes4 = 0x549e8426
+    # Encode all parameters
+    encoded_call: Bytes[420] = concat(
+        method_sig,
+        convert(0x96eF33e25FdDA3808F35CC5fa62286120FF285a9, bytes32),  # to
+        convert(0, bytes32),  # l2CallValue
+        convert(60000000000000000, bytes32),  # maxSubmissionCost
+        convert(0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA, bytes32),  # excessFeeRefundAddress
+        convert(0xACA5BE80ce2Db9cf01530D95bc80C1F1db7071fA, bytes32),  # callValueRefundAddress
+        convert(300000, bytes32),  # gasLimit
+        convert(500000000000, bytes32),  # maxFeePerGas
+        convert(220000000000000000, bytes32),  # tokenTotalFeeAmount
+        convert(288, bytes32),  # offset for bytes parameter (9 * 32)
+        convert(36, bytes32),  # length of l3_calldata
+        l3_calldata
+    )
+
+    # Make the call
+    response: Bytes[32] = raw_call(
+        INBOX,
+        encoded_call,
+        max_outsize=32,
+        value=0,
+        revert_on_failure=True
+    )
+    
+    ticket_id: uint256 = convert(response, uint256)
+    
+
+@external
+@view
+def checkAllowance() -> uint256:
+    """Check current ANIME allowance to INBOX"""
+    anime_token: IERC20 = IERC20(ANIME_TOKEN)
+    return staticcall anime_token.allowance(self, INBOX)
+
+@external
+def withdrawAllAnime():
+    """
+    @notice Withdraw all ANIME tokens from this contract to the owner
+    @dev Only the owner can call this function to recover accumulated ANIME tokens
+    """
+    assert msg.sender == self.owner, "Only owner can withdraw ANIME tokens"
+    
+    anime_token: IERC20 = IERC20(ANIME_TOKEN)
+    current_balance: uint256 = staticcall anime_token.balanceOf(self)
+    
+    assert current_balance > 0, "No ANIME tokens to withdraw"
+    
+    # Transfer all ANIME tokens to the owner
+    success: bool = extcall anime_token.transfer(self.owner, current_balance)
+    assert success, "ANIME token transfer failed"
