@@ -4,6 +4,7 @@ import ethersService from '../../utils/ethers-service';
 import abiLoader from '../../utils/abiLoader';
 import { ethers } from 'ethers';
 import './MintArtEdition.css';
+import CrossChainWhitelistForm from './CrossChainWhitelistForm';
 
 interface MintArtEditionProps {
   isOpen: boolean;
@@ -1440,6 +1441,22 @@ const MintArtEdition: React.FC<MintArtEditionProps> = ({
             <div className="error-message">
               <p>Failed to load edition information.</p>
               <button className="cancel-button" onClick={handleClose}>Close</button>
+            </div>
+          )}
+
+          {/* Cross-Chain Management Section */}
+          {editionInfo && debugInfo?.walletIsEditionOwner && (
+            <div className="cross-chain-management" style={{marginTop: '20px', padding: '16px', border: '1px solid var(--border-primary)', borderRadius: '8px', backgroundColor: 'var(--card-background)'}}>
+              <h4>🌉 Cross-Chain Management</h4>
+              
+              <div style={{marginBottom: '16px'}}>
+                <div><strong>ArtEdition Contract Address:</strong></div>
+                <div style={{fontFamily: 'monospace', fontSize: '0.9em', color: 'var(--text-secondary)', wordBreak: 'break-all', padding: '4px 8px', backgroundColor: 'var(--background-secondary)', borderRadius: '4px', margin: '4px 0'}}>
+                  {editionInfo.erc1155Address}
+                </div>
+              </div>
+
+              <CrossChainWhitelistForm editionAddress={editionInfo.erc1155Address} />
             </div>
           )}
 

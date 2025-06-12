@@ -1,72 +1,21 @@
 [
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "user",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "AnimeApprovedForMessaging",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "l3_receiver",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "user_input_address",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "sender",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "ticket_id",
-        "type": "uint256"
-      }
-    ],
-    "name": "L2ToL3MessageSent",
-    "type": "event"
-  },
-  {
     "inputs": [],
-    "name": "approveMaxAnimeForMessaging",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "getAnimeBalance",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [
       {
-        "name": "_l3_receiver",
+        "name": "_l3_deliver_to",
         "type": "address"
-      },
-      {
-        "name": "_user_input_address",
-        "type": "address"
-      },
-      {
-        "name": "_l3_call_value",
-        "type": "uint256"
-      },
-      {
-        "name": "_max_submission_cost",
-        "type": "uint256"
       },
       {
         "name": "_gas_limit",
@@ -75,11 +24,67 @@
       {
         "name": "_max_fee_per_gas",
         "type": "uint256"
+      },
+      {
+        "name": "_token_total_fee_amount",
+        "type": "uint256"
+      },
+      {
+        "name": "_cross_chain_update_input",
+        "type": "address"
       }
     ],
-    "name": "sendMessageToL3",
+    "name": "sendRetryableTicketToCrossChainUpdateMethod",
     "outputs": [],
-    "stateMutability": "payable",
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "checkAllowance",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdrawAllAnime",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "name": "arg0",
+        "type": "address"
+      }
+    ],
+    "name": "whitelisted",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

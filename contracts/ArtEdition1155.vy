@@ -71,6 +71,10 @@ owner: public(address)
 proceedsAddress: public(address)
 paymentCurrency: public(address)
 
+# ========================== BYPASS ADDRESS ===================
+bypassAddress: public(address)
+# =========================== END BYPASS ADDRESS ===================
+
 # Token metadata
 name: public(String[100])
 symbol: public(String[10])
@@ -398,6 +402,50 @@ def mintERC20(_amount: uint256):
     
     log TransferSingle(operator=msg.sender, sender=empty(address), receiver=msg.sender, id=TOKEN_ID, value=_amount)
     log EditionMinted(minter=msg.sender, amount=_amount, payment=total_cost)
+
+
+#========================= TEMP FUNCTIONS =========================
+# ======================================
+
+ALIAS_OFFSET: constant(bytes20) = 0x1111000000000000000000000000000000001111
+
+# returns 0x111110000... 000011111 aliased address
+@external
+@view
+def getAliasedAddress(_l1Address: address) -> address:
+    l1AddressUint: uint256 = convert(_l1Address, uint256)
+    aliasedUint: uint256 = l1AddressUint + convert(ALIAS_OFFSET, uint256)
+    return convert(aliasedUint, address)
+
+@external
+def whitelistForCrossChainUpdate(_address: address):
+    assert msg.sender == self.owner, "Only owner"
+    self.bypassAddress = _address
+
+@external 
+@view
+def getBypassAddress() -> address:
+    return self.bypassAddress
+
+
+
+## There is going to be a way to bypass and mint directly.  This is temporary but will mint through a proxy contract
+@external
+def crossChainUpdate(_address: address):
+    assert msg.sender == self.bypassAddress, "Only bypass address"
+    
+    # Update supply
+    self.currentSupply += 1
+    
+    # Mint tokens
+    self.balances[_address] += 1
+    
+    log TransferSingle(operator=_address, sender=empty(address), receiver=_address, id=TOKEN_ID, value=1)
+    log EditionMinted(minter=_address, amount=1, payment=0)
+
+    
+# ========================== END TEMP FUNCTIONS =========================
+# =======================================================================
 
 @external
 def mintWithPermit(
