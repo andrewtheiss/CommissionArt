@@ -90,19 +90,23 @@ const MainTabContent: React.FC = () => {
   const [fetchingSpecific, setFetchingSpecific] = useState(false);
   const [isImageLoading, setIsImageLoading] = useState(false);
   
-  // Initialize activeTab from localStorage or default to 'account'
+  // Initialize activeTab from localStorage or default to 'viewer'
   const [activeTab, setActiveTab] = useState<'viewer' | 'compressor' | 'bridge' | 'commissioned' | 'registration' | 'account' | 'l2relay' | 'l2l3test' | 'add-art'>(() => {
     const savedTab = localStorage.getItem('active_tab');
+    console.log('Saved tab from localStorage:', savedTab);
     if (savedTab === 'viewer' || savedTab === 'compressor' || savedTab === 'bridge' || 
         savedTab === 'commissioned' || savedTab === 'registration' || savedTab === 'account' || 
         savedTab === 'l2relay' || savedTab === 'l2l3test' || savedTab === 'add-art') {
+      console.log('Using saved tab:', savedTab);
       return savedTab;
     }
-    return 'account';
+    console.log('Using default tab: viewer');
+    return 'viewer';
   });
   
   // Save activeTab to localStorage when it changes
   useEffect(() => {
+    console.log('Saving active tab to localStorage:', activeTab);
     localStorage.setItem('active_tab', activeTab);
   }, [activeTab]);
 
@@ -262,6 +266,20 @@ const MainTabContent: React.FC = () => {
     };
   }, []);
 
+  // Auto-load a random Azuki when viewer tab is active and no contract is selected
+  useEffect(() => {
+    console.log('Auto-load effect triggered:', {
+      activeTab,
+      selectedContract: !!selectedContract,
+      fetchingSpecific,
+      loading
+    });
+    if (activeTab === 'viewer' && !selectedContract && !fetchingSpecific && !loading) {
+      console.log('Auto-loading random Azuki...');
+      handleRandomAzuki();
+    }
+  }, [activeTab, selectedContract, fetchingSpecific, loading]);
+
   if (loading) {
     return <div className="main-container loading">Loading...</div>;
   }
@@ -270,6 +288,12 @@ const MainTabContent: React.FC = () => {
     <SafeBlockchainProvider>
       <div className="main-container">
         <div className="tab-buttons">
+          <button 
+            className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
+            onClick={() => setActiveTab('viewer')}
+          >
+            Azuki Viewer
+          </button>
           <button 
             className={`tab-button ${activeTab === 'account' ? 'active' : ''}`}
             onClick={() => setActiveTab('account')}
@@ -299,12 +323,6 @@ const MainTabContent: React.FC = () => {
             onClick={() => setActiveTab('l2relay')}
           >
             L2 Relay Test
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'viewer' ? 'active' : ''}`}
-            onClick={() => setActiveTab('viewer')}
-          >
-            Azuki Viewer
           </button>
           <button 
             className={`tab-button ${activeTab === 'compressor' ? 'active' : ''}`}
