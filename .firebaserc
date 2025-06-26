@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "azukionchain"
-  }
+    "default": "commissionartdev"
+  },
+  "targets": {},
+  "etags": {}
 }
