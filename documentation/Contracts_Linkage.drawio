@@ -1,0 +1,171 @@
+<mxfile host="app.diagrams.net" modified="2025-09-07T00:00:00.000Z" agent="AI-Generated" version="20.8.23" editor="drawio">
+  <diagram id="contracts-linkage" name="Contracts">
+    <mxGraphModel dx="1800" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Core Registry -->
+        <mxCell id="pf" value="ProfileFactoryAndRegistry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="20" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Owner Registry / Hub Manager -->
+        <mxCell id="owners" value="ArtCommissionHubOwners" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Hubs -->
+        <mxCell id="hub" value="ArtCommissionHub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="20" y="140" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Profiles -->
+        <mxCell id="profile" value="Profile" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="140" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="social" value="ProfileSocial" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="740" y="140" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Art Piece and License -->
+        <mxCell id="artpiece" value="ArtPiece" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="260" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="license" value="ArtPieceLicense (optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="260" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Sales and Editions -->
+        <mxCell id="sales" value="ArtSales1155" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="380" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="edition" value="ArtEdition1155" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="420" y="500" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Bridging (L1/L2/L3) -->
+        <mxCell id="l1" value="L1QueryOwnership" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="260" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="l2" value="L2OwnershipRelay" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="20" y="380" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="anime" value="AnimeTokenL2ToL3MessageSender" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="500" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="zzcomplete" value="ZZ_CompleteL2ToL3MessageSender" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="620" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="zzrecv" value="ZZ_TestL3ReceiveMessage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="740" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Utilities / Tests -->
+        <mxCell id="array" value="ArrayManager (utility)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="420" y="620" width="300" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="mock" value="MockERC20 (test)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="620" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="simple721" value="SimpleERC721 (test)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eeeeee;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="500" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="escrow" value="ArtCommissionEscrow (spec/integration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="740" y="380" width="280" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Owner registry <-> Factory -->
+        <mxCell id="e-owners-to-pf" value="linkProfileFactoryAndRegistry" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="owners" target="pf">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-pf-to-owners" value="linkArtCommissionHubOwnersContract" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="pf" target="owners">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges: Factory creates clones -->
+        <mxCell id="e-pf-to-profile" value="create_minimal_proxy_to (Profile) / initialize" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="pf" target="profile">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-pf-to-social" value="create_minimal_proxy_to (ProfileSocial) / initialize" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="pf" target="social">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-social-to-profile" value="links to Profile" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;dashed=1;" edge="1" parent="1" source="social" target="profile">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e-pf-to-hub" value="clone ArtCommissionHub → initializeParent... → initializeForArtCommissionHub" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="pf" target="hub">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Hubs <-> Owner registry -->
+        <mxCell id="e-hub-to-owners" value="owner registry / lookupRegisteredOwner / permissions" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="hub" target="owners">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-owners-to-hub" value="create/syncArtCommissionHubOwner" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="owners" target="hub">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Profile → ArtPiece -->
+        <mxCell id="e-profile-to-artpiece" value="createArtPiece → initialize" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="profile" target="artpiece">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-artpiece-to-pf" value="stores factory ptr / getProfile / hasProfile" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;dashed=1;" edge="1" parent="1" source="artpiece" target="pf">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-artpiece-to-hub" value="attached to hub / submitCommission" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="artpiece" target="hub">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-artpiece-to-license" value="optional ownership override (getOwner)" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;dashed=1;" edge="1" parent="1" source="artpiece" target="license">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Sales and Editions links -->
+        <mxCell id="e-profile-to-sales" value="set/auto-create ArtSales1155" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="profile" target="sales">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-sales-to-edition" value="clone ArtEdition1155 → initialize → createEdition" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="sales" target="edition">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-sales-to-artpiece" value="reads metadata / verifies owner/artist" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;dashed=1;" edge="1" parent="1" source="sales" target="artpiece">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-edition-to-sales" value="owner/proceeds from ArtSales1155" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;dashed=1;" edge="1" parent="1" source="edition" target="sales">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Bridging edges -->
+        <mxCell id="e-l1-to-l2" value="createRetryableTicket → receiveNFTOwnerFromCrossChainMessage" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="l1" target="l2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e-l2-to-owners" value="registerNFTOwnerFromParentChain" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1" source="l2" target="owners">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Editions cross-chain update to L3 via retryable ticket sender -->
+        <mxCell id="e-edition-to-zzcomplete" value="sendRetryableTicketToCrossChainUpdateMethod" style="endArrow=block;endFill=1;html=1;strokeColor=#000000;fontSize=11;dashed=1;" edge="1" parent="1" source="edition" target="zzcomplete">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Test/external interactions (dashed) -->
+        <mxCell id="e-l1-to-erc721" value="ownerOf(tokenId)" style="endArrow=block;endFill=1;html=1;strokeColor=#888888;fontSize=11;dashed=1;" edge="1" parent="1" source="l1" target="simple721">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- (No explicit edges for ArrayManager / MockERC20 / ZZ_*, standalone or test utilities) -->
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+
