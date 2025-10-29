@@ -320,6 +320,11 @@ const AddArt: React.FC = () => {
       <div className="add-art-container">
         <div className="add-art-header">
           <h2>Add Artwork</h2>
+          {/* Environment selector limited to Add Art page */}
+          <div style={{ marginTop: 8 }}>
+            <span style={{ marginRight: 8, color: 'var(--text-secondary)', fontSize: 13 }}>Environment:</span>
+            <AddArtEnvSelector />
+          </div>
           {!isConnected && <div className="wallet-warning">Please connect your wallet.</div>}
           {isConnected && hasProfile && <div className="profile-info success">Your artwork will be added to your profile.</div>}
           {isConnected && !hasProfile && <div className="profile-info warning">A profile will be created for you when you submit.</div>}
@@ -436,3 +441,82 @@ const AddArt: React.FC = () => {
 };
 
 export default AddArt; 
+
+// Local, page-scoped environment selector for Add Art
+const AddArtEnvSelector: React.FC = () => {
+  const { switchToLayer } = useBlockchain();
+  const [selected, setSelected] = useState<'mainnet' | 'testnet' | 'arbitrum'>(() => {
+    const saved = localStorage.getItem('addart-env-selection') as 'mainnet' | 'testnet' | 'arbitrum' | null;
+    if (saved === 'mainnet' || saved === 'testnet' || saved === 'arbitrum') return saved;
+    return 'mainnet';
+  });
+  const [busy, setBusy] = useState(false);
+
+  const choose = async (target: 'mainnet' | 'testnet' | 'arbitrum') => {
+    if (target === selected) return;
+    setBusy(true);
+    try {
+      if (target === 'mainnet') {
+        await switchToLayer('l3', 'mainnet');
+      } else if (target === 'testnet') {
+        await switchToLayer('l2', 'testnet');
+      } else {
+        await switchToLayer('l2', 'mainnet');
+      }
+      setSelected(target);
+      localStorage.setItem('addart-env-selection', target);
+      // Keep global env display in sync with Account
+      localStorage.setItem('profile-env-selection', target);
+      localStorage.setItem('profile-use-testnet', JSON.stringify(target === 'testnet'));
+      window.dispatchEvent(new Event('profile-environment-changed'));
+    } catch (e) {
+      console.error('AddArtEnvSelector switch failed:', e);
+      alert(`Failed to switch network: ${e instanceof Error ? e.message : 'Unknown error'}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <span style={{ display: 'inline-flex', gap: 0, verticalAlign: 'middle' }}>
+      <button
+        type="button"
+        onClick={() => choose('mainnet')}
+        disabled={busy}
+        style={{
+          background: selected === 'mainnet' ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+          color: selected === 'mainnet' ? '#fff' : 'var(--text-secondary)',
+          border: '1px solid var(--border-secondary)',
+          padding: '4px 10px',
+          borderRadius: '6px 0 0 6px'
+        }}
+        title="AnimeChain L3"
+      >Mainnet</button>
+      <button
+        type="button"
+        onClick={() => choose('testnet')}
+        disabled={busy}
+        style={{
+          background: selected === 'testnet' ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+          color: selected === 'testnet' ? '#fff' : 'var(--text-secondary)',
+          border: '1px solid var(--border-secondary)',
+          padding: '4px 10px'
+        }}
+        title="Arbitrum Sepolia (L2)"
+      >Testnet</button>
+      <button
+        type="button"
+        onClick={() => choose('arbitrum')}
+        disabled={busy}
+        style={{
+          background: selected === 'arbitrum' ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
+          color: selected === 'arbitrum' ? '#fff' : 'var(--text-secondary)',
+          border: '1px solid var(--border-secondary)',
+          padding: '4px 10px',
+          borderRadius: '0 6px 6px 0'
+        }}
+        title="Arbitrum One (L2)"
+      >Arbitrum (L2)</button>
+    </span>
+  );
+};

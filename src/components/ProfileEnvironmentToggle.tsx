@@ -5,48 +5,46 @@ interface ProfileEnvironmentToggleProps {
   className?: string;
 }
 
+// Three-option environment selector: Mainnet (L3), Testnet (L2 Sepolia), Arbitrum (L2 Mainnet)
 const ProfileEnvironmentToggle: React.FC<ProfileEnvironmentToggleProps> = ({ className = '' }) => {
   const { switchToLayer } = useBlockchain();
-  const [useTestnet, setUseTestnet] = useState<boolean>(() => {
-    // Get the saved preference or default to false (Mainnet)
-    const saved = localStorage.getItem('profile-use-testnet');
-    return saved ? JSON.parse(saved) : false;
+  const [selectedEnv, setSelectedEnv] = useState<'mainnet' | 'testnet' | 'arbitrum'>(() => {
+    const saved = localStorage.getItem('profile-env-selection') as 'mainnet' | 'testnet' | 'arbitrum' | null;
+    if (saved === 'mainnet' || saved === 'testnet' || saved === 'arbitrum') {
+      return saved;
+    }
+    const legacy = localStorage.getItem('profile-use-testnet');
+    const legacyBool = legacy ? JSON.parse(legacy) : false;
+    return legacyBool ? 'testnet' : 'mainnet';
   });
   const [isSwitching, setIsSwitching] = useState<boolean>(false);
 
-  // Save preference to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('profile-use-testnet', JSON.stringify(useTestnet));
-  }, [useTestnet]);
+    // Persist selection and maintain legacy key for compatibility
+    localStorage.setItem('profile-env-selection', selectedEnv);
+    localStorage.setItem('profile-use-testnet', JSON.stringify(selectedEnv === 'testnet'));
+  }, [selectedEnv]);
 
-  const handleToggle = async () => {
-    const newValue = !useTestnet;
+  const performSwitch = async (target: 'mainnet' | 'testnet' | 'arbitrum') => {
+    if (target === selectedEnv) return;
     setIsSwitching(true);
-    
-    console.log(`[ProfileEnvironmentToggle] Starting network switch: ${!newValue ? 'Mainnet' : 'Testnet'} -> ${newValue ? 'Testnet' : 'Mainnet'}`);
-    
     try {
-      // Switch network based on toggle selection
-      if (newValue) {
-        // Switch to Testnet (Arbitrum Sepolia)
-        console.log('[ProfileEnvironmentToggle] Calling switchToLayer(l2, testnet)');
-        await switchToLayer('l2', 'testnet');
-        console.log('[ProfileEnvironmentToggle] Successfully switched to Testnet');
-      } else {
-        // Switch to Mainnet (AnimeChain)
-        console.log('[ProfileEnvironmentToggle] Calling switchToLayer(l3, mainnet)');
+      if (target === 'mainnet') {
+        console.log('[ProfileEnvironmentToggle] switchToLayer(l3, mainnet)');
         await switchToLayer('l3', 'mainnet');
-        console.log('[ProfileEnvironmentToggle] Successfully switched to Mainnet');
+      } else if (target === 'testnet') {
+        // Keep existing behavior: Testnet maps to Arbitrum Sepolia (L2)
+        console.log('[ProfileEnvironmentToggle] switchToLayer(l2, testnet)');
+        await switchToLayer('l2', 'testnet');
+      } else {
+        // Arbitrum (L2 mainnet)
+        console.log('[ProfileEnvironmentToggle] switchToLayer(l2, mainnet)');
+        await switchToLayer('l2', 'mainnet');
       }
-      
-      // Only update state if network switch was successful
-      setUseTestnet(newValue);
-      
-      // Dispatch custom event to notify components of the change
+      setSelectedEnv(target);
       window.dispatchEvent(new Event('profile-environment-changed'));
     } catch (error) {
       console.error('[ProfileEnvironmentToggle] Failed to switch network:', error);
-      // Don't update the toggle state if network switch failed
       alert(`Failed to switch network: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSwitching(false);
@@ -57,24 +55,34 @@ const ProfileEnvironmentToggle: React.FC<ProfileEnvironmentToggleProps> = ({ cla
     <div className={`profile-environment-toggle ${className}`}>
       <div className="toggle-container">
         <span className="toggle-label">Environment:</span>
-        <div className="toggle-wrapper">
-          <span className={`toggle-option-label left ${!useTestnet ? 'active' : ''}`}>
+        <div className="env-segmented">
+          <button
+            type="button"
+            className={`env-btn ${selectedEnv === 'mainnet' ? 'active' : ''}`}
+            onClick={() => performSwitch('mainnet')}
+            disabled={isSwitching}
+            title="AnimeChain L3"
+          >
             Mainnet
-          </span>
-          <label className="toggle-switch">
-            <input 
-              type="checkbox" 
-              checked={useTestnet} 
-              onChange={handleToggle}
-              disabled={isSwitching}
-            />
-            <span className={`toggle-slider ${isSwitching ? 'switching' : ''}`}>
-              {isSwitching && <span className="switching-indicator">⟳</span>}
-            </span>
-          </label>
-          <span className={`toggle-option-label right ${useTestnet ? 'active' : ''}`}>
+          </button>
+          <button
+            type="button"
+            className={`env-btn ${selectedEnv === 'testnet' ? 'active' : ''}`}
+            onClick={() => performSwitch('testnet')}
+            disabled={isSwitching}
+            title="Arbitrum Sepolia (L2)"
+          >
             Testnet
-          </span>
+          </button>
+          <button
+            type="button"
+            className={`env-btn ${selectedEnv === 'arbitrum' ? 'active' : ''}`}
+            onClick={() => performSwitch('arbitrum')}
+            disabled={isSwitching}
+            title="Arbitrum One (L2)"
+          >
+            Arbitrum (L2)
+          </button>
         </div>
       </div>
     </div>

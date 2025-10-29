@@ -27,6 +27,39 @@
   gap: 10px;
 }
 
+/* New segmented control styles */
+.env-segmented {
+  display: inline-flex;
+  background-color: #262b3d;
+  border: 1px solid #434968;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.env-btn {
+  background: transparent;
+  border: none;
+  color: #b8b9bf;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.env-btn + .env-btn {
+  border-left: 1px solid #434968;
+}
+
+.env-btn:hover {
+  background-color: rgba(94, 114, 228, 0.1);
+  color: #e0e0e0;
+}
+
+.env-btn.active {
+  background-color: #5e72e4;
+  color: #ffffff;
+}
+
 .toggle-option-label {
   font-size: 13px;
   color: #888;

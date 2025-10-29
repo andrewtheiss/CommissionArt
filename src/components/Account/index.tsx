@@ -214,8 +214,9 @@ const Account: React.FC = () => {
 
   const ConnectionBar = () => {
     // Get the profile environment preference from localStorage
+    const envSel = localStorage.getItem('profile-env-selection') as 'mainnet' | 'testnet' | 'arbitrum' | null;
     const useTestnet = localStorage.getItem('profile-use-testnet') === 'true';
-    const currentEnvironment = useTestnet ? 'Testnet' : 'Mainnet';
+    const currentEnvironment = envSel === 'arbitrum' ? 'Arbitrum (L2)' : (useTestnet ? 'Testnet' : 'Mainnet');
     
     // Better network name mapping
     const getNetworkDisplayName = (networkType: string) => {
